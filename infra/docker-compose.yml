@@ -1,0 +1,36 @@
+# Nombre: docker-compose.yml
+# Descripción: Servicios de InspectIA para desarrollo local. Por ahora solo PostgreSQL;
+#              el servidor y el servicio de IA se agregan cuando existan.
+# Fecha de creación: 12/10/2026
+# Actualización: 12/10/2026
+# Autor: Equipo InspectIA
+# Versión: 1.0
+#
+# Uso, desde la raíz del repositorio:
+#   cp infra/.env.example infra/.env     # y escribe una contraseña en POSTGRES_PASSWORD
+#   docker compose -f infra/docker-compose.yml up -d
+
+name: inspectia
+
+services:
+  postgres:
+    # Imagen oficial multiarquitectura: corre en amd64 (PC del equipo) y en arm64 (EC2 t4g, D-16).
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-inspectia}
+      POSTGRES_USER: ${POSTGRES_USER:-inspectia}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Falta POSTGRES_PASSWORD. Copia infra/.env.example a infra/.env y escribe una contraseña}
+    ports:
+      # Solo en este equipo (127.0.0.1): la base no queda expuesta a la red local.
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      # Desde PostgreSQL 18 los datos van en /var/lib/postgresql (ya no en /var/lib/postgresql/data).
+      - datos-postgres:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  datos-postgres:

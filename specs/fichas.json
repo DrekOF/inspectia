@@ -1,0 +1,897 @@
+{
+  "_header": {
+    "nombre": "fichas.json",
+    "descripcion": "Fichas de los requerimientos funcionales (formato largo) y no funcionales (formato corto) de InspectIA. Fuente única para las secciones 5 y 6 del documento de requerimientos y, más adelante, para el listado de casos de prueba (RP-13).",
+    "fecha_creacion": "12/10/2026",
+    "actualizacion": "12/10/2026",
+    "autor": "Equipo InspectIA",
+    "version": "1.1"
+  },
+  "rf": [
+    {
+      "encabezado": "Iniciar sesión según el rol",
+      "titulo": "Iniciar sesión según el rol",
+      "codigo": "RF-01",
+      "version": "1.0",
+      "fuente": "Levantamiento inicial: tres roles con funciones distintas (D-05 y D-13).",
+      "descripcion": "El usuario entra con su correo y su contraseña. El sistema verifica los datos y lo lleva al menú de su rol: usuario final, administrador de empresa o administrador de la plataforma.",
+      "justificacion": "Cada rol usa funciones distintas y cada empresa solo debe ver sus propios datos (RNF-03 y RNF-04).",
+      "precondiciones": {
+        "b": [
+          "El usuario está registrado y activo (RF-02 o RF-03).",
+          "El primer administrador de la plataforma lo crea el script de inicialización de la base de datos (RP-15)."
+        ]
+      },
+      "restricciones": {
+        "b": [
+          "La sesión vence a las 8 horas (RNF-04).",
+          "Las contraseñas se guardan con hash (BCrypt), nunca en texto plano.",
+          "Un usuario desactivado no puede entrar."
+        ]
+      },
+      "prioridad": "Alta",
+      "dificultad": "Media",
+      "dependencia": "Todas las demás funciones dependen de este requerimiento. Los usuarios los crean RF-02 y RF-03.",
+      "actores": "Usuario final, administrador de empresa y administrador de la plataforma.",
+      "entradas": "Correo y contraseña.",
+      "proceso": {
+        "n": [
+          "El usuario escribe su correo y su contraseña.",
+          "El sistema verifica que el usuario exista, que la contraseña coincida y que esté activo.",
+          "El sistema crea la sesión con el rol y la empresa del usuario.",
+          "El sistema muestra el menú de su rol."
+        ]
+      },
+      "salida": "Sesión iniciada y menú del rol. Si los datos no coinciden, el mensaje «Correo o contraseña incorrectos».",
+      "postcondiciones": "El usuario solo puede usar las funciones de su rol y solo ve los datos de su empresa.",
+      "criterios": {
+        "b": [
+          "Con datos correctos, el sistema muestra el menú del rol del usuario.",
+          "Con datos incorrectos, muestra «Correo o contraseña incorrectos», sin decir cuál de los dos falló.",
+          "Un usuario desactivado no puede iniciar sesión.",
+          "Después de 5 intentos fallidos seguidos, la cuenta se bloquea 15 minutos.",
+          "La sesión vence a las 8 horas y el sistema pide iniciar sesión de nuevo."
+        ]
+      },
+      "rnf": "RNF-03 (datos separados por empresa) y RNF-04 (autenticación y permisos).",
+      "estado": "Propuesto",
+      "observaciones": "Recuperar la contraseña por correo queda fuera de la v1 porque no hay integración con correo. La restablece el administrador de la empresa (RF-03) o, si se trata de un administrador de empresa, el administrador de la plataforma (RF-02)."
+    },
+    {
+      "encabezado": "Registrar empresas y su primer administrador",
+      "titulo": "Registrar empresas y su primer administrador",
+      "codigo": "RF-02",
+      "version": "1.0",
+      "fuente": "D-13: el administrador de la plataforma registra las empresas.",
+      "descripcion": "El administrador de la plataforma registra una empresa con sus datos básicos y crea el primer administrador de esa empresa.",
+      "justificacion": "InspectIA atiende a varias empresas (multiempresa). Cada una necesita su propio espacio y un responsable que gestione sus usuarios.",
+      "precondiciones": "El administrador de la plataforma inició sesión (RF-01).",
+      "restricciones": {
+        "b": [
+          "El NIT de la empresa no se puede repetir.",
+          "El correo del administrador es único en toda la plataforma.",
+          "Al crearse, la empresa recibe los rangos de recomendación por defecto (D-10).",
+          "El administrador de la plataforma también puede restablecer la contraseña de un administrador de empresa."
+        ]
+      },
+      "prioridad": "Alta",
+      "dificultad": "Baja",
+      "dependencia": "Depende de RF-01. De este requerimiento dependen RF-03 y las demás funciones de la empresa.",
+      "actores": "Administrador de la plataforma.",
+      "entradas": "Datos de la empresa (nombre, NIT y ciudad) y de su administrador (nombre, correo y contraseña inicial).",
+      "proceso": {
+        "n": [
+          "El administrador de la plataforma abre «Nueva empresa».",
+          "Escribe los datos de la empresa y de su administrador.",
+          "El sistema valida que los datos estén completos y que el NIT y el correo no existan.",
+          "El sistema crea la empresa, con los rangos por defecto, y su administrador."
+        ]
+      },
+      "salida": "Empresa registrada y su administrador listo para iniciar sesión.",
+      "postcondiciones": "La empresa aparece en la lista de empresas y su administrador puede entrar (RF-01).",
+      "criterios": {
+        "b": [
+          "Con datos válidos, la empresa y su administrador quedan registrados.",
+          "Si el NIT o el correo del administrador ya existen, el sistema no registra la empresa y lo avisa.",
+          "Si faltan datos obligatorios, el formulario marca los campos que faltan.",
+          "La empresa nueva queda con los rangos por defecto de D-10.",
+          "El administrador creado puede iniciar sesión con la contraseña inicial."
+        ]
+      },
+      "rnf": "RNF-02 (capacidad), RNF-03 (datos separados por empresa) y RNF-04 (autenticación y permisos).",
+      "estado": "Propuesto",
+      "observaciones": "CRUD generado desde el JSON de la entidad empresa (RP-23, D-21). Los campos exactos se definen en el modelo de datos (fase de análisis y diseño)."
+    },
+    {
+      "encabezado": "Gestionar los usuarios de la empresa",
+      "titulo": "Gestionar los usuarios de la empresa",
+      "codigo": "RF-03",
+      "version": "1.0",
+      "fuente": "Levantamiento inicial: hasta 25 usuarios por empresa, incluido el administrador.",
+      "descripcion": "El administrador de la empresa crea, edita y desactiva los usuarios de su empresa, hasta 25 contando al administrador.",
+      "justificacion": "Cada empresa controla quién usa InspectIA y con qué rol.",
+      "precondiciones": "El administrador de empresa inició sesión (RF-01).",
+      "restricciones": {
+        "b": [
+          "Máximo 25 usuarios activos por empresa, incluido el administrador.",
+          "El correo es único en toda la plataforma, porque con él se inicia sesión (RF-01).",
+          "Solo ve y gestiona los usuarios de su propia empresa (RNF-03).",
+          "Los usuarios no se borran, se desactivan, para no perder quién hizo cada análisis."
+        ]
+      },
+      "prioridad": "Alta",
+      "dificultad": "Baja",
+      "dependencia": "Depende de RF-01 y RF-02.",
+      "actores": "Administrador de empresa.",
+      "entradas": "Nombre, correo, rol (usuario final o administrador) y contraseña inicial.",
+      "proceso": {
+        "n": [
+          "El administrador abre «Usuarios» y ve la lista de su empresa.",
+          "Crea un usuario, edita sus datos (incluida una contraseña nueva), lo desactiva o lo reactiva.",
+          "El sistema valida los datos y el límite de 25 usuarios activos.",
+          "El sistema guarda el cambio."
+        ]
+      },
+      "salida": "Lista de usuarios de la empresa actualizada.",
+      "postcondiciones": "Los usuarios activos pueden iniciar sesión; los desactivados no.",
+      "criterios": {
+        "b": [
+          "Un usuario creado con datos válidos puede iniciar sesión.",
+          "No se puede crear un usuario con un correo que ya existe en la plataforma.",
+          "Con 25 usuarios activos, el sistema no deja crear ni reactivar otro, y explica por qué.",
+          "Un usuario desactivado no puede iniciar sesión y sus análisis siguen en el historial.",
+          "El administrador no puede desactivarse a sí mismo.",
+          "No puede ver ni editar usuarios de otra empresa."
+        ]
+      },
+      "rnf": "RNF-02 (capacidad), RNF-03 (datos separados por empresa) y RNF-04 (autenticación y permisos).",
+      "estado": "Propuesto",
+      "observaciones": "CRUD generado desde el JSON de la entidad usuario (RP-23, D-21), más la regla del límite de 25."
+    },
+    {
+      "encabezado": "Registrar un lote",
+      "titulo": "Registrar un lote",
+      "codigo": "RF-04",
+      "version": "1.0",
+      "fuente": "Proceso propuesto (TO-BE) y D-08.",
+      "descripcion": "El usuario final registra un lote nuevo con sus datos básicos antes de fotografiar la muestra.",
+      "justificacion": "Cada análisis pertenece a un lote; sin ese registro no hay historial ni reporte.",
+      "precondiciones": "El usuario inició sesión (RF-01).",
+      "restricciones": {
+        "b": [
+          "El código del lote no se repite dentro de la misma empresa.",
+          "El lote queda asociado a la empresa y al usuario que lo registró (RNF-03)."
+        ]
+      },
+      "prioridad": "Alta",
+      "dificultad": "Baja",
+      "dependencia": "Depende de RF-01. De este requerimiento dependen RF-05 a RF-12.",
+      "actores": "Usuario final.",
+      "entradas": "Código del lote, fecha de recepción, finca o proveedor de origen y observaciones (opcional).",
+      "proceso": {
+        "n": [
+          "El usuario elige «Nuevo lote».",
+          "Escribe los datos del lote.",
+          "El sistema valida los datos y que el código no exista en la empresa.",
+          "El sistema guarda el lote en estado «Pendiente de análisis» y pasa a la captura de fotos (RF-05)."
+        ]
+      },
+      "salida": "Lote registrado.",
+      "postcondiciones": "El lote queda en estado «Pendiente de análisis».",
+      "criterios": {
+        "b": [
+          "Con datos válidos, el lote queda registrado y el sistema pasa a la captura de fotos.",
+          "Si el código ya existe en la empresa, el sistema lo avisa y no registra el lote.",
+          "La fecha de recepción no puede ser posterior a hoy."
+        ]
+      },
+      "rnf": "RNF-03 (datos separados por empresa) y RNF-06 (facilidad de uso).",
+      "estado": "Propuesto",
+      "observaciones": "Los campos exactos se definen en el modelo de datos (fase de análisis y diseño)."
+    },
+    {
+      "encabezado": "Tomar o subir las fotos de la muestra",
+      "titulo": "Tomar o subir las fotos de la muestra del lote, con guía de captura",
+      "codigo": "RF-05",
+      "version": "1.0",
+      "fuente": "D-08 (captura del lote) y D-23 (tamaño de la muestra).",
+      "descripcion": "El usuario toma con la cámara del celular, o sube desde el PC, 2 o 3 fotos de la muestra del lote, siguiendo una guía de captura.",
+      "justificacion": "La calidad de las fotos define la calidad del resultado; la guía evita fotos que no sirven.",
+      "precondiciones": "Hay un lote registrado en estado «Pendiente de análisis» (RF-04).",
+      "restricciones": {
+        "b": [
+          "La muestra tiene entre 100 y 150 granos, repartidos en 2 o 3 fotos (D-23).",
+          "Granos enteros sobre papel blanco, separados entre sí, con luz difusa y fotos tomadas desde arriba (D-08).",
+          "Fotos en JPG o PNG, de hasta 10 MB cada una.",
+          "Las fotos suben directo a S3 con un enlace temporal (D-16; detalle en el documento de arquitectura)."
+        ]
+      },
+      "prioridad": "Alta",
+      "dificultad": "Media",
+      "dependencia": "Depende de RF-04. De este requerimiento depende RF-06.",
+      "actores": "Usuario final.",
+      "entradas": "2 o 3 fotos de la muestra.",
+      "proceso": {
+        "n": [
+          "El sistema muestra la guía de captura, con un ejemplo de foto correcta.",
+          "El usuario toma o elige cada foto.",
+          "El sistema muestra una vista previa para confirmarla o repetirla.",
+          "El sistema sube las fotos y las asocia al lote."
+        ]
+      },
+      "salida": "Fotos guardadas y asociadas al lote.",
+      "postcondiciones": "Las fotos quedan listas para validarse (RF-06).",
+      "criterios": {
+        "b": [
+          "En el celular, el botón abre la cámara; en el PC, permite elegir archivos.",
+          "El sistema exige al menos 2 fotos y acepta como máximo 3.",
+          "Rechaza archivos que no sean JPG o PNG o que pasen de 10 MB, con un mensaje claro.",
+          "La guía de captura se puede consultar antes de cada foto."
+        ]
+      },
+      "rnf": "RNF-05 (PC y celular) y RNF-06 (facilidad de uso).",
+      "estado": "Propuesto",
+      "observaciones": "La guía se ajusta con la prueba de fotos reales (P-12)."
+    },
+    {
+      "encabezado": "Validar la nitidez y la luz de cada foto",
+      "titulo": "Validar la calidad de cada foto (nitidez y luz) y pedir repetirla si no sirve",
+      "codigo": "RF-06",
+      "version": "1.0",
+      "fuente": "Proceso propuesto (TO-BE), paso de revisión de las fotos.",
+      "descripcion": "Antes de analizar, el sistema revisa que cada foto tenga nitidez y luz suficientes. Si una foto no sirve, explica por qué y pide repetirla.",
+      "justificacion": "Una foto borrosa u oscura hace que la separación y la clasificación fallen, y el resultado sale equivocado.",
+      "precondiciones": "Las fotos del lote están cargadas (RF-05).",
+      "restricciones": {
+        "b": [
+          "La revisión la hace el servicio de IA con OpenCV.",
+          "Los umbrales de nitidez y de luz se ajustan con la prueba de fotos reales (P-12)."
+        ]
+      },
+      "prioridad": "Media",
+      "dificultad": "Media",
+      "dependencia": "Depende de RF-05. De este requerimiento depende RF-07.",
+      "actores": "Usuario final y servicio de IA.",
+      "entradas": "Las fotos del lote.",
+      "proceso": {
+        "n": [
+          "El sistema mide la nitidez y la luz de cada foto.",
+          "Si una foto no cumple, muestra el motivo («foto borrosa» o «poca luz») y pide repetirla.",
+          "Con la foto nueva, repite la revisión.",
+          "Si todas las fotos cumplen, continúa con la separación de los granos (RF-07)."
+        ]
+      },
+      "salida": "Fotos aprobadas, o el motivo por el que hay que repetir cada foto rechazada.",
+      "postcondiciones": "Solo las fotos aprobadas pasan al análisis.",
+      "criterios": {
+        "b": [
+          "Una foto borrosa se rechaza con un mensaje que pide tomarla de nuevo sin mover el celular.",
+          "Una foto oscura se rechaza con un mensaje sobre la luz.",
+          "Una foto que cumple la guía pasa sin avisos."
+        ]
+      },
+      "rnf": "RNF-01 (tiempo de respuesta) y RNF-06 (facilidad de uso).",
+      "estado": "Propuesto",
+      "observaciones": "Los granos pegados se revisan en RF-07, durante la separación."
+    },
+    {
+      "encabezado": "Separar y recortar los granos",
+      "titulo": "Separar y recortar los granos de cada foto, con control de granos pegados",
+      "codigo": "RF-07",
+      "version": "1.0",
+      "fuente": "D-08 (captura y análisis del lote) y D-09 (control de granos pegados).",
+      "descripcion": "El servicio de IA encuentra cada grano en las fotos aprobadas, revisa que no haya granos pegados y recorta cada grano para clasificarlo.",
+      "justificacion": "El modelo clasifica granos sueltos; así la empresa no tiene que fotografiar grano por grano.",
+      "precondiciones": "Las fotos del lote están cargadas (RF-05) y, cuando la validación de RF-06 está disponible, aprobadas.",
+      "restricciones": {
+        "b": [
+          "Usa el script de OpenCV que, con las fotos del dataset, encontró el grano correcto en el 99,8 % de los casos (ver Componentes de la solución).",
+          "Los recortes se hacen igual que los del entrenamiento, para que el modelo los reconozca (D-08).",
+          "Granos pegados: una región con un área de al menos el doble de la mediana de los granos de esa foto (D-09).",
+          "La muestra debe tener al menos 100 granos válidos entre todas las fotos (D-23)."
+        ]
+      },
+      "prioridad": "Alta",
+      "dificultad": "Media",
+      "dependencia": "Depende de RF-05 y usa la validación de RF-06 cuando está disponible. De este requerimiento dependen RF-08 y RF-11.",
+      "actores": "Servicio de IA y usuario final (repite o agrega una foto cuando hace falta).",
+      "entradas": "Las fotos aprobadas del lote.",
+      "proceso": {
+        "n": [
+          "Corrige la iluminación del papel.",
+          "Separa los granos del fondo.",
+          "Descarta las manchas pequeñas y los granos cortados por el borde de la foto.",
+          "Revisa que no haya granos pegados; si los hay, pide repetir la foto, muestra dónde están y la foto nueva vuelve a revisarse (RF-06).",
+          "Cuenta los granos válidos de todas las fotos; si son menos de 100, pide agregar una foto o repetir una con más granos.",
+          "Gira y recorta cada grano y guarda su posición en la foto."
+        ]
+      },
+      "salida": "Un recorte por grano, con su posición en la foto.",
+      "postcondiciones": "Los recortes quedan listos para clasificarse (RF-08) y las posiciones sirven para marcar la foto (RF-11).",
+      "criterios": {
+        "b": [
+          "En una foto con 50 granos separados, encuentra los 50.",
+          "Una foto con granos pegados se rechaza y el sistema muestra dónde están.",
+          "Si entre todas las fotos hay menos de 100 granos válidos, el sistema no calcula el resultado y pide completar la muestra.",
+          "Los granos cortados por el borde de la foto no se cuentan.",
+          "Cada recorte guarda su posición en la foto original."
+        ]
+      },
+      "rnf": "RNF-01 (tiempo de respuesta).",
+      "estado": "Propuesto",
+      "observaciones": "Falta probarlo con fotos reales de unos 50 granos (P-12)."
+    },
+    {
+      "encabezado": "Clasificar cada grano con el modelo de IA",
+      "titulo": "Clasificar cada grano como sano o no sano con el modelo de IA",
+      "codigo": "RF-08",
+      "version": "1.0",
+      "fuente": "Problema general del sector cacaotero (D-19) y pauta del docente sobre los modelos de IA (RP-25).",
+      "descripcion": "El servicio de IA clasifica cada grano recortado en RF-07 como sano o no sano con el modelo elegido (D-18) y le devuelve a la API la posición, la clase y la confianza de cada grano.",
+      "justificacion": "Es el núcleo de InspectIA: reemplaza la evaluación manual, que depende de la experiencia de una persona, por un criterio uniforme. Sin esta clasificación no se puede calcular el porcentaje de granos sanos del lote (RF-10).",
+      "precondiciones": {
+        "b": [
+          "Los granos ya están separados y recortados, sin granos pegados (RF-07).",
+          "El servicio de IA está activo y tiene cargado el modelo elegido (D-18)."
+        ]
+      },
+      "restricciones": {
+        "b": [
+          "Solo hay dos clases, sano y no sano, porque el dataset solo tiene esas dos.",
+          "El modelo mira el grano por fuera: no mide la fermentación interna (D-17).",
+          "El modelo llega entrenado y la app no lo reentrena (D-03).",
+          "Corre sin GPU, en la instancia t4g.medium (D-16)."
+        ]
+      },
+      "prioridad": "Alta",
+      "dificultad": "Alta",
+      "dependencia": "Depende de RF-07. De este requerimiento dependen RF-09, RF-10, RF-11 y RF-17.",
+      "actores": "Usuario final (inicia el análisis del lote) y servicio de IA (clasifica los granos).",
+      "entradas": "Las fotos del lote, que la API le envía al servicio de IA (con sus enlaces de S3), ya separadas en recortes por RF-07.",
+      "proceso": {
+        "n": [
+          "La API le envía al servicio de IA las fotos del lote.",
+          "El servicio separa y recorta los granos (RF-07) y ajusta cada recorte al tamaño de entrada del modelo.",
+          "El modelo elegido clasifica cada recorte como sano o no sano y calcula su confianza.",
+          "El servicio le devuelve a la API la posición, la clase y la confianza de cada grano.",
+          "La API guarda el resultado de cada grano y el modelo que hizo el análisis."
+        ]
+      },
+      "salida": "Para cada grano, la clase (sano o no sano) y la confianza, de 0 a 100 %. Para el análisis, el modelo y la versión usados.",
+      "postcondiciones": "Todos los granos de la muestra quedan clasificados y guardados, listos para calcular el porcentaje de granos sanos (RF-10) y marcar la foto (RF-11). Los granos con confianza baja quedan señalados para RF-09.",
+      "criterios": {
+        "b": [
+          "Cada grano detectado recibe una sola clase: sano o no sano.",
+          "Cada clasificación trae su confianza.",
+          "El análisis guarda qué modelo y qué versión lo hicieron.",
+          "El modelo cumple el F1-score mínimo de RNF-07 en el conjunto de validación.",
+          "La clasificación de toda la muestra cabe dentro del tiempo total del análisis, de 5 a 8 segundos (RNF-01).",
+          "Si el servicio de IA no responde, el sistema avisa al usuario y no guarda un resultado incompleto."
+        ]
+      },
+      "rnf": "RNF-01 (tiempo de respuesta), RNF-07 (F1-score mínimo) y RNF-08 (licencia del dataset).",
+      "estado": "Propuesto",
+      "observaciones": "Pendiente de revisión de Julián (P-14). El umbral de confianza baja que usa RF-09 se fija con los resultados del modelo en validación (P-15)."
+    },
+    {
+      "encabezado": "Pedir otra foto si la IA duda",
+      "titulo": "Pedir una foto más clara o más fotos cuando la confianza del modelo es baja",
+      "codigo": "RF-09",
+      "version": "1.0",
+      "fuente": "Proceso propuesto (TO-BE).",
+      "descripcion": "Si el modelo clasifica demasiados granos con confianza baja, el sistema pide repetir la foto con más granos dudosos antes de dar el resultado.",
+      "justificacion": "Un resultado con muchos granos dudosos no es confiable para decidir qué hacer con el lote.",
+      "precondiciones": "Los granos de la muestra ya fueron clasificados (RF-08).",
+      "restricciones": {
+        "b": [
+          "Se pide repetir una foto si más del 10 % de los granos tienen confianza baja.",
+          "La foto nueva reemplaza a la anterior: se mantienen 2 o 3 fotos y entre 100 y 150 granos (D-23).",
+          "Se permiten como máximo 2 repeticiones; si los granos dudosos siguen pasando del 10 %, el sistema da el resultado con un aviso de confianza baja.",
+          "El 10 % y el umbral de confianza baja son parámetros del sistema que fija el equipo (P-15); el administrador de empresa no los cambia."
+        ]
+      },
+      "prioridad": "Media",
+      "dificultad": "Baja",
+      "dependencia": "Depende de RF-08. Va antes de RF-10.",
+      "actores": "Usuario final y servicio de IA.",
+      "entradas": "La clase y la confianza de cada grano.",
+      "proceso": {
+        "n": [
+          "El sistema cuenta los granos con confianza baja.",
+          "Si pasan del 10 %, marca esos granos en la foto y pide repetir la foto con más granos dudosos.",
+          "Con la foto nueva, repite la revisión, la separación y la clasificación (RF-06 a RF-08).",
+          "Si después de 2 repeticiones siguen pasando del 10 %, continúa con un aviso de confianza baja.",
+          "Si no pasan del 10 %, continúa con el cálculo del porcentaje (RF-10)."
+        ]
+      },
+      "salida": "Una solicitud para repetir una foto, con los granos dudosos marcados, o el paso al cálculo (con aviso de confianza baja si se agotaron las repeticiones).",
+      "postcondiciones": "El resultado se calcula con una proporción aceptable de granos dudosos o, si no se logra, queda marcado con un aviso de confianza baja.",
+      "criterios": {
+        "b": [
+          "Con más del 10 % de granos dudosos, el sistema pide repetir la foto con más granos dudosos y muestra cuáles son.",
+          "Con 10 % o menos, el análisis sigue sin pedir nada.",
+          "La foto repetida reemplaza a la anterior y pasa por la misma validación que las primeras.",
+          "Si tras 2 repeticiones siguen pasando del 10 %, el resultado sale con el aviso «Confianza baja: confirma con la prueba de corte»."
+        ]
+      },
+      "rnf": "RNF-06 (facilidad de uso) y RNF-07 (F1-score mínimo).",
+      "estado": "Propuesto",
+      "observaciones": "El 10 % y el umbral de confianza baja son valores iniciales; se fijan con los resultados del modelo en validación (P-15)."
+    },
+    {
+      "encabezado": "Calcular el % de granos sanos",
+      "titulo": "Calcular el porcentaje de granos sanos del lote",
+      "codigo": "RF-10",
+      "version": "1.0",
+      "fuente": "D-02: el resultado del lote se expresa como porcentaje de granos sanos.",
+      "descripcion": "El sistema calcula el porcentaje de granos sanos de la muestra: granos sanos dividido por el total de granos clasificados, por 100.",
+      "justificacion": "Es el resultado principal con el que la empresa decide qué hacer con el lote (D-02).",
+      "precondiciones": "Todos los granos de la muestra están clasificados (RF-08).",
+      "restricciones": {
+        "b": [
+          "Se redondea a un decimal.",
+          "Las manchas y los granos cortados por el borde, descartados en RF-07, no cuentan."
+        ]
+      },
+      "prioridad": "Alta",
+      "dificultad": "Baja",
+      "dependencia": "Depende de RF-08 y, cuando está disponible, va después de RF-09. De este requerimiento dependen RF-11, RF-12 y RF-15.",
+      "actores": "Usuario final (recibe el resultado).",
+      "entradas": "La clase de cada grano de la muestra.",
+      "proceso": {
+        "n": [
+          "El sistema cuenta los granos sanos y el total de granos.",
+          "Calcula sanos ÷ total × 100.",
+          "Guarda el porcentaje con el lote."
+        ]
+      },
+      "salida": "El porcentaje de granos sanos, por ejemplo 93,0 %.",
+      "postcondiciones": "El porcentaje queda guardado con el lote, listo para la recomendación (RF-12).",
+      "criterios": {
+        "b": [
+          "Con 93 granos sanos de 100, el resultado es 93,0 %.",
+          "Con 141 granos sanos de 150, el resultado es 94,0 %.",
+          "Con 100 granos sanos de 107, el resultado es 93,5 % (redondeo a un decimal).",
+          "El porcentaje se guarda con el lote y con el modelo que hizo el análisis (D-18).",
+          "El cálculo tiene pruebas unitarias y de mutación (RP-12) que no dependen del servicio de IA (D-21)."
+        ]
+      },
+      "rnf": "RNF-01 (tiempo de respuesta).",
+      "estado": "Propuesto",
+      "observaciones": "Es una regla del núcleo hexagonal del módulo de análisis (D-21)."
+    },
+    {
+      "encabezado": "Mostrar la foto con cada grano marcado",
+      "titulo": "Mostrar el resultado con la foto marcada (cada grano sano o no sano)",
+      "codigo": "RF-11",
+      "version": "1.0",
+      "fuente": "Proceso propuesto (TO-BE).",
+      "descripcion": "El sistema muestra el porcentaje de granos sanos y cada foto con los granos marcados: en verde los sanos y en rojo los no sanos.",
+      "justificacion": "Ver qué granos se marcaron da confianza en el resultado y ayuda a retirar a mano los defectuosos.",
+      "precondiciones": "El porcentaje de granos sanos está calculado (RF-10).",
+      "restricciones": {
+        "b": [
+          "Además del color, cada grano lleva un símbolo, para quienes no distinguen colores (RP-08)."
+        ]
+      },
+      "prioridad": "Media",
+      "dificultad": "Media",
+      "dependencia": "Depende de RF-07 (posiciones de los granos) y de RF-10.",
+      "actores": "Usuario final.",
+      "entradas": "Las fotos del lote, la posición y la clase de cada grano, y el porcentaje.",
+      "proceso": {
+        "n": [
+          "El sistema dibuja sobre cada foto un recuadro por grano según su clase.",
+          "Muestra el porcentaje, el total de granos, los sanos y los no sanos.",
+          "Al tocar un grano, muestra su clase; los granos de confianza baja aparecen marcados como «dudoso»."
+        ]
+      },
+      "salida": "La pantalla de resultado con las fotos marcadas.",
+      "postcondiciones": "Desde esta pantalla se ve la recomendación (RF-12) y se descarga el reporte (RF-15).",
+      "criterios": {
+        "b": [
+          "Cada grano clasificado aparece marcado en la foto: verde si es sano y rojo si no lo es.",
+          "Los granos sanos y no sanos se distinguen también por un símbolo, no solo por el color.",
+          "Las cifras de la pantalla coinciden con el cálculo de RF-10.",
+          "Al tocar un grano, o al pasar el cursor sobre él, se ve su clase; el valor de la confianza no se muestra al usuario final (sección 1).",
+          "La pantalla se ve bien en celular y en PC (RNF-05)."
+        ]
+      },
+      "rnf": "RNF-05 (PC y celular) y RNF-06 (facilidad de uso).",
+      "estado": "Propuesto",
+      "observaciones": "La confianza promedio la ve el administrador de empresa en RF-17."
+    },
+    {
+      "encabezado": "Generar la recomendación",
+      "titulo": "Generar la recomendación según los rangos de la empresa",
+      "codigo": "RF-12",
+      "version": "1.0",
+      "fuente": "D-10 (criterios de la recomendación) y anexo A.3.",
+      "descripcion": "Según el porcentaje de granos sanos y los rangos de la empresa, el sistema asigna una categoría probable y una acción sugerida.",
+      "justificacion": "Convierte el porcentaje en una decisión: vender, seleccionar a mano o revisar el proceso.",
+      "precondiciones": "El porcentaje de granos sanos está calculado (RF-10).",
+      "restricciones": {
+        "b": [
+          "Rangos por defecto: 96 % o más, Premium o Especial; de 90 a 95,9 %, Estándar; de 82 a 89,9 %, Corriente; menos de 82 %, Fuera de norma (A.3).",
+          "Usa el porcentaje ya redondeado a un decimal de RF-10.",
+          "La categoría se presenta como probable: la oficial se confirma con la prueba de corte (D-10).",
+          "Si el porcentaje queda a menos de 3 puntos de un punto de corte (96, 90 u 82 %), se sugiere analizar otra muestra (D-10)."
+        ]
+      },
+      "prioridad": "Alta",
+      "dificultad": "Baja",
+      "dependencia": "Depende de RF-10 y de los rangos de la empresa: los de por defecto (RF-02) o los ajustados (RF-13). De este requerimiento dependen RF-14, RF-15 y RF-16.",
+      "actores": "Usuario final.",
+      "entradas": "El porcentaje de granos sanos y los rangos de la empresa.",
+      "proceso": {
+        "n": [
+          "El sistema busca el rango que contiene el porcentaje.",
+          "Asigna la categoría y la acción sugerida de ese rango.",
+          "Si el porcentaje queda a menos de 3 puntos de un punto de corte, agrega la sugerencia de analizar otra muestra.",
+          "Guarda la categoría y la recomendación con el lote y lo pasa a estado «Analizado»."
+        ]
+      },
+      "salida": "La categoría probable y la recomendación; por ejemplo: «Estándar: apto para venta estándar».",
+      "postcondiciones": "El lote queda en estado «Analizado», con su resultado completo disponible en el historial (RF-14) y en el reporte (RF-15).",
+      "criterios": {
+        "b": [
+          "Con 99 %, la categoría es Premium o Especial, sin sugerencia (está a 3 puntos de 96).",
+          "Con 93 %, la categoría es Estándar, sin sugerencia (está a 3 puntos de 90 y de 96).",
+          "Con 91 %, la categoría es Estándar y sugiere analizar otra muestra (está a 1 punto de 90).",
+          "Con 90,0 % la categoría es Estándar y con 89,9 % es Corriente; ambos sugieren otra muestra (prueba de límite).",
+          "Con 75 %, la categoría es Fuera de norma, sin sugerencia.",
+          "Con 143 granos sanos de 149 (95,97 %, redondeado a 96,0 %), la categoría es Premium o Especial.",
+          "Si la empresa cambió sus rangos (RF-13), se usan los de la empresa.",
+          "La categoría siempre se muestra como probable."
+        ]
+      },
+      "rnf": "RNF-07 (F1-score mínimo).",
+      "estado": "Propuesto",
+      "observaciones": "Es una regla del núcleo hexagonal del módulo de análisis (D-21)."
+    },
+    {
+      "encabezado": "Configurar los rangos de la empresa",
+      "titulo": "Configurar los rangos de recomendación de la empresa",
+      "codigo": "RF-13",
+      "version": "1.0",
+      "fuente": "D-10: los rangos vienen por defecto y cada empresa los puede ajustar.",
+      "descripcion": "El administrador de la empresa ajusta los límites de cada categoría y el texto de su recomendación, a partir de los valores por defecto.",
+      "justificacion": "Cada comprador puede exigir distinto, así que la empresa adapta los rangos a sus clientes.",
+      "precondiciones": "El administrador de empresa inició sesión (RF-01).",
+      "restricciones": {
+        "b": [
+          "Se mantienen las 4 categorías; solo cambian sus límites inferiores y sus textos.",
+          "Los límites deben bajar en orden: Premium > Estándar > Corriente > 0 %.",
+          "Los cambios aplican solo a los análisis nuevos; los anteriores conservan su resultado."
+        ]
+      },
+      "prioridad": "Media",
+      "dificultad": "Baja",
+      "dependencia": "Depende de RF-01 y RF-02. RF-12 usa estos rangos.",
+      "actores": "Administrador de empresa.",
+      "entradas": "El límite inferior de cada categoría y el texto de su recomendación.",
+      "proceso": {
+        "n": [
+          "El administrador abre «Rangos de recomendación».",
+          "Cambia los límites o los textos.",
+          "El sistema valida que los límites bajen en orden (Premium > Estándar > Corriente > 0 %).",
+          "El sistema guarda los cambios."
+        ]
+      },
+      "salida": "Los rangos de la empresa actualizados.",
+      "postcondiciones": "Los análisis nuevos usan los rangos nuevos.",
+      "criterios": {
+        "b": [
+          "Si los límites no bajan en orden (por ejemplo, Estándar 97 % y Premium 96 %), el sistema no guarda y explica el error.",
+          "Un análisis hecho después del cambio usa los rangos nuevos.",
+          "Los análisis anteriores no cambian.",
+          "«Restaurar valores por defecto» vuelve a los rangos de D-10.",
+          "Un usuario final no puede entrar a esta pantalla (RNF-04)."
+        ]
+      },
+      "rnf": "RNF-03 (datos separados por empresa) y RNF-04 (autenticación y permisos).",
+      "estado": "Propuesto",
+      "observaciones": "Pantalla generada desde el JSON de la entidad rango (RP-23), más la validación del orden de los límites."
+    },
+    {
+      "encabezado": "Consultar el historial de lotes",
+      "titulo": "Consultar el historial de lotes evaluados",
+      "codigo": "RF-14",
+      "version": "1.0",
+      "fuente": "Levantamiento inicial: trazabilidad de los lotes evaluados.",
+      "descripcion": "El usuario consulta los lotes de su empresa, analizados o pendientes, con filtros, y abre el detalle de cada uno.",
+      "justificacion": "Da trazabilidad: qué se analizó, cuándo, quién lo hizo y con qué resultado.",
+      "precondiciones": "El usuario inició sesión (RF-01).",
+      "restricciones": {
+        "b": [
+          "Solo se ven los lotes de la propia empresa (RNF-03).",
+          "La lista se muestra por páginas de 20 lotes."
+        ]
+      },
+      "prioridad": "Alta",
+      "dificultad": "Baja",
+      "dependencia": "Depende de RF-01 y de que haya lotes registrados (RF-04) o analizados (RF-12).",
+      "actores": "Usuario final y administrador de empresa.",
+      "entradas": "Filtros opcionales: rango de fechas de análisis, estado, categoría, código del lote y usuario.",
+      "proceso": {
+        "n": [
+          "El usuario abre «Historial».",
+          "Aplica filtros, si quiere.",
+          "El sistema muestra la lista ordenada del lote más reciente al más antiguo.",
+          "Al elegir un lote analizado, muestra su resultado: porcentaje, categoría, recomendación y fotos.",
+          "Al elegir un lote pendiente, permite continuar su análisis desde la captura de fotos (RF-05)."
+        ]
+      },
+      "salida": "La lista de lotes con fecha, código, estado, porcentaje de granos sanos y categoría, y el detalle de cada lote.",
+      "postcondiciones": "Desde el detalle se puede descargar el reporte (RF-15).",
+      "criterios": {
+        "b": [
+          "La lista muestra solo lotes de la empresa del usuario.",
+          "Los filtros por fecha de análisis, estado, categoría, código y usuario funcionan solos o combinados.",
+          "El detalle muestra las mismas cifras del análisis original.",
+          "Con más de 20 lotes, la lista se divide en páginas.",
+          "Un lote pendiente se puede retomar desde la captura de fotos."
+        ]
+      },
+      "rnf": "RNF-02 (capacidad) y RNF-03 (datos separados por empresa).",
+      "estado": "Propuesto",
+      "observaciones": ""
+    },
+    {
+      "encabezado": "Descargar el reporte en PDF",
+      "titulo": "Descargar el reporte del lote en PDF",
+      "codigo": "RF-15",
+      "version": "1.0",
+      "fuente": "D-15: el reporte de cada lote se descarga en PDF.",
+      "descripcion": "Desde el resultado o desde el historial, el usuario descarga un PDF con el resultado del lote.",
+      "justificacion": "La empresa necesita un soporte para archivarlo o compartirlo con sus compradores.",
+      "precondiciones": "El lote está analizado (RF-12).",
+      "restricciones": {
+        "b": [
+          "El reporte aclara que la categoría es probable y que la oficial se confirma con la prueba de corte (D-10).",
+          "El reporte indica el modelo que hizo el análisis (D-18)."
+        ]
+      },
+      "prioridad": "Media",
+      "dificultad": "Media",
+      "dependencia": "Depende de RF-10, RF-11 y RF-12.",
+      "actores": "Usuario final y administrador de empresa.",
+      "entradas": "El lote analizado.",
+      "proceso": {
+        "n": [
+          "El usuario pulsa «Descargar PDF».",
+          "El sistema arma el reporte con los datos del lote y del análisis.",
+          "Guarda el PDF en S3 y lo entrega al navegador."
+        ]
+      },
+      "salida": "Un PDF con: empresa, código y fecha del lote, usuario, fotos marcadas, total de granos, porcentaje de granos sanos, categoría probable, recomendación, modelo usado y fecha del análisis.",
+      "postcondiciones": "El PDF queda guardado y se puede volver a descargar.",
+      "criterios": {
+        "b": [
+          "El PDF trae todos los datos de la salida.",
+          "Las cifras del PDF coinciden con las de la pantalla.",
+          "El PDF se abre bien en celular y en PC.",
+          "Al descargarlo de nuevo se obtiene el mismo reporte, aunque la empresa haya cambiado sus rangos."
+        ]
+      },
+      "rnf": "RNF-03 (datos separados por empresa) y RNF-05 (PC y celular).",
+      "estado": "Propuesto",
+      "observaciones": ""
+    },
+    {
+      "encabezado": "Consultar las estadísticas de la empresa",
+      "titulo": "Consultar las estadísticas de la empresa",
+      "codigo": "RF-16",
+      "version": "1.0",
+      "fuente": "Levantamiento inicial: estadísticas para tomar decisiones.",
+      "descripcion": "El administrador de la empresa ve indicadores de los lotes analizados en un periodo.",
+      "justificacion": "Permite ver la tendencia de la calidad y tomar decisiones con proveedores y procesos.",
+      "precondiciones": "El administrador de empresa inició sesión (RF-01).",
+      "restricciones": {
+        "b": [
+          "Solo usa datos de la propia empresa (RNF-03)."
+        ]
+      },
+      "prioridad": "Media",
+      "dificultad": "Media",
+      "dependencia": "Depende de que haya lotes analizados (RF-12).",
+      "actores": "Administrador de empresa.",
+      "entradas": "El periodo, por fecha del análisis (desde y hasta).",
+      "proceso": {
+        "n": [
+          "El administrador abre «Estadísticas» y elige el periodo.",
+          "El sistema calcula los indicadores.",
+          "Los muestra en cifras y gráficas."
+        ]
+      },
+      "salida": "Lotes analizados, porcentaje promedio de granos sanos, lotes por categoría, evolución del promedio por mes y promedio por finca o proveedor.",
+      "postcondiciones": "Ninguna: es solo una consulta.",
+      "criterios": {
+        "b": [
+          "Las cifras coinciden con los lotes del historial en el mismo periodo.",
+          "Sin lotes en el periodo, muestra un mensaje en lugar de gráficas vacías.",
+          "Un usuario final no puede entrar a esta pantalla (RNF-04)."
+        ]
+      },
+      "rnf": "RNF-03 (datos separados por empresa) y RNF-04 (autenticación y permisos).",
+      "estado": "Propuesto",
+      "observaciones": ""
+    },
+    {
+      "encabezado": "Consultar las métricas del modelo",
+      "titulo": "Consultar las métricas del modelo",
+      "codigo": "RF-17",
+      "version": "1.0",
+      "fuente": "D-14: métricas del modelo para el administrador de empresa.",
+      "descripcion": "El administrador de la empresa ve las métricas del modelo en uso, medidas en validación (F1-score macro, precisión y recall), y la confianza promedio de los análisis de su empresa.",
+      "justificacion": "Permite saber qué tan confiable es el modelo antes de usar sus resultados en decisiones importantes.",
+      "precondiciones": "El administrador de empresa inició sesión (RF-01).",
+      "restricciones": {
+        "b": [
+          "Las métricas de validación son las del modelo en uso, tomadas de la comparación de los 5 modelos (D-18).",
+          "El usuario final no ve métricas técnicas (sección 1, Usuarios)."
+        ]
+      },
+      "prioridad": "Baja",
+      "dificultad": "Baja",
+      "dependencia": "Depende de RF-08 y de la comparación de los modelos (P-01).",
+      "actores": "Administrador de empresa.",
+      "entradas": "Ninguna; opcionalmente, el periodo para la confianza promedio.",
+      "proceso": {
+        "n": [
+          "El administrador abre «Modelo de IA».",
+          "El sistema muestra el modelo en uso y su versión, sus métricas de validación y la confianza promedio de los análisis de la empresa."
+        ]
+      },
+      "salida": "Nombre y versión del modelo, F1-score macro, precisión, recall y confianza promedio.",
+      "postcondiciones": "Ninguna: es solo una consulta.",
+      "criterios": {
+        "b": [
+          "Las métricas coinciden con la tabla comparativa de los modelos (D-18).",
+          "La confianza promedio usa solo análisis de la empresa.",
+          "Un usuario final no puede entrar a esta pantalla (RNF-04)."
+        ]
+      },
+      "rnf": "RNF-04 (autenticación y permisos) y RNF-07 (F1-score mínimo).",
+      "estado": "Propuesto",
+      "observaciones": ""
+    }
+  ],
+  "rnf": [
+    {
+      "encabezado": "Resultado en 5 a 8 segundos",
+      "titulo": "Entregar el resultado del análisis de un lote en 5 a 8 segundos",
+      "codigo": "RNF-01",
+      "tipo": "Rendimiento",
+      "version": "1.0",
+      "descripcion": "Meta del levantamiento: entregar el resultado en 5 a 8 segundos. Se cumple si el 90 % de los análisis termina en 8 segundos o menos y ninguno pasa de 15, contando desde que el usuario envía las fotos ya cargadas hasta que ve el resultado. Se mide con un análisis a la vez, con muestras de 100 a 150 granos (D-23), en la instancia t4g.medium (D-16).",
+      "prioridad": "Alta",
+      "criterios": {
+        "b": [
+          "En una prueba de 20 análisis, uno a la vez, con muestras de 100 a 150 granos, al menos 18 terminan en 8 segundos o menos.",
+          "Ningún análisis tarda más de 15 segundos.",
+          "El tiempo se mide en el servidor real, no en el PC de desarrollo.",
+          "Mientras se procesa, el usuario ve un indicador de avance."
+        ]
+      }
+    },
+    {
+      "encabezado": "Soportar 750 usuarios",
+      "titulo": "Soportar hasta 30 empresas con 25 usuarios cada una",
+      "codigo": "RNF-02",
+      "tipo": "Capacidad",
+      "version": "1.0",
+      "descripcion": "El sistema atiende hasta 30 empresas con 25 usuarios activos cada una (750 usuarios). Para las pruebas se asume que hasta 50 usuarios lo usan al mismo tiempo.",
+      "prioridad": "Media",
+      "criterios": {
+        "b": [
+          "Con 30 empresas y 750 usuarios registrados, las consultas responden en menos de 2 segundos.",
+          "En una prueba de estrés con 50 usuarios simultáneos (RP-12), las consultas responden en menos de 2 segundos y sin errores.",
+          "Si llegan varios análisis al mismo tiempo, se atienden en orden y ninguno se pierde; el usuario ve que su análisis está en espera.",
+          "Con 5 análisis en cola, el último termina en menos de 45 segundos."
+        ]
+      }
+    },
+    {
+      "encabezado": "Datos separados por empresa",
+      "titulo": "Mantener separados los datos de cada empresa",
+      "codigo": "RNF-03",
+      "tipo": "Seguridad",
+      "version": "1.0",
+      "descripcion": "Cada empresa solo ve y modifica sus propios datos: lotes, fotos, resultados, reportes, usuarios, rangos y estadísticas. Todos los registros guardan la empresa a la que pertenecen, en una sola base de datos compartida.",
+      "prioridad": "Alta",
+      "criterios": {
+        "b": [
+          "Si un usuario pide un lote de otra empresa por su identificador, el sistema responde que no existe.",
+          "Las listas y las estadísticas nunca mezclan datos de empresas distintas.",
+          "Las fotos y los reportes en S3 solo se abren con enlaces temporales generados para la empresa dueña.",
+          "Hay pruebas de seguridad que lo verifican (RP-12)."
+        ]
+      }
+    },
+    {
+      "encabezado": "Autenticación y permisos por rol",
+      "titulo": "Exigir autenticación y restringir cada función según el rol",
+      "codigo": "RNF-04",
+      "tipo": "Seguridad",
+      "version": "1.0",
+      "descripcion": "Todo, salvo la pantalla de inicio de sesión, exige una sesión iniciada, y cada función solo la puede usar el rol que le corresponde. La conexión siempre va cifrada (HTTPS).",
+      "prioridad": "Alta",
+      "criterios": {
+        "b": [
+          "Sin sesión, la API responde «no autorizado» (401).",
+          "Con un rol sin permiso, responde «prohibido» (403); por ejemplo, cuando un usuario final intenta gestionar usuarios.",
+          "Las contraseñas se guardan con hash (BCrypt), nunca en texto plano.",
+          "La sesión vence a las 8 horas.",
+          "Después de 5 intentos fallidos seguidos, la cuenta se bloquea 15 minutos."
+        ]
+      }
+    },
+    {
+      "encabezado": "Funcionar en PC y celular",
+      "titulo": "Funcionar en PC y en celular desde el navegador",
+      "codigo": "RNF-05",
+      "tipo": "Portabilidad",
+      "version": "1.0",
+      "descripcion": "La app funciona desde el navegador, en PC y en celular, sin instalar nada: Chrome, Edge, Firefox y Safari en sus versiones actuales.",
+      "prioridad": "Alta",
+      "criterios": {
+        "b": [
+          "Todas las pantallas se usan sin desplazamiento horizontal desde 360 px de ancho.",
+          "En el celular, la captura abre la cámara, tanto en Android con Chrome como en iPhone con Safari.",
+          "Las pruebas del front-end (RP-14) se ejecutan en tamaño de PC y de celular."
+        ]
+      }
+    },
+    {
+      "encabezado": "Fácil de usar",
+      "titulo": "Ser sencilla de usar para el usuario final",
+      "codigo": "RNF-06",
+      "tipo": "Usabilidad",
+      "version": "1.0",
+      "descripcion": "Un usuario final sin experiencia técnica puede analizar un lote siguiendo la guía de la app, sin ayuda. Los textos están en español por defecto, con internacionalización (RP-11), y la app cumple las pautas de accesibilidad del docente (RP-08).",
+      "prioridad": "Media",
+      "criterios": {
+        "b": [
+          "En una prueba con 3 personas que no conocen la app, cada una completa un análisis en menos de 5 minutos, sin ayuda.",
+          "Registrar un lote, subir las fotos y ver el resultado toma como máximo 3 pantallas.",
+          "Cada mensaje de error dice qué pasó y qué hacer.",
+          "Todas las funciones se pueden usar con el teclado y los textos tienen buen contraste."
+        ]
+      }
+    },
+    {
+      "encabezado": "F1-score mínimo del modelo de IA",
+      "titulo": "Alcanzar el F1-score mínimo del modelo de IA",
+      "codigo": "RNF-07",
+      "tipo": "Desempeño del modelo",
+      "version": "1.0",
+      "descripcion": "El modelo que usa la app (D-18) debe alcanzar un F1-score mínimo en el conjunto de validación (recortes_script/val, 334 granos). Se usa el F1-score macro, el promedio de las clases sano y no sano, porque el dataset tiene 77 % de granos sanos y la exactitud sola daría una idea engañosa. El valor mínimo lo define Julián (P-02); como referencia, con el mismo dataset se reportó 94,5 % de exactitud.",
+      "prioridad": "Alta",
+      "criterios": {
+        "b": [
+          "El F1-score macro del modelo elegido en validación es igual o mayor al mínimo de P-02.",
+          "Se reportan también la precisión, el recall y la matriz de confusión de cada clase.",
+          "Los 5 modelos se miden con el mismo conjunto de validación (D-18), sin imágenes repetidas del entrenamiento.",
+          "Los resultados de los 5 modelos quedan en la tabla comparativa (D-18)."
+        ]
+      }
+    },
+    {
+      "encabezado": "Respetar la licencia del dataset",
+      "titulo": "Citar a los autores del dataset y no usarlo con fines comerciales",
+      "codigo": "RNF-08",
+      "tipo": "Legal",
+      "version": "1.0",
+      "descripcion": "El dataset de entrenamiento (cacao-beans-for-classification, Kaggle) tiene licencia CC BY-NC 4.0: hay que citar a sus autores y no se puede usar con fines comerciales. Si InspectIA se comercializa, hay que entrenar con fotos propias o pedir permiso a los autores.",
+      "prioridad": "Alta",
+      "criterios": {
+        "b": [
+          "La app tiene una sección «Acerca de» con la cita del dataset, sus autores y su licencia.",
+          "El repositorio y la documentación citan el dataset y el artículo de los autores (Zhinin-Vera et al., 2023).",
+          "Mientras use modelos entrenados con este dataset, InspectIA no se cobra."
+        ]
+      }
+    }
+  ]
+}

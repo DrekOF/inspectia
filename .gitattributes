@@ -1,0 +1,8 @@
+# Finales de línea: el repositorio guarda LF. Los scripts que corren en Linux (Docker y la EC2)
+# deben conservar LF aunque se editen en Windows; si no, fallan con "bad interpreter".
+* text=auto
+*.sh text eol=lf
+mvnw text eol=lf
+*.cmd text eol=crlf
+*.bat text eol=crlf
+*.ps1 text eol=crlf

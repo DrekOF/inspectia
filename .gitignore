@@ -1,0 +1,30 @@
+# Dataset y fotos pesadas: no van al repositorio (licencia CC BY-NC 4.0 y tamaño)
+Cacao_dataset_kaggle/
+recortes_script/
+*.onnx
+*.pt
+*.pth
+
+# Secretos
+.env
+*.pem
+
+# Java / Maven / Gradle
+target/
+build/
+.gradle/
+
+# Node
+node_modules/
+dist/
+
+# Python
+__pycache__/
+.venv/
+*.pyc
+
+# Sistema y editores
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
