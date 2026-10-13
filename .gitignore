@@ -28,3 +28,6 @@ __pycache__/
 Thumbs.db
 .idea/
 .vscode/
+
+# Claude Code: la configuración personal no se sube (la del equipo es .claude/settings.json)
+.claude/settings.local.json

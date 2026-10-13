@@ -4,7 +4,7 @@ Descripción: Instrucciones del proyecto InspectIA para Claude Code. Se lee al i
 Fecha de creación: 12/10/2026
 Actualización: 13/10/2026
 Autor: Equipo InspectIA
-Versión: 1.2
+Versión: 1.3
 -->
 
 # InspectIA
@@ -60,6 +60,7 @@ App web multiempresa que estima el % de granos de cacao sanos de un lote a parti
 - No guardar claves ni contraseñas en el repositorio. AWS se conecta por OIDC.
 - No reentrenar modelos desde la app (D-03).
 - No fijar el puerto de la base (5432) en el código ni en la configuración: el backend lo lee de `POSTGRES_PORT`, porque cambia en cada equipo (en algunos Windows el 5432 está reservado).
+- No agregar a Claude como coautor (`Co-Authored-By`) ni la línea «Generated with Claude Code» en commits ni PR: la autoría es de los integrantes. `.claude/settings.json` lo desactiva para todo el equipo.
 
 ## Comandos
 

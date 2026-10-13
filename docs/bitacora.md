@@ -4,7 +4,7 @@ Descripción: Registro paso a paso de cómo se construyó InspectIA, para la sus
 Fecha de creación: 12/10/2026
 Actualización: 13/10/2026
 Autor: Equipo InspectIA
-Versión: 1.5
+Versión: 1.6
 -->
 
 # Bitácora de construcción (RP-24)
@@ -87,6 +87,30 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
 - Por qué: un rol que no se puede asignar es un problema de permisos (RNF-04), mientras que un código que no existe es un dato inválido. El intento de asignar ADMIN_PLATAFORMA es una prueba de seguridad (RP-12) y necesita su caso de prueba (RP-13).
 - Cómo se pidió: Cristhian aprobó el 403 y pidió el 400 para códigos que no existen, y el criterio de seguridad en RF-03.
 - Archivos o PR: `fichas.json`, el README de entidades, `modelo-datos.md` y esta bitácora, en la rama `feature/modelo-datos`.
+
+## 13/10/2026 · Historia limpia: la autoría es de los integrantes
+
+- Quién: Cristhian Sánchez (`DrekOF`), con Claude Code.
+- Qué se hizo:
+  1. **Respaldo:** un respaldo completo del repositorio, en `../inspectia-respaldo.bundle`, con todas las ramas y el merge del PR #1.
+  2. **Reescritura de la historia de `main`** con `git filter-repo`:
+     - Se quitaron las líneas «Co-Authored-By: Claude» de los 6 commits que las tenían.
+     - El merge del PR #1 pasó a llamarse «Merge de la rama feature/modelo-datos: modelo de datos y decisiones D-24 a D-27».
+     - En todas las versiones de los archivos, el autor de los headers quedó como «Equipo InspectIA» (o «Equipo InspectIA (exportado del documento de requerimientos v2.0)»), sin la nota sobre Claude.
+     - Se borró la rama `feature/modelo-datos`, que ya estaba en `main`.
+  3. **Verificación:**
+     - Ningún mensaje tiene «Co-Authored-By».
+     - La nota sobre Claude no aparece en ninguna versión de ningún archivo.
+     - `main` conserva sus 7 commits, con los mismos títulos (salvo el del merge) y los mismos 26 archivos.
+     - Entre antes y después solo cambian las 23 líneas de autor.
+     - Esta bitácora no se tocó.
+  4. **Para el futuro:**
+     - `.claude/settings.json` desactiva la atribución de Claude en commits y PR para todo el equipo.
+     - `.claude/settings.local.json` queda en `.gitignore`.
+     - `CLAUDE.md` (v1.3) prohíbe agregar a Claude como coautor.
+- Por qué: en GitHub solo deben aparecer los integrantes como autores. El PR #1 no existirá en el repositorio nuevo, así que su merge no puede nombrarlo. La bitácora sigue registrando cómo se trabajó con Claude Code (RP-24).
+- Cómo se pidió: Cristhian pidió rehacer el repositorio con la historia limpia, en seis pasos: respaldo, traer el merge del PR #1, reescribir la historia, verificar, configurar para el futuro y esperar antes de subir. Él borra el repositorio en GitHub y lo crea vacío; después se sube `main`.
+- Archivos o PR: historia reescrita de `main`, y un commit con `.claude/settings.json`, `.gitignore`, `CLAUDE.md` y esta bitácora. La subida a GitHub queda pendiente.
 
 ## Plantilla para nuevas entradas
 
