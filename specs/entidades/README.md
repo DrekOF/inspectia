@@ -4,7 +4,7 @@ Descripción: Qué hay en specs/entidades/ y formato de los JSON de entidades qu
 Fecha de creación: 12/10/2026
 Actualización: 13/10/2026
 Autor: Equipo InspectIA
-Versión: 1.1
+Versión: 1.2
 -->
 
 # specs/entidades
@@ -72,13 +72,13 @@ No se escriben en los JSON. El generador las agrega a todas las tablas, y se pue
 | `precision`, `escala` | `decimal` |
 | `valores` | `lista`: `[{ "codigo", "etiquetas": { "es", "en" } }]`. Los códigos van en mayúsculas y sin tildes |
 | `valores_de` | `lista`: usa los valores de otra lista, como `"rango_recomendacion.categoria"` |
-| `valores_en_formulario` | `lista`: los códigos que ofrece el formulario, si no son todos |
+| `valores_en_formulario` | `lista`: los únicos códigos que se pueden asignar desde el CRUD, si no son todos. El backend también los valida (ver «Valores permitidos en el CRUD») |
 | `referencia` | `referencia`: `{ "entidad", "al_borrar": "restringir" o "cascada" }`. El nombre termina en `_id` |
 | `obligatorio` | `true` → `NOT NULL`. Las obligaciones que dependen del estado van en `checks` |
 | `unico` | `true` → `UNIQUE` de una sola columna, sin normalizar |
 | `por_defecto` | Valor por defecto |
 | `validaciones` | Ver la tabla de validaciones |
-| `mensajes` | Mensaje propio por validación (`es` y `en`), además de `unico` y `valores`. Si no hay, se usa el genérico |
+| `mensajes` | Mensaje propio por validación (`es` y `en`), además de `unico`, `valores` y `valores_en_formulario`. Si no hay, se usa el genérico |
 | `entrada` | `contrasena`: campo del formulario (`nombre`, `etiquetas`, `obligatoria_al_crear`, `obligatoria_al_editar`) |
 | `solo_lectura_si` | `{ "atributo", "igual_a" }`: el campo no se edita en las filas que cumplen la condición |
 | `sugerencias` | `texto`: el formulario sugiere los valores que ya usó la empresa |
@@ -115,6 +115,8 @@ No se escriben en los JSON. El generador las agrega a todas las tablas, y se pue
 | `minusculas` | — | pasa a minúsculas antes de guardar | igual |
 
 La `longitud` de un `texto` también se valida en el backend y en el frontend.
+
+**Valores permitidos en el CRUD.** `valores_en_formulario` no solo limita el formulario: el backend también lo valida. Si alguien envía a mano a la API un código que no está en esa lista, la API lo rechaza con «prohibido» (403, RNF-04) y el mensaje `mensajes.valores_en_formulario`. Por ejemplo, un administrador de empresa que envía un usuario con rol ADMIN_PLATAFORMA. El backend no depende de los CHECK de la base: los CHECK son la última defensa, no la validación que ve el usuario.
 
 ## Relaciones, únicos, checks e índices
 

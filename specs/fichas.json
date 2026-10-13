@@ -5,7 +5,7 @@
     "fecha_creacion": "12/10/2026",
     "actualizacion": "13/10/2026",
     "autor": "Equipo InspectIA",
-    "version": "1.2"
+    "version": "1.3"
   },
   "rf": [
     {
@@ -116,7 +116,7 @@
       "encabezado": "Gestionar los usuarios de la empresa",
       "titulo": "Gestionar los usuarios de la empresa",
       "codigo": "RF-03",
-      "version": "1.1",
+      "version": "1.2",
       "fuente": "Levantamiento inicial: hasta 25 usuarios por empresa, incluido el administrador.",
       "descripcion": "El administrador de la empresa crea, edita y desactiva los usuarios de su empresa, hasta 25 contando al administrador.",
       "justificacion": "Cada empresa controla quién usa InspectIA y con qué rol.",
@@ -127,7 +127,8 @@
           "El correo es único en toda la plataforma, porque con él se inicia sesión (RF-01).",
           "La contraseña tiene de 8 a 64 caracteres y ocupa como máximo 72 bytes, porque BCrypt solo usa 72; cada letra con tilde y cada eñe ocupan 2 bytes.",
           "Solo ve y gestiona los usuarios de su propia empresa (RNF-03).",
-          "Los usuarios no se borran, se desactivan, para no perder quién hizo cada análisis."
+          "Los usuarios no se borran, se desactivan, para no perder quién hizo cada análisis.",
+          "El administrador no puede cambiar su propio rol: si fuera el único administrador, la empresa quedaría sin quien la gestione, porque el administrador de la plataforma no edita usuarios."
         ]
       },
       "prioridad": "Alta",
@@ -154,6 +155,7 @@
           "Con 25 usuarios activos, el sistema no deja crear ni reactivar otro, y explica por qué.",
           "Un usuario desactivado no puede iniciar sesión y sus análisis siguen en el historial.",
           "El administrador no puede desactivarse a sí mismo.",
+          "El administrador no puede cambiar su propio rol: si lo intenta, el sistema no guarda el cambio y explica por qué.",
           "No puede ver ni editar usuarios de otra empresa."
         ]
       },

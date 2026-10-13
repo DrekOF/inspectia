@@ -5,7 +5,7 @@
     "fecha_creacion": "13/10/2026",
     "actualizacion": "13/10/2026",
     "autor": "Equipo InspectIA",
-    "version": "1.0"
+    "version": "1.1"
   },
   "entidad": "usuario",
   "clase": "Usuario",
@@ -90,6 +90,12 @@
         { "codigo": "ADMIN_PLATAFORMA", "etiquetas": { "es": "Administrador de la plataforma", "en": "Platform administrator" } }
       ],
       "valores_en_formulario": ["USUARIO_FINAL", "ADMIN_EMPRESA"],
+      "mensajes": {
+        "valores_en_formulario": {
+          "es": "Solo puedes asignar los roles Usuario final o Administrador de empresa.",
+          "en": "You can only assign the End user or Company administrator roles."
+        }
+      },
       "en_lista": true,
       "en_formulario": true,
       "etiquetas": { "es": "Rol", "en": "Role" },
@@ -166,6 +172,18 @@
       "mensaje": {
         "es": "No puedes desactivar tu propio usuario.",
         "en": "You cannot deactivate your own user."
+      },
+      "fichas": ["RF-03"]
+    },
+    {
+      "codigo": "no_cambiar_su_propio_rol",
+      "tipo": "validacion",
+      "cuando": ["editar"],
+      "atributo": "rol",
+      "descripcion": "El administrador no puede cambiar su propio rol: si fuera el único administrador, la empresa quedaría sin quien la gestione, porque el administrador de la plataforma no edita usuarios.",
+      "mensaje": {
+        "es": "No puedes cambiar tu propio rol.",
+        "en": "You cannot change your own role."
       },
       "fichas": ["RF-03"]
     },
