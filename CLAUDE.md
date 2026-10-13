@@ -2,14 +2,14 @@
 Nombre: CLAUDE.md
 Descripción: Instrucciones del proyecto InspectIA para Claude Code. Se lee al inicio de cada sesión.
 Fecha de creación: 12/10/2026
-Actualización: 12/10/2026
+Actualización: 13/10/2026
 Autor: Equipo InspectIA
-Versión: 1.0
+Versión: 1.1
 -->
 
 # InspectIA
 
-App web multiempresa que estima el % de granos de cacao sanos de un lote a partir de 2 o 3 fotos de una muestra (100 a 150 granos) y entrega una categoría probable, una recomendación y un reporte PDF. Proyecto final de Inteligencia Artificial, Universidad Surcolombiana. Docente: Juan Antonio Castro Silva. Equipo: Cristhian Sánchez, Julián Silvas (modelos de IA) y Jhon Perdomo.
+App web multiempresa que estima el % de granos de cacao sanos de un lote a partir de 2 o 3 fotos de una muestra (100 a 150 granos) y entrega una categoría probable, una recomendación y un reporte PDF. Proyecto final de Inteligencia Artificial, Universidad Surcolombiana. Docente: Juan Antonio Castro Silva. Equipo, con su usuario de GitHub: Cristhian Sánchez (`DrekOF`), Julián Silvas (modelos de IA) y Jhon Perdomo. Los usuarios de Julián y Jhon se agregan cuando entren al repositorio.
 
 ## Antes de cada tarea
 
@@ -25,7 +25,7 @@ App web multiempresa que estima el % de granos de cacao sanos de un lote a parti
 - Una rama y un PR por requerimiento, por ejemplo `feature/RF-04-registrar-lote`. Commits en español que citen el código: `RF-04: valida que el código del lote no se repita`.
 - Primero las pruebas de los criterios de aceptación de la ficha; después el código.
 - Pasos pequeños: al terminar cada tarea, muestra qué cambió y espera confirmación antes de la siguiente.
-- Al terminar cada tarea, agrega una entrada en `docs/bitacora.md`: fecha, qué se hizo, por qué y cómo se pidió. Es el registro paso a paso que exige el docente (RP-24).
+- Al terminar cada tarea, agrega una entrada en `docs/bitacora.md`: fecha, quién, qué se hizo, por qué y cómo se pidió. Es el registro paso a paso que exige el docente (RP-24). Para saber quién trabaja, busca `git config user.name` en la línea del equipo; si no está, pregunta.
 
 ## Arquitectura (D-21)
 
@@ -47,7 +47,7 @@ App web multiempresa que estima el % de granos de cacao sanos de un lote a parti
 
 ## Reglas del docente para todo el código
 
-- Header al inicio de cada artefacto (RP-10): nombre, descripción, fecha de creación, actualización, autor y versión.
+- Header al inicio de cada artefacto (RP-10): nombre, descripción, fecha de creación, actualización, autor y versión. Al modificar un archivo, actualiza su header (versión y fecha de actualización).
 - Backend: Java, Spring Boot, JPA, Lombok y PostgreSQL; validaciones y seguridad; JavaDoc, comentarios y OpenAPI; intercambio en JSON; i18n en español e inglés.
 - Frontend: React y Material UI; formularios con Formik y Yup; responsive, accesible, con tokens de colores y temas; JSDoc y comentarios; i18n.
 - Pruebas: JUnit, Spring Test y Mockito en el backend; Playwright y Selenium en el frontend. Tipos: unitarias, de integración, de sistema, de seguridad, de mutación, de estrés y de límite. Cada criterio de aceptación de `specs/fichas.json` tiene al menos un caso de prueba (RP-13).
@@ -58,13 +58,14 @@ App web multiempresa que estima el % de granos de cacao sanos de un lote a parti
 - No subir el dataset ni fotos pesadas al repositorio: pesa 4,9 GB y tiene licencia CC BY-NC 4.0. Cítalo siempre (RNF-08).
 - No guardar claves ni contraseñas en el repositorio. AWS se conecta por OIDC.
 - No reentrenar modelos desde la app (D-03).
+- No fijar el puerto de la base (5432) en el código ni en la configuración: el backend lo lee de `POSTGRES_PORT`, porque cambia en cada equipo (en algunos Windows el 5432 está reservado).
 
 ## Comandos
 
 Desde la raíz del repositorio. Las versiones y cómo instalarlas están en `README.md`.
 
 - Base de datos local (PostgreSQL 18 en Docker; Docker Desktop debe estar abierto):
-  - Primera vez: `cp infra/.env.example infra/.env` y escribe una contraseña en `POSTGRES_PASSWORD`.
+  - Primera vez: `cp infra/.env.example infra/.env` y escribe una contraseña en `POSTGRES_PASSWORD`. Si el 5432 está ocupado o reservado, cambia `POSTGRES_PORT` (ver README).
   - Encender: `docker compose -f infra/docker-compose.yml up -d`
   - Estado: `docker compose -f infra/docker-compose.yml ps`
   - Consola SQL: `docker compose -f infra/docker-compose.yml exec postgres sh -c 'psql -U $POSTGRES_USER -d $POSTGRES_DB'`

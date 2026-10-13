@@ -4,7 +4,7 @@ Descripción: Presentación del monorepo de InspectIA: estructura, versiones, re
 Fecha de creación: 12/10/2026
 Actualización: 12/10/2026
 Autor: Equipo InspectIA
-Versión: 1.0
+Versión: 1.1
 -->
 
 # InspectIA
@@ -37,7 +37,7 @@ Fijadas el 12/10/2026. La versión exacta de cada librería queda en `backend/po
 | Maven | Wrapper `mvnw`, incluido en `backend/` | No hace falta instalar Maven. |
 | Node | 24 LTS | |
 | React | 19.x, con Vite | |
-| Material UI | Por confirmar | Se acordó la 7.x, pero la versión mayor estable actual es la 9.x (la 7.x no publica versiones desde mayo de 2026). Se decide antes de crear `frontend/`. |
+| Material UI | 9.x (9.5.0) | Versión mayor estable actual. |
 | Python | 3.13 | Para `ia-servicio/` y `generador/`. |
 | PostgreSQL | 18 | Corre en Docker; no hace falta instalarlo. |
 
@@ -116,11 +116,25 @@ cp infra/.env.example infra/.env     # luego escribe una contraseña en POSTGRES
 docker compose -f infra/docker-compose.yml up -d
 ```
 
-PostgreSQL queda en `localhost:5432`, base y usuario `inspectia`, y solo se puede usar desde tu equipo. `infra/.env` no se sube al repositorio. Más comandos en la sección Comandos de `CLAUDE.md`.
+PostgreSQL queda en `localhost`, en el puerto de `POSTGRES_PORT` (5432 por defecto), con base y usuario `inspectia`, y solo se puede usar desde tu equipo. `infra/.env` no se sube al repositorio. Más comandos en la sección Comandos de `CLAUDE.md`.
+
+El puerto puede cambiar en cada equipo: el backend lo lee de la configuración (`POSTGRES_PORT`) y nunca usa el 5432 fijo.
+
+Si Docker responde «forbidden by its access permissions», Windows tiene reservado ese puerto. Para ver los rangos reservados:
+
+```powershell
+netsh interface ipv4 show excludedportrange protocol=tcp
+```
+
+Elige un puerto que no esté en esos rangos, por ejemplo el 5433, escríbelo en `POSTGRES_PORT` de `infra/.env` y vuelve a encender la base.
 
 ## Dataset y licencia (RNF-08)
 
-Los modelos se entrenan con el dataset *cacao-beans-for-classification* (Kaggle), con licencia [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/): hay que citar a sus autores y no se puede usar con fines comerciales. Mientras InspectIA use modelos entrenados con este dataset, no se cobra. El dataset no se sube a este repositorio.
+Los modelos se entrenan con el dataset [*cacao-beans-for-classification*](https://www.kaggle.com/datasets/luiszhinin979/ecuadorian-cocoa-beans-for-classification) de Kaggle, con licencia [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/): hay que citar a sus autores y no se puede usar con fines comerciales. Mientras InspectIA use modelos entrenados con este dataset, no se cobra. El dataset no se sube a este repositorio.
+
+Dataset:
+
+> Zhinin Vera, L. F. (2022). *cacao-beans-for-classification: Ecuadorian cacao beans for classification* [Conjunto de datos]. Kaggle. https://www.kaggle.com/datasets/luiszhinin979/ecuadorian-cocoa-beans-for-classification
 
 Artículo de los autores:
 
