@@ -1,0 +1,11 @@
+# Archivos de los IDE de Java que no se suben (target/, .idea/ y .vscode/ ya están en el .gitignore de la raíz)
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+*.iml
+*.iws
+*.ipr
