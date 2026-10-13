@@ -4,7 +4,7 @@ Descripción: Instrucciones del proyecto InspectIA para Claude Code. Se lee al i
 Fecha de creación: 12/10/2026
 Actualización: 13/10/2026
 Autor: Equipo InspectIA
-Versión: 1.1
+Versión: 1.2
 -->
 
 # InspectIA
@@ -15,7 +15,8 @@ App web multiempresa que estima el % de granos de cacao sanos de un lote a parti
 
 - La especificación está en `specs/`. Lee lo que la tarea necesite:
   - `specs/fichas.json`: requerimientos RF y RNF con sus criterios de aceptación. Cada tarea implementa una o varias fichas.
-  - `specs/decisiones.md`: decisiones D-01 a D-23 y pendientes.
+  - `specs/decisiones.md`: decisiones (D-xx) y pendientes (P-xx).
+  - `specs/modelo-datos.md`: tablas, relaciones y decisiones de diseño del modelo de datos. Las tablas salen de `specs/entidades/*.json` (formato en su README).
   - `specs/arquitectura.md`: piezas, organización del servidor y flujo del análisis.
   - `specs/requisitos-docente.md`: pautas del docente (RP-01 a RP-25). Son obligatorias.
 - Si una ficha es ambigua, choca con otra o con una decisión, pregunta antes de asumir. No cambies decisiones por tu cuenta.

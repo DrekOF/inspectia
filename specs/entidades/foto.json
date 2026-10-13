@@ -1,0 +1,118 @@
+{
+  "_header": {
+    "nombre": "foto.json",
+    "descripcion": "Entidad foto: las fotos de cada muestra, guardadas en S3. Entrada del generador (RP-23); formato en specs/entidades/README.md.",
+    "fecha_creacion": "13/10/2026",
+    "actualizacion": "13/10/2026",
+    "autor": "Equipo InspectIA",
+    "version": "1.0"
+  },
+  "entidad": "foto",
+  "clase": "Foto",
+  "descripcion": "Foto de una muestra, guardada en S3. Una foto rechazada o reemplazada se borra de la base de datos y de S3, con sus granos (RF-05). La maneja el módulo analisis del backend, escrito a mano (D-21).",
+  "etiquetas": {
+    "es": { "singular": "Foto", "plural": "Fotos" },
+    "en": { "singular": "Photo", "plural": "Photos" }
+  },
+  "fichas": ["RF-05", "RF-06", "RF-07", "RF-09", "RF-11"],
+  "crud": false,
+  "por_empresa": "si",
+  "atributos": [
+    {
+      "nombre": "muestra_id",
+      "tipo": "referencia",
+      "referencia": { "entidad": "muestra", "al_borrar": "restringir" },
+      "obligatorio": true,
+      "etiquetas": { "es": "Muestra", "en": "Sample" },
+      "fichas": ["RF-05", "D-25"]
+    },
+    {
+      "nombre": "numero",
+      "tipo": "entero",
+      "obligatorio": true,
+      "validaciones": { "min": 1, "max": 3 },
+      "etiquetas": { "es": "Número de foto", "en": "Photo number" },
+      "fichas": ["RF-05", "RF-09"]
+    },
+    {
+      "nombre": "ruta",
+      "tipo": "texto",
+      "longitud": 255,
+      "obligatorio": true,
+      "unico": true,
+      "etiquetas": { "es": "Llave en S3", "en": "S3 key" },
+      "fichas": ["RF-05", "D-16"]
+    },
+    {
+      "nombre": "formato",
+      "tipo": "lista",
+      "obligatorio": true,
+      "valores": [
+        { "codigo": "JPG", "etiquetas": { "es": "JPG", "en": "JPG" } },
+        { "codigo": "PNG", "etiquetas": { "es": "PNG", "en": "PNG" } }
+      ],
+      "mensajes": {
+        "valores": {
+          "es": "La foto debe ser JPG o PNG.",
+          "en": "The photo must be JPG or PNG."
+        }
+      },
+      "etiquetas": { "es": "Formato", "en": "Format" },
+      "fichas": ["RF-05"]
+    },
+    {
+      "nombre": "tamano_bytes",
+      "tipo": "entero",
+      "obligatorio": true,
+      "validaciones": { "min": 1, "max": 10485760 },
+      "mensajes": {
+        "max": {
+          "es": "La foto pesa más de 10 MB.",
+          "en": "The photo is larger than 10 MB."
+        }
+      },
+      "etiquetas": { "es": "Tamaño (bytes)", "en": "Size (bytes)" },
+      "fichas": ["RF-05"]
+    },
+    {
+      "nombre": "estado",
+      "tipo": "lista",
+      "obligatorio": true,
+      "por_defecto": "CARGADA",
+      "valores": [
+        { "codigo": "CARGADA", "etiquetas": { "es": "Cargada", "en": "Uploaded" } },
+        { "codigo": "APROBADA", "etiquetas": { "es": "Aprobada", "en": "Approved" } },
+        { "codigo": "POR_REPETIR", "etiquetas": { "es": "Por repetir", "en": "Retake needed" } }
+      ],
+      "etiquetas": { "es": "Estado", "en": "Status" },
+      "fichas": ["RF-06", "RF-07", "RF-09"]
+    },
+    {
+      "nombre": "motivo",
+      "tipo": "lista",
+      "obligatorio": false,
+      "valores": [
+        { "codigo": "BORROSA", "etiquetas": { "es": "Foto borrosa", "en": "Blurry photo" } },
+        { "codigo": "POCA_LUZ", "etiquetas": { "es": "Poca luz", "en": "Too dark" } },
+        { "codigo": "GRANOS_PEGADOS", "etiquetas": { "es": "Granos pegados", "en": "Touching beans" } },
+        { "codigo": "GRANOS_DUDOSOS", "etiquetas": { "es": "Muchos granos dudosos", "en": "Too many uncertain beans" } }
+      ],
+      "etiquetas": { "es": "Motivo para repetir", "en": "Reason to retake" },
+      "fichas": ["RF-06", "RF-07", "RF-09"]
+    }
+  ],
+  "unicos": [
+    {
+      "atributos": ["muestra_id", "numero"],
+      "fichas": ["RF-05", "RF-09"]
+    }
+  ],
+  "checks": [
+    {
+      "nombre": "foto_motivo_segun_estado",
+      "sql": "(estado = 'POR_REPETIR') = (motivo IS NOT NULL)",
+      "descripcion": "Solo una foto por repetir tiene motivo.",
+      "fichas": ["RF-06", "RF-07", "RF-09"]
+    }
+  ]
+}

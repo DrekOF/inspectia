@@ -1,0 +1,110 @@
+{
+  "_header": {
+    "nombre": "empresa.json",
+    "descripcion": "Entidad empresa: las empresas clientes de InspectIA. Entrada del generador (RP-23); formato en specs/entidades/README.md.",
+    "fecha_creacion": "13/10/2026",
+    "actualizacion": "13/10/2026",
+    "autor": "Equipo InspectIA",
+    "version": "1.0"
+  },
+  "entidad": "empresa",
+  "clase": "Empresa",
+  "descripcion": "Empresa cliente de InspectIA. Sus usuarios, rangos, lotes y resultados están separados de los de las demás empresas (RNF-03). No se borra: se desactiva (D-27).",
+  "etiquetas": {
+    "es": { "singular": "Empresa", "plural": "Empresas" },
+    "en": { "singular": "Company", "plural": "Companies" }
+  },
+  "fichas": ["RF-02", "RNF-03", "D-13", "D-27"],
+  "crud": true,
+  "por_empresa": "no",
+  "atributo_activo": "activa",
+  "operaciones": {
+    "listar": ["ADMIN_PLATAFORMA"],
+    "ver": ["ADMIN_PLATAFORMA"],
+    "crear": ["ADMIN_PLATAFORMA"],
+    "editar": ["ADMIN_PLATAFORMA"],
+    "desactivar": ["ADMIN_PLATAFORMA"],
+    "reactivar": ["ADMIN_PLATAFORMA"]
+  },
+  "atributos": [
+    {
+      "nombre": "nombre",
+      "tipo": "texto",
+      "longitud": 120,
+      "obligatorio": true,
+      "validaciones": { "recortar": true },
+      "en_lista": true,
+      "en_formulario": true,
+      "etiquetas": { "es": "Nombre", "en": "Name" },
+      "fichas": ["RF-02"]
+    },
+    {
+      "nombre": "nit",
+      "tipo": "texto",
+      "longitud": 15,
+      "obligatorio": true,
+      "unico": true,
+      "validaciones": { "recortar": true, "patron": "^[0-9]{6,10}-[0-9]$" },
+      "mensajes": {
+        "patron": {
+          "es": "Escribe el NIT sin puntos y con el dígito de verificación, por ejemplo 900123456-8.",
+          "en": "Enter the NIT without dots and with its check digit, for example 900123456-8."
+        },
+        "unico": {
+          "es": "Ya existe una empresa con este NIT.",
+          "en": "A company with this NIT already exists."
+        }
+      },
+      "ayuda": {
+        "es": "Sin puntos y con el dígito de verificación: 900123456-8.",
+        "en": "Without dots and with the check digit: 900123456-8."
+      },
+      "en_lista": true,
+      "en_formulario": true,
+      "etiquetas": { "es": "NIT", "en": "NIT (tax ID)" },
+      "fichas": ["RF-02", "D-27"]
+    },
+    {
+      "nombre": "ciudad",
+      "tipo": "texto",
+      "longitud": 80,
+      "obligatorio": true,
+      "validaciones": { "recortar": true },
+      "en_lista": true,
+      "en_formulario": true,
+      "etiquetas": { "es": "Ciudad", "en": "City" },
+      "fichas": ["RF-02"]
+    },
+    {
+      "nombre": "activa",
+      "tipo": "booleano",
+      "obligatorio": true,
+      "por_defecto": true,
+      "en_lista": true,
+      "en_formulario": false,
+      "etiquetas": { "es": "Activa", "en": "Active" },
+      "fichas": ["D-27", "RF-01"]
+    }
+  ],
+  "crear_con": {
+    "entidad": "usuario",
+    "etiquetas": { "es": "Primer administrador", "en": "First administrator" },
+    "atributos": ["nombre", "correo", "contrasena_hash"],
+    "valores": { "rol": "ADMIN_EMPRESA" },
+    "fichas": ["RF-02"]
+  },
+  "reglas": [
+    {
+      "codigo": "nit_digito_verificacion",
+      "tipo": "validacion",
+      "cuando": ["crear", "editar"],
+      "atributo": "nit",
+      "descripcion": "El dígito de verificación del NIT debe coincidir con el que calcula el algoritmo de la DIAN (ver specs/modelo-datos.md).",
+      "mensaje": {
+        "es": "El dígito de verificación del NIT no corresponde.",
+        "en": "The NIT check digit is not valid."
+      },
+      "fichas": ["RF-02", "D-27"]
+    }
+  ]
+}
