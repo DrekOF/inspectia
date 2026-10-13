@@ -1,0 +1,8 @@
+# Nombre: requirements-dev.txt
+# Descripción: Dependencias para desarrollar y probar el generador (incluye las de requirements.txt).
+# Fecha de creación: 13/10/2026
+# Actualización: 13/10/2026
+# Autor: Equipo InspectIA
+# Versión: 1.0
+-r requirements.txt
+pytest==9.1.1

@@ -4,7 +4,7 @@ Descripción: Qué hay en specs/entidades/ y formato de los JSON de entidades qu
 Fecha de creación: 12/10/2026
 Actualización: 13/10/2026
 Autor: Equipo InspectIA
-Versión: 1.3
+Versión: 1.4
 -->
 
 # specs/entidades
@@ -34,7 +34,7 @@ No se escriben en los JSON. El generador las agrega a todas las tablas, y se pue
 
 | Columna | Definición |
 |---|---|
-| `id` | `uuid`, llave primaria, `DEFAULT uuidv7()` |
+| `id` | `uuid` v7, llave primaria. Lo genera Hibernate al guardar; la base tiene `DEFAULT uuidv7()` para los scripts |
 | `fecha_creacion` | `timestamptz NOT NULL DEFAULT now()` |
 | `fecha_actualizacion` | `timestamptz NOT NULL DEFAULT now()`; un trigger la actualiza en cada cambio |
 | `empresa_id` | Solo si `por_empresa` es `si` (obligatoria) u `opcional` (puede ir vacía). FK a `empresa` (RNF-03) |
@@ -46,6 +46,8 @@ No se escriben en los JSON. El generador las agrega a todas las tablas, y se pue
 | `_header` | Sí | Header del artefacto (RP-10): nombre, descripción, fecha de creación, actualización, autor y versión |
 | `entidad` | Sí | Nombre de la tabla: snake_case, singular, sin tildes. Igual al nombre del archivo |
 | `clase` | Sí | Nombre de la clase Java y del componente React (PascalCase) |
+| `modulo` | Con CRUD | Módulo del backend donde va el código generado (D-21), por ejemplo `rango` para `rango_recomendacion`. En minúsculas y sin tildes |
+| `ruta` | Con CRUD | Segmento de la API: `/api/v1/<ruta>`, por ejemplo `empresas`. En minúsculas, con guiones y sin tildes. Va solo en entidades con CRUD |
 | `descripcion` | Sí | Para qué sirve. Va al JavaDoc, al JSDoc y a OpenAPI |
 | `etiquetas` | Sí | `es` y `en`, cada uno con `singular` y `plural` |
 | `fichas` | Sí | RF, RNF, D, P o RP que piden la entidad |

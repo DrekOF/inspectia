@@ -1,0 +1,47 @@
+{#
+  Nombre: esquema.sql.j2
+  Descripción: Plantilla del script de creación de las tablas (migración V1 de Flyway, RP-15).
+  Fecha de creación: 13/10/2026
+  Actualización: 13/10/2026
+  Autor: Equipo InspectIA
+  Versión: 1.0
+#}
+-- Nombre: V1__esquema_inicial.sql
+-- Descripción: Crea las tablas de InspectIA desde specs/entidades (RP-15). Archivo generado por
+--              generador/ (RP-23): no se edita a mano; se cambia el JSON o la plantilla y se regenera.
+-- Fecha de creación: {{ header.fecha_creacion }}
+-- Actualización: {{ header.actualizacion }}
+-- Autor: Equipo InspectIA (generado por generador/ v{{ version }})
+-- Versión: {{ version }}
+-- Entidades: {{ header.versiones }}
+
+-- Mantiene fecha_actualizacion en cada cambio, también cuando lo hace un script.
+CREATE FUNCTION actualizar_fecha_actualizacion() RETURNS trigger
+LANGUAGE plpgsql AS $$
+BEGIN
+    NEW.fecha_actualizacion := now();
+    RETURN NEW;
+END;
+$$;
+{% for t in tablas %}
+
+-- {{ t.nombre }} {{ '-' * (96 - t.nombre | length) }}
+
+CREATE TABLE {{ t.nombre }} (
+{% for c in t.columnas %}
+    {{ c.nombre }} {{ c.definicion }},
+{% endfor %}
+{% for r in t.restricciones %}
+    {{ r }}{{ ',' if not loop.last else '' }}
+{% endfor %}
+);
+{% for i in t.indices %}
+{{ i }}
+{% endfor %}
+CREATE TRIGGER {{ t.nombre }}_fecha_actualizacion BEFORE UPDATE ON {{ t.nombre }}
+    FOR EACH ROW EXECUTE FUNCTION actualizar_fecha_actualizacion();
+COMMENT ON TABLE {{ t.nombre }} IS {{ t.comentario }};
+{% for c in t.columnas %}
+COMMENT ON COLUMN {{ t.nombre }}.{{ c.nombre }} IS {{ c.comentario }};
+{% endfor %}
+{% endfor %}

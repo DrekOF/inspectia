@@ -4,7 +4,7 @@ Descripción: Modelo de datos de InspectIA: diagrama entidad-relación, tablas c
 Fecha de creación: 13/10/2026
 Actualización: 13/10/2026
 Autor: Equipo InspectIA
-Versión: 1.2
+Versión: 1.3
 -->
 
 # Modelo de datos de InspectIA
@@ -126,7 +126,7 @@ erDiagram
 
 | Columna | Tipo | Dónde | Origen |
 |---|---|---|---|
-| `id` | uuid, llave primaria, `DEFAULT uuidv7()` | Todas | Convenciones técnicas (sección 5) |
+| `id` | uuid v7, llave primaria. Lo genera Hibernate al guardar; la base tiene `DEFAULT uuidv7()` para los scripts | Todas | Convenciones técnicas (sección 5) |
 | `fecha_creacion` | timestamptz, obligatoria | Todas | Pedido del equipo |
 | `fecha_actualizacion` | timestamptz, obligatoria; la actualiza un trigger | Todas | Pedido del equipo |
 | `empresa_id` | uuid, FK a empresa | Todas menos empresa y modelo. En usuario va vacía solo para ADMIN_PLATAFORMA | RNF-03 |
@@ -331,7 +331,7 @@ Ejemplos verificados: 890903938-8 y 899999068-1.
 
 | Tema | Decisión |
 |---|---|
-| Identificadores | UUID v7, generados por PostgreSQL 18 con `uuidv7()`. Una empresa no puede adivinar los de otra ni deducir cuántos lotes hay en la plataforma (RNF-03). |
+| Identificadores | UUID v7. Los genera Hibernate al guardar (`@UuidGenerator(style = VERSION_7)`); la base mantiene `DEFAULT uuidv7()` de PostgreSQL 18 para las filas que insertan los scripts, como el primer administrador de la plataforma. Una empresa no puede adivinar los de otra ni deducir cuántos lotes hay en la plataforma (RNF-03). |
 | Listas de valores | Texto (`varchar(30)`) con CHECK, no enum de PostgreSQL: se cambian desde los JSON sin migraciones especiales. |
 | Fechas | `timestamptz` para fecha y hora. «Hoy» (RF-04) se calcula con la hora de Colombia (America/Bogota). `fecha_actualizacion` la mantiene un trigger, así también cambia si un script modifica la tabla. |
 | Enteros | `integer` en lugar de `smallint`, para que el generador use `Integer` en Java sin conversiones. |

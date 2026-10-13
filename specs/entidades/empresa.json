@@ -5,10 +5,12 @@
     "fecha_creacion": "13/10/2026",
     "actualizacion": "13/10/2026",
     "autor": "Equipo InspectIA",
-    "version": "1.0"
+    "version": "1.1"
   },
   "entidad": "empresa",
   "clase": "Empresa",
+  "modulo": "empresa",
+  "ruta": "empresas",
   "descripcion": "Empresa cliente de InspectIA. Sus usuarios, rangos, lotes y resultados están separados de los de las demás empresas (RNF-03). No se borra: se desactiva (D-27).",
   "etiquetas": {
     "es": { "singular": "Empresa", "plural": "Empresas" },
