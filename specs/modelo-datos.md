@@ -4,7 +4,7 @@ Descripción: Modelo de datos de InspectIA: diagrama entidad-relación, tablas c
 Fecha de creación: 13/10/2026
 Actualización: 13/10/2026
 Autor: Equipo InspectIA
-Versión: 1.1
+Versión: 1.2
 -->
 
 # Modelo de datos de InspectIA
@@ -162,7 +162,9 @@ En las tablas, «Oblig.» dice si el campo es obligatorio y «Único» si no se 
 | bloqueado_hasta | timestamptz | No | — | RF-01, RNF-04 |
 
 - El administrador de empresa gestiona los usuarios de su empresa: listar, ver, crear, editar, desactivar y reactivar (RF-03). No se borran.
-- El formulario solo ofrece los roles USUARIO_FINAL y ADMIN_EMPRESA. El backend rechaza cualquier otro, aunque llegue a mano a la API: responde «prohibido» (403, RNF-04) con un mensaje claro, sin esperar al CHECK de la base.
+- El formulario solo ofrece los roles USUARIO_FINAL y ADMIN_EMPRESA, y el backend rechaza los demás aunque lleguen a mano a la API, sin esperar al CHECK de la base:
+  - ADMIN_PLATAFORMA, que existe pero no se puede asignar: «prohibido» (403, RNF-04), sin guardar nada. Es una prueba de seguridad de RF-03.
+  - Un código que no existe, como «JEFE»: «dato inválido» (400).
 - Reglas (RF-03): máximo 25 usuarios activos por empresa. El administrador no puede desactivarse a sí mismo ni cambiar su propio rol, porque la empresa podría quedar sin administrador y el de la plataforma no edita usuarios.
 - El administrador de la plataforma puede restablecer la contraseña de un administrador de empresa (RF-02).
 - La contraseña se escribe en el formulario: de 8 a 64 caracteres y como máximo 72 bytes. Se guarda solo su hash (RF-02, RF-03).

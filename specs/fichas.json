@@ -5,7 +5,7 @@
     "fecha_creacion": "12/10/2026",
     "actualizacion": "13/10/2026",
     "autor": "Equipo InspectIA",
-    "version": "1.3"
+    "version": "1.4"
   },
   "rf": [
     {
@@ -116,7 +116,7 @@
       "encabezado": "Gestionar los usuarios de la empresa",
       "titulo": "Gestionar los usuarios de la empresa",
       "codigo": "RF-03",
-      "version": "1.2",
+      "version": "1.3",
       "fuente": "Levantamiento inicial: hasta 25 usuarios por empresa, incluido el administrador.",
       "descripcion": "El administrador de la empresa crea, edita y desactiva los usuarios de su empresa, hasta 25 contando al administrador.",
       "justificacion": "Cada empresa controla quién usa InspectIA y con qué rol.",
@@ -156,7 +156,8 @@
           "Un usuario desactivado no puede iniciar sesión y sus análisis siguen en el historial.",
           "El administrador no puede desactivarse a sí mismo.",
           "El administrador no puede cambiar su propio rol: si lo intenta, el sistema no guarda el cambio y explica por qué.",
-          "No puede ver ni editar usuarios de otra empresa."
+          "No puede ver ni editar usuarios de otra empresa.",
+          "Si un administrador de empresa envía a la API un usuario con rol ADMIN_PLATAFORMA, la API responde «prohibido» (403) y no guarda nada (prueba de seguridad, RP-12)."
         ]
       },
       "rnf": "RNF-02 (capacidad), RNF-03 (datos separados por empresa) y RNF-04 (autenticación y permisos).",

@@ -4,7 +4,7 @@ Descripción: Registro paso a paso de cómo se construyó InspectIA, para la sus
 Fecha de creación: 12/10/2026
 Actualización: 13/10/2026
 Autor: Equipo InspectIA
-Versión: 1.4
+Versión: 1.5
 -->
 
 # Bitácora de construcción (RP-24)
@@ -76,6 +76,17 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
 - Por qué: si el único administrador de una empresa se cambiaba a usuario final, la empresa quedaba sin administrador, y nadie podía arreglarlo porque el administrador de la plataforma no edita usuarios. Además, el formulario solo limita lo que se ofrece; la seguridad debe estar en el backend.
 - Cómo se pidió: Cristhian revisó el modelo, los JSON, el README, las fichas y la bitácora y pidió estos dos detalles de roles en la misma rama.
 - Archivos o PR: `usuario.json`, `fichas.json`, `modelo-datos.md`, el README de entidades y esta bitácora, en la rama `feature/modelo-datos`.
+
+## 13/10/2026 · Modelo de datos: respuestas de la API a un rol no permitido
+
+- Quién: Cristhian Sánchez (`DrekOF`), con Claude Code.
+- Qué se hizo:
+  - El README de entidades distingue dos casos. Un código que existe pero no se puede asignar responde «prohibido» (403); un código que no existe, como «JEFE», responde «dato inválido» (400).
+  - RF-03 (v1.3) tiene un criterio nuevo: si un administrador de empresa envía a la API un usuario con rol ADMIN_PLATAFORMA, la API responde 403 y no guarda nada.
+  - `modelo-datos.md` refleja los dos casos.
+- Por qué: un rol que no se puede asignar es un problema de permisos (RNF-04), mientras que un código que no existe es un dato inválido. El intento de asignar ADMIN_PLATAFORMA es una prueba de seguridad (RP-12) y necesita su caso de prueba (RP-13).
+- Cómo se pidió: Cristhian aprobó el 403 y pidió el 400 para códigos que no existen, y el criterio de seguridad en RF-03.
+- Archivos o PR: `fichas.json`, el README de entidades, `modelo-datos.md` y esta bitácora, en la rama `feature/modelo-datos`.
 
 ## Plantilla para nuevas entradas
 

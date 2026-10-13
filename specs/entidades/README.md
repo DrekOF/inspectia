@@ -4,7 +4,7 @@ Descripción: Qué hay en specs/entidades/ y formato de los JSON de entidades qu
 Fecha de creación: 12/10/2026
 Actualización: 13/10/2026
 Autor: Equipo InspectIA
-Versión: 1.2
+Versión: 1.3
 -->
 
 # specs/entidades
@@ -116,7 +116,12 @@ No se escriben en los JSON. El generador las agrega a todas las tablas, y se pue
 
 La `longitud` de un `texto` también se valida en el backend y en el frontend.
 
-**Valores permitidos en el CRUD.** `valores_en_formulario` no solo limita el formulario: el backend también lo valida. Si alguien envía a mano a la API un código que no está en esa lista, la API lo rechaza con «prohibido» (403, RNF-04) y el mensaje `mensajes.valores_en_formulario`. Por ejemplo, un administrador de empresa que envía un usuario con rol ADMIN_PLATAFORMA. El backend no depende de los CHECK de la base: los CHECK son la última defensa, no la validación que ve el usuario.
+**Valores permitidos en el CRUD.** `valores_en_formulario` no solo limita el formulario: el backend también lo valida, sin depender de los CHECK de la base. Los CHECK son la última defensa, no la validación que ve el usuario. Si alguien envía a mano a la API un código para una `lista`:
+
+| Caso | Ejemplo con `usuario.rol` | Respuesta de la API | Mensaje |
+|---|---|---|---|
+| El código existe, pero no está en `valores_en_formulario` | ADMIN_PLATAFORMA enviado por un administrador de empresa | «prohibido» (403, RNF-04); no guarda nada | `mensajes.valores_en_formulario` |
+| El código no existe en `valores` | «JEFE» | «dato inválido» (400); no guarda nada | `mensajes.valores` o el genérico |
 
 ## Relaciones, únicos, checks e índices
 
