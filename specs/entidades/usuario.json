@@ -1,0 +1,198 @@
+{
+  "_header": {
+    "nombre": "usuario.json",
+    "descripcion": "Entidad usuario: las personas que usan InspectIA y su rol. Entrada del generador (RP-23); formato en specs/entidades/README.md.",
+    "fecha_creacion": "13/10/2026",
+    "actualizacion": "13/10/2026",
+    "autor": "Equipo InspectIA",
+    "version": "1.1"
+  },
+  "entidad": "usuario",
+  "clase": "Usuario",
+  "descripcion": "Persona que usa InspectIA, con su rol. Los usuarios no se borran: se desactivan, para no perder quién hizo cada análisis (RF-03). Solo el administrador de la plataforma no tiene empresa (RNF-03).",
+  "etiquetas": {
+    "es": { "singular": "Usuario", "plural": "Usuarios" },
+    "en": { "singular": "User", "plural": "Users" }
+  },
+  "fichas": ["RF-01", "RF-02", "RF-03", "RNF-03", "RNF-04"],
+  "crud": true,
+  "por_empresa": "opcional",
+  "atributo_activo": "activo",
+  "operaciones": {
+    "listar": ["ADMIN_EMPRESA"],
+    "ver": ["ADMIN_EMPRESA"],
+    "crear": ["ADMIN_EMPRESA"],
+    "editar": ["ADMIN_EMPRESA"],
+    "desactivar": ["ADMIN_EMPRESA"],
+    "reactivar": ["ADMIN_EMPRESA"]
+  },
+  "atributos": [
+    {
+      "nombre": "nombre",
+      "tipo": "texto",
+      "longitud": 120,
+      "obligatorio": true,
+      "validaciones": { "recortar": true },
+      "en_lista": true,
+      "en_formulario": true,
+      "etiquetas": { "es": "Nombre", "en": "Name" },
+      "fichas": ["RF-02", "RF-03"]
+    },
+    {
+      "nombre": "correo",
+      "tipo": "texto",
+      "longitud": 254,
+      "obligatorio": true,
+      "validaciones": { "recortar": true, "minusculas": true, "formato": "correo" },
+      "en_lista": true,
+      "en_formulario": true,
+      "etiquetas": { "es": "Correo", "en": "Email" },
+      "fichas": ["RF-01", "RF-02", "RF-03"]
+    },
+    {
+      "nombre": "contrasena_hash",
+      "tipo": "contrasena",
+      "longitud": 100,
+      "obligatorio": true,
+      "entrada": {
+        "nombre": "contrasena",
+        "obligatoria_al_crear": true,
+        "obligatoria_al_editar": false,
+        "etiquetas": { "es": "Contraseña", "en": "Password" }
+      },
+      "validaciones": { "longitud_min": 8, "longitud_max": 64, "bytes_max": 72 },
+      "mensajes": {
+        "longitud_min": {
+          "es": "La contraseña debe tener al menos {longitud_min} caracteres.",
+          "en": "The password must have at least {longitud_min} characters."
+        },
+        "longitud_max": {
+          "es": "La contraseña puede tener como máximo {longitud_max} caracteres.",
+          "en": "The password can have at most {longitud_max} characters."
+        },
+        "bytes_max": {
+          "es": "La contraseña es demasiado larga: usa menos caracteres o menos tildes y eñes",
+          "en": "The password is too long: use fewer characters or fewer accented letters"
+        }
+      },
+      "en_lista": false,
+      "en_formulario": true,
+      "etiquetas": { "es": "Contraseña", "en": "Password" },
+      "fichas": ["RF-01", "RF-02", "RF-03", "RNF-04"]
+    },
+    {
+      "nombre": "rol",
+      "tipo": "lista",
+      "obligatorio": true,
+      "valores": [
+        { "codigo": "USUARIO_FINAL", "etiquetas": { "es": "Usuario final", "en": "End user" } },
+        { "codigo": "ADMIN_EMPRESA", "etiquetas": { "es": "Administrador de empresa", "en": "Company administrator" } },
+        { "codigo": "ADMIN_PLATAFORMA", "etiquetas": { "es": "Administrador de la plataforma", "en": "Platform administrator" } }
+      ],
+      "valores_en_formulario": ["USUARIO_FINAL", "ADMIN_EMPRESA"],
+      "mensajes": {
+        "valores_en_formulario": {
+          "es": "Solo puedes asignar los roles Usuario final o Administrador de empresa.",
+          "en": "You can only assign the End user or Company administrator roles."
+        }
+      },
+      "en_lista": true,
+      "en_formulario": true,
+      "etiquetas": { "es": "Rol", "en": "Role" },
+      "fichas": ["RF-01", "RF-03", "D-05", "D-13"]
+    },
+    {
+      "nombre": "activo",
+      "tipo": "booleano",
+      "obligatorio": true,
+      "por_defecto": true,
+      "en_lista": true,
+      "en_formulario": false,
+      "etiquetas": { "es": "Activo", "en": "Active" },
+      "fichas": ["RF-01", "RF-03"]
+    },
+    {
+      "nombre": "intentos_fallidos",
+      "tipo": "entero",
+      "obligatorio": true,
+      "por_defecto": 0,
+      "validaciones": { "min": 0 },
+      "en_lista": false,
+      "en_formulario": false,
+      "etiquetas": { "es": "Intentos fallidos", "en": "Failed attempts" },
+      "fichas": ["RF-01", "RNF-04"]
+    },
+    {
+      "nombre": "bloqueado_hasta",
+      "tipo": "fecha_hora",
+      "obligatorio": false,
+      "en_lista": false,
+      "en_formulario": false,
+      "etiquetas": { "es": "Bloqueado hasta", "en": "Locked until" },
+      "fichas": ["RF-01", "RNF-04"]
+    }
+  ],
+  "unicos": [
+    {
+      "atributos": ["correo"],
+      "normalizar": true,
+      "mensaje": {
+        "es": "Ya existe un usuario con este correo.",
+        "en": "A user with this email already exists."
+      },
+      "fichas": ["RF-01", "RF-02", "RF-03"]
+    }
+  ],
+  "checks": [
+    {
+      "nombre": "usuario_empresa_segun_rol",
+      "sql": "(rol = 'ADMIN_PLATAFORMA') = (empresa_id IS NULL)",
+      "descripcion": "Solo el administrador de la plataforma no tiene empresa.",
+      "fichas": ["RNF-03"]
+    }
+  ],
+  "reglas": [
+    {
+      "codigo": "maximo_usuarios_activos",
+      "tipo": "validacion",
+      "cuando": ["crear", "reactivar"],
+      "parametros": { "maximo": 25 },
+      "descripcion": "Una empresa tiene como máximo 25 usuarios activos, contando a sus administradores.",
+      "mensaje": {
+        "es": "La empresa ya tiene {maximo} usuarios activos: desactiva uno antes de crear o reactivar otro.",
+        "en": "The company already has {maximo} active users: deactivate one before creating or reactivating another."
+      },
+      "fichas": ["RF-03", "RNF-02"]
+    },
+    {
+      "codigo": "no_desactivarse_a_si_mismo",
+      "tipo": "validacion",
+      "cuando": ["desactivar"],
+      "descripcion": "El administrador no puede desactivar su propio usuario.",
+      "mensaje": {
+        "es": "No puedes desactivar tu propio usuario.",
+        "en": "You cannot deactivate your own user."
+      },
+      "fichas": ["RF-03"]
+    },
+    {
+      "codigo": "no_cambiar_su_propio_rol",
+      "tipo": "validacion",
+      "cuando": ["editar"],
+      "atributo": "rol",
+      "descripcion": "El administrador no puede cambiar su propio rol: si fuera el único administrador, la empresa quedaría sin quien la gestione, porque el administrador de la plataforma no edita usuarios.",
+      "mensaje": {
+        "es": "No puedes cambiar tu propio rol.",
+        "en": "You cannot change your own role."
+      },
+      "fichas": ["RF-03"]
+    },
+    {
+      "codigo": "restablecer_contrasena_administrador",
+      "tipo": "accion",
+      "roles": ["ADMIN_PLATAFORMA"],
+      "descripcion": "El administrador de la plataforma restablece la contraseña de un administrador de empresa, con las mismas validaciones de la contraseña.",
+      "fichas": ["RF-02"]
+    }
+  ]
+}

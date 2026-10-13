@@ -1,0 +1,167 @@
+{
+  "_header": {
+    "nombre": "muestra.json",
+    "descripcion": "Entidad muestra: cada muestra de un lote, con sus conteos, su modelo y la copia de los parámetros. Entrada del generador (RP-23); formato en specs/entidades/README.md.",
+    "fecha_creacion": "13/10/2026",
+    "actualizacion": "13/10/2026",
+    "autor": "Equipo InspectIA",
+    "version": "1.0"
+  },
+  "entidad": "muestra",
+  "clase": "Muestra",
+  "descripcion": "Muestra de un lote: 2 o 3 fotos con 100 granos o más (D-23, D-26). Un lote tiene como máximo 2 muestras, y la segunda solo existe si la app la sugirió (D-25). La maneja el módulo analisis del backend, escrito a mano (D-21).",
+  "etiquetas": {
+    "es": { "singular": "Muestra", "plural": "Muestras" },
+    "en": { "singular": "Sample", "plural": "Samples" }
+  },
+  "fichas": ["RF-05", "RF-07", "RF-08", "RF-09", "RF-10", "RNF-01", "RNF-02", "D-25", "D-26"],
+  "crud": false,
+  "por_empresa": "si",
+  "atributos": [
+    {
+      "nombre": "lote_id",
+      "tipo": "referencia",
+      "referencia": { "entidad": "lote", "al_borrar": "restringir" },
+      "obligatorio": true,
+      "etiquetas": { "es": "Lote", "en": "Lot" },
+      "fichas": ["RF-10", "D-25"]
+    },
+    {
+      "nombre": "numero",
+      "tipo": "entero",
+      "obligatorio": true,
+      "validaciones": { "min": 1, "max": 2 },
+      "etiquetas": { "es": "Número de muestra", "en": "Sample number" },
+      "fichas": ["D-25"]
+    },
+    {
+      "nombre": "usuario_id",
+      "tipo": "referencia",
+      "referencia": { "entidad": "usuario", "al_borrar": "restringir" },
+      "obligatorio": true,
+      "etiquetas": { "es": "Analizada por", "en": "Analyzed by" },
+      "fichas": ["RF-14", "RF-15"]
+    },
+    {
+      "nombre": "estado",
+      "tipo": "lista",
+      "obligatorio": true,
+      "por_defecto": "PENDIENTE",
+      "valores": [
+        { "codigo": "PENDIENTE", "etiquetas": { "es": "Pendiente", "en": "Pending" } },
+        { "codigo": "EN_ESPERA", "etiquetas": { "es": "En espera", "en": "Queued" } },
+        { "codigo": "EN_PROCESO", "etiquetas": { "es": "En proceso", "en": "Processing" } },
+        { "codigo": "TERMINADA", "etiquetas": { "es": "Terminada", "en": "Completed" } }
+      ],
+      "etiquetas": { "es": "Estado", "en": "Status" },
+      "fichas": ["RF-12", "RF-14", "RNF-02"]
+    },
+    {
+      "nombre": "modelo_id",
+      "tipo": "referencia",
+      "referencia": { "entidad": "modelo", "al_borrar": "restringir" },
+      "obligatorio": false,
+      "etiquetas": { "es": "Modelo de IA", "en": "AI model" },
+      "fichas": ["RF-08", "RF-15", "D-18"]
+    },
+    {
+      "nombre": "total_granos",
+      "tipo": "entero",
+      "obligatorio": false,
+      "validaciones": { "min": 100 },
+      "etiquetas": { "es": "Total de granos", "en": "Total beans" },
+      "fichas": ["RF-07", "RF-10", "D-26"]
+    },
+    {
+      "nombre": "granos_sanos",
+      "tipo": "entero",
+      "obligatorio": false,
+      "validaciones": { "min": 0 },
+      "etiquetas": { "es": "Granos sanos", "en": "Healthy beans" },
+      "fichas": ["RF-10"]
+    },
+    {
+      "nombre": "aviso_confianza_baja",
+      "tipo": "booleano",
+      "obligatorio": false,
+      "etiquetas": { "es": "Aviso de confianza baja", "en": "Low-confidence warning" },
+      "fichas": ["RF-09", "D-25"]
+    },
+    {
+      "nombre": "repeticiones",
+      "tipo": "entero",
+      "obligatorio": true,
+      "por_defecto": 0,
+      "validaciones": { "min": 0, "max": 2 },
+      "etiquetas": { "es": "Repeticiones de foto", "en": "Photo retakes" },
+      "fichas": ["RF-09"]
+    },
+    {
+      "nombre": "umbral_confianza_baja",
+      "tipo": "decimal",
+      "precision": 5,
+      "escala": 2,
+      "obligatorio": false,
+      "validaciones": { "min": 0, "max": 100 },
+      "etiquetas": { "es": "Umbral de confianza baja (%)", "en": "Low-confidence threshold (%)" },
+      "fichas": ["RF-09", "P-15"]
+    },
+    {
+      "nombre": "porcentaje_max_dudosos",
+      "tipo": "decimal",
+      "precision": 4,
+      "escala": 1,
+      "obligatorio": false,
+      "validaciones": { "min": 0, "max": 100 },
+      "etiquetas": { "es": "Máximo de granos dudosos (%)", "en": "Maximum uncertain beans (%)" },
+      "fichas": ["RF-09", "P-15"]
+    },
+    {
+      "nombre": "fecha_envio",
+      "tipo": "fecha_hora",
+      "obligatorio": false,
+      "etiquetas": { "es": "Enviada", "en": "Sent at" },
+      "fichas": ["RNF-01", "RNF-02"]
+    },
+    {
+      "nombre": "fecha_inicio",
+      "tipo": "fecha_hora",
+      "obligatorio": false,
+      "etiquetas": { "es": "Inicio del proceso", "en": "Processing started at" },
+      "fichas": ["RNF-02"]
+    },
+    {
+      "nombre": "fecha_fin",
+      "tipo": "fecha_hora",
+      "obligatorio": false,
+      "etiquetas": { "es": "Fin del proceso", "en": "Processing finished at" },
+      "fichas": ["RNF-01"]
+    }
+  ],
+  "unicos": [
+    {
+      "atributos": ["lote_id", "numero"],
+      "fichas": ["D-25"]
+    }
+  ],
+  "checks": [
+    {
+      "nombre": "muestra_terminada_completa",
+      "sql": "estado <> 'TERMINADA' OR num_nonnulls(modelo_id, total_granos, granos_sanos, aviso_confianza_baja, umbral_confianza_baja, porcentaje_max_dudosos, fecha_fin) = 7",
+      "descripcion": "Una muestra terminada tiene sus conteos, su modelo, el aviso, la copia de los parámetros y la fecha de fin.",
+      "fichas": ["RF-08", "RF-09", "RF-10"]
+    },
+    {
+      "nombre": "muestra_fechas_segun_estado",
+      "sql": "(estado = 'PENDIENTE' OR fecha_envio IS NOT NULL) AND (estado NOT IN ('EN_PROCESO', 'TERMINADA') OR fecha_inicio IS NOT NULL)",
+      "descripcion": "Una muestra enviada tiene fecha de envío; una en proceso o terminada, también fecha de inicio.",
+      "fichas": ["RNF-01", "RNF-02"]
+    },
+    {
+      "nombre": "muestra_sanos_no_superan_total",
+      "sql": "granos_sanos IS NULL OR granos_sanos <= total_granos",
+      "descripcion": "Los granos sanos no pueden ser más que el total.",
+      "fichas": ["RF-10"]
+    }
+  ]
+}

@@ -1,0 +1,120 @@
+{
+  "_header": {
+    "nombre": "rango_recomendacion.json",
+    "descripcion": "Entidad rango_recomendacion: los rangos de cada empresa para pasar del porcentaje de granos sanos a una categoría probable y una recomendación. Entrada del generador (RP-23); formato en specs/entidades/README.md.",
+    "fecha_creacion": "13/10/2026",
+    "actualizacion": "13/10/2026",
+    "autor": "Equipo InspectIA",
+    "version": "1.0"
+  },
+  "entidad": "rango_recomendacion",
+  "clase": "RangoRecomendacion",
+  "descripcion": "Rango de una categoría probable: desde qué porcentaje de granos sanos aplica y qué se recomienda (D-10, anexo A.3). Cada empresa tiene siempre las 4 categorías; solo cambian sus límites y sus textos (RF-13).",
+  "etiquetas": {
+    "es": { "singular": "Rango de recomendación", "plural": "Rangos de recomendación" },
+    "en": { "singular": "Recommendation range", "plural": "Recommendation ranges" }
+  },
+  "fichas": ["RF-02", "RF-12", "RF-13", "D-10"],
+  "crud": true,
+  "por_empresa": "si",
+  "operaciones": {
+    "listar": ["ADMIN_EMPRESA"],
+    "editar": ["ADMIN_EMPRESA"],
+    "restaurar_por_defecto": ["ADMIN_EMPRESA"]
+  },
+  "edicion_en_bloque": true,
+  "atributos": [
+    {
+      "nombre": "categoria",
+      "tipo": "lista",
+      "obligatorio": true,
+      "valores": [
+        { "codigo": "PREMIUM", "etiquetas": { "es": "Premium o Especial", "en": "Premium or Specialty" } },
+        { "codigo": "ESTANDAR", "etiquetas": { "es": "Estándar", "en": "Standard" } },
+        { "codigo": "CORRIENTE", "etiquetas": { "es": "Corriente", "en": "Regular" } },
+        { "codigo": "FUERA_DE_NORMA", "etiquetas": { "es": "Fuera de norma", "en": "Off-grade" } }
+      ],
+      "en_lista": true,
+      "en_formulario": false,
+      "etiquetas": { "es": "Categoría", "en": "Category" },
+      "fichas": ["RF-12", "RF-13"]
+    },
+    {
+      "nombre": "limite_inferior",
+      "tipo": "decimal",
+      "precision": 4,
+      "escala": 1,
+      "obligatorio": true,
+      "validaciones": { "min": 0, "max": 100 },
+      "solo_lectura_si": { "atributo": "categoria", "igual_a": "FUERA_DE_NORMA" },
+      "en_lista": true,
+      "en_formulario": true,
+      "etiquetas": { "es": "Límite inferior (% de granos sanos)", "en": "Lower limit (% healthy beans)" },
+      "fichas": ["RF-12", "RF-13"]
+    },
+    {
+      "nombre": "recomendacion",
+      "tipo": "texto",
+      "longitud": 300,
+      "obligatorio": true,
+      "validaciones": { "recortar": true },
+      "en_lista": true,
+      "en_formulario": true,
+      "etiquetas": { "es": "Recomendación", "en": "Recommendation" },
+      "fichas": ["RF-12", "RF-13"]
+    }
+  ],
+  "unicos": [
+    {
+      "atributos": ["empresa_id", "categoria"],
+      "fichas": ["RF-13"]
+    }
+  ],
+  "checks": [
+    {
+      "nombre": "rango_limite_fuera_de_norma",
+      "sql": "(categoria = 'FUERA_DE_NORMA') = (limite_inferior = 0)",
+      "descripcion": "Fuera de norma empieza en 0 %; las demás categorías, por encima de 0 %.",
+      "fichas": ["RF-13"]
+    }
+  ],
+  "reglas": [
+    {
+      "codigo": "limites_en_orden",
+      "tipo": "validacion",
+      "cuando": ["editar"],
+      "descripcion": "Los límites deben bajar en orden: Premium o Especial > Estándar > Corriente > Fuera de norma (0 %).",
+      "mensaje": {
+        "es": "Los límites deben bajar en orden: Premium o Especial > Estándar > Corriente > 0 %.",
+        "en": "The limits must go down in order: Premium or Specialty > Standard > Regular > 0%."
+      },
+      "fichas": ["RF-13"]
+    }
+  ],
+  "valores_iniciales": {
+    "modo": "al_crear_empresa",
+    "descripcion": "Se crean al registrar cada empresa (RF-02) y «Restaurar valores por defecto» vuelve a ellos (RF-13). Fuente: anexo A.3 del documento de requerimientos (D-10).",
+    "filas": [
+      {
+        "categoria": "PREMIUM",
+        "limite_inferior": 96.0,
+        "recomendacion": "Apto para mercado especial o de exportación."
+      },
+      {
+        "categoria": "ESTANDAR",
+        "limite_inferior": 90.0,
+        "recomendacion": "Apto para venta estándar. Retirar a mano los granos defectuosos podría subirlo de categoría."
+      },
+      {
+        "categoria": "CORRIENTE",
+        "limite_inferior": 82.0,
+        "recomendacion": "Retirar los granos defectuosos antes de vender, y revisar la fermentación y el secado."
+      },
+      {
+        "categoria": "FUERA_DE_NORMA",
+        "limite_inferior": 0.0,
+        "recomendacion": "No venderlo como cacao de calidad: hacer una selección completa y revisar todo el proceso después de la cosecha."
+      }
+    ]
+  }
+}

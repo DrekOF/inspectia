@@ -1,0 +1,83 @@
+{
+  "_header": {
+    "nombre": "grano.json",
+    "descripcion": "Entidad grano: cada grano encontrado en una foto, con su posición, su clase y la confianza del modelo. Entrada del generador (RP-23); formato en specs/entidades/README.md.",
+    "fecha_creacion": "13/10/2026",
+    "actualizacion": "13/10/2026",
+    "autor": "Equipo InspectIA",
+    "version": "1.0"
+  },
+  "entidad": "grano",
+  "clase": "Grano",
+  "descripcion": "Grano encontrado en una foto. La posición es un rectángulo sin rotación, en píxeles de la foto original. Un grano es dudoso si su confianza es menor que el umbral copiado en su muestra (RF-09); eso no se guarda. Lo maneja el módulo analisis del backend, escrito a mano (D-21).",
+  "etiquetas": {
+    "es": { "singular": "Grano", "plural": "Granos" },
+    "en": { "singular": "Bean", "plural": "Beans" }
+  },
+  "fichas": ["RF-07", "RF-08", "RF-09", "RF-11", "RF-17"],
+  "crud": false,
+  "por_empresa": "si",
+  "atributos": [
+    {
+      "nombre": "foto_id",
+      "tipo": "referencia",
+      "referencia": { "entidad": "foto", "al_borrar": "cascada" },
+      "obligatorio": true,
+      "etiquetas": { "es": "Foto", "en": "Photo" },
+      "fichas": ["RF-07", "RF-05"]
+    },
+    {
+      "nombre": "x",
+      "tipo": "entero",
+      "obligatorio": true,
+      "validaciones": { "min": 0 },
+      "etiquetas": { "es": "Posición x (px)", "en": "X position (px)" },
+      "fichas": ["RF-07", "RF-11"]
+    },
+    {
+      "nombre": "y",
+      "tipo": "entero",
+      "obligatorio": true,
+      "validaciones": { "min": 0 },
+      "etiquetas": { "es": "Posición y (px)", "en": "Y position (px)" },
+      "fichas": ["RF-07", "RF-11"]
+    },
+    {
+      "nombre": "ancho",
+      "tipo": "entero",
+      "obligatorio": true,
+      "validaciones": { "min": 1 },
+      "etiquetas": { "es": "Ancho (px)", "en": "Width (px)" },
+      "fichas": ["RF-07", "RF-11"]
+    },
+    {
+      "nombre": "alto",
+      "tipo": "entero",
+      "obligatorio": true,
+      "validaciones": { "min": 1 },
+      "etiquetas": { "es": "Alto (px)", "en": "Height (px)" },
+      "fichas": ["RF-07", "RF-11"]
+    },
+    {
+      "nombre": "clase",
+      "tipo": "lista",
+      "obligatorio": true,
+      "valores": [
+        { "codigo": "SANO", "etiquetas": { "es": "Sano", "en": "Healthy" } },
+        { "codigo": "NO_SANO", "etiquetas": { "es": "No sano", "en": "Not healthy" } }
+      ],
+      "etiquetas": { "es": "Clase", "en": "Class" },
+      "fichas": ["RF-08", "RF-11"]
+    },
+    {
+      "nombre": "confianza",
+      "tipo": "decimal",
+      "precision": 5,
+      "escala": 2,
+      "obligatorio": true,
+      "validaciones": { "min": 0, "max": 100 },
+      "etiquetas": { "es": "Confianza (%)", "en": "Confidence (%)" },
+      "fichas": ["RF-08", "RF-09", "RF-17"]
+    }
+  ]
+}

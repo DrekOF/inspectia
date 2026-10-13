@@ -2,14 +2,14 @@
 Nombre: decisiones.md
 Descripción: Decisiones (D-xx) y pendientes (P-xx) del proyecto. Fuente: 01_Requerimientos/InspectIA_Requerimientos.docx, anexo A.
 Fecha de creación: 12/10/2026
-Actualización: 12/10/2026
+Actualización: 13/10/2026
 Autor: Equipo InspectIA (exportado del documento de requerimientos v2.0)
-Versión: 1.0
+Versión: 1.1
 -->
 
 # Decisiones y pendientes
 
-Copia de trabajo del anexo A del documento de requerimientos (v2.0). Si una tarea choca con una decisión, pregunta antes de cambiarla.
+Copia de trabajo del anexo A del documento de requerimientos (v2.0). Las decisiones desde D-24 se tomaron después de ese documento y se registran primero aquí. Si una tarea choca con una decisión, pregunta antes de cambiarla.
 
 ## Decisiones
 
@@ -24,7 +24,7 @@ Copia de trabajo del anexo A del documento de requerimientos (v2.0). Si una tare
 | D-07 | Convenciones del documento: códigos RF-01 y RNF-01, versión inicial 1.0, Prioridad y Dificultad Alta / Media / Baja marcadas con X, y Estado Propuesto / Aprobado / Implementado. | 11/10/2026 |
 | D-08 | Captura y análisis del lote (resuelve P-03): el usuario fotografía una muestra del lote (granos enteros sobre papel blanco, separados entre sí, con luz difusa, 2 o 3 fotos desde arriba). La app separa y recorta cada grano con un script de OpenCV, el modelo clasifica cada recorte y se calcula el porcentaje de granos sanos. El modelo se entrena con recortes hechos por el mismo script a partir de las fotos originales del dataset. | 11/10/2026 |
 | D-09 | Control de granos pegados: si en una foto una región mide el doble del tamaño típico de los granos de esa misma foto, la app avisa que hay granos pegados y pide repetir la foto. | 11/10/2026 |
-| D-10 | Criterios de la recomendación (resuelve P-05): según el porcentaje de granos sanos, la app indica una categoría probable basada en la NTC 1252:2021 y una acción sugerida (rangos en A.3). La categoría se presenta como probable y la oficial se confirma con la prueba de corte. Si el resultado queda a menos de 3 puntos de un límite, la app sugiere analizar otra muestra. Los rangos vienen por defecto y el administrador de cada empresa puede ajustarlos. | 11/10/2026 |
+| D-10 | Criterios de la recomendación (resuelve P-05): según el porcentaje de granos sanos, la app indica una categoría probable basada en la NTC 1252:2021 y una acción sugerida (rangos en A.3). La categoría se presenta como probable y la oficial se confirma con la prueba de corte. Si el resultado queda a menos de 3 puntos de un límite, la app sugiere analizar otra muestra. Los rangos vienen por defecto y el administrador de cada empresa puede ajustarlos. Nota: el margen cambió a 1 punto (D-24) y la otra muestra se define en D-25. | 11/10/2026 |
 | D-11 | El documento separa los requerimientos (lo que debe hacer la app: RF y RNF) de los requisitos del proyecto (las pautas del docente para construirlo: RP). | 11/10/2026 |
 | D-12 | El punto 7 del docente (administración, control y monitoreo) se refiere al seguimiento del equipo, que se llevará en Trello. | 11/10/2026 |
 | D-13 | Las empresas las registra un administrador de la plataforma (rol del equipo InspectIA), que también crea el primer administrador de cada empresa (resuelve P-07). | 11/10/2026 |
@@ -37,7 +37,11 @@ Copia de trabajo del anexo A del documento de requerimientos (v2.0). Si una tare
 | D-20 | Las fichas del modelo de IA (RF-08 y RNF-07) se redactan en este documento y Julián las revisa antes de aprobarlas (resuelve P-04). | 12/10/2026 |
 | D-21 | Arquitectura del software. Sistema: página web (React), servidor (Spring Boot) y servicio de IA (Python), con PostgreSQL y S3; el servidor es un solo programa dividido en módulos (monolito modular), sin microservicios. Dentro del servidor, el análisis del lote usa arquitectura hexagonal: las reglas del negocio quedan en el centro y se conectan con la IA, S3, el PDF y la base de datos por interfaces. Empresas, usuarios, rangos y estadísticas van por capas, y sus CRUD se generan desde los JSON (RP-23). Detalle en 02_Analisis_Diseno/InspectIA_Despliegue_AWS.pdf. | 12/10/2026 |
 | D-22 | El equipo aprueba las prioridades de los requerimientos (sección 4). RNF-08 sube a Alta porque la licencia del dataset es obligatoria, aunque cumplirla es fácil. La dificultad de cada RF está en su ficha. | 12/10/2026 |
-| D-23 | Tamaño de la muestra: entre 100 y 150 granos por análisis, repartidos en 2 o 3 fotos (unos 50 granos por foto). Con 100 granos o más, cada grano pesa como máximo 1 punto del porcentaje, en línea con los límites de la NTC 1252, que se expresan por cada 100 granos (A.3). Con este tamaño se mide el tiempo de respuesta (RNF-01). | 12/10/2026 |
+| D-23 | Tamaño de la muestra: entre 100 y 150 granos por análisis, repartidos en 2 o 3 fotos (unos 50 granos por foto). Con 100 granos o más, cada grano pesa como máximo 1 punto del porcentaje, en línea con los límites de la NTC 1252, que se expresan por cada 100 granos (A.3). Con este tamaño se mide el tiempo de respuesta (RNF-01). Nota: una muestra de más de 150 granos se acepta (D-26). | 12/10/2026 |
+| D-24 | Cambia D-10: se sugiere analizar otra muestra si el resultado queda a menos de 1 punto de un límite (antes, 3 puntos). | 13/10/2026 |
+| D-25 | Un lote tiene como máximo 2 muestras. La segunda solo se habilita cuando la app la sugiere (D-24). El resultado del lote suma los granos de las dos: por ejemplo, 107 sanos de 120 y 113 de 125 dan 220 de 245 = 89,8 %, Corriente. Con 2 muestras ya no se sugiere otra. Si alguna muestra tiene el aviso de confianza baja (RF-09), el lote también lo muestra. | 13/10/2026 |
+| D-26 | Cambia D-23: si la muestra pasa de 150 granos, se acepta. El mínimo de 100 sigue siendo obligatorio; la guía sigue pidiendo de 100 a 150 y RNF-01 se mide con ese tamaño. | 13/10/2026 |
+| D-27 | El administrador de la plataforma puede desactivar una empresa: sus usuarios no pueden entrar y no se borra nada. También puede reactivarla y editar sus datos (nombre, NIT y ciudad), con las mismas validaciones del registro. | 13/10/2026 |
 
 ## Pendientes
 

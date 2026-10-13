@@ -1,0 +1,169 @@
+{
+  "_header": {
+    "nombre": "lote.json",
+    "descripcion": "Entidad lote: los lotes de cacao que analiza cada empresa, con su resultado. Entrada del generador (RP-23); formato en specs/entidades/README.md.",
+    "fecha_creacion": "13/10/2026",
+    "actualizacion": "13/10/2026",
+    "autor": "Equipo InspectIA",
+    "version": "1.0"
+  },
+  "entidad": "lote",
+  "clase": "Lote",
+  "descripcion": "Lote de cacao que la empresa analiza. Guarda el resultado del lote: con 2 muestras, el de la suma de sus granos (D-25). Lo maneja el módulo analisis del backend, escrito a mano (D-21).",
+  "etiquetas": {
+    "es": { "singular": "Lote", "plural": "Lotes" },
+    "en": { "singular": "Lot", "plural": "Lots" }
+  },
+  "fichas": ["RF-04", "RF-10", "RF-12", "RF-14", "RF-15", "RF-16", "D-25"],
+  "crud": false,
+  "por_empresa": "si",
+  "atributos": [
+    {
+      "nombre": "codigo",
+      "tipo": "texto",
+      "longitud": 30,
+      "obligatorio": true,
+      "validaciones": { "recortar": true },
+      "etiquetas": { "es": "Código del lote", "en": "Lot code" },
+      "fichas": ["RF-04"]
+    },
+    {
+      "nombre": "fecha_recepcion",
+      "tipo": "fecha",
+      "obligatorio": true,
+      "validaciones": { "no_posterior_a_hoy": true },
+      "mensajes": {
+        "no_posterior_a_hoy": {
+          "es": "La fecha de recepción no puede ser posterior a hoy.",
+          "en": "The reception date cannot be later than today."
+        }
+      },
+      "etiquetas": { "es": "Fecha de recepción", "en": "Reception date" },
+      "fichas": ["RF-04"]
+    },
+    {
+      "nombre": "origen",
+      "tipo": "texto",
+      "longitud": 120,
+      "obligatorio": true,
+      "validaciones": { "recortar": true },
+      "sugerencias": true,
+      "etiquetas": { "es": "Finca o proveedor", "en": "Farm or supplier" },
+      "fichas": ["RF-04", "RF-16"]
+    },
+    {
+      "nombre": "observaciones",
+      "tipo": "texto",
+      "longitud": 500,
+      "obligatorio": false,
+      "validaciones": { "recortar": true },
+      "etiquetas": { "es": "Observaciones", "en": "Notes" },
+      "fichas": ["RF-04"]
+    },
+    {
+      "nombre": "estado",
+      "tipo": "lista",
+      "obligatorio": true,
+      "por_defecto": "PENDIENTE",
+      "valores": [
+        { "codigo": "PENDIENTE", "etiquetas": { "es": "Pendiente de análisis", "en": "Pending analysis" } },
+        { "codigo": "ANALIZADO", "etiquetas": { "es": "Analizado", "en": "Analyzed" } }
+      ],
+      "etiquetas": { "es": "Estado", "en": "Status" },
+      "fichas": ["RF-04", "RF-12", "RF-14"]
+    },
+    {
+      "nombre": "usuario_id",
+      "tipo": "referencia",
+      "referencia": { "entidad": "usuario", "al_borrar": "restringir" },
+      "obligatorio": true,
+      "etiquetas": { "es": "Registrado por", "en": "Registered by" },
+      "fichas": ["RF-04"]
+    },
+    {
+      "nombre": "porcentaje_sanos",
+      "tipo": "decimal",
+      "precision": 4,
+      "escala": 1,
+      "obligatorio": false,
+      "validaciones": { "min": 0, "max": 100 },
+      "etiquetas": { "es": "% de granos sanos", "en": "% healthy beans" },
+      "fichas": ["RF-10", "D-25"]
+    },
+    {
+      "nombre": "categoria",
+      "tipo": "lista",
+      "valores_de": "rango_recomendacion.categoria",
+      "obligatorio": false,
+      "etiquetas": { "es": "Categoría probable", "en": "Probable category" },
+      "fichas": ["RF-12", "RF-13"]
+    },
+    {
+      "nombre": "recomendacion",
+      "tipo": "texto",
+      "longitud": 300,
+      "obligatorio": false,
+      "etiquetas": { "es": "Recomendación", "en": "Recommendation" },
+      "fichas": ["RF-12", "RF-13"]
+    },
+    {
+      "nombre": "sugerir_otra_muestra",
+      "tipo": "booleano",
+      "obligatorio": false,
+      "etiquetas": { "es": "Sugiere otra muestra", "en": "Suggests another sample" },
+      "fichas": ["RF-12", "D-24", "D-25"]
+    },
+    {
+      "nombre": "aviso_confianza_baja",
+      "tipo": "booleano",
+      "obligatorio": false,
+      "etiquetas": { "es": "Aviso de confianza baja", "en": "Low-confidence warning" },
+      "fichas": ["RF-09", "D-25"]
+    },
+    {
+      "nombre": "fecha_resultado",
+      "tipo": "fecha_hora",
+      "obligatorio": false,
+      "etiquetas": { "es": "Fecha del resultado", "en": "Result date" },
+      "fichas": ["RF-14", "RF-15", "RF-16"]
+    },
+    {
+      "nombre": "reporte_ruta",
+      "tipo": "texto",
+      "longitud": 255,
+      "obligatorio": false,
+      "etiquetas": { "es": "Reporte PDF (llave en S3)", "en": "PDF report (S3 key)" },
+      "fichas": ["RF-15", "D-25"]
+    }
+  ],
+  "unicos": [
+    {
+      "atributos": ["empresa_id", "codigo"],
+      "normalizar": true,
+      "mensaje": {
+        "es": "Ya existe un lote con este código en la empresa.",
+        "en": "A lot with this code already exists in the company."
+      },
+      "fichas": ["RF-04"]
+    }
+  ],
+  "checks": [
+    {
+      "nombre": "lote_resultado_segun_estado",
+      "sql": "(estado = 'PENDIENTE' AND num_nonnulls(porcentaje_sanos, categoria, recomendacion, sugerir_otra_muestra, aviso_confianza_baja, fecha_resultado, reporte_ruta) = 0) OR (estado = 'ANALIZADO' AND num_nonnulls(porcentaje_sanos, categoria, recomendacion, sugerir_otra_muestra, aviso_confianza_baja, fecha_resultado) = 6)",
+      "descripcion": "Un lote pendiente no tiene resultado; uno analizado lo tiene completo (el PDF es opcional).",
+      "fichas": ["RF-12", "D-25"]
+    }
+  ],
+  "indices": [
+    {
+      "atributos": ["empresa_id", "fecha_resultado"],
+      "fichas": ["RF-14", "RF-16"]
+    },
+    {
+      "atributos": ["empresa_id", "origen"],
+      "normalizar": true,
+      "fichas": ["RF-04", "RF-16"]
+    }
+  ]
+}

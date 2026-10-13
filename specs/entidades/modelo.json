@@ -1,0 +1,116 @@
+{
+  "_header": {
+    "nombre": "modelo.json",
+    "descripcion": "Entidad modelo: los modelos de IA de la comparación de D-18, con el elegido marcado en uso. Entrada del generador (RP-23); formato en specs/entidades/README.md.",
+    "fecha_creacion": "13/10/2026",
+    "actualizacion": "13/10/2026",
+    "autor": "Equipo InspectIA",
+    "version": "1.0"
+  },
+  "entidad": "modelo",
+  "clase": "Modelo",
+  "descripcion": "Modelo de IA. La tabla guarda la comparación de D-18: los 5 modelos de Julián (2 transformers y 3 CNN, RP-25), con el elegido marcado en uso. Es común a todas las empresas (RNF-03). Las filas las carga el script de base de datos (RP-15); en desarrollo, también el clasificador falso, sin métricas.",
+  "etiquetas": {
+    "es": { "singular": "Modelo de IA", "plural": "Modelos de IA" },
+    "en": { "singular": "AI model", "plural": "AI models" }
+  },
+  "fichas": ["RF-08", "RF-17", "RNF-07", "D-18", "RP-25"],
+  "crud": false,
+  "por_empresa": "no",
+  "atributos": [
+    {
+      "nombre": "nombre",
+      "tipo": "texto",
+      "longitud": 80,
+      "obligatorio": true,
+      "etiquetas": { "es": "Nombre", "en": "Name" },
+      "fichas": ["RF-08", "RF-17"]
+    },
+    {
+      "nombre": "version",
+      "tipo": "texto",
+      "longitud": 20,
+      "obligatorio": true,
+      "etiquetas": { "es": "Versión", "en": "Version" },
+      "fichas": ["RF-08", "RF-17"]
+    },
+    {
+      "nombre": "tipo",
+      "tipo": "lista",
+      "obligatorio": false,
+      "valores": [
+        { "codigo": "CNN", "etiquetas": { "es": "Red convolucional (CNN)", "en": "Convolutional network (CNN)" } },
+        { "codigo": "TRANSFORMER", "etiquetas": { "es": "Transformer", "en": "Transformer" } }
+      ],
+      "etiquetas": { "es": "Tipo", "en": "Type" },
+      "fichas": ["D-18", "RP-25"]
+    },
+    {
+      "nombre": "f1_macro",
+      "tipo": "decimal",
+      "precision": 5,
+      "escala": 2,
+      "obligatorio": false,
+      "validaciones": { "min": 0, "max": 100 },
+      "etiquetas": { "es": "F1-score macro (%)", "en": "Macro F1-score (%)" },
+      "fichas": ["RF-17", "RNF-07"]
+    },
+    {
+      "nombre": "precision_macro",
+      "tipo": "decimal",
+      "precision": 5,
+      "escala": 2,
+      "obligatorio": false,
+      "validaciones": { "min": 0, "max": 100 },
+      "etiquetas": { "es": "Precisión macro (%)", "en": "Macro precision (%)" },
+      "fichas": ["RF-17", "RNF-07"]
+    },
+    {
+      "nombre": "recall_macro",
+      "tipo": "decimal",
+      "precision": 5,
+      "escala": 2,
+      "obligatorio": false,
+      "validaciones": { "min": 0, "max": 100 },
+      "etiquetas": { "es": "Recall macro (%)", "en": "Macro recall (%)" },
+      "fichas": ["RF-17", "RNF-07"]
+    },
+    {
+      "nombre": "tiempo_por_grano_ms",
+      "tipo": "decimal",
+      "precision": 8,
+      "escala": 2,
+      "obligatorio": false,
+      "validaciones": { "min": 0 },
+      "etiquetas": { "es": "Tiempo por grano (ms)", "en": "Time per bean (ms)" },
+      "fichas": ["D-18"]
+    },
+    {
+      "nombre": "en_uso",
+      "tipo": "booleano",
+      "obligatorio": true,
+      "por_defecto": false,
+      "etiquetas": { "es": "En uso", "en": "In use" },
+      "fichas": ["RF-17", "D-18"]
+    }
+  ],
+  "unicos": [
+    {
+      "atributos": ["nombre", "version"],
+      "fichas": ["RF-08"]
+    },
+    {
+      "atributos": ["en_uso"],
+      "donde": "en_uso",
+      "fichas": ["RF-17", "D-18"]
+    }
+  ],
+  "checks": [
+    {
+      "nombre": "modelo_datos_completos",
+      "sql": "num_nonnulls(tipo, f1_macro, precision_macro, recall_macro, tiempo_por_grano_ms) IN (0, 5)",
+      "descripcion": "Los modelos de la comparación traen tipo, métricas y tiempo por grano; solo el clasificador falso de desarrollo los deja vacíos.",
+      "fichas": ["D-18"]
+    }
+  ]
+}
