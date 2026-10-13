@@ -1,10 +1,10 @@
 <!--
 Nombre: arquitectura.md
-Descripción: Resumen de la arquitectura del sistema y del software de InspectIA (D-16, D-18, D-21 y D-23). Detalle en 02_Analisis_Diseno/InspectIA_Despliegue_AWS.pdf.
+Descripción: Resumen de la arquitectura del sistema y del software de InspectIA (D-16, D-18, D-21, D-23 y D-25). Detalle en 02_Analisis_Diseno/InspectIA_Despliegue_AWS.pdf.
 Fecha de creación: 12/10/2026
-Actualización: 12/10/2026
+Actualización: 13/10/2026
 Autor: Equipo InspectIA
-Versión: 1.0
+Versión: 1.1
 -->
 
 # Arquitectura de InspectIA
@@ -50,22 +50,24 @@ backend/src/main/java/.../inspectia/
 | Paso | Requerimiento | Dónde |
 |---|---|---|
 | 1. Registrar el lote | RF-04 | Servidor |
-| 2. Tomar o subir 2 o 3 fotos (100 a 150 granos, D-23) | RF-05 | Página web → S3 |
+| 2. Tomar o subir 2 o 3 fotos de la muestra (la guía pide de 100 a 150 granos; se aceptan más, D-23 y D-26) | RF-05 | Página web → S3 |
 | 3. Revisar nitidez y luz | RF-06 | Servicio de IA |
 | 4. Separar y recortar los granos; granos pegados; mínimo 100 granos | RF-07 | Servicio de IA |
 | 5. Clasificar cada grano (posición, clase y confianza) | RF-08 | Servicio de IA |
 | 6. Pedir repetir una foto si hay más de 10 % de granos dudosos | RF-09 | Servidor |
-| 7. Calcular el % de granos sanos | RF-10 | Servidor (dominio) |
-| 8. Categoría probable y recomendación; lote «Analizado» | RF-12 | Servidor (dominio) |
+| 7. Calcular el % de granos sanos del lote | RF-10 | Servidor (dominio) |
+| 8. Categoría probable y recomendación; lote «Analizado». Si el resultado queda a menos de 1 punto de un límite, sugiere otra muestra (D-24) | RF-12 | Servidor (dominio) |
 | 9. Mostrar la foto marcada y descargar el PDF | RF-11 y RF-15 | Página web y servidor |
+| 10. Si la app la sugirió, segunda muestra: pasos 2 a 9 con fotos nuevas. El resultado del lote suma los granos de las 2 muestras, ya no sugiere otra y el PDF se rehace (D-25) | RF-05 a RF-15 | Todas las piezas |
 
-El servidor le envía al servicio de IA las fotos del lote (sus enlaces de S3) y recibe, por cada grano, la posición, la clase y la confianza. El contrato exacto (OpenAPI) se define en la fase de diseño.
+El servidor le envía al servicio de IA las fotos de la muestra (sus enlaces de S3) y recibe, por cada grano, la posición, la clase y la confianza. El contrato exacto (OpenAPI) se define en la fase de diseño. Las tablas del flujo (lote, muestra, foto y grano) están en `specs/modelo-datos.md`.
 
 ## 4. Modelos de IA (D-18)
 
 - Julián entrena 5 modelos (2 transformers y 3 CNN) con federated learning, fuera de AWS, con los mismos recortes, y los compara en el mismo conjunto de validación (F1-score macro, precisión, recall y tiempo por grano).
 - La app usa uno solo: el de mejor F1-score entre los que permitan cumplir el tiempo de respuesta (RNF-01).
 - Los 5 ONNX y la comparación se guardan en S3; el servicio de IA carga solo el elegido al arrancar, según una variable de configuración.
+- La comparación de los 5 también queda en la tabla `modelo` de la base de datos (tipo, métricas y tiempo por grano), con el elegido marcado en uso. El script de base de datos carga esas filas (RP-15).
 
 ## 5. Módulos y requerimientos
 

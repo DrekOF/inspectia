@@ -3,16 +3,16 @@
     "nombre": "fichas.json",
     "descripcion": "Fichas de los requerimientos funcionales (formato largo) y no funcionales (formato corto) de InspectIA. Fuente única para las secciones 5 y 6 del documento de requerimientos y, más adelante, para el listado de casos de prueba (RP-13).",
     "fecha_creacion": "12/10/2026",
-    "actualizacion": "12/10/2026",
+    "actualizacion": "13/10/2026",
     "autor": "Equipo InspectIA",
-    "version": "1.1"
+    "version": "1.2"
   },
   "rf": [
     {
       "encabezado": "Iniciar sesión según el rol",
       "titulo": "Iniciar sesión según el rol",
       "codigo": "RF-01",
-      "version": "1.0",
+      "version": "1.1",
       "fuente": "Levantamiento inicial: tres roles con funciones distintas (D-05 y D-13).",
       "descripcion": "El usuario entra con su correo y su contraseña. El sistema verifica los datos y lo lleva al menú de su rol: usuario final, administrador de empresa o administrador de la plataforma.",
       "justificacion": "Cada rol usa funciones distintas y cada empresa solo debe ver sus propios datos (RNF-03 y RNF-04).",
@@ -26,7 +26,7 @@
         "b": [
           "La sesión vence a las 8 horas (RNF-04).",
           "Las contraseñas se guardan con hash (BCrypt), nunca en texto plano.",
-          "Un usuario desactivado no puede entrar."
+          "Un usuario desactivado, o de una empresa desactivada (D-27), no puede entrar."
         ]
       },
       "prioridad": "Alta",
@@ -37,8 +37,8 @@
       "proceso": {
         "n": [
           "El usuario escribe su correo y su contraseña.",
-          "El sistema verifica que el usuario exista, que la contraseña coincida y que esté activo.",
-          "El sistema crea la sesión con el rol y la empresa del usuario.",
+          "El sistema verifica que el usuario exista, que la contraseña coincida y que el usuario y su empresa estén activos (D-27).",
+          "El sistema crea la sesión con el rol y la empresa del usuario; el administrador de la plataforma no tiene empresa (RNF-03).",
           "El sistema muestra el menú de su rol."
         ]
       },
@@ -49,6 +49,7 @@
           "Con datos correctos, el sistema muestra el menú del rol del usuario.",
           "Con datos incorrectos, muestra «Correo o contraseña incorrectos», sin decir cuál de los dos falló.",
           "Un usuario desactivado no puede iniciar sesión.",
+          "Un usuario de una empresa desactivada no puede iniciar sesión (D-27).",
           "Después de 5 intentos fallidos seguidos, la cuenta se bloquea 15 minutos.",
           "La sesión vence a las 8 horas y el sistema pide iniciar sesión de nuevo."
         ]
@@ -61,29 +62,32 @@
       "encabezado": "Registrar empresas y su primer administrador",
       "titulo": "Registrar empresas y su primer administrador",
       "codigo": "RF-02",
-      "version": "1.0",
+      "version": "1.1",
       "fuente": "D-13: el administrador de la plataforma registra las empresas.",
-      "descripcion": "El administrador de la plataforma registra una empresa con sus datos básicos y crea el primer administrador de esa empresa.",
+      "descripcion": "El administrador de la plataforma registra una empresa con sus datos básicos y crea el primer administrador de esa empresa. También puede editar los datos de una empresa, desactivarla y reactivarla (D-27).",
       "justificacion": "InspectIA atiende a varias empresas (multiempresa). Cada una necesita su propio espacio y un responsable que gestione sus usuarios.",
       "precondiciones": "El administrador de la plataforma inició sesión (RF-01).",
       "restricciones": {
         "b": [
-          "El NIT de la empresa no se puede repetir.",
+          "El NIT de la empresa no se puede repetir. Se escribe con su dígito de verificación (por ejemplo, 900123456-8) y el sistema valida ese dígito.",
           "El correo del administrador es único en toda la plataforma.",
+          "La contraseña inicial tiene de 8 a 64 caracteres y ocupa como máximo 72 bytes, porque BCrypt solo usa 72; cada letra con tilde y cada eñe ocupan 2 bytes.",
           "Al crearse, la empresa recibe los rangos de recomendación por defecto (D-10).",
-          "El administrador de la plataforma también puede restablecer la contraseña de un administrador de empresa."
+          "El administrador de la plataforma también puede restablecer la contraseña de un administrador de empresa.",
+          "Al desactivar una empresa, sus usuarios no pueden iniciar sesión y no se borra ningún dato; al reactivarla, sus usuarios activos pueden volver a entrar (D-27).",
+          "Al editar una empresa (nombre, NIT y ciudad) se aplican las mismas validaciones del registro (D-27)."
         ]
       },
       "prioridad": "Alta",
       "dificultad": "Baja",
       "dependencia": "Depende de RF-01. De este requerimiento dependen RF-03 y las demás funciones de la empresa.",
       "actores": "Administrador de la plataforma.",
-      "entradas": "Datos de la empresa (nombre, NIT y ciudad) y de su administrador (nombre, correo y contraseña inicial).",
+      "entradas": "Datos de la empresa (nombre, NIT con dígito de verificación y ciudad) y de su administrador (nombre, correo y contraseña inicial).",
       "proceso": {
         "n": [
           "El administrador de la plataforma abre «Nueva empresa».",
           "Escribe los datos de la empresa y de su administrador.",
-          "El sistema valida que los datos estén completos y que el NIT y el correo no existan.",
+          "El sistema valida que los datos estén completos, que el dígito de verificación del NIT corresponda y que el NIT y el correo no existan.",
           "El sistema crea la empresa, con los rangos por defecto, y su administrador."
         ]
       },
@@ -94,19 +98,25 @@
           "Con datos válidos, la empresa y su administrador quedan registrados.",
           "Si el NIT o el correo del administrador ya existen, el sistema no registra la empresa y lo avisa.",
           "Si faltan datos obligatorios, el formulario marca los campos que faltan.",
+          "Si el dígito de verificación del NIT no corresponde, el formulario lo marca y no registra la empresa.",
+          "La contraseña inicial acepta de 8 a 64 caracteres: con 7 o con 65 se rechaza (prueba de límite).",
+          "Una contraseña inicial de 64 caracteres con 8 eñes (72 bytes) se acepta; con 9 eñes (73 bytes) se rechaza con el mensaje «La contraseña es demasiado larga: usa menos caracteres o menos tildes y eñes» (prueba de límite).",
           "La empresa nueva queda con los rangos por defecto de D-10.",
-          "El administrador creado puede iniciar sesión con la contraseña inicial."
+          "El administrador creado puede iniciar sesión con la contraseña inicial.",
+          "Al desactivar una empresa, sus usuarios no pueden iniciar sesión y sus lotes y resultados se conservan (D-27).",
+          "Al reactivar una empresa, sus usuarios activos pueden volver a iniciar sesión (D-27).",
+          "Al editar una empresa, el NIT pasa por las mismas validaciones del registro: único y con dígito de verificación válido (D-27)."
         ]
       },
       "rnf": "RNF-02 (capacidad), RNF-03 (datos separados por empresa) y RNF-04 (autenticación y permisos).",
       "estado": "Propuesto",
-      "observaciones": "CRUD generado desde el JSON de la entidad empresa (RP-23, D-21). Los campos exactos se definen en el modelo de datos (fase de análisis y diseño)."
+      "observaciones": "CRUD generado desde el JSON de la entidad empresa (RP-23, D-21). Los campos exactos están en specs/modelo-datos.md."
     },
     {
       "encabezado": "Gestionar los usuarios de la empresa",
       "titulo": "Gestionar los usuarios de la empresa",
       "codigo": "RF-03",
-      "version": "1.0",
+      "version": "1.1",
       "fuente": "Levantamiento inicial: hasta 25 usuarios por empresa, incluido el administrador.",
       "descripcion": "El administrador de la empresa crea, edita y desactiva los usuarios de su empresa, hasta 25 contando al administrador.",
       "justificacion": "Cada empresa controla quién usa InspectIA y con qué rol.",
@@ -115,6 +125,7 @@
         "b": [
           "Máximo 25 usuarios activos por empresa, incluido el administrador.",
           "El correo es único en toda la plataforma, porque con él se inicia sesión (RF-01).",
+          "La contraseña tiene de 8 a 64 caracteres y ocupa como máximo 72 bytes, porque BCrypt solo usa 72; cada letra con tilde y cada eñe ocupan 2 bytes.",
           "Solo ve y gestiona los usuarios de su propia empresa (RNF-03).",
           "Los usuarios no se borran, se desactivan, para no perder quién hizo cada análisis."
         ]
@@ -138,6 +149,8 @@
         "b": [
           "Un usuario creado con datos válidos puede iniciar sesión.",
           "No se puede crear un usuario con un correo que ya existe en la plataforma.",
+          "La contraseña acepta de 8 a 64 caracteres: con 7 o con 65 se rechaza (prueba de límite).",
+          "Una contraseña de 64 caracteres con 8 eñes (72 bytes) se acepta; con 9 eñes (73 bytes) se rechaza con el mensaje «La contraseña es demasiado larga: usa menos caracteres o menos tildes y eñes» (prueba de límite).",
           "Con 25 usuarios activos, el sistema no deja crear ni reactivar otro, y explica por qué.",
           "Un usuario desactivado no puede iniciar sesión y sus análisis siguen en el historial.",
           "El administrador no puede desactivarse a sí mismo.",
@@ -152,15 +165,16 @@
       "encabezado": "Registrar un lote",
       "titulo": "Registrar un lote",
       "codigo": "RF-04",
-      "version": "1.0",
+      "version": "1.1",
       "fuente": "Proceso propuesto (TO-BE) y D-08.",
       "descripcion": "El usuario final registra un lote nuevo con sus datos básicos antes de fotografiar la muestra.",
       "justificacion": "Cada análisis pertenece a un lote; sin ese registro no hay historial ni reporte.",
       "precondiciones": "El usuario inició sesión (RF-01).",
       "restricciones": {
         "b": [
-          "El código del lote no se repite dentro de la misma empresa.",
-          "El lote queda asociado a la empresa y al usuario que lo registró (RNF-03)."
+          "El código del lote no se repite dentro de la misma empresa, sin distinguir mayúsculas ni espacios al inicio o al final.",
+          "El lote queda asociado a la empresa y al usuario que lo registró (RNF-03).",
+          "Al escribir la finca o el proveedor, el sistema sugiere los que ya usó la empresa; se comparan sin distinguir mayúsculas (RF-16)."
         ]
       },
       "prioridad": "Alta",
@@ -182,28 +196,30 @@
         "b": [
           "Con datos válidos, el lote queda registrado y el sistema pasa a la captura de fotos.",
           "Si el código ya existe en la empresa, el sistema lo avisa y no registra el lote.",
+          "El código «l-001 » cuenta como repetido si ya existe «L-001».",
           "La fecha de recepción no puede ser posterior a hoy."
         ]
       },
       "rnf": "RNF-03 (datos separados por empresa) y RNF-06 (facilidad de uso).",
       "estado": "Propuesto",
-      "observaciones": "Los campos exactos se definen en el modelo de datos (fase de análisis y diseño)."
+      "observaciones": "Los campos exactos están en specs/modelo-datos.md."
     },
     {
       "encabezado": "Tomar o subir las fotos de la muestra",
       "titulo": "Tomar o subir las fotos de la muestra del lote, con guía de captura",
       "codigo": "RF-05",
-      "version": "1.0",
-      "fuente": "D-08 (captura del lote) y D-23 (tamaño de la muestra).",
-      "descripcion": "El usuario toma con la cámara del celular, o sube desde el PC, 2 o 3 fotos de la muestra del lote, siguiendo una guía de captura.",
+      "version": "1.1",
+      "fuente": "D-08 (captura del lote), D-23 y D-26 (tamaño de la muestra) y D-25 (segunda muestra).",
+      "descripcion": "El usuario toma con la cámara del celular, o sube desde el PC, 2 o 3 fotos de cada muestra del lote, siguiendo una guía de captura. Un lote tiene una muestra, o dos si la app sugiere otra (D-25).",
       "justificacion": "La calidad de las fotos define la calidad del resultado; la guía evita fotos que no sirven.",
-      "precondiciones": "Hay un lote registrado en estado «Pendiente de análisis» (RF-04).",
+      "precondiciones": "Hay un lote registrado en estado «Pendiente de análisis» (RF-04), o un lote analizado al que la app le sugirió otra muestra (D-25).",
       "restricciones": {
         "b": [
-          "La muestra tiene entre 100 y 150 granos, repartidos en 2 o 3 fotos (D-23).",
+          "La guía pide entre 100 y 150 granos por muestra, repartidos en 2 o 3 fotos (D-23). Si la muestra pasa de 150 granos, se acepta; el mínimo de 100 es obligatorio (D-26, RF-07).",
           "Granos enteros sobre papel blanco, separados entre sí, con luz difusa y fotos tomadas desde arriba (D-08).",
           "Fotos en JPG o PNG, de hasta 10 MB cada una.",
-          "Las fotos suben directo a S3 con un enlace temporal (D-16; detalle en el documento de arquitectura)."
+          "Las fotos suben directo a S3 con un enlace temporal (D-16; detalle en el documento de arquitectura).",
+          "Una foto rechazada (RF-06, RF-07) o reemplazada (RF-09) se borra de la base de datos y de S3."
         ]
       },
       "prioridad": "Alta",
@@ -216,17 +232,18 @@
           "El sistema muestra la guía de captura, con un ejemplo de foto correcta.",
           "El usuario toma o elige cada foto.",
           "El sistema muestra una vista previa para confirmarla o repetirla.",
-          "El sistema sube las fotos y las asocia al lote."
+          "El sistema sube las fotos y las asocia a la muestra del lote."
         ]
       },
-      "salida": "Fotos guardadas y asociadas al lote.",
+      "salida": "Fotos guardadas y asociadas a la muestra del lote.",
       "postcondiciones": "Las fotos quedan listas para validarse (RF-06).",
       "criterios": {
         "b": [
           "En el celular, el botón abre la cámara; en el PC, permite elegir archivos.",
           "El sistema exige al menos 2 fotos y acepta como máximo 3.",
           "Rechaza archivos que no sean JPG o PNG o que pasen de 10 MB, con un mensaje claro.",
-          "La guía de captura se puede consultar antes de cada foto."
+          "La guía de captura se puede consultar antes de cada foto.",
+          "Cuando una foto se reemplaza, la anterior se borra de S3 y de la base de datos."
         ]
       },
       "rnf": "RNF-05 (PC y celular) y RNF-06 (facilidad de uso).",
@@ -377,7 +394,7 @@
       "encabezado": "Pedir otra foto si la IA duda",
       "titulo": "Pedir una foto más clara o más fotos cuando la confianza del modelo es baja",
       "codigo": "RF-09",
-      "version": "1.0",
+      "version": "1.1",
       "fuente": "Proceso propuesto (TO-BE).",
       "descripcion": "Si el modelo clasifica demasiados granos con confianza baja, el sistema pide repetir la foto con más granos dudosos antes de dar el resultado.",
       "justificacion": "Un resultado con muchos granos dudosos no es confiable para decidir qué hacer con el lote.",
@@ -385,9 +402,10 @@
       "restricciones": {
         "b": [
           "Se pide repetir una foto si más del 10 % de los granos tienen confianza baja.",
-          "La foto nueva reemplaza a la anterior: se mantienen 2 o 3 fotos y entre 100 y 150 granos (D-23).",
-          "Se permiten como máximo 2 repeticiones; si los granos dudosos siguen pasando del 10 %, el sistema da el resultado con un aviso de confianza baja.",
-          "El 10 % y el umbral de confianza baja son parámetros del sistema que fija el equipo (P-15); el administrador de empresa no los cambia."
+          "La foto nueva reemplaza a la anterior, que se borra (RF-05): se mantienen 2 o 3 fotos y al menos 100 granos (D-23, D-26).",
+          "Se permiten como máximo 2 repeticiones por muestra; si los granos dudosos siguen pasando del 10 %, el sistema da el resultado con un aviso de confianza baja.",
+          "El 10 % y el umbral de confianza baja son parámetros del sistema que fija el equipo (P-15); el administrador de empresa no los cambia. Se configuran en el servidor y cada muestra guarda una copia de los valores que usó.",
+          "Si alguna muestra del lote tiene el aviso de confianza baja, el resultado del lote también lo muestra (D-25)."
         ]
       },
       "prioridad": "Media",
@@ -411,7 +429,9 @@
           "Con más del 10 % de granos dudosos, el sistema pide repetir la foto con más granos dudosos y muestra cuáles son.",
           "Con 10 % o menos, el análisis sigue sin pedir nada.",
           "La foto repetida reemplaza a la anterior y pasa por la misma validación que las primeras.",
-          "Si tras 2 repeticiones siguen pasando del 10 %, el resultado sale con el aviso «Confianza baja: confirma con la prueba de corte»."
+          "Si tras 2 repeticiones siguen pasando del 10 %, el resultado sale con el aviso «Confianza baja: confirma con la prueba de corte».",
+          "Si el equipo cambia el umbral, los granos dudosos de las muestras ya analizadas no cambian.",
+          "Si una de las 2 muestras del lote salió con aviso de confianza baja, el resultado del lote también lo tiene (D-25)."
         ]
       },
       "rnf": "RNF-06 (facilidad de uso) y RNF-07 (F1-score mínimo).",
@@ -422,26 +442,27 @@
       "encabezado": "Calcular el % de granos sanos",
       "titulo": "Calcular el porcentaje de granos sanos del lote",
       "codigo": "RF-10",
-      "version": "1.0",
-      "fuente": "D-02: el resultado del lote se expresa como porcentaje de granos sanos.",
-      "descripcion": "El sistema calcula el porcentaje de granos sanos de la muestra: granos sanos dividido por el total de granos clasificados, por 100.",
+      "version": "1.1",
+      "fuente": "D-02 (el resultado del lote se expresa como porcentaje de granos sanos) y D-25 (suma de 2 muestras).",
+      "descripcion": "El sistema calcula el porcentaje de granos sanos del lote: granos sanos dividido por el total de granos clasificados, por 100. Si el lote tiene 2 muestras, suma los granos de las dos (D-25).",
       "justificacion": "Es el resultado principal con el que la empresa decide qué hacer con el lote (D-02).",
       "precondiciones": "Todos los granos de la muestra están clasificados (RF-08).",
       "restricciones": {
         "b": [
           "Se redondea a un decimal.",
-          "Las manchas y los granos cortados por el borde, descartados en RF-07, no cuentan."
+          "Las manchas y los granos cortados por el borde, descartados en RF-07, no cuentan.",
+          "Con 2 muestras se suman los granos; no se promedian los porcentajes (D-25)."
         ]
       },
       "prioridad": "Alta",
       "dificultad": "Baja",
       "dependencia": "Depende de RF-08 y, cuando está disponible, va después de RF-09. De este requerimiento dependen RF-11, RF-12 y RF-15.",
       "actores": "Usuario final (recibe el resultado).",
-      "entradas": "La clase de cada grano de la muestra.",
+      "entradas": "La clase de cada grano de las muestras del lote.",
       "proceso": {
         "n": [
-          "El sistema cuenta los granos sanos y el total de granos.",
-          "Calcula sanos ÷ total × 100.",
+          "El sistema cuenta los granos sanos y el total de granos de la muestra, y los guarda con ella.",
+          "Suma los conteos de las muestras del lote y calcula sanos ÷ total × 100.",
           "Guarda el porcentaje con el lote."
         ]
       },
@@ -452,7 +473,9 @@
           "Con 93 granos sanos de 100, el resultado es 93,0 %.",
           "Con 141 granos sanos de 150, el resultado es 94,0 %.",
           "Con 100 granos sanos de 107, el resultado es 93,5 % (redondeo a un decimal).",
-          "El porcentaje se guarda con el lote y con el modelo que hizo el análisis (D-18).",
+          "Con 2 muestras, 107 sanos de 120 y 113 de 125 dan 220 de 245 = 89,8 % (D-25).",
+          "Con 2 muestras de distinto tamaño se suman los granos: 109 sanos de 120 (90,8 %) y 120 de 150 (80,0 %) dan 229 de 270 = 84,8 %, no el promedio de los porcentajes (85,4 %).",
+          "El porcentaje se guarda con el lote, y cada muestra guarda sus conteos y el modelo que la analizó (D-18, D-25).",
           "El cálculo tiene pruebas unitarias y de mutación (RP-12) que no dependen del servicio de IA (D-21)."
         ]
       },
@@ -505,8 +528,8 @@
       "encabezado": "Generar la recomendación",
       "titulo": "Generar la recomendación según los rangos de la empresa",
       "codigo": "RF-12",
-      "version": "1.0",
-      "fuente": "D-10 (criterios de la recomendación) y anexo A.3.",
+      "version": "1.1",
+      "fuente": "D-10, D-24 y D-25 (criterios de la recomendación) y anexo A.3.",
       "descripcion": "Según el porcentaje de granos sanos y los rangos de la empresa, el sistema asigna una categoría probable y una acción sugerida.",
       "justificacion": "Convierte el porcentaje en una decisión: vender, seleccionar a mano o revisar el proceso.",
       "precondiciones": "El porcentaje de granos sanos está calculado (RF-10).",
@@ -515,7 +538,8 @@
           "Rangos por defecto: 96 % o más, Premium o Especial; de 90 a 95,9 %, Estándar; de 82 a 89,9 %, Corriente; menos de 82 %, Fuera de norma (A.3).",
           "Usa el porcentaje ya redondeado a un decimal de RF-10.",
           "La categoría se presenta como probable: la oficial se confirma con la prueba de corte (D-10).",
-          "Si el porcentaje queda a menos de 3 puntos de un punto de corte (96, 90 u 82 %), se sugiere analizar otra muestra (D-10)."
+          "Si el porcentaje queda a menos de 1 punto de un límite de la empresa (por defecto, 96, 90 u 82 %), se sugiere analizar otra muestra (D-24).",
+          "Un lote tiene como máximo 2 muestras: la segunda solo se habilita cuando la app la sugiere, y con 2 muestras ya no se sugiere otra (D-25)."
         ]
       },
       "prioridad": "Alta",
@@ -527,20 +551,22 @@
         "n": [
           "El sistema busca el rango que contiene el porcentaje.",
           "Asigna la categoría y la acción sugerida de ese rango.",
-          "Si el porcentaje queda a menos de 3 puntos de un punto de corte, agrega la sugerencia de analizar otra muestra.",
+          "Si el lote tiene una sola muestra y el porcentaje queda a menos de 1 punto de un límite, agrega la sugerencia de analizar otra muestra (D-24, D-25).",
           "Guarda la categoría y la recomendación con el lote y lo pasa a estado «Analizado»."
         ]
       },
       "salida": "La categoría probable y la recomendación; por ejemplo: «Estándar: apto para venta estándar».",
-      "postcondiciones": "El lote queda en estado «Analizado», con su resultado completo disponible en el historial (RF-14) y en el reporte (RF-15).",
+      "postcondiciones": "El lote queda en estado «Analizado», con su resultado completo disponible en el historial (RF-14) y en el reporte (RF-15). Si se sugirió otra muestra, el lote permite analizar una segunda (D-25).",
       "criterios": {
         "b": [
           "Con 99 %, la categoría es Premium o Especial, sin sugerencia (está a 3 puntos de 96).",
           "Con 93 %, la categoría es Estándar, sin sugerencia (está a 3 puntos de 90 y de 96).",
-          "Con 91 %, la categoría es Estándar y sugiere analizar otra muestra (está a 1 punto de 90).",
+          "Con 90,9 %, la categoría es Estándar y sugiere analizar otra muestra (está a 0,9 puntos de 90); con 91,0 % no la sugiere (está a 1 punto). Es la prueba de límite del margen (D-24).",
           "Con 90,0 % la categoría es Estándar y con 89,9 % es Corriente; ambos sugieren otra muestra (prueba de límite).",
           "Con 75 %, la categoría es Fuera de norma, sin sugerencia.",
           "Con 143 granos sanos de 149 (95,97 %, redondeado a 96,0 %), la categoría es Premium o Especial.",
+          "Con 2 muestras, la categoría sale de la suma de sus granos: 220 sanos de 245 (89,8 %) es Corriente, y no se sugiere otra muestra aunque quede a 0,2 puntos de 90 (D-25).",
+          "Un lote sin sugerencia, o que ya tiene 2 muestras, no permite agregar otra (D-25).",
           "Si la empresa cambió sus rangos (RF-13), se usan los de la empresa.",
           "La categoría siempre se muestra como probable."
         ]
@@ -597,7 +623,7 @@
       "encabezado": "Consultar el historial de lotes",
       "titulo": "Consultar el historial de lotes evaluados",
       "codigo": "RF-14",
-      "version": "1.0",
+      "version": "1.1",
       "fuente": "Levantamiento inicial: trazabilidad de los lotes evaluados.",
       "descripcion": "El usuario consulta los lotes de su empresa, analizados o pendientes, con filtros, y abre el detalle de cada uno.",
       "justificacion": "Da trazabilidad: qué se analizó, cuándo, quién lo hizo y con qué resultado.",
@@ -612,14 +638,15 @@
       "dificultad": "Baja",
       "dependencia": "Depende de RF-01 y de que haya lotes registrados (RF-04) o analizados (RF-12).",
       "actores": "Usuario final y administrador de empresa.",
-      "entradas": "Filtros opcionales: rango de fechas de análisis, estado, categoría, código del lote y usuario.",
+      "entradas": "Filtros opcionales: rango de fechas del resultado, estado, categoría, código del lote y usuario.",
       "proceso": {
         "n": [
           "El usuario abre «Historial».",
           "Aplica filtros, si quiere.",
           "El sistema muestra la lista ordenada del lote más reciente al más antiguo.",
-          "Al elegir un lote analizado, muestra su resultado: porcentaje, categoría, recomendación y fotos.",
-          "Al elegir un lote pendiente, permite continuar su análisis desde la captura de fotos (RF-05)."
+          "Al elegir un lote analizado, muestra su resultado (porcentaje, categoría y recomendación) y las fotos y cifras de cada muestra (D-25).",
+          "Al elegir un lote pendiente, permite continuar su análisis desde la captura de fotos (RF-05).",
+          "Si al lote se le sugirió otra muestra, permite analizar la segunda o retomarla (D-25)."
         ]
       },
       "salida": "La lista de lotes con fecha, código, estado, porcentaje de granos sanos y categoría, y el detalle de cada lote.",
@@ -627,10 +654,11 @@
       "criterios": {
         "b": [
           "La lista muestra solo lotes de la empresa del usuario.",
-          "Los filtros por fecha de análisis, estado, categoría, código y usuario funcionan solos o combinados.",
-          "El detalle muestra las mismas cifras del análisis original.",
+          "Los filtros por fecha del resultado, estado, categoría, código y usuario funcionan solos o combinados.",
+          "El detalle muestra las mismas cifras del resultado guardado y las de cada muestra.",
           "Con más de 20 lotes, la lista se divide en páginas.",
-          "Un lote pendiente se puede retomar desde la captura de fotos."
+          "Un lote pendiente se puede retomar desde la captura de fotos.",
+          "Un lote con otra muestra sugerida permite analizarla desde el detalle (D-25)."
         ]
       },
       "rnf": "RNF-02 (capacidad) y RNF-03 (datos separados por empresa).",
@@ -641,7 +669,7 @@
       "encabezado": "Descargar el reporte en PDF",
       "titulo": "Descargar el reporte del lote en PDF",
       "codigo": "RF-15",
-      "version": "1.0",
+      "version": "1.1",
       "fuente": "D-15: el reporte de cada lote se descarga en PDF.",
       "descripcion": "Desde el resultado o desde el historial, el usuario descarga un PDF con el resultado del lote.",
       "justificacion": "La empresa necesita un soporte para archivarlo o compartirlo con sus compradores.",
@@ -649,7 +677,8 @@
       "restricciones": {
         "b": [
           "El reporte aclara que la categoría es probable y que la oficial se confirma con la prueba de corte (D-10).",
-          "El reporte indica el modelo que hizo el análisis (D-18)."
+          "El reporte indica el modelo que analizó cada muestra (D-18).",
+          "Cuando termina la segunda muestra, el reporte se rehace con el resultado del lote (D-25)."
         ]
       },
       "prioridad": "Media",
@@ -660,18 +689,19 @@
       "proceso": {
         "n": [
           "El usuario pulsa «Descargar PDF».",
-          "El sistema arma el reporte con los datos del lote y del análisis.",
+          "El sistema arma el reporte con el resultado del lote y los datos de cada muestra.",
           "Guarda el PDF en S3 y lo entrega al navegador."
         ]
       },
-      "salida": "Un PDF con: empresa, código y fecha del lote, usuario, fotos marcadas, total de granos, porcentaje de granos sanos, categoría probable, recomendación, modelo usado y fecha del análisis.",
+      "salida": "Un PDF con: empresa, código y fecha del lote; el resultado del lote (total de granos, porcentaje de granos sanos, categoría probable, recomendación, aviso de confianza baja si lo tiene y fecha del resultado); y, por cada muestra, el usuario, las fotos marcadas, sus granos y el modelo usado.",
       "postcondiciones": "El PDF queda guardado y se puede volver a descargar.",
       "criterios": {
         "b": [
           "El PDF trae todos los datos de la salida.",
           "Las cifras del PDF coinciden con las de la pantalla.",
           "El PDF se abre bien en celular y en PC.",
-          "Al descargarlo de nuevo se obtiene el mismo reporte, aunque la empresa haya cambiado sus rangos."
+          "Al descargarlo de nuevo se obtiene el mismo reporte, aunque la empresa haya cambiado sus rangos.",
+          "Después de la segunda muestra, el PDF trae el resultado de la suma y las dos muestras (D-25)."
         ]
       },
       "rnf": "RNF-03 (datos separados por empresa) y RNF-05 (PC y celular).",
@@ -682,21 +712,23 @@
       "encabezado": "Consultar las estadísticas de la empresa",
       "titulo": "Consultar las estadísticas de la empresa",
       "codigo": "RF-16",
-      "version": "1.0",
+      "version": "1.1",
       "fuente": "Levantamiento inicial: estadísticas para tomar decisiones.",
       "descripcion": "El administrador de la empresa ve indicadores de los lotes analizados en un periodo.",
       "justificacion": "Permite ver la tendencia de la calidad y tomar decisiones con proveedores y procesos.",
       "precondiciones": "El administrador de empresa inició sesión (RF-01).",
       "restricciones": {
         "b": [
-          "Solo usa datos de la propia empresa (RNF-03)."
+          "Solo usa datos de la propia empresa (RNF-03).",
+          "Usa el resultado de cada lote; con 2 muestras, el de la suma (D-25).",
+          "Agrupa la finca o el proveedor sin distinguir mayúsculas ni espacios al inicio o al final (RF-04)."
         ]
       },
       "prioridad": "Media",
       "dificultad": "Media",
       "dependencia": "Depende de que haya lotes analizados (RF-12).",
       "actores": "Administrador de empresa.",
-      "entradas": "El periodo, por fecha del análisis (desde y hasta).",
+      "entradas": "El periodo, por fecha del resultado del lote (desde y hasta).",
       "proceso": {
         "n": [
           "El administrador abre «Estadísticas» y elige el periodo.",
@@ -710,7 +742,8 @@
         "b": [
           "Las cifras coinciden con los lotes del historial en el mismo periodo.",
           "Sin lotes en el periodo, muestra un mensaje en lugar de gráficas vacías.",
-          "Un usuario final no puede entrar a esta pantalla (RNF-04)."
+          "Un usuario final no puede entrar a esta pantalla (RNF-04).",
+          "«La Esperanza» y «la esperanza » cuentan como la misma finca."
         ]
       },
       "rnf": "RNF-03 (datos separados por empresa) y RNF-04 (autenticación y permisos).",
@@ -797,14 +830,15 @@
       "titulo": "Mantener separados los datos de cada empresa",
       "codigo": "RNF-03",
       "tipo": "Seguridad",
-      "version": "1.0",
-      "descripcion": "Cada empresa solo ve y modifica sus propios datos: lotes, fotos, resultados, reportes, usuarios, rangos y estadísticas. Todos los registros guardan la empresa a la que pertenecen, en una sola base de datos compartida.",
+      "version": "1.1",
+      "descripcion": "Cada empresa solo ve y modifica sus propios datos: lotes, fotos, resultados, reportes, usuarios, rangos y estadísticas. Todos los registros guardan la empresa a la que pertenecen, en una sola base de datos compartida. Hay dos excepciones: el administrador de la plataforma, que no pertenece a ninguna empresa (D-13), y la tabla de modelos de IA, común a todas (D-18).",
       "prioridad": "Alta",
       "criterios": {
         "b": [
           "Si un usuario pide un lote de otra empresa por su identificador, el sistema responde que no existe.",
           "Las listas y las estadísticas nunca mezclan datos de empresas distintas.",
           "Las fotos y los reportes en S3 solo se abren con enlaces temporales generados para la empresa dueña.",
+          "Solo el administrador de la plataforma puede no tener empresa: la base de datos rechaza un usuario de otro rol sin empresa.",
           "Hay pruebas de seguridad que lo verifican (RP-12)."
         ]
       }
