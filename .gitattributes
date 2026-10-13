@@ -2,6 +2,7 @@
 # deben conservar LF aunque se editen en Windows; si no, fallan con "bad interpreter".
 * text=auto
 *.sh text eol=lf
+*.sql text eol=lf
 mvnw text eol=lf
 *.cmd text eol=crlf
 *.bat text eol=crlf
