@@ -3,13 +3,13 @@ Nombre: decisiones.md
 Descripción: Decisiones (D-xx) y pendientes (P-xx) del proyecto. Fuente: 01_Requerimientos/InspectIA_Requerimientos.docx, anexo A.
 Fecha de creación: 12/10/2026
 Actualización: 13/10/2026
-Autor: Equipo InspectIA (exportado del documento de requerimientos v2.0)
-Versión: 1.1
+Autor: Equipo InspectIA (exportado del documento de requerimientos v2.1)
+Versión: 1.2
 -->
 
 # Decisiones y pendientes
 
-Copia de trabajo del anexo A del documento de requerimientos (v2.0). Las decisiones desde D-24 se tomaron después de ese documento y se registran primero aquí. Si una tarea choca con una decisión, pregunta antes de cambiarla.
+Copia de trabajo del anexo A del documento de requerimientos (v2.1). Si una tarea choca con una decisión, pregunta antes de cambiarla.
 
 ## Decisiones
 
