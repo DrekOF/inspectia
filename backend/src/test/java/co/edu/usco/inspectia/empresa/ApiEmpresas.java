@@ -4,7 +4,7 @@
  * Fecha de creación: 13/10/2026
  * Actualización: 13/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.empresa;
 
@@ -38,6 +38,10 @@ import tools.jackson.databind.json.JsonMapper;
  *       {@code /{id}/reactivar}.</li>
  *   <li>El registro lleva los datos de la empresa y, en {@code administrador}, los de su primer
  *       administrador ({@code crear_con} de {@code empresa.json}).</li>
+ *   <li>El listado responde una página: {@code contenido}, {@code pagina} (desde 0), {@code tamano},
+ *       {@code totalElementos} y {@code totalPaginas}. Trae 20 por página si no se pide otro tamaño
+ *       (como RF-14) y va ordenado por nombre, sin distinguir mayúsculas. Se pide otra página con
+ *       {@code ?pagina=}.</li>
  *   <li>Los errores responden en {@code application/problem+json} (RFC 9457), con la lista
  *       {@code errores}: un {@code campo} y un {@code mensaje} por cada dato que falla. Los mensajes
  *       salen en español si la petición no pide otro idioma.</li>
@@ -109,6 +113,11 @@ final class ApiEmpresas {
         return UUID.fromString((String) json(resultado).get("id"));
     }
 
+    /** Pide el listado; {@code consulta} va tal cual después de la ruta, por ejemplo {@code ?pagina=1}. */
+    MvcTestResult listar(String consulta) {
+        return enviar(HttpMethod.GET, RUTA + consulta, null, adminPlataforma());
+    }
+
     MvcTestResult ver(UUID id) {
         return enviar(HttpMethod.GET, RUTA + "/" + id, null, adminPlataforma());
     }
@@ -150,6 +159,12 @@ final class ApiEmpresas {
     static Map<String, Object> json(MvcTestResult resultado) {
         String cuerpo = new String(resultado.getResponse().getContentAsByteArray(), StandardCharsets.UTF_8);
         return JsonPath.read(cuerpo, "$");
+    }
+
+    /** Las filas de una página del listado. */
+    @SuppressWarnings("unchecked")
+    static List<Map<String, Object>> contenido(MvcTestResult resultado) {
+        return (List<Map<String, Object>>) json(resultado).get("contenido");
     }
 
     /** Los errores de la respuesta como pares (campo, mensaje). */

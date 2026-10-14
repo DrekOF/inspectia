@@ -5,7 +5,7 @@
  * Fecha de creación: 13/10/2026
  * Actualización: 13/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.empresa;
 
@@ -13,6 +13,7 @@ import static co.edu.usco.inspectia.empresa.ApiEmpresas.CONTRASENA;
 import static co.edu.usco.inspectia.empresa.ApiEmpresas.administrador;
 import static co.edu.usco.inspectia.empresa.ApiEmpresas.campos;
 import static co.edu.usco.inspectia.empresa.ApiEmpresas.contar;
+import static co.edu.usco.inspectia.empresa.ApiEmpresas.contenido;
 import static co.edu.usco.inspectia.empresa.ApiEmpresas.errores;
 import static co.edu.usco.inspectia.empresa.ApiEmpresas.json;
 import static co.edu.usco.inspectia.empresa.ApiEmpresas.registro;
@@ -26,6 +27,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -106,6 +109,43 @@ class RegistroEmpresaIT {
                 .containsEntry("correo", "ana.perez@cacaos.test")
                 .containsEntry("rol", "ADMIN_EMPRESA")
                 .containsEntry("activo", true);
+    }
+
+    @Test
+    @DisplayName("RF-02 · la empresa registrada aparece en el listado")
+    void apareceEnElListado() {
+        UUID registrada = api.registrarValida(registro(NIT, CORREO));
+        // 20 empresas más, escritas directamente en la base: el listado no revisa el dígito del NIT.
+        jdbc.update("""
+                INSERT INTO empresa (nombre, nit, ciudad)
+                SELECT 'Empresa ' || lpad(n::text, 2, '0'), (800000000 + n) || '-0', 'Neiva'
+                FROM generate_series(1, 19) AS n""");
+        jdbc.update("INSERT INTO empresa (nombre, nit, ciudad) VALUES ('agrocacao', '700000000-0', 'Garzón')");
+
+        MvcTestResult primera = api.listar("");
+
+        assertThat(primera).hasStatus(HttpStatus.OK);
+        assertThat(json(primera))
+                .containsOnlyKeys("contenido", "pagina", "tamano", "totalElementos", "totalPaginas")
+                .containsEntry("pagina", 0)
+                .containsEntry("tamano", 20)
+                .containsEntry("totalElementos", 21)
+                .containsEntry("totalPaginas", 2);
+        List<String> nombres = Stream.concat(Stream.of("agrocacao", "Cacaos del Huila"),
+                IntStream.rangeClosed(1, 18).mapToObj("Empresa %02d"::formatted)).toList();
+        assertThat(contenido(primera)).extracting(empresa -> empresa.get("nombre"))
+                .as("ordenadas por nombre, sin distinguir mayúsculas")
+                .containsExactlyElementsOf(nombres);
+        assertThat(contenido(primera).get(1))
+                .containsEntry("id", registrada.toString())
+                .containsEntry("nit", NIT)
+                .containsEntry("ciudad", "Neiva")
+                .containsEntry("activa", true);
+
+        MvcTestResult segunda = api.listar("?pagina=1");
+
+        assertThat(json(segunda)).containsEntry("pagina", 1).containsEntry("totalElementos", 21);
+        assertThat(contenido(segunda)).extracting(empresa -> empresa.get("nombre")).containsExactly("Empresa 19");
     }
 
     @Test
