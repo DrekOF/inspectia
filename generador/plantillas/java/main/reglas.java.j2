@@ -1,0 +1,28 @@
+{#
+  Nombre: reglas.java.j2
+  Descripción: Plantilla de la interfaz de las reglas de una entidad que se programan a mano (RP-23).
+  Fecha de creación: 13/10/2026
+  Actualización: 13/10/2026
+  Autor: Equipo InspectIA
+  Versión: 1.0
+#}
+{% from 'java/_macros.j2' import encabezado %}
+{{ encabezado(header) }}
+package {{ paquete }};
+
+/**
+ * Reglas de {@code {{ entidad }}} que no se pueden declarar en el JSON y se programan a mano (RP-23). Las
+ * implementa una clase del paquete {@code {{ paquete }}.reglas}; si falta, la aplicación no arranca.
+ */
+public interface Reglas{{ clase }} {
+{% for r in reglas %}
+
+    /**
+     * {{ (r.codigo ~ ': ' ~ r.descripcion ~ ' Se revisa ' ~ r.cuando_texto ~ ' (' ~ (r.fichas | join(', ')) ~ ').') | envolver('     * ') }}
+     *
+     * @param {{ var }} el registro con los datos que se van a guardar
+     * @return {@code true} si se cumple; si no, la API responde 400{{ (' en el campo ' ~ r.campo) if r.campo else '' }} con el mensaje de la regla
+     */
+    boolean {{ r.metodo }}({{ clase }} {{ var }});
+{% endfor %}
+}

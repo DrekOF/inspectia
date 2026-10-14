@@ -3,7 +3,7 @@
 # Fecha de creación: 13/10/2026
 # Actualización: 13/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.0
+# Versión: 1.1
 """Validación de los JSON de entidades.
 
 Revisa el formato de ``specs/entidades/README.md`` y que cada ficha, decisión o requisito citado
@@ -29,6 +29,8 @@ PALABRAS_SQL = {'and', 'or', 'not', 'in', 'is', 'null', 'true', 'false', 'betwee
                 'lower', 'btrim'}
 
 NOMBRE = re.compile(r'^[a-z][a-z0-9_]*$')
+#: Un correo con la forma mínima nombre@dominio.algo, para revisar los ejemplos.
+CORREO = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
 CLASE = re.compile(r'^[A-Z][A-Za-z0-9]*$')
 CODIGO_LISTA = re.compile(r'^[A-Z][A-Z0-9_]*$')
 RUTA = re.compile(r'^[a-z][a-z0-9-]*$')
@@ -165,6 +167,9 @@ class _Revision:
             if clave not in permitidos:
                 self.error(donde, f'mensaje para algo que el atributo no tiene ({clave})')
             self.textos(f'{donde}.mensajes.{clave}', mensaje)
+            self.marcadores(f'{donde}.mensajes.{clave}', mensaje, a.get('validaciones', {}))
+        if 'ejemplo' in a:
+            self.ejemplo(donde, a)
         self.textos(f'{donde}.etiquetas', a.get('etiquetas'))
         if e['crud'] != ('en_lista' in a and 'en_formulario' in a):
             self.error(donde, 'en_lista y en_formulario van solo, y siempre, en entidades con CRUD')
@@ -174,6 +179,39 @@ class _Revision:
             if otro is None or condicion.get('igual_a') not in valores_lista(self.entidades, otro):
                 self.error(donde, 'solo_lectura_si no apunta a un valor de una lista')
         self.fichas(donde, a.get('fichas'))
+
+    def marcadores(self, donde, mensaje, valores):
+        """Cada {nombre} del mensaje debe tener valor; $ no se permite (Bean Validation lo interpreta)."""
+        texto = json.dumps(mensaje, ensure_ascii=False)
+        for marcador in re.findall(r'\{(\w+)\}', texto):
+            if marcador not in valores:
+                self.error(donde, f'el mensaje usa {{{marcador}}}, que no está en validaciones')
+        if '$' in texto:
+            self.error(donde, 'los mensajes no pueden llevar $')
+
+    def ejemplo(self, donde, a):
+        """El ejemplo debe ser un valor válido del atributo: lo usan OpenAPI y las pruebas generadas."""
+        valor, tipo, v = a['ejemplo'], a.get('tipo'), a.get('validaciones', {})
+        if tipo in ('texto', 'contrasena'):
+            if not isinstance(valor, str) or not valor.strip():
+                self.error(donde, 'el ejemplo debe ser un texto con algo escrito')
+                return
+            maximo = min(a.get('longitud', len(valor)), v.get('longitud_max', len(valor)))
+            if not v.get('longitud_min', 0) <= len(valor) <= maximo:
+                self.error(donde, 'el ejemplo no cumple el largo del atributo')
+            if 'patron' in v and not re.search(v['patron'], valor):
+                self.error(donde, 'el ejemplo no cumple el patron')
+            if v.get('formato') == 'correo' and not CORREO.match(valor):
+                self.error(donde, 'el ejemplo no es un correo')
+        elif tipo in ('entero', 'decimal'):
+            if isinstance(valor, bool) or not isinstance(valor, (int, float)):
+                self.error(donde, 'el ejemplo debe ser un número')
+            elif not v.get('min', valor) <= valor <= v.get('max', valor):
+                self.error(donde, 'el ejemplo está fuera de min y max')
+        elif tipo == 'booleano' and not isinstance(valor, bool):
+            self.error(donde, 'el ejemplo debe ser true o false')
+        elif tipo == 'lista' and valor not in valores_lista(self.entidades, a):
+            self.error(donde, 'el ejemplo no está en la lista')
 
     def lista(self, donde, a):
         if ('valores' in a) == ('valores_de' in a):
@@ -248,6 +286,10 @@ class _Revision:
         if 'crear_con' not in e:
             return
         cc = e['crear_con']
+        if not NOMBRE.match(cc.get('nombre', '')):
+            self.error(f'{nombre}.crear_con', 'falta nombre (snake_case): el campo de la solicitud, como administrador')
+        elif atributo(e, cc['nombre']) is not None:
+            self.error(f'{nombre}.crear_con', f"el nombre {cc['nombre']} ya es un atributo de {nombre}")
         otra = self.entidades.get(cc.get('entidad'))
         if otra is None:
             self.error(f'{nombre}.crear_con', f"la entidad {cc.get('entidad')} no existe")
@@ -265,6 +307,10 @@ class _Revision:
         if 'valores_iniciales' not in e:
             return
         donde = f'{nombre}.valores_iniciales'
+        if e['valores_iniciales'].get('modo') != 'al_crear_empresa':
+            self.error(donde, 'el único modo es al_crear_empresa')
+        if e.get('por_empresa') != 'si':
+            self.error(donde, 'van solo en entidades con por_empresa si')
         for fila in e['valores_iniciales'].get('filas', []):
             for c, valor in fila.items():
                 a = atributo(e, c)

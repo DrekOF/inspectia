@@ -3,7 +3,7 @@
 # Fecha de creación: 13/10/2026
 # Actualización: 13/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.0
+# Versión: 1.1
 """Pruebas de la validación de los JSON de entidades contra su formato y contra specs/."""
 
 import pytest
@@ -64,3 +64,33 @@ def test_detecta_columna_implicita_repetida(entidades, codigos):
     errores = validar(entidades, codigos)
 
     assert any('fecha_creacion' in e for e in errores)
+
+
+@pytest.mark.caso('RP-23 · la validación pide el nombre de crear_con, que es el campo de la solicitud')
+def test_crear_con_necesita_nombre(entidades, codigos):
+    del entidades['empresa']['crear_con']['nombre']
+
+    errores = validar(entidades, codigos)
+
+    assert any('crear_con' in e and 'falta nombre' in e for e in errores)
+
+
+@pytest.mark.caso('RP-23 · la validación revisa que el ejemplo de un atributo cumpla sus validaciones')
+def test_ejemplo_debe_ser_valido(entidades, codigos):
+    atributo(entidades['empresa'], 'nit')['ejemplo'] = '900.123.456-8'
+    atributo(entidades['usuario'], 'correo')['ejemplo'] = 'sin-arroba'
+
+    errores = validar(entidades, codigos)
+
+    assert 'empresa.nit: el ejemplo no cumple el patron' in errores
+    assert 'usuario.correo: el ejemplo no es un correo' in errores
+
+
+@pytest.mark.caso('RP-23 · la validación rechaza un mensaje con un marcador que no está en validaciones')
+def test_marcador_de_mensaje_inexistente(entidades, codigos):
+    mensajes = atributo(entidades['usuario'], 'contrasena_hash')['mensajes']
+    mensajes['longitud_min']['es'] = 'Debe tener al menos {minimo} caracteres.'
+
+    errores = validar(entidades, codigos)
+
+    assert any('{minimo}' in e for e in errores)

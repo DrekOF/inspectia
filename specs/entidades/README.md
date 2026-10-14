@@ -4,7 +4,7 @@ Descripción: Qué hay en specs/entidades/ y formato de los JSON de entidades qu
 Fecha de creación: 12/10/2026
 Actualización: 13/10/2026
 Autor: Equipo InspectIA
-Versión: 1.4
+Versión: 1.5
 -->
 
 # specs/entidades
@@ -24,9 +24,21 @@ Un archivo JSON por cada tabla de la base de datos. Es la entrada de `generador/
 
 ## Qué genera el generador
 
-- **De todos los JSON:** el script SQL de creación de las tablas, con sus restricciones, índices y triggers (RP-15), y los textos en español e inglés (etiquetas de entidades, atributos y valores, y mensajes).
-- **De los que tienen `"crud": true`, además:** en el backend, entidad JPA, repositorio, servicio, controlador REST, DTO, validaciones, OpenAPI y pruebas; en el frontend, la lista, el formulario con Formik y Yup, las rutas y los permisos.
+- **De todos los JSON:** el script SQL de creación de las tablas, con sus restricciones, índices y triggers (RP-15), y los textos en español e inglés (`i18n/generado.properties` y `generado_en.properties`): etiquetas de entidades, atributos y valores, y mensajes (RP-11).
+- **De los que tienen `"crud": true`:** la persistencia en el backend: entidad JPA, repositorio (con las consultas de los datos únicos), un `enum` por cada lista y, si hay `valores_iniciales`, la clase que los arma.
+- **De los que están en `generador/alcance.json`, además:** la API en `/api/v1/<ruta>`: servicio, controlador con OpenAPI, reglas de acceso por ruta, solicitudes con sus validaciones, respuesta, la interfaz de las `reglas` y una prueba de integración generada. Las demás entidades con CRUD reciben su API cuando llega su ficha (usuario con RF-03, rangos con RF-13). Las pantallas del frontend llegan en otra tarea.
 - El código generado no se edita a mano (RP-23). Las `reglas` se programan a mano, fuera de las carpetas generadas, y el código generado las llama.
+
+### Cómo responde la API generada
+
+- **Roles:** los de `operaciones`. La cadena de seguridad los revisa por ruta antes de leer la petición, así que un rol sin permiso recibe 403 aunque envíe datos inválidos; `@PreAuthorize` es la segunda barrera (RNF-04).
+- **Orden de las revisiones:** primero las validaciones del JSON y las `reglas` (400); después los datos únicos (409). Lo que se guarda en una operación, incluido lo de `crear_con` y `valores_iniciales`, va en una sola transacción.
+- **Listado:** una página con `contenido`, `pagina` (desde 0), `tamano`, `totalElementos` y `totalPaginas`. Trae 20 filas por página si no se pide otro tamaño (máximo 100) y se ordena por `nombre`, sin distinguir mayúsculas, si la entidad tiene ese atributo; si no, por antigüedad. Se pide otra página con `?pagina=` y otro tamaño con `?tamano=`.
+- **Errores:** `application/problem+json` (RFC 9457). Los 400 y 409 traen `errores`, con un `campo` y un `mensaje` por cada dato que corregir, uno por campo. Los mensajes salen en el idioma de `Accept-Language`; si la petición no pide ninguno, en español.
+
+### Lo que la API generada todavía no soporta
+
+Si una entidad del alcance usa algo de esta lista, el generador se detiene y dice qué falta: ser por empresa (necesita la empresa de la sesión, que llega con RF-01), `valores_en_formulario`, `solo_lectura_si`, `no_posterior_a_hoy`, atributos `referencia` o `contrasena` en el formulario, `reglas` de tipo `efecto` o `accion` o con `parametros`, `edicion_en_bloque` y la operación `restaurar_por_defecto`. Se agregan a las plantillas cuando una ficha los necesite.
 
 ## Columnas implícitas
 
@@ -56,7 +68,7 @@ No se escriben en los JSON. El generador las agrega a todas las tablas, y se pue
 | `atributo_activo` | No | Atributo booleano que cambian `desactivar` y `reactivar` |
 | `operaciones` | Con CRUD | Operación → roles que pueden usarla: `listar`, `ver`, `crear`, `editar`, `desactivar`, `reactivar` y `restaurar_por_defecto`. No existe `eliminar`: en InspectIA no se borra nada por CRUD |
 | `edicion_en_bloque` | No | `true`: el formulario edita juntas todas las filas de la empresa (rangos, RF-13) |
-| `crear_con` | No | Otra entidad que se crea en el mismo formulario y en la misma transacción: `entidad`, `etiquetas`, `atributos` (con sus validaciones de origen) y `valores` fijos |
+| `crear_con` | No | Otra entidad que se crea en el mismo formulario y en la misma transacción: `entidad`, `nombre` (el campo de la solicitud, como `administrador`), `etiquetas`, `atributos` (con sus validaciones de origen) y `valores` fijos |
 | `atributos` | Sí | Lista de atributos (ver abajo) |
 | `unicos` | No | Unicidad de varias columnas, normalizada o parcial |
 | `checks` | No | Condiciones entre columnas, en SQL de PostgreSQL |
@@ -85,6 +97,7 @@ No se escriben en los JSON. El generador las agrega a todas las tablas, y se pue
 | `solo_lectura_si` | `{ "atributo", "igual_a" }`: el campo no se edita en las filas que cumplen la condición |
 | `sugerencias` | `texto`: el formulario sugiere los valores que ya usó la empresa |
 | `ayuda` | Texto de ayuda bajo el campo (`es` y `en`) |
+| `ejemplo` | Un valor válido, que cumple todas las validaciones y `reglas` del atributo. Va en la documentación OpenAPI y en los datos de las pruebas generadas. Obligatorio si el atributo tiene `patron` y va en el formulario de una API, porque no se puede inventar (un NIT con su dígito de verificación, por ejemplo); en los demás, el generador arma uno |
 | `en_lista`, `en_formulario` | Solo con CRUD: si el atributo sale en la lista y en el formulario |
 | `etiquetas` | `es` y `en` |
 | `fichas` | Trazabilidad del atributo |

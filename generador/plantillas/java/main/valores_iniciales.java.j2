@@ -1,0 +1,50 @@
+{#
+  Nombre: valores_iniciales.java.j2
+  Descripción: Plantilla de la clase que arma las filas por defecto de cada empresa nueva (RP-23).
+  Fecha de creación: 13/10/2026
+  Actualización: 13/10/2026
+  Autor: Equipo InspectIA
+  Versión: 1.0
+#}
+{% from 'java/_macros.j2' import encabezado %}
+{{ encabezado(header) }}
+package {{ paquete }};
+
+{% for i in importaciones %}
+import {{ i }};
+{% endfor %}
+
+/**
+ * Filas por defecto de {@code {{ entidad }}}. {{ descripcion | envolver(' * ') }}
+ */
+public final class {{ clase }}ValoresIniciales {
+
+    private {{ clase }}ValoresIniciales() {
+    }
+
+    /**
+     * Las filas por defecto de una empresa nueva, listas para guardar.
+     *
+     * @param empresaId la empresa nueva
+     * @return las filas, en el orden del JSON
+     */
+    public static List<{{ clase }}> paraEmpresa(UUID empresaId) {
+        return List.of(
+{% for fila in filas %}
+{% set cierre = '),' if not loop.last else '));' %}
+                fila(empresaId,
+{% for valor in fila %}
+                        {{ valor }}{{ ',' if not loop.last else cierre }}
+{% endfor %}
+{% endfor %}
+    }
+
+    private static {{ clase }} fila(UUID empresaId{% for p in parametros %}, {{ p.tipo }} {{ p.nombre }}{% endfor %}) {
+        {{ clase }} fila = new {{ clase }}();
+        fila.setEmpresaId(empresaId);
+{% for p in parametros %}
+        fila.{{ p.setter }}({{ p.nombre }});
+{% endfor %}
+        return fila;
+    }
+}

@@ -4,7 +4,7 @@
 # Fecha de creación: 13/10/2026
 # Actualización: 13/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.0
+# Versión: 1.1
 """Demostración de otra temática: el producto de la pauta del docente (id, nombre, categoria,
 descripcion, estado), junto con las entidades de la plataforma (empresa y usuario)."""
 
@@ -44,3 +44,20 @@ def test_genera_los_archivos_de_producto(entidades_producto, tmp_path):
         assert f'\n    {columna},\n' in sql
     assert "CONSTRAINT producto_estado_valores CHECK (estado IN ('ACTIVO', 'INACTIVO'))" in sql
     assert comprobar(archivos, tmp_path).vacia
+
+
+@pytest.mark.caso('RP-23 · el generador produce la API de producto, otra temática, con las mismas plantillas')
+def test_genera_la_api_de_producto(entidades_producto):
+    archivos = {a.ruta: a.contenido for a in generar_archivos(entidades_producto, api=('producto',))}
+    base = 'backend/src/generated/java/co/edu/usco/inspectia/producto'
+
+    for clase in ('Producto', 'ProductoEstado', 'ProductoRepositorio', 'ProductoServicio', 'ProductoControlador',
+                  'ProductoAcceso', 'ProductoCrearSolicitud', 'ProductoEditarSolicitud', 'ProductoRespuesta',
+                  'ProductoMapeador'):
+        assert f'{base}/{clase}.java' in archivos
+    assert 'backend/src/test-generated/java/co/edu/usco/inspectia/producto/ProductoApiGeneradaIT.java' in archivos
+    controlador = archivos[f'{base}/ProductoControlador.java']
+    assert '@RequestMapping("/api/v1/productos")' in controlador
+    assert 'desactivar' not in controlador, 'producto no se desactiva: pasa a estado INACTIVO'
+    assert 'private ProductoEstado estado = ProductoEstado.ACTIVO;' in archivos[f'{base}/Producto.java']
+    assert 'if (solicitud.estado() != null) {' in archivos[f'{base}/ProductoMapeador.java']

@@ -1,0 +1,11 @@
+{
+  "_header": {
+    "nombre": "alcance.json",
+    "descripcion": "Entidades con CRUD a las que el generador les genera la API (servicio, controlador, solicitudes, respuesta y pruebas). Las demás entidades con CRUD solo tienen persistencia hasta que llegue su ficha: usuario con RF-03 y rango_recomendacion con RF-13.",
+    "fecha_creacion": "13/10/2026",
+    "actualizacion": "13/10/2026",
+    "autor": "Equipo InspectIA",
+    "version": "1.0"
+  },
+  "api": ["empresa"]
+}

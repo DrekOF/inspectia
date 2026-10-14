@@ -5,7 +5,7 @@
     "fecha_creacion": "13/10/2026",
     "actualizacion": "13/10/2026",
     "autor": "Equipo InspectIA",
-    "version": "1.2"
+    "version": "1.3"
   },
   "entidad": "usuario",
   "clase": "Usuario",
@@ -35,6 +35,7 @@
       "longitud": 120,
       "obligatorio": true,
       "validaciones": { "recortar": true },
+      "ejemplo": "Ana Pérez",
       "en_lista": true,
       "en_formulario": true,
       "etiquetas": { "es": "Nombre", "en": "Name" },
@@ -46,6 +47,7 @@
       "longitud": 254,
       "obligatorio": true,
       "validaciones": { "recortar": true, "minusculas": true, "formato": "correo" },
+      "ejemplo": "ana.perez@example.com",
       "en_lista": true,
       "en_formulario": true,
       "etiquetas": { "es": "Correo", "en": "Email" },

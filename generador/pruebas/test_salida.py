@@ -3,7 +3,7 @@
 # Fecha de creación: 13/10/2026
 # Actualización: 13/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.0
+# Versión: 1.1
 """Pruebas de cómo se escriben los archivos generados y de cómo se detecta que alguien los editó."""
 
 import pytest
@@ -59,7 +59,7 @@ def test_comprobar_detecta_faltantes_y_sobrantes(entidades, tmp_path):
     escribir(archivos, tmp_path)
     (tmp_path / RUTA_MIGRACION).unlink()
     sobrante = tmp_path / 'backend/src/generated/java/Extra.java'
-    sobrante.parent.mkdir(parents=True)
+    sobrante.parent.mkdir(parents=True, exist_ok=True)
     sobrante.write_text('class Extra {}\n', encoding='utf-8')
 
     diferencias = comprobar(archivos, tmp_path)
@@ -80,7 +80,7 @@ def test_comprobar_ignora_crlf(entidades, tmp_path):
 
 @pytest.mark.caso('RP-23 · generar borra de las carpetas generadas lo que ya no se genera')
 def test_generar_borra_lo_que_sobra(entidades, tmp_path):
-    viejo = tmp_path / 'backend/src/generated/java/co/Viejo.java'
+    viejo = tmp_path / 'backend/src/generated/java/viejo/Viejo.java'
     viejo.parent.mkdir(parents=True)
     viejo.write_text('class Viejo {}\n', encoding='utf-8')
     a_mano = tmp_path / 'backend/src/main/java/AMano.java'

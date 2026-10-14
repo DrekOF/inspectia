@@ -1,10 +1,12 @@
 # Nombre: carga.py
-# Descripción: Lectura de los JSON de entidades y de los códigos que existen en specs/.
+# Descripción: Lectura de los JSON de entidades, del alcance de la API y de los códigos que existen
+#              en specs/.
 # Fecha de creación: 13/10/2026
 # Actualización: 13/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.0
-"""Lectura de los JSON de entidades y de los códigos (RF, RNF, D, P y RP) que existen en specs/."""
+# Versión: 1.1
+"""Lectura de los JSON de entidades, de ``alcance.json`` y de los códigos (RF, RNF, D, P y RP) que
+existen en specs/."""
 
 import json
 import re
@@ -36,6 +38,34 @@ def cargar_entidades(*fuentes):
             raise ValueError(f'La entidad {nombre} está definida dos veces')
         entidades[nombre] = datos
     return dict(sorted(entidades.items()))
+
+
+def cargar_alcance(ruta):
+    """Entidades a las que se genera la API, según ``alcance.json``.
+
+    Args:
+        ruta: el archivo ``alcance.json``.
+
+    Returns:
+        tuple: los nombres de ``api``, en el orden del archivo.
+    """
+    datos = json.loads(Path(ruta).read_text(encoding='utf-8'))
+    return tuple(datos.get('api', []))
+
+
+def revisar_alcance(api, entidades):
+    """Errores del alcance: cada entidad de ``api`` debe existir y tener CRUD.
+
+    Returns:
+        list: mensajes de error; vacía si todo está bien.
+    """
+    errores = []
+    for nombre in api:
+        if nombre not in entidades:
+            errores.append(f'alcance.json: la entidad {nombre} no existe')
+        elif not entidades[nombre]['crud']:
+            errores.append(f'alcance.json: {nombre} no tiene CRUD')
+    return errores
 
 
 def cargar_codigos(specs):

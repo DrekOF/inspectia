@@ -1,0 +1,292 @@
+{#
+  Nombre: api_generada.java.j2
+  Descripción: Plantilla de la prueba generada de la API de una entidad: permisos, validaciones y
+               datos únicos del JSON (RP-13, RP-23).
+  Fecha de creación: 13/10/2026
+  Actualización: 13/10/2026
+  Autor: Equipo InspectIA
+  Versión: 1.0
+#}
+{% from 'java/_macros.j2' import encabezado %}
+{% set p = prueba_api %}
+{{ encabezado(header) }}
+package {{ paquete }};
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+
+import co.edu.usco.inspectia.PruebaIntegracion;
+import com.jayway.jsonpath.JsonPath;
+import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Stream;
+import org.assertj.core.groups.Tuple;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.web.servlet.assertj.MockMvcTester;
+import org.springframework.test.web.servlet.assertj.MvcTestResult;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
+import tools.jackson.databind.json.JsonMapper;
+
+/**
+ * Pruebas generadas de la API de {@code {{ entidad }}} (RP-13, RP-23): cada permiso de {@code operaciones}
+ * y cada validación del JSON tiene un caso, además de los datos únicos. Las pruebas de los criterios de
+ * las fichas van aparte, escritas a mano.
+ *
+ * <p>Los datos válidos salen de {@code ejemplo} de cada atributo. Las pruebas confirman sus transacciones
+ * y vacían las tablas antes y después de cada una.
+ */
+@PruebaIntegracion
+class {{ clase }}ApiGeneradaIT {
+
+    private static final String RUTA = "{{ ruta_api }}";
+    private static final JsonMapper JSON = JsonMapper.builder().build();
+
+    @Autowired
+    private MockMvcTester mvc;
+
+    @Autowired
+    private JdbcTemplate jdbc;
+
+    @BeforeEach
+    void vaciarAntes() {
+        vaciar();
+    }
+
+    @AfterEach
+    void vaciarDespues() {
+        vaciar();
+    }
+
+    @ParameterizedTest(name = "{0} · {1}")
+    @DisplayName("RNF-04 · C2 · cada operación de {{ entidad }} solo la usan los roles de su JSON")
+    @MethodSource("permisos")
+    void permisos(String operacion, String rol, boolean permitido) {
+        MvcTestResult resultado = enviar(operacion, user("prueba@inspectia.test").roles(rol));
+
+        if (permitido) {
+            assertThat(resultado.getResponse().getStatus()).isNotIn(401, 403);
+        } else {
+            assertThat(resultado).hasStatus(HttpStatus.FORBIDDEN);
+        }
+    }
+
+    static Stream<Arguments> permisos() {
+        return Stream.of(
+{% for operacion, rol, permitido in p.permisos %}
+                Arguments.of("{{ operacion }}", "{{ rol }}", {{ 'true' if permitido else 'false' }}){{ ',' if not loop.last else ');' }}
+{% endfor %}
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @DisplayName("RNF-04 · C1 · sin sesión, cada operación de {{ entidad }} responde 401")
+    @MethodSource("operaciones")
+    void sinSesion(String operacion) {
+        assertThat(enviar(operacion, null)).hasStatus(HttpStatus.UNAUTHORIZED);
+    }
+
+    static Stream<String> operaciones() {
+        return Stream.of({% for r in rutas %}"{{ r.operacion }}"{{ ', ' if not loop.last else '' }}{% endfor %});
+    }
+{% if 'crear' in operaciones %}
+
+    @ParameterizedTest(name = "{0}: {2}")
+    @DisplayName("{{ p.ficha }} · cada validación del JSON de {{ entidad }} responde 400 con su mensaje al crear")
+    @MethodSource("validacionesAlCrear")
+    void validacionesAlCrear(String campo, Object valor, String mensaje) {
+        Map<String, Object> datos = datosParaCrear();
+        poner(datos, campo, valor);
+
+        MvcTestResult resultado = enviar(HttpMethod.POST, RUTA, datos, conPermiso("crear"));
+
+        assertThat(resultado).hasStatus(HttpStatus.BAD_REQUEST);
+        assertThat(errores(resultado)).contains(tuple(campo, mensaje));
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM {{ entidad }}", Integer.class)).isZero();
+    }
+
+    static Stream<Arguments> validacionesAlCrear() {
+        return Stream.of(
+{% for campo, valor, mensaje in p.validaciones_crear %}
+                Arguments.of("{{ campo }}", {{ valor }}, {{ mensaje | java }}){{ ',' if not loop.last else ');' }}
+{% endfor %}
+    }
+{% endif %}
+{% if 'crear' in operaciones and 'editar' in operaciones and p.validaciones_editar %}
+
+    @ParameterizedTest(name = "{0}: {2}")
+    @DisplayName("{{ p.ficha }} · cada validación del JSON de {{ entidad }} responde 400 con su mensaje al editar")
+    @MethodSource("validacionesAlEditar")
+    void validacionesAlEditar(String campo, Object valor, String mensaje) {
+        UUID id = crear();
+        Map<String, Object> datos = datosParaEditar();
+        poner(datos, campo, valor);
+
+        MvcTestResult resultado = enviar(HttpMethod.PUT, RUTA + "/" + id, datos, conPermiso("editar"));
+
+        assertThat(resultado).hasStatus(HttpStatus.BAD_REQUEST);
+        assertThat(errores(resultado)).contains(tuple(campo, mensaje));
+    }
+
+    static Stream<Arguments> validacionesAlEditar() {
+        return Stream.of(
+{% for campo, valor, mensaje in p.validaciones_editar %}
+                Arguments.of("{{ campo }}", {{ valor }}, {{ mensaje | java }}){{ ',' if not loop.last else ');' }}
+{% endfor %}
+    }
+{% endif %}
+{% if 'crear' in operaciones and p.unicos %}
+
+    @Test
+    @DisplayName("{{ p.ficha }} · los datos únicos del JSON de {{ entidad }} no se repiten: responde 409")
+    void datosUnicos() {
+        crear();
+
+        MvcTestResult resultado = enviar(HttpMethod.POST, RUTA, datosParaCrear(), conPermiso("crear"));
+
+        assertThat(resultado).hasStatus(HttpStatus.CONFLICT);
+        assertThat(errores(resultado)).contains(
+{% for campo, mensaje in p.unicos %}
+                tuple("{{ campo }}", {{ mensaje | java }}){{ ',' if not loop.last else ');' }}
+{% endfor %}
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM {{ entidad }}", Integer.class)).isEqualTo(1);
+    }
+{% endif %}
+{% if 'crear' in operaciones and p.normalizados %}
+
+    @Test
+    @DisplayName("{{ p.ficha }} · {{ entidad }} guarda sin espacios al inicio ni al final los textos que su JSON pide recortar")
+    void recortaLosTextos() {
+        Map<String, Object> datos = datosParaCrear();
+{% for campo, valor in p.normalizados %}
+        datos.put("{{ campo }}", "  " + {{ valor }} + "  ");
+{% endfor %}
+
+        MvcTestResult resultado = enviar(HttpMethod.POST, RUTA, datos, conPermiso("crear"));
+
+        assertThat(resultado).hasStatus(HttpStatus.CREATED);
+{% for campo, valor in p.normalizados %}
+        assertThat(json(resultado)).containsEntry("{{ campo }}", {{ valor }});
+{% endfor %}
+    }
+{% endif %}
+
+    private void vaciar() {
+        jdbc.execute("TRUNCATE {{ p.tablas }} CASCADE");
+    }
+{% if 'crear' in operaciones %}
+
+    private static Map<String, Object> datosParaCrear() {
+        Map<String, Object> datos = new LinkedHashMap<>();
+{% for campo, valor in p.datos_crear %}
+        datos.put("{{ campo }}", {{ valor }});
+{% endfor %}
+{% if crear_con %}
+        Map<String, Object> {{ crear_con.nombre }} = new LinkedHashMap<>();
+{% for campo, valor in p.datos_crear_con %}
+        {{ crear_con.nombre }}.put("{{ campo }}", {{ valor }});
+{% endfor %}
+        datos.put("{{ crear_con.nombre }}", {{ crear_con.nombre }});
+{% endif %}
+        return datos;
+    }
+
+    private UUID crear() {
+        MvcTestResult resultado = enviar(HttpMethod.POST, RUTA, datosParaCrear(), conPermiso("crear"));
+        assertThat(resultado).hasStatus(HttpStatus.CREATED);
+        return UUID.fromString((String) json(resultado).get("id"));
+    }
+{% endif %}
+{% if 'editar' in operaciones %}
+
+    private static Map<String, Object> datosParaEditar() {
+        Map<String, Object> datos = new LinkedHashMap<>();
+{% for campo, valor in p.datos_editar %}
+        datos.put("{{ campo }}", {{ valor }});
+{% endfor %}
+        return datos;
+    }
+{% endif %}
+
+    /** Envía la operación con datos válidos; las que llevan un registro usan uno que no existe. */
+    private MvcTestResult enviar(String operacion, RequestPostProcessor usuario) {
+        String registro = RUTA + "/" + UUID.randomUUID();
+        return switch (operacion) {
+{% for r in rutas %}
+            case "{{ r.operacion }}" -> enviar(HttpMethod.{{ r.metodo }}, {{ r.uri_prueba }}, {{ r.datos_prueba }}, usuario);
+{% endfor %}
+            default -> throw new IllegalArgumentException(operacion);
+        };
+    }
+
+    private MvcTestResult enviar(HttpMethod metodo, String uri, Object datos, RequestPostProcessor usuario) {
+        MockMvcTester.MockMvcRequestBuilder peticion = mvc.method(metodo).uri(uri).with(csrf());
+        if (datos != null) {
+            peticion.contentType(MediaType.APPLICATION_JSON).content(JSON.writeValueAsString(datos));
+        }
+        if (usuario != null) {
+            peticion.with(usuario);
+        }
+        return peticion.exchange();
+    }
+
+    /** Un usuario con el primer rol que puede usar la operación. */
+    private static RequestPostProcessor conPermiso(String operacion) {
+        String rol = switch (operacion) {
+{% for r in rutas %}
+            case "{{ r.operacion }}" -> "{{ r.roles[0] }}";
+{% endfor %}
+            default -> throw new IllegalArgumentException(operacion);
+        };
+        return user("prueba@inspectia.test").roles(rol);
+    }
+
+    /** Cambia un dato; {@code administrador.correo} cambia el correo dentro de {@code administrador}. */
+    @SuppressWarnings("unchecked")
+    private static void poner(Map<String, Object> datos, String campo, Object valor) {
+        String[] partes = campo.split("\\.", 2);
+        if (partes.length == 2) {
+            ((Map<String, Object>) datos.get(partes[0])).put(partes[1], valor);
+        } else {
+            datos.put(campo, valor);
+        }
+    }
+
+    private static Map<String, Object> json(MvcTestResult resultado) {
+        return JsonPath.read(new String(resultado.getResponse().getContentAsByteArray(), StandardCharsets.UTF_8), "$");
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<Tuple> errores(MvcTestResult resultado) {
+        List<Map<String, Object>> errores = (List<Map<String, Object>>) json(resultado).get("errores");
+        assertThat(errores).as("la respuesta trae la lista «errores»").isNotNull();
+        return errores.stream().map(error -> tuple(error.get("campo"), error.get("mensaje"))).toList();
+    }
+{% if p.usa_correo_largo %}
+
+    /** Un correo válido de {@code largo} caracteres: 64 en la parte local y etiquetas de hasta 63. */
+    private static String correoDeLargo(int largo) {
+        String local = "a".repeat(64);
+        StringBuilder dominio = new StringBuilder("co");
+        while (local.length() + 1 + dominio.length() < largo) {
+            int falta = largo - local.length() - 1 - dominio.length() - 1;
+            dominio.insert(0, "b".repeat(Math.max(1, Math.min(63, falta))) + ".");
+        }
+        return local + "@" + dominio;
+    }
+{% endif %}
+}

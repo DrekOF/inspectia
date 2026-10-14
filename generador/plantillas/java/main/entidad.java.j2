@@ -1,0 +1,52 @@
+{#
+  Nombre: entidad.java.j2
+  Descripción: Plantilla de la entidad JPA de una tabla con CRUD (RP-23).
+  Fecha de creación: 13/10/2026
+  Actualización: 13/10/2026
+  Autor: Equipo InspectIA
+  Versión: 1.0
+#}
+{% from 'java/_macros.j2' import encabezado %}
+{{ encabezado(header) }}
+package {{ paquete }};
+
+{% for i in importaciones %}
+import {{ i }};
+{% endfor %}
+
+/**
+ * {{ descripcion | envolver(' * ') }}
+ *
+ * <p>Tabla {@code {{ tabla }}} ({{ fichas | join(', ') }}). Las fechas las pone la base: la de creación al
+ * insertar y la de actualización con un trigger en cada cambio.
+ */
+@Entity
+@Table(name = "{{ tabla }}")
+@Getter
+@Setter
+public class {{ clase }} {
+
+    /** Identificador (UUID v7): lo genera Hibernate al guardar; la base tiene uuidv7() para los scripts. */
+    @Id
+    @UuidGenerator(style = UuidGenerator.Style.VERSION_7)
+    @Column(name = "id", nullable = false, updatable = false)
+    private UUID id;
+{% for c in campos %}
+
+    /** {{ c.javadoc }} */
+{% for a in c.anotaciones %}
+    {{ a }}
+{% endfor %}
+    private {{ c.tipo }} {{ c.nombre }}{% if c.inicial is not none %} = {{ c.inicial }}{% endif %};
+{% endfor %}
+
+    /** Fecha de creación del registro: la pone la base al insertar. */
+    @Generated
+    @Column(name = "fecha_creacion", nullable = false)
+    private OffsetDateTime fechaCreacion;
+
+    /** Fecha de la última actualización: la mantiene un trigger de la base. */
+    @Generated(event = {EventType.INSERT, EventType.UPDATE})
+    @Column(name = "fecha_actualizacion", nullable = false)
+    private OffsetDateTime fechaActualizacion;
+}

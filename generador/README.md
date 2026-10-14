@@ -4,7 +4,7 @@ Descripción: Qué hace el generador de InspectIA (RP-23), cómo se usa y cómo 
 Fecha de creación: 12/10/2026
 Actualización: 13/10/2026
 Autor: Equipo InspectIA
-Versión: 1.1
+Versión: 1.2
 -->
 
 # generador
@@ -13,13 +13,17 @@ Scripts de Python 3.13 que leen las entidades de `specs/entidades/*.json` (forma
 
 ## Qué genera hoy
 
-| Archivo | Qué es |
-|---|---|
-| `backend/src/generated/resources/db/migration/V1__esquema_inicial.sql` | Las 8 tablas, con restricciones, índices, triggers y comentarios. Flyway la aplica al arrancar el backend (RP-15) |
+| De | Archivos | Qué es |
+|---|---|---|
+| Todas las entidades | `backend/src/generated/resources/db/migration/V1__esquema_inicial.sql` | Las 8 tablas, con restricciones, índices, triggers y comentarios. Flyway la aplica al arrancar el backend (RP-15) |
+| Todas las entidades | `backend/src/generated/resources/i18n/generado.properties` y `generado_en.properties` | Etiquetas, valores de las listas y mensajes en español y en inglés (RP-11) |
+| Las entidades con CRUD | `backend/src/generated/java/.../<modulo>/` | Entidad JPA, repositorio, un `enum` por lista y los valores iniciales |
+| Las entidades de `alcance.json` | `backend/src/generated/java/.../<modulo>/` | API REST: servicio, controlador, reglas de acceso por ruta, solicitudes, respuesta, mapeador y la interfaz de las reglas |
+| Las entidades de `alcance.json` | `backend/src/test-generated/java/.../<modulo>/<Clase>ApiGeneradaIT.java` | Prueba de integración: un caso por cada permiso y cada validación del JSON, más los datos únicos |
 
-En las próximas tareas se suman el backend de los CRUD y sus pruebas (`backend/src/generated/java` y `backend/src/test-generated/java`) y, después, las pantallas del frontend.
+`alcance.json` dice qué entidades con CRUD tienen API. Hoy es solo `empresa` (RF-02); usuario entra con RF-03 y los rangos con RF-13. Las pantallas del frontend llegan en otra tarea. Cómo responde la API generada y qué no soporta todavía está en `specs/entidades/README.md`.
 
-Las carpetas generadas son solo del generador: `generar` borra lo que ya no se genera. Lo escrito a mano, como las reglas de cada módulo, va fuera de ellas.
+Las carpetas generadas son solo del generador: `generar` borra lo que ya no se genera. Lo escrito a mano, como las reglas de cada módulo (`<modulo>/reglas/`) y el módulo `comun`, va fuera de ellas.
 
 ## Uso
 
@@ -40,13 +44,16 @@ generador/.venv/Scripts/python generador/generar.py comprobar   # compara sin es
 
 `comprobar` encuentra los archivos generados que alguien editó a mano, los que faltan o sobran, y lo que quedó sin regenerar después de cambiar un JSON o una plantilla. Se corre antes de cada commit y, cuando exista, en el CI (RP-18). La salida es determinista: las fechas del header salen de los JSON y los finales de línea son LF.
 
+Si una entidad de `alcance.json` usa algo que la API todavía no soporta, `generar` se detiene y dice qué falta.
+
 ## Estructura
 
 ```
 generador/
 ├── generar.py               línea de comandos
-├── inspectia_generador/     carga, validación, modelo, SQL, generación y escritura
-├── plantillas/              plantillas de Jinja2 (sql/)
+├── alcance.json             entidades con API
+├── inspectia_generador/     carga, validación, modelo, SQL, Java, textos, headers y escritura
+├── plantillas/              plantillas de Jinja2: sql/, java/main/, java/test/ e i18n/
 └── pruebas/                 pruebas con pytest y ejemplos/producto.json
 ```
 
@@ -59,4 +66,4 @@ cd generador
 
 Cada prueba lleva `@pytest.mark.caso("…")` con la ficha o el requisito que cubre (por ejemplo, «RP-23 · …»); una prueba sin esa marca hace fallar la ejecución. Así la lista de casos de prueba (RP-13) se arma desde las pruebas.
 
-`pruebas/ejemplos/producto.json` es la entidad producto de la pauta del docente para el back-end (id, nombre, categoria, descripcion, estado). Las pruebas generan sus archivos junto con empresa y usuario, para demostrar que el generador sirve para otra temática. No entra a la app.
+`pruebas/ejemplos/producto.json` es la entidad producto de la pauta del docente para el back-end (id, nombre, categoria, descripcion, estado). Las pruebas generan su tabla y su API junto con empresa y usuario, para demostrar que el generador sirve para otra temática. No entra a la app.

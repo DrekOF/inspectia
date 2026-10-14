@@ -1,0 +1,47 @@
+{#
+  Nombre: repositorio.java.j2
+  Descripción: Plantilla del repositorio de Spring Data JPA de una tabla con CRUD (RP-23).
+  Fecha de creación: 13/10/2026
+  Actualización: 13/10/2026
+  Autor: Equipo InspectIA
+  Versión: 1.0
+#}
+{% from 'java/_macros.j2' import encabezado %}
+{{ encabezado(header) }}
+package {{ paquete }};
+
+{% for i in importaciones %}
+import {{ i }};
+{% endfor %}
+
+/**
+ * Repositorio de la tabla {@code {{ entidad }}}.
+{% if consultas %}
+ *
+ * <p>Las consultas {@code existe...} revisan los datos únicos antes de guardar, para responder 409 con
+ * el campo repetido. El índice único de la base es la última defensa.
+{% endif %}
+ */
+public interface {{ clase }}Repositorio extends JpaRepository<{{ clase }}, UUID> {
+{% for c in consultas %}
+
+    /**
+     * Dice si ya hay un registro con este valor de {{ c.etiqueta }}{{ ', sin distinguir mayúsculas ni espacios al inicio o al final' if c.normalizado else '' }}.
+     *
+     * @param valor el valor que se quiere guardar
+     * @return {@code true} si ya existe
+     */
+    @Query("{{ c.jpql }}")
+    boolean {{ c.metodo }}(@Param("valor") {{ c.tipo }} valor);
+
+    /**
+     * Dice si otro registro, distinto de {@code id}, ya tiene este valor de {{ c.etiqueta }}. Sirve al editar.
+     *
+     * @param valor el valor que se quiere guardar
+     * @param id el registro que se edita
+     * @return {@code true} si otro registro ya lo tiene
+     */
+    @Query("{{ c.jpql_en_otro }}")
+    boolean {{ c.metodo_en_otro }}(@Param("valor") {{ c.tipo }} valor, @Param("id") UUID id);
+{% endfor %}
+}
