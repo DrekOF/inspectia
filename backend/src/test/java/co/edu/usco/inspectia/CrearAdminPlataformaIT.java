@@ -5,7 +5,7 @@
  * Fecha de creación: 13/10/2026
  * Actualización: 13/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia;
 
@@ -26,8 +26,6 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.testcontainers.containers.Container.ExecResult;
@@ -43,8 +41,7 @@ import org.testcontainers.utility.MountableFile;
  * <p>El script confirma su propia transacción, así que estas pruebas no se deshacen solas: usan correos
  * de {@code @inspectia.test} y los borran al final de cada una.
  */
-@SpringBootTest
-@Import(ConfiguracionContenedores.class)
+@PruebaIntegracion
 class CrearAdminPlataformaIT {
 
     /** El script, visto desde {@code backend/}, la carpeta donde corre Maven. */
