@@ -3,9 +3,9 @@
  * Descripción: Convierte los errores de la API en respuestas application/problem+json (RFC 9457), con
  *              la lista «errores» y los mensajes en el idioma de la petición (RP-03, RP-11).
  * Fecha de creación: 13/10/2026
- * Actualización: 13/10/2026
+ * Actualización: 14/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.comun.errores;
 
@@ -45,7 +45,8 @@ import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExcep
  * si no pide ninguno, en español (RP-11).
  *
  * <p>Los 401 y 403 no pasan por aquí: los responde la cadena de seguridad
- * ({@code co.edu.usco.inspectia.comun.seguridad.RespuestasDeSeguridad}).
+ * ({@code co.edu.usco.inspectia.comun.seguridad.RespuestasDeSeguridad}). La excepción es el 401 de un
+ * inicio de sesión rechazado ({@link SesionRechazadaExcepcion}), que sale del servicio de la sesión.
  */
 @Slf4j
 @RestControllerAdvice
@@ -70,6 +71,16 @@ public class ManejadorDeErrores extends ResponseEntityExceptionHandler {
     @ExceptionHandler(ReglaIncumplidaExcepcion.class)
     ProblemDetail reglaIncumplida(ReglaIncumplidaExcepcion excepcion) {
         return problema(HttpStatus.BAD_REQUEST, "error.datos_invalidos", traducir(excepcion.getCampos()));
+    }
+
+    /** Inicio de sesión rechazado (RF-01): 401 con el motivo y, si lleva, la ayuda en {@code ayuda}. */
+    @ExceptionHandler(SesionRechazadaExcepcion.class)
+    ProblemDetail sesionRechazada(SesionRechazadaExcepcion excepcion) {
+        ProblemDetail problema = problema(HttpStatus.UNAUTHORIZED, excepcion.getClave(), List.of());
+        if (excepcion.getAyuda() != null) {
+            problema.setProperty("ayuda", mensaje(excepcion.getAyuda(), excepcion.getArgumentosAyuda()));
+        }
+        return problema;
     }
 
     /**
@@ -165,8 +176,9 @@ public class ManejadorDeErrores extends ResponseEntityExceptionHandler {
         return campos.stream().map(campo -> new ErrorDeCampo(campo.campo(), mensaje(campo.clave()))).toList();
     }
 
-    private String mensaje(String clave) {
+    private String mensaje(String clave, Object... argumentos) {
         MessageSource mensajes = getMessageSource();
-        return mensajes == null ? clave : mensajes.getMessage(clave, null, clave, LocaleContextHolder.getLocale());
+        Object[] valores = argumentos.length == 0 ? null : argumentos;
+        return mensajes == null ? clave : mensajes.getMessage(clave, valores, clave, LocaleContextHolder.getLocale());
     }
 }
