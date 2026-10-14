@@ -4,7 +4,7 @@ Descripción: Instrucciones del proyecto InspectIA para Claude Code. Se lee al i
 Fecha de creación: 12/10/2026
 Actualización: 13/10/2026
 Autor: Equipo InspectIA
-Versión: 1.4
+Versión: 1.5
 -->
 
 # InspectIA
@@ -29,6 +29,7 @@ App web multiempresa que estima el % de granos de cacao sanos de un lote a parti
   - `«<código> · C<n> · …»` si cubre un criterio de `specs/fichas.json`, por ejemplo `@DisplayName("RF-02 · C4 · dígito de verificación inválido")`. En Python va en `@pytest.mark.caso("…")`.
   - Solo `«<código> · …»` si no cubre un criterio, por ejemplo `«RP-15 · …»`.
   - Los criterios nuevos de una ficha van al final de su lista, para que no cambie el número de los que ya tienen pruebas.
+  - Un criterio que deja de aplicar no se borra: se marca «Eliminado (D-xx): …», con la decisión que lo quitó, y conserva su número.
 - Pasos pequeños: al terminar cada tarea, muestra qué cambió y espera confirmación antes de la siguiente.
 - Al terminar cada tarea, agrega una entrada en `docs/bitacora.md`: fecha, quién, qué se hizo, por qué y cómo se pidió. Es el registro paso a paso que exige el docente (RP-24). Para saber quién trabaja, busca `git config user.name` en la línea del equipo; si no está, pregunta.
 
