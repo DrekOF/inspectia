@@ -4,7 +4,7 @@
 # Fecha de creación: 13/10/2026
 # Actualización: 13/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.0
+# Versión: 1.1
 
 spring:
   application:
@@ -26,3 +26,13 @@ spring:
       ddl-auto: validate
   flyway:
     locations: classpath:db/migration
+  messages:
+    # Mensajes del módulo comun (a mano) y de los CRUD (generados). Sin traducción, quedan en español.
+    basename: i18n/mensajes,i18n/generado
+    fallback-to-system-locale: false
+  web:
+    # Idioma de la respuesta si la petición no trae Accept-Language (RP-11).
+    locale: es
+  autoconfigure:
+    # Sin el usuario de prueba en memoria de Spring Boot: el inicio de sesión llega con RF-01.
+    exclude: org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration
