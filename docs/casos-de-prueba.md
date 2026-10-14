@@ -21,12 +21,12 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 
 ## Resumen
 
-- **134 criterios de aceptación** en 25 fichas: 16 con prueba y 118 pendientes.
-- **92 pruebas:** 52 de Java (6 generadas) y 40 de Python. Una prueba parametrizada cuenta una vez.
+- **134 criterios de aceptación** en 25 fichas: 24 con prueba y 110 pendientes.
+- **117 pruebas:** 77 de Java (6 generadas) y 40 de Python. Una prueba parametrizada cuenta una vez.
 
 | Ficha | Criterios | Con prueba | Pendientes |
 |---|---:|---:|---:|
-| RF-01 · Iniciar sesión según el rol | 6 | 0 | 6 |
+| RF-01 · Iniciar sesión según el rol | 6 | 6 | 0 |
 | RF-02 · Registrar empresas y su primer administrador | 12 | 11 | 1 |
 | RF-03 · Gestionar los usuarios de la empresa | 10 | 0 | 10 |
 | RF-04 · Registrar un lote | 4 | 1 | 3 |
@@ -46,7 +46,7 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 | RNF-01 · Entregar el resultado del análisis de un lote en 5 a 8 segundos | 4 | 0 | 4 |
 | RNF-02 · Soportar hasta 30 empresas con 25 usuarios cada una | 4 | 0 | 4 |
 | RNF-03 · Mantener separados los datos de cada empresa | 5 | 1 | 4 |
-| RNF-04 · Exigir autenticación y restringir cada función según el rol | 5 | 3 | 2 |
+| RNF-04 · Exigir autenticación y restringir cada función según el rol | 5 | 5 | 0 |
 | RNF-05 · Funcionar en PC y en celular desde el navegador | 3 | 0 | 3 |
 | RNF-06 · Ser sencilla de usar para el usuario final | 4 | 0 | 4 |
 | RNF-07 · Alcanzar el F1-score mínimo del modelo de IA | 4 | 0 | 4 |
@@ -56,12 +56,12 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 
 | Criterio | Pruebas |
 |---|---|
-| C1. Con datos correctos, el sistema muestra el menú del rol del usuario. | **Pendiente** |
-| C2. Con datos incorrectos, muestra «Correo o contraseña incorrectos», sin decir cuál de los dos falló. | **Pendiente** |
-| C3. Un usuario desactivado no puede iniciar sesión. | **Pendiente** |
-| C4. Un usuario de una empresa desactivada no puede iniciar sesión (D-27). | **Pendiente** |
-| C5. Después de 5 intentos fallidos seguidos, la cuenta se bloquea 15 minutos. | **Pendiente** |
-| C6. La sesión vence a las 8 horas y el sistema pide iniciar sesión de nuevo. | **Pendiente** |
+| C1. Con datos correctos, el sistema muestra el menú del rol del usuario. | [`InicioSesionIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/InicioSesionIT.java) · con datos correctos, cada rol inicia sesión y recibe su rol, su nombre y su empresa para armar su menú (parametrizada) |
+| C2. Con datos incorrectos, muestra «Correo o contraseña incorrectos», sin decir cuál de los dos falló. | [`InicioSesionIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/InicioSesionIT.java) · con datos incorrectos responde «Correo o contraseña incorrectos», igual si falló el correo o la contraseña |
+| C3. Un usuario desactivado no puede iniciar sesión. | [`InicioSesionIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/InicioSesionIT.java) · un usuario desactivado no puede iniciar sesión<br>[`SesionAbiertaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/SesionAbiertaIT.java) · al desactivar un usuario, su sesión abierta deja de servir en la siguiente petición |
+| C4. Un usuario de una empresa desactivada no puede iniciar sesión (D-27). | [`InicioSesionIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/InicioSesionIT.java) · un usuario de una empresa desactivada no puede iniciar sesión<br>[`SesionAbiertaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/SesionAbiertaIT.java) · al desactivar una empresa, las sesiones abiertas de sus usuarios dejan de servir |
+| C5. Después de 5 intentos fallidos seguidos, la cuenta se bloquea 15 minutos. | [`InicioSesionIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/InicioSesionIT.java) · después de 5 intentos fallidos seguidos la cuenta se bloquea: ni la contraseña correcta entra hasta que pasen 15 minutos<br>[`InicioSesionIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/InicioSesionIT.java) · los intentos fallidos deben ser seguidos: iniciar sesión vuelve a contar desde cero |
+| C6. La sesión vence a las 8 horas y el sistema pide iniciar sesión de nuevo. | [`SesionAbiertaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/SesionAbiertaIT.java) · la sesión vence a las 8 horas y pide iniciar sesión de nuevo (prueba de límite) (parametrizada) |
 
 Otras pruebas de RF-01, que no cubren un criterio:
 
@@ -72,6 +72,8 @@ Otras pruebas de RF-01, que no cubren un criterio:
 - [`CrearAdminPlataformaIT`](../backend/src/test/java/co/edu/usco/inspectia/CrearAdminPlataformaIT.java) · la contraseña del administrador acepta de 8 a 64 caracteres (prueba de límite) (parametrizada)
 - [`CrearAdminPlataformaIT`](../backend/src/test/java/co/edu/usco/inspectia/CrearAdminPlataformaIT.java) · la contraseña del administrador ocupa como máximo 72 bytes, con el mensaje de RF-02 (prueba de límite) (parametrizada)
 - [`CrearAdminPlataformaIT`](../backend/src/test/java/co/edu/usco/inspectia/CrearAdminPlataformaIT.java) · la contraseña no sale en pantalla ni en el registro de PostgreSQL, aunque el servidor registre todas las sentencias
+- [`InicioSesionIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/InicioSesionIT.java) · el correo se compara sin distinguir mayúsculas ni espacios al inicio o al final
+- [`InicioSesionIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/InicioSesionIT.java) · si falta el correo o la contraseña, responde 400 con cada campo que falta
 
 ## RF-02 · Registrar empresas y su primer administrador
 
@@ -84,9 +86,9 @@ Otras pruebas de RF-01, que no cubren un criterio:
 | C5. La contraseña inicial acepta de 8 a 64 caracteres: con 7 o con 65 se rechaza (prueba de límite). | [`RegistroEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/RegistroEmpresaIT.java) · la contraseña inicial acepta de 8 a 64 caracteres (prueba de límite) (parametrizada) |
 | C6. Una contraseña inicial de 64 caracteres con 8 eñes (72 bytes) se acepta; con 9 eñes (73 bytes) se rechaza con el mensaje «La contraseña es demasiado larga: usa menos caracteres o menos tildes y eñes» (prueba de límite). | [`RegistroEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/RegistroEmpresaIT.java) · la contraseña inicial ocupa como máximo 72 bytes: con 8 eñes se acepta y con 9 se rechaza con el mensaje de la ficha (prueba de límite) (parametrizada) |
 | C7. La empresa nueva queda con los rangos por defecto de D-10. | [`RegistroEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/RegistroEmpresaIT.java) · la empresa nueva queda con los rangos por defecto de D-10 |
-| C8. El administrador creado puede iniciar sesión con la contraseña inicial. | [`RegistroEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/RegistroEmpresaIT.java) · el administrador queda activo, en una empresa activa y con la contraseña inicial (el inicio de sesión se prueba en RF-01) |
-| C9. Al desactivar una empresa, sus usuarios no pueden iniciar sesión y sus lotes y resultados se conservan (D-27). | [`EdicionEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/EdicionEmpresaIT.java) · al desactivar una empresa no se borra nada: sus usuarios, rangos y lotes se conservan |
-| C10. Al reactivar una empresa, sus usuarios activos pueden volver a iniciar sesión (D-27). | [`EdicionEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/EdicionEmpresaIT.java) · al reactivar una empresa queda activa otra vez y cada usuario conserva su estado |
+| C8. El administrador creado puede iniciar sesión con la contraseña inicial. | [`RegistroEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/RegistroEmpresaIT.java) · el administrador queda activo, en una empresa activa y con la contraseña inicial (el inicio de sesión se prueba en RF-01)<br>[`InicioSesionIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/InicioSesionIT.java) · el administrador creado con la empresa inicia sesión con su contraseña inicial |
+| C9. Al desactivar una empresa, sus usuarios no pueden iniciar sesión y sus lotes y resultados se conservan (D-27). | [`EdicionEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/EdicionEmpresaIT.java) · al desactivar una empresa no se borra nada: sus usuarios, rangos y lotes se conservan<br>[`InicioSesionIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/InicioSesionIT.java) · al desactivar una empresa, sus usuarios no pueden iniciar sesión |
+| C10. Al reactivar una empresa, sus usuarios activos pueden volver a iniciar sesión (D-27). | [`EdicionEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/EdicionEmpresaIT.java) · al reactivar una empresa queda activa otra vez y cada usuario conserva su estado<br>[`InicioSesionIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/InicioSesionIT.java) · al reactivar una empresa, sus usuarios activos vuelven a iniciar sesión y los desactivados no |
 | C11. Al editar una empresa, el NIT pasa por las mismas validaciones del registro: único y con dígito de verificación válido (D-27). | [`EdicionEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/EdicionEmpresaIT.java) · al editar, la empresa puede conservar su propio NIT y guardar los demás cambios<br>[`EdicionEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/EdicionEmpresaIT.java) · al editar, un NIT con dígito de verificación inválido responde 400 y no cambia nada<br>[`EdicionEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/EdicionEmpresaIT.java) · al editar, un NIT de otra empresa responde 409 y no cambia nada |
 | C12. El administrador de la plataforma puede restablecer la contraseña de un administrador de empresa; la nueva contraseña pasa por las mismas validaciones de la contraseña inicial. | **Pendiente** |
 
@@ -298,14 +300,21 @@ Otras pruebas de RNF-03, que no cubren un criterio:
 
 | Criterio | Pruebas |
 |---|---|
-| C1. Sin sesión, la API responde «no autorizado» (401). | [`EmpresaApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/empresa/EmpresaApiGeneradaIT.java) · sin sesión, cada operación de empresa responde 401 (parametrizada, generada)<br>[`SeguridadEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/SeguridadEmpresaIT.java) · sin sesión, cada operación de la API de empresas responde 401 en JSON (parametrizada) |
-| C2. Con un rol sin permiso, responde «prohibido» (403); por ejemplo, cuando un usuario final intenta gestionar usuarios. | [`EmpresaApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/empresa/EmpresaApiGeneradaIT.java) · cada operación de empresa solo la usan los roles de su JSON (parametrizada, generada)<br>[`SeguridadEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/SeguridadEmpresaIT.java) · el permiso se revisa antes que los datos: un usuario final recibe 403 aunque envíe datos inválidos<br>[`SeguridadEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/SeguridadEmpresaIT.java) · un administrador de empresa o un usuario final recibe 403 en cada operación de la API de empresas (parametrizada) |
+| C1. Sin sesión, la API responde «no autorizado» (401). | [`EmpresaApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/empresa/EmpresaApiGeneradaIT.java) · sin sesión, cada operación de empresa responde 401 (parametrizada, generada)<br>[`SeguridadEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/SeguridadEmpresaIT.java) · sin sesión, cada operación de la API de empresas responde 401 en JSON (parametrizada)<br>[`SesionAbiertaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/SesionAbiertaIT.java) · sin token, la sesión actual responde 401 |
+| C2. Con un rol sin permiso, responde «prohibido» (403); por ejemplo, cuando un usuario final intenta gestionar usuarios. | [`EmpresaApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/empresa/EmpresaApiGeneradaIT.java) · cada operación de empresa solo la usan los roles de su JSON (parametrizada, generada)<br>[`SeguridadEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/SeguridadEmpresaIT.java) · el permiso se revisa antes que los datos: un usuario final recibe 403 aunque envíe datos inválidos<br>[`SeguridadEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/SeguridadEmpresaIT.java) · un administrador de empresa o un usuario final recibe 403 en cada operación de la API de empresas (parametrizada)<br>[`SesionAbiertaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/SesionAbiertaIT.java) · con el token de un administrador de empresa, la API de empresas responde 403; con el de la plataforma, 200 |
 | C3. Las contraseñas se guardan con hash (BCrypt), nunca en texto plano. | [`RegistroEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/RegistroEmpresaIT.java) · la contraseña del administrador se guarda con hash BCrypt y no sale en la respuesta |
-| C4. La sesión vence a las 8 horas. | **Pendiente** |
-| C5. Después de 5 intentos fallidos seguidos, la cuenta se bloquea 15 minutos. | **Pendiente** |
+| C4. La sesión vence a las 8 horas. | [`SesionAbiertaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/SesionAbiertaIT.java) · el token del inicio de sesión dura exactamente 8 horas y solo lleva el emisor, el usuario y las fechas |
+| C5. Después de 5 intentos fallidos seguidos, la cuenta se bloquea 15 minutos. | [`InicioSesionIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/InicioSesionIT.java) · el bloqueo dura 15 minutos desde el quinto fallo y los intentos durante el bloqueo no lo alargan |
 
 Otras pruebas de RNF-04, que no cubren un criterio:
 
+- [`SesionAbiertaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/SesionAbiertaIT.java) · el rol sale de la base en cada petición: si cambia, la sesión abierta lo refleja sin otro token
+- [`SesionAbiertaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/SesionAbiertaIT.java) · el token de un usuario que no existe no sirve
+- [`SesionAbiertaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/SesionAbiertaIT.java) · un encabezado Authorization mal formado no sirve (parametrizada)
+- [`SesionAbiertaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/SesionAbiertaIT.java) · un token alterado no sirve: cambiar el usuario sin volver a firmar se rechaza
+- [`SesionAbiertaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/SesionAbiertaIT.java) · un token de otro emisor no sirve, aunque esté firmado con la clave correcta
+- [`SesionAbiertaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/SesionAbiertaIT.java) · un token firmado con otra clave no sirve
+- [`SesionAbiertaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/SesionAbiertaIT.java) · un token sin firma (alg none) no sirve
 - [`test_java.py`](../generador/pruebas/test_java.py) · las reglas de acceso por ruta y @PreAuthorize salen de operaciones del JSON
 
 ## RNF-05 · Funcionar en PC y en celular desde el navegador
