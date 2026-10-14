@@ -4,7 +4,7 @@ Descripción: Decisiones (D-xx) y pendientes (P-xx) del proyecto. Fuente: 01_Req
 Fecha de creación: 12/10/2026
 Actualización: 14/10/2026
 Autor: Equipo InspectIA (exportado del documento de requerimientos v2.1)
-Versión: 1.6
+Versión: 1.7
 -->
 
 # Decisiones y pendientes
@@ -43,6 +43,7 @@ Copia de trabajo del anexo A del documento de requerimientos (v2.1). Si una tare
 | D-26 | Cambia D-23: si la muestra pasa de 150 granos, se acepta. El mínimo de 100 sigue siendo obligatorio; la guía sigue pidiendo de 100 a 150 y RNF-01 se mide con ese tamaño. | 13/10/2026 |
 | D-27 | El administrador de la plataforma puede desactivar una empresa: sus usuarios no pueden entrar y no se borra nada. También puede reactivarla y editar sus datos (nombre, NIT y ciudad), con las mismas validaciones del registro. | 13/10/2026 |
 | D-28 | Inicio de sesión (RF-01, RNF-04). El backend emite un JWT firmado con HS256, que viaja en el encabezado Authorization (Bearer); por eso la API no usa CSRF. La clave sale de la variable de entorno INSPECTIA_JWT_CLAVE (Base64, de al menos 32 bytes) y nunca se guarda en el repositorio. El token solo lleva el emisor, el identificador del usuario y sus fechas; vence a las 8 horas y no se renueva. Las rutas son POST /api/v1/sesion (iniciar sesión) y GET /api/v1/sesion (sesión actual); para cerrar sesión, el frontend borra el token. En cada petición se leen de la base el usuario, su rol y su empresa: desactivar un usuario o una empresa corta sus sesiones de inmediato, y un cambio de rol se aplica en la siguiente petición. Todo intento fallido recibe la misma respuesta, «Correo o contraseña incorrectos», con la regla del bloqueo; que el usuario o la empresa están desactivados solo se informa con la contraseña correcta. | 14/10/2026 |
+| D-29 | Estados de las fichas (amplía D-07). «Aprobado»: el equipo revisó la ficha; pasan a Aprobado todos los RF menos RF-08, que espera la revisión de Julián (P-14). «Implementado»: funciona de punta a punta (backend y frontend), todos sus criterios tienen prueba y está en main. A RF-01 le falta el menú en el frontend, y a RF-02, el criterio C12 y sus pantallas. `generador/casos_de_prueba.py comprobar` falla si un RF está «Implementado» y tiene criterios sin prueba. | 14/10/2026 |
 
 ## Pendientes
 

@@ -5,7 +5,7 @@
     "fecha_creacion": "12/10/2026",
     "actualizacion": "14/10/2026",
     "autor": "Equipo InspectIA",
-    "version": "1.6"
+    "version": "1.7"
   },
   "rf": [
     {
@@ -57,7 +57,7 @@
         ]
       },
       "rnf": "RNF-03 (datos separados por empresa) y RNF-04 (autenticación y permisos).",
-      "estado": "Propuesto",
+      "estado": "Aprobado",
       "observaciones": "Recuperar la contraseña por correo queda fuera de la v1 porque no hay integración con correo. La restablece el administrador de la empresa (RF-03) o, si se trata de un administrador de empresa, el administrador de la plataforma (RF-02)."
     },
     {
@@ -112,7 +112,7 @@
         ]
       },
       "rnf": "RNF-02 (capacidad), RNF-03 (datos separados por empresa) y RNF-04 (autenticación y permisos).",
-      "estado": "Propuesto",
+      "estado": "Aprobado",
       "observaciones": "CRUD generado desde el JSON de la entidad empresa (RP-23, D-21). Los campos exactos están en specs/modelo-datos.md. El criterio 12 (restablecer la contraseña de un administrador de empresa) se implementa con la API de usuario (RF-03)."
     },
     {
@@ -164,7 +164,7 @@
         ]
       },
       "rnf": "RNF-02 (capacidad), RNF-03 (datos separados por empresa) y RNF-04 (autenticación y permisos).",
-      "estado": "Propuesto",
+      "estado": "Aprobado",
       "observaciones": "CRUD generado desde el JSON de la entidad usuario (RP-23, D-21), más la regla del límite de 25."
     },
     {
@@ -207,7 +207,7 @@
         ]
       },
       "rnf": "RNF-03 (datos separados por empresa) y RNF-06 (facilidad de uso).",
-      "estado": "Propuesto",
+      "estado": "Aprobado",
       "observaciones": "Los campos exactos están en specs/modelo-datos.md."
     },
     {
@@ -253,7 +253,7 @@
         ]
       },
       "rnf": "RNF-05 (PC y celular) y RNF-06 (facilidad de uso).",
-      "estado": "Propuesto",
+      "estado": "Aprobado",
       "observaciones": "La guía se ajusta con la prueba de fotos reales (P-12)."
     },
     {
@@ -294,7 +294,7 @@
         ]
       },
       "rnf": "RNF-01 (tiempo de respuesta) y RNF-06 (facilidad de uso).",
-      "estado": "Propuesto",
+      "estado": "Aprobado",
       "observaciones": "Los granos pegados se revisan en RF-07, durante la separación."
     },
     {
@@ -341,7 +341,7 @@
         ]
       },
       "rnf": "RNF-01 (tiempo de respuesta).",
-      "estado": "Propuesto",
+      "estado": "Aprobado",
       "observaciones": "Falta probarlo con fotos reales de unos 50 granos (P-12)."
     },
     {
@@ -441,7 +441,7 @@
         ]
       },
       "rnf": "RNF-06 (facilidad de uso) y RNF-07 (F1-score mínimo).",
-      "estado": "Propuesto",
+      "estado": "Aprobado",
       "observaciones": "El 10 % y el umbral de confianza baja son valores iniciales; se fijan con los resultados del modelo en validación (P-15)."
     },
     {
@@ -486,7 +486,7 @@
         ]
       },
       "rnf": "RNF-01 (tiempo de respuesta).",
-      "estado": "Propuesto",
+      "estado": "Aprobado",
       "observaciones": "Es una regla del núcleo hexagonal del módulo de análisis (D-21)."
     },
     {
@@ -527,7 +527,7 @@
         ]
       },
       "rnf": "RNF-05 (PC y celular) y RNF-06 (facilidad de uso).",
-      "estado": "Propuesto",
+      "estado": "Aprobado",
       "observaciones": "La confianza promedio la ve el administrador de empresa en RF-17."
     },
     {
@@ -578,7 +578,7 @@
         ]
       },
       "rnf": "RNF-07 (F1-score mínimo).",
-      "estado": "Propuesto",
+      "estado": "Aprobado",
       "observaciones": "Es una regla del núcleo hexagonal del módulo de análisis (D-21)."
     },
     {
@@ -622,7 +622,7 @@
         ]
       },
       "rnf": "RNF-03 (datos separados por empresa) y RNF-04 (autenticación y permisos).",
-      "estado": "Propuesto",
+      "estado": "Aprobado",
       "observaciones": "Pantalla generada desde el JSON de la entidad rango (RP-23), más la validación del orden de los límites."
     },
     {
@@ -668,7 +668,7 @@
         ]
       },
       "rnf": "RNF-02 (capacidad) y RNF-03 (datos separados por empresa).",
-      "estado": "Propuesto",
+      "estado": "Aprobado",
       "observaciones": ""
     },
     {
@@ -711,7 +711,7 @@
         ]
       },
       "rnf": "RNF-03 (datos separados por empresa) y RNF-05 (PC y celular).",
-      "estado": "Propuesto",
+      "estado": "Aprobado",
       "observaciones": ""
     },
     {
@@ -753,7 +753,7 @@
         ]
       },
       "rnf": "RNF-03 (datos separados por empresa) y RNF-04 (autenticación y permisos).",
-      "estado": "Propuesto",
+      "estado": "Aprobado",
       "observaciones": ""
     },
     {
@@ -792,7 +792,7 @@
         ]
       },
       "rnf": "RNF-04 (autenticación y permisos) y RNF-07 (F1-score mínimo).",
-      "estado": "Propuesto",
+      "estado": "Aprobado",
       "observaciones": ""
     }
   ],
