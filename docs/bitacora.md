@@ -2,9 +2,9 @@
 Nombre: bitacora.md
 Descripción: Registro paso a paso de cómo se construyó InspectIA, para la sustentación (RP-24).
 Fecha de creación: 12/10/2026
-Actualización: 13/10/2026
+Actualización: 14/10/2026
 Autor: Equipo InspectIA
-Versión: 1.7
+Versión: 1.8
 -->
 
 # Bitácora de construcción (RP-24)
@@ -154,6 +154,53 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
   - El criterio C12 de RF-02.
   - Que la lista de casos de prueba la arme un script.
 - Archivos o PR: la rama `feature/RF-02-generador-empresa`; el PR lo abre Cristhian.
+
+## 14/10/2026 · RF-01: inicio de sesión con JWT
+
+- Quién: Cristhian Sánchez (`DrekOF`), con Claude Code.
+- Qué se hizo:
+  - **Antes del código:** D-28 en `decisiones.md`, con las decisiones del inicio de sesión, y P-17, el límite de intentos por IP en el despliegue.
+  - **En la rama `feature/RF-01-inicio-sesion`, cuatro pasos, cada uno revisado por Cristhian antes del siguiente:**
+    1. **Pruebas antes del código:**
+       - 30 pruebas de integración (`InicioSesionIT` y `SesionAbiertaIT`) para los 6 criterios de RF-01, los que faltaban de RNF-04 (C4 y C5) y los tokens que no deben servir: vencido, alterado, firmado con otra clave, sin firma, de otro emisor o de un usuario que no existe.
+       - 29 quedaron en rojo; la de «sin token, 401» ya se cumplía desde RF-02.
+       - Los tokens de prueba se arman con HMAC de Java, sin usar el código del backend, y cada corrida usa una clave nueva.
+    2. **Inicio de sesión:**
+       - `POST /api/v1/sesion` revisa el correo y la contraseña y entrega el token con el usuario, su rol y su empresa. `GET /api/v1/sesion` responde la sesión actual.
+       - El token se firma con HS256 y la clave de `INSPECTIA_JWT_CLAVE`. Solo lleva el emisor, el usuario y sus fechas, y vence a las 8 horas exactas. La API ya no usa CSRF.
+       - Todo intento fallido recibe la misma respuesta y hace una sola comparación BCrypt, exista o no el correo. Los fallos se cuentan con un `UPDATE` atómico, y 5 seguidos bloquean la cuenta 15 minutos.
+       - RF-01 (v1.2) tiene dos criterios nuevos. C7: al terminar el bloqueo vuelven los 5 intentos. C8: una contraseña de más de 72 bytes nunca inicia sesión, porque BCrypt solo compara los primeros 72.
+    3. **Revisión en cada petición:**
+       - Desactivar un usuario o su empresa corta sus sesiones en la siguiente petición.
+       - Cada 401 dice su causa.
+       - El inicio de sesión no lee el encabezado `Authorization`: quien tiene la sesión vencida puede volver a entrar aunque el frontend todavía envíe el token viejo.
+    4. **Documentación y prueba completa:**
+       - El esquema Bearer en OpenAPI (botón «Authorize» de Swagger UI), `infra/.env.example`, los README y los Comandos de `CLAUDE.md`.
+       - El recorrido se probó con el backend real en una base aparte: crear la clave, arrancar, crear el administrador con el script y entrar desde Swagger UI.
+  - **Problemas que encontraron las pruebas:**
+    - **Constructores de Lombok con el JDK 25.**
+      - Al correr las pruebas del paso 1, todo el backend falló con `VerifyError`. Al recompilar sin `clean`, los constructores que crea `@RequiredArgsConstructor` quedaban sin la llamada a `super()`, y la JVM rechazaba `EmpresaServicio`, `EmpresaControlador` y `RespuestasDeSeguridad`.
+      - Compilando desde cero no pasaba; por eso no apareció en RF-02.
+      - Se resolvió escribiendo los constructores, en las plantillas del generador y a mano. `VerificacionDeClasesTest` carga todas las clases para detectarlo, el generador tiene su prueba y `CLAUDE.md` tiene la regla.
+      - Lombok queda para getters, setters y `@Slf4j`: su registro de cambios hasta la 1.18.48 no trae arreglo. El generador pasó a la versión 1.2.
+    - **El `UPDATE` de los intentos fallidos.**
+      - En el paso 2, las pruebas de integración recibieron 500 en cada intento fallido de un usuario que existe.
+      - Dentro del `case ... then :hasta else null end`, PostgreSQL no podía deducir el tipo del parámetro y lo tomaba como texto.
+      - Se resolvió con `cast(:hasta as OffsetDateTime)` en el JPQL, con la explicación en el código.
+  - **Otras anotaciones:**
+    - P-16: después del primer despliegue, las migraciones aplicadas quedan congeladas, incluido su header.
+    - P-17: queda como riesgo aceptado la diferencia de tiempo, del orden de 1 ms, al guardar un intento fallido.
+  - **Resultado:**
+    - Backend: 201 pruebas (50 unitarias y 151 de integración), todas en verde.
+    - Generador: 40 pruebas, todas en verde.
+    - Criterios: RF-01 tiene sus 8 criterios con prueba y RNF-04 sus 5. De los 136 de las fichas, 26 tienen prueba.
+- Por qué: todas las demás funciones dependen del inicio de sesión (RF-01), y RNF-04 pide sesión y permisos por rol en toda la API. La revisión en cada petición hace que desactivar un usuario o una empresa (RF-03, D-27) surta efecto de inmediato y no 8 horas después.
+- Cómo se pidió: Cristhian pidió el plan del inicio de sesión con JWT (D-21) antes de escribir código. El plan debía cubrir el token, la API, la revisión en cada petición, el bloqueo sin revelar si un correo existe, las pruebas y cómo probarlo en su PC. Aprobó las cinco decisiones y pidió registrarlas como D-28 y P-17. En el camino pidió:
+  - Dejar la regla de Lombok y subir la versión del generador.
+  - Agregar C7 y C8 a RF-01.
+  - Que el inicio de sesión ignore el token viejo, con su prueba marcada como RF-01 C6.
+  - Anotar en P-17 el riesgo aceptado.
+- Archivos o PR: la rama `feature/RF-01-inicio-sesion`; el PR lo abre Cristhian.
 
 ## Plantilla para nuevas entradas
 

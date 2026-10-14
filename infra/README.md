@@ -1,10 +1,10 @@
 <!--
 Nombre: README.md (infra)
-Descripción: Qué va en la carpeta infra/ de InspectIA.
+Descripción: Qué va en la carpeta infra/ de InspectIA y cómo probar el inicio de sesión en local.
 Fecha de creación: 12/10/2026
-Actualización: 13/10/2026
+Actualización: 14/10/2026
 Autor: Equipo InspectIA
-Versión: 1.1
+Versión: 1.2
 -->
 
 # infra
@@ -14,7 +14,7 @@ Infraestructura y despliegue de InspectIA.
 Qué hay hoy:
 
 - `docker-compose.yml`: PostgreSQL 18 para desarrollo local. El servidor y el servicio de IA se agregan cuando existan.
-- `.env.example`: variables locales de la base de datos y del primer administrador de la plataforma. Cópialo a `infra/.env`, que no se sube al repositorio, y escribe tus valores.
+- `.env.example`: variables locales de la base de datos, la clave de los tokens del inicio de sesión y el primer administrador de la plataforma. Cópialo a `infra/.env`, que no se sube al repositorio, y escribe tus valores.
 - `bd/crear-admin-plataforma.sql`, con sus envoltorios `.sh` y `.ps1`: crea el primer administrador de la plataforma (RF-01, RP-15). Las tablas no se crean aquí: las crea Flyway al arrancar el backend, con la migración que genera `generador/` (RP-23).
 
 Qué irá aquí:
@@ -26,6 +26,15 @@ Qué irá aquí:
 Los flujos de GitHub Actions (RP-18 y RP-19) tienen que estar en `.github/workflows/`, en la raíz del repositorio, porque GitHub solo los busca ahí. Llaman a los scripts de esta carpeta. GitHub Actions se conecta a AWS por OIDC, sin claves guardadas.
 
 La EC2 t4g es ARM (Graviton), así que toda imagen debe funcionar en amd64 y en arm64.
+
+## Clave de los tokens
+
+El backend firma los tokens del inicio de sesión con la clave de `INSPECTIA_JWT_CLAVE` (D-28): 32 bytes al azar en Base64. Sin ella no arranca y se detiene con «Falta INSPECTIA_JWT_CLAVE, la clave de los tokens». Créala una vez y escríbela en `infra/.env`:
+
+- PowerShell: `$b = New-Object byte[] 32; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); [Convert]::ToBase64String($b)`
+- Git Bash, Linux o macOS: `openssl rand -base64 32`
+
+No la compartas ni la subas al repositorio. Si cambia, las sesiones abiertas dejan de servir y hay que iniciar sesión de nuevo. En la EC2 vendrá de AWS SSM.
 
 ## Primer administrador de la plataforma
 
@@ -46,3 +55,14 @@ Qué hace:
 - La contraseña no pasa por la línea de comandos ni queda en el registro de PostgreSQL.
 
 `backend/src/test/java/co/edu/usco/inspectia/CrearAdminPlataformaIT.java` lo prueba con Testcontainers. En la EC2, el despliegue tomará los datos de AWS SSM en lugar de `infra/.env`.
+
+## Probar el inicio de sesión en Swagger UI
+
+Con el backend arrancado y el administrador creado:
+
+1. Abre http://localhost:8080/swagger-ui.html.
+2. En «Sesión», abre `POST /api/v1/sesion`, pulsa «Try it out», escribe en el cuerpo el correo y la contraseña del administrador y pulsa «Execute». La respuesta 200 trae el `token`, cuándo `vence` (8 horas después) y el `usuario` con su rol.
+3. Copia el valor de `token`, sin las comillas. Pulsa «Authorize» (arriba a la derecha), pégalo en «Value», pulsa «Authorize» y después «Close».
+4. Abre `GET /api/v1/sesion`, pulsa «Try it out» y «Execute»: responde 200 con tu usuario. Con el mismo token también responde la API de empresas.
+
+Con datos incorrectos, el inicio de sesión responde 401 «Correo o contraseña incorrectos». Después de 5 fallos seguidos, la cuenta se bloquea 15 minutos, también para la contraseña correcta.

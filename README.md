@@ -2,9 +2,9 @@
 Nombre: README.md
 Descripción: Presentación del monorepo de InspectIA: estructura, versiones, requisitos del entorno de desarrollo, base de datos local y cita del dataset.
 Fecha de creación: 12/10/2026
-Actualización: 13/10/2026
+Actualización: 14/10/2026
 Autor: Equipo InspectIA
-Versión: 1.2
+Versión: 1.3
 -->
 
 # InspectIA
@@ -33,6 +33,7 @@ Fijadas el 12/10/2026. La versión exacta de cada librería queda en `backend/po
 |---|---|---|
 | Java | 25 LTS (Eclipse Temurin 25.0.4 o superior) | |
 | Spring Boot | 4.1.1 | Fija Lombok 1.18.46 (soporta el JDK 25) y Testcontainers 2.0.5. Se eligió la 4.1 porque el soporte gratuito de la 4.0 termina el 31/12/2026. |
+| Spring Security | 7.1.1 | La fija Spring Boot. Los tokens del inicio de sesión (D-28) usan Nimbus JOSE + JWT 10.9.1, que trae el iniciador del servidor de recursos de Spring: no hace falta otra librería. |
 | springdoc-openapi | 3.1.1 | La línea 3.1 está construida sobre Spring Boot 4.1. |
 | Maven | Wrapper `mvnw`, incluido en `backend/` | No hace falta instalar Maven. |
 | Node | 24 LTS | |
@@ -112,9 +113,11 @@ docker compose version
 Desde la raíz del repositorio:
 
 ```bash
-cp infra/.env.example infra/.env     # luego escribe una contraseña en POSTGRES_PASSWORD
+cp infra/.env.example infra/.env     # luego escribe una contraseña en POSTGRES_PASSWORD y la clave en INSPECTIA_JWT_CLAVE
 docker compose -f infra/docker-compose.yml up -d
 ```
+
+`INSPECTIA_JWT_CLAVE` es la clave con la que el backend firma los tokens del inicio de sesión: sin ella no arranca. El comando para crearla está en `infra/.env.example` y en `infra/README.md`.
 
 PostgreSQL queda en `localhost`, en el puerto de `POSTGRES_PORT` (5432 por defecto), con base y usuario `inspectia`, y solo se puede usar desde tu equipo. `infra/.env` no se sube al repositorio. Más comandos en la sección Comandos de `CLAUDE.md`.
 
@@ -134,6 +137,7 @@ Los comandos están en la sección Comandos de `CLAUDE.md`. En resumen:
 
 - **Backend:** desde `backend/`, `./mvnw verify` corre todas las pruebas (las de integración usan PostgreSQL 18 en Testcontainers, con Docker Desktop abierto) y `./mvnw spring-boot:run` lo arranca contra la base local. La API queda documentada con OpenAPI en http://localhost:8080/swagger-ui.html.
 - **Primer administrador de la plataforma:** lo crea un script de la base de datos; los pasos están en `infra/README.md`.
+- **Inicio de sesión:** `POST /api/v1/sesion` entrega un token que vence a las 8 horas; las demás rutas lo piden en el encabezado `Authorization: Bearer` (D-28). En Swagger UI, el botón «Authorize» recibe ese token. Los pasos para probarlo están en `infra/README.md`.
 - **Generador:** los CRUD (tablas, backend y, más adelante, pantallas) salen de `specs/entidades/*.json` y no se editan a mano (RP-23). Ver `generador/README.md`.
 - **Casos de prueba:** `docs/casos-de-prueba.md` lista cada criterio de aceptación con sus pruebas y los que aún no tienen ninguna (RP-13). Lo arma `generador/casos_de_prueba.py` desde las marcas de las pruebas.
 
