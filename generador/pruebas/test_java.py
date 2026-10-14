@@ -1,9 +1,9 @@
 # Nombre: test_java.py
 # Descripción: Pruebas de la generación de Java (persistencia, API y pruebas) y de los textos es/en.
 # Fecha de creación: 13/10/2026
-# Actualización: 13/10/2026
+# Actualización: 14/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.0
+# Versión: 1.1
 """Pruebas de lo que genera el generador para el backend: la persistencia de cada CRUD, la API de las
 entidades del alcance y los textos en español e inglés."""
 
@@ -15,6 +15,10 @@ from inspectia_generador.sql import ErrorGeneracion
 JAVA = 'backend/src/generated/java/co/edu/usco/inspectia'
 PRUEBAS = 'backend/src/test-generated/java/co/edu/usco/inspectia'
 TEXTOS = 'backend/src/generated/resources/i18n'
+# Con el JDK 25, al recompilar sin «clean», los constructores que crean estas anotaciones quedan sin
+# la llamada a super() y la JVM rechaza la clase (VerifyError). Ver CLAUDE.md.
+CONSTRUCTORES_LOMBOK = ('RequiredArgsConstructor', 'AllArgsConstructor', 'NoArgsConstructor', 'Builder', 'Data',
+                        'Value')
 
 
 def generar(entidades, api=('empresa',)):
@@ -101,3 +105,19 @@ def test_valores_iniciales(entidades):
     assert iniciales.count('fila(empresaId,') == 4
     servicio = archivos[f'{JAVA}/empresa/EmpresaServicio.java']
     assert 'RangoRecomendacionValoresIniciales.paraEmpresa(empresa.getId())' in servicio
+
+
+@pytest.mark.caso('RP-23 · el código generado escribe sus constructores, sin las anotaciones de Lombok que los crean')
+def test_constructores_sin_lombok(entidades):
+    archivos = generar(entidades)
+
+    for ruta, contenido in archivos.items():
+        usadas = [a for a in CONSTRUCTORES_LOMBOK if f'import lombok.{a};' in contenido]
+        assert not usadas, f'{ruta} usa {usadas}'
+    servicio = archivos[f'{JAVA}/empresa/EmpresaServicio.java']
+    assert ('    public EmpresaServicio(\n'
+            '            EmpresaRepositorio repositorio,\n'
+            '            ReglasEmpresa reglas,\n') in servicio
+    assert '        this.rangoRecomendacionRepositorio = rangoRecomendacionRepositorio;\n    }' in servicio
+    controlador = archivos[f'{JAVA}/empresa/EmpresaControlador.java']
+    assert '    public EmpresaControlador(EmpresaServicio servicio) {\n        this.servicio = servicio;' in controlador

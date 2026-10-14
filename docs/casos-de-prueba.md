@@ -22,7 +22,7 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 ## Resumen
 
 - **134 criterios de aceptación** en 25 fichas: 16 con prueba y 118 pendientes.
-- **90 pruebas:** 51 de Java (6 generadas) y 39 de Python. Una prueba parametrizada cuenta una vez.
+- **92 pruebas:** 52 de Java (6 generadas) y 40 de Python. Una prueba parametrizada cuenta una vez.
 
 | Ficha | Criterios | Con prueba | Pendientes |
 |---|---:|---:|---:|
@@ -346,6 +346,10 @@ Otras pruebas de RNF-04, que no cubren un criterio:
 
 Pruebas que no cubren un criterio de una ficha, sino una pauta del docente (RP) o una decisión (D) de `specs/decisiones.md`.
 
+### RP-01 · API REST con el CRUD de las entidades del sistema, en Java con Spring Boot, JPA y Lombok
+
+- [`VerificacionDeClasesTest`](../backend/src/test/java/co/edu/usco/inspectia/VerificacionDeClasesTest.java) · la JVM acepta todas las clases compiladas del backend
+
 ### RP-10 · Header en cada artefacto con nombre, descripción, fecha de creación, fecha de actualización, autor y versión
 
 - [`test_salida.py`](../generador/pruebas/test_salida.py) · cada archivo generado lleva su header y la marca de no editar a mano
@@ -380,6 +384,7 @@ Pruebas que no cubren un criterio de una ficha, sino una pauta del docente (RP) 
 ### RP-23 · Generación automatizada
 
 - [`test_java.py`](../generador/pruebas/test_java.py) · cada CRUD tiene persistencia y solo las entidades del alcance tienen API
+- [`test_java.py`](../generador/pruebas/test_java.py) · el código generado escribe sus constructores, sin las anotaciones de Lombok que los crean
 - [`test_java.py`](../generador/pruebas/test_java.py) · la API de una entidad por empresa no se genera hasta que exista la sesión con empresa (RF-01)
 - [`test_java.py`](../generador/pruebas/test_java.py) · las validaciones del JSON pasan a Bean Validation con la clave de su mensaje
 - [`test_java.py`](../generador/pruebas/test_java.py) · los rangos por defecto de una empresa nueva salen de valores_iniciales del JSON

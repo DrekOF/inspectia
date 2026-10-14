@@ -2,9 +2,9 @@
   Nombre: servicio.java.j2
   Descripción: Plantilla del servicio de la API de una entidad: valida, guarda y responde (RP-23).
   Fecha de creación: 13/10/2026
-  Actualización: 13/10/2026
+  Actualización: 14/10/2026
   Autor: Equipo InspectIA
-  Versión: 1.0
+  Versión: 1.1
 #}
 {% from 'java/_macros.j2' import encabezado %}
 {% set con_unicos_al_crear = consultas or (crear_con and crear_con.consultas) %}
@@ -25,26 +25,31 @@ import {{ i }};
  * Lo que se guarda en una operación queda en una sola transacción: o se guarda todo o nada.
  */
 @Service
-@RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class {{ clase }}Servicio {
 
     /** Orden del listado: {{ orden_texto }}; los empates, por antigüedad. */
     private static final Sort ORDEN = {{ orden }};
 
-    private final {{ clase }}Repositorio repositorio;
-{% if reglas %}
-    private final Reglas{{ clase }} reglas;
-{% endif %}
-{% if crear_con %}
-    private final {{ crear_con.repositorio }} {{ crear_con.repositorio_var }};
-{% if crear_con.contrasena %}
-    private final PasswordEncoder codificador;
-{% endif %}
-{% endif %}
-{% for i in iniciales %}
-    private final {{ i.repositorio }} {{ i.repositorio_var }};
+{% for d in dependencias %}
+    private final {{ d.tipo }} {{ d.nombre }};
 {% endfor %}
+
+    /**
+     * Crea el servicio; Spring le pasa sus dependencias.
+     *
+{% for d in dependencias %}
+     * @param {{ d.nombre }} {{ d.descripcion }}
+{% endfor %}
+     */
+    public {{ clase }}Servicio(
+{% for d in dependencias %}
+            {{ d.tipo }} {{ d.nombre }}{{ ',' if not loop.last else ') {' }}
+{% endfor %}
+{% for d in dependencias %}
+        this.{{ d.nombre }} = {{ d.nombre }};
+{% endfor %}
+    }
 {% if 'listar' in operaciones %}
 
     /**

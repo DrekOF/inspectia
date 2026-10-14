@@ -2,9 +2,9 @@
 Nombre: CLAUDE.md
 Descripción: Instrucciones del proyecto InspectIA para Claude Code. Se lee al inicio de cada sesión.
 Fecha de creación: 12/10/2026
-Actualización: 13/10/2026
+Actualización: 14/10/2026
 Autor: Equipo InspectIA
-Versión: 1.6
+Versión: 1.7
 -->
 
 # InspectIA
@@ -66,6 +66,7 @@ App web multiempresa que estima el % de granos de cacao sanos de un lote a parti
 - No reentrenar modelos desde la app (D-03).
 - No fijar el puerto de la base (5432) en el código ni en la configuración: el backend lo lee de `POSTGRES_PORT`, porque cambia en cada equipo (en algunos Windows el 5432 está reservado).
 - No agregar a Claude como coautor (`Co-Authored-By`) ni la línea «Generated with Claude Code» en commits ni PR: la autoría es de los integrantes. `.claude/settings.json` lo desactiva para todo el equipo.
+- No usar las anotaciones de Lombok que generan constructores (`@RequiredArgsConstructor`, `@AllArgsConstructor`, `@NoArgsConstructor`, `@Builder`, `@Data` ni `@Value`). Con el JDK 25, al recompilar sin `clean`, esos constructores quedan sin la llamada a `super()` y la JVM rechaza la clase (`VerifyError`). Escribe el constructor; Lombok queda para getters, setters y `@Slf4j`. `VerificacionDeClasesTest` lo revisa.
 
 ## Comandos
 

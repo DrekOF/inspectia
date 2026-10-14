@@ -3,9 +3,9 @@
  * Descripción: Respuestas 401 y 403 de la API en application/problem+json, en el idioma de la
  *              petición (RNF-04, RP-11).
  * Fecha de creación: 13/10/2026
- * Actualización: 13/10/2026
+ * Actualización: 14/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.comun.seguridad;
 
@@ -16,7 +16,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
-import lombok.RequiredArgsConstructor;
 import org.springframework.context.MessageSource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -33,12 +32,24 @@ import tools.jackson.databind.json.JsonMapper;
  * que los demás errores de la API (RNF-04): 401 sin sesión y 403 con un rol sin permiso.
  */
 @Component
-@RequiredArgsConstructor
 public class RespuestasDeSeguridad implements AuthenticationEntryPoint, AccessDeniedHandler {
 
     private final MessageSource mensajes;
     private final LocaleResolver idiomas;
     private final JsonMapper json;
+
+    /**
+     * Crea las respuestas; Spring les pasa los mensajes, el idioma de cada petición y el JSON.
+     *
+     * @param mensajes los textos en español y en inglés
+     * @param idiomas el idioma de cada petición, según {@code Accept-Language}
+     * @param json el convertidor a JSON
+     */
+    public RespuestasDeSeguridad(MessageSource mensajes, LocaleResolver idiomas, JsonMapper json) {
+        this.mensajes = mensajes;
+        this.idiomas = idiomas;
+        this.json = json;
+    }
 
     @Override
     public void commence(HttpServletRequest peticion, HttpServletResponse respuesta,
