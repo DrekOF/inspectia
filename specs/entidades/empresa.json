@@ -5,10 +5,12 @@
     "fecha_creacion": "13/10/2026",
     "actualizacion": "13/10/2026",
     "autor": "Equipo InspectIA",
-    "version": "1.0"
+    "version": "1.2"
   },
   "entidad": "empresa",
   "clase": "Empresa",
+  "modulo": "empresa",
+  "ruta": "empresas",
   "descripcion": "Empresa cliente de InspectIA. Sus usuarios, rangos, lotes y resultados están separados de los de las demás empresas (RNF-03). No se borra: se desactiva (D-27).",
   "etiquetas": {
     "es": { "singular": "Empresa", "plural": "Empresas" },
@@ -33,6 +35,7 @@
       "longitud": 120,
       "obligatorio": true,
       "validaciones": { "recortar": true },
+      "ejemplo": "Cacaos del Huila",
       "en_lista": true,
       "en_formulario": true,
       "etiquetas": { "es": "Nombre", "en": "Name" },
@@ -45,6 +48,7 @@
       "obligatorio": true,
       "unico": true,
       "validaciones": { "recortar": true, "patron": "^[0-9]{6,10}-[0-9]$" },
+      "ejemplo": "900123456-8",
       "mensajes": {
         "patron": {
           "es": "Escribe el NIT sin puntos y con el dígito de verificación, por ejemplo 900123456-8.",
@@ -70,6 +74,7 @@
       "longitud": 80,
       "obligatorio": true,
       "validaciones": { "recortar": true },
+      "ejemplo": "Neiva",
       "en_lista": true,
       "en_formulario": true,
       "etiquetas": { "es": "Ciudad", "en": "City" },
@@ -88,6 +93,7 @@
   ],
   "crear_con": {
     "entidad": "usuario",
+    "nombre": "administrador",
     "etiquetas": { "es": "Primer administrador", "en": "First administrator" },
     "atributos": ["nombre", "correo", "contrasena_hash"],
     "valores": { "rol": "ADMIN_EMPRESA" },

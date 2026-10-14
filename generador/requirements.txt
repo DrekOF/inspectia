@@ -1,0 +1,8 @@
+# Nombre: requirements.txt
+# Descripción: Dependencias del generador de InspectIA (RP-23), con versión fija.
+# Fecha de creación: 13/10/2026
+# Actualización: 13/10/2026
+# Autor: Equipo InspectIA
+# Versión: 1.0
+jinja2==3.1.6
+markupsafe==3.0.4

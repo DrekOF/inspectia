@@ -1,0 +1,57 @@
+{#
+  Nombre: solicitud.java.j2
+  Descripción: Plantilla de una solicitud de la API (record con Bean Validation y OpenAPI) (RP-23).
+  Fecha de creación: 13/10/2026
+  Actualización: 13/10/2026
+  Autor: Equipo InspectIA
+  Versión: 1.0
+#}
+{% from 'java/_macros.j2' import encabezado %}
+{% set s = solicitud %}
+{% set normalizados = s.campos | selectattr('normalizacion') | list %}
+{{ encabezado(header) }}
+package {{ paquete }};
+
+{% for i in s.importaciones %}
+import {{ i }};
+{% endfor %}
+
+/**
+ * {{ s.descripcion | envolver(' * ') }}
+{% if normalizados %}
+ * Antes de validar se normalizan los textos como pide el JSON: sin espacios al inicio ni al final
+ * y, si corresponde, en minúsculas.
+{% endif %}
+ *
+{% for c in s.campos %}
+ * @param {{ c.nombre }} {{ c.etiqueta }}
+{% endfor %}
+{% if s.crear_con %}
+ * @param {{ s.crear_con.nombre }} {{ s.crear_con.etiqueta }}
+{% endif %}
+ */
+@Schema(description = {{ s.descripcion | java }})
+public record {{ s.clase }}(
+{% for c in s.campos %}
+        @Schema({{ c.esquema }})
+{% for a in c.anotaciones %}
+        {{ a }}
+{% endfor %}
+        {{ c.tipo }} {{ c.nombre }}{{ ',' if (not loop.last or s.crear_con) else ') {' }}
+{% endfor %}
+{% if s.crear_con %}
+        @Schema(description = {{ s.crear_con.etiqueta | java }}, requiredMode = Schema.RequiredMode.REQUIRED)
+        @NotNull(message = "{validacion.obligatorio}")
+        @Valid
+        {{ s.crear_con.clase_solicitud }} {{ s.crear_con.nombre }}) {
+{% endif %}
+{% if normalizados %}
+
+    /** Normaliza los textos antes de validarlos. */
+    public {{ s.clase }} {
+{% for c in normalizados %}
+        {{ c.nombre }} = {{ c.normalizacion }};
+{% endfor %}
+    }
+{% endif %}
+}

@@ -1,0 +1,196 @@
+{#
+  Nombre: servicio.java.j2
+  Descripción: Plantilla del servicio de la API de una entidad: valida, guarda y responde (RP-23).
+  Fecha de creación: 13/10/2026
+  Actualización: 13/10/2026
+  Autor: Equipo InspectIA
+  Versión: 1.0
+#}
+{% from 'java/_macros.j2' import encabezado %}
+{% set con_unicos_al_crear = consultas or (crear_con and crear_con.consultas) %}
+{{ encabezado(header) }}
+package {{ paquete }};
+
+{% for i in importaciones %}
+import {{ i }};
+{% endfor %}
+
+/**
+ * Operaciones de {@code {{ entidad }}} ({{ fichas | join(', ') }}). Cada una revisa, en este orden:
+ * <ol>
+ *   <li>Los datos, con las validaciones del JSON (las revisa Spring antes de llamar al servicio).</li>
+ *   <li>Las reglas que se programan a mano: si alguna no se cumple, responde 400.</li>
+ *   <li>Los datos únicos: si alguno ya existe, responde 409.</li>
+ * </ol>
+ * Lo que se guarda en una operación queda en una sola transacción: o se guarda todo o nada.
+ */
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class {{ clase }}Servicio {
+
+    /** Orden del listado: {{ orden_texto }}; los empates, por antigüedad. */
+    private static final Sort ORDEN = {{ orden }};
+
+    private final {{ clase }}Repositorio repositorio;
+{% if reglas %}
+    private final Reglas{{ clase }} reglas;
+{% endif %}
+{% if crear_con %}
+    private final {{ crear_con.repositorio }} {{ crear_con.repositorio_var }};
+{% if crear_con.contrasena %}
+    private final PasswordEncoder codificador;
+{% endif %}
+{% endif %}
+{% for i in iniciales %}
+    private final {{ i.repositorio }} {{ i.repositorio_var }};
+{% endfor %}
+{% if 'listar' in operaciones %}
+
+    /**
+     * Una página de {{ plural }}, {{ orden_texto }}.
+     *
+     * @param pagina número de la página, desde 0
+     * @param tamano filas por página
+     * @return la página
+     */
+    public Pagina<{{ clase }}Respuesta> listar(int pagina, int tamano) {
+        return Pagina.de(repositorio.findAll(PageRequest.of(pagina, tamano, ORDEN)), {{ clase }}Mapeador::respuesta);
+    }
+{% endif %}
+{% if 'ver' in operaciones %}
+
+    /**
+     * Un registro por su identificador.
+     *
+     * @param id el identificador
+     * @return el registro
+     * @throws NoEncontradoExcepcion si no existe (404)
+     */
+    public {{ clase }}Respuesta ver(UUID id) {
+        return {{ clase }}Mapeador.respuesta(buscar(id));
+    }
+{% endif %}
+{% if 'crear' in operaciones %}
+
+    /**
+     * {{ al_crear | envolver('     * ') }}
+     *
+     * @param solicitud los datos, ya validados con el JSON
+     * @return lo que quedó guardado
+     * @throws ReglaIncumplidaExcepcion si no se cumple una regla (400)
+     * @throws DatoRepetidoExcepcion si un dato único ya existe (409)
+     */
+    @Transactional
+    public {{ clase }}Respuesta crear({{ clase }}CrearSolicitud solicitud) {
+        {{ clase }} {{ var }} = {{ clase }}Mapeador.deSolicitud(solicitud);
+{% if reglas_por_operacion.crear %}
+        revisarReglasAlCrear({{ var }});
+{% endif %}
+{% if con_unicos_al_crear %}
+        List<CampoInvalido> repetidos = new ArrayList<>();
+{% for c in consultas %}
+        if (repositorio.{{ c.metodo }}({{ var }}.{{ c.getter }}())) {
+            repetidos.add(new CampoInvalido("{{ c.campo }}", "{{ c.clave }}"));
+        }
+{% endfor %}
+{% if crear_con %}
+{% for c in crear_con.consultas %}
+        if ({{ crear_con.repositorio_var }}.{{ c.metodo }}({{ c.valor }})) {
+            repetidos.add(new CampoInvalido("{{ c.campo_json }}", "{{ c.clave }}"));
+        }
+{% endfor %}
+{% endif %}
+        if (!repetidos.isEmpty()) {
+            throw new DatoRepetidoExcepcion(repetidos);
+        }
+{% endif %}
+        repositorio.saveAndFlush({{ var }});
+{% if crear_con %}
+        {{ crear_con.repositorio_var }}.saveAndFlush({{ clase }}Mapeador.{{ crear_con.metodo }}(solicitud.{{ crear_con.nombre }}(){{ (', ' ~ var ~ '.getId()') if crear_con.con_empresa else '' }}{% if crear_con.contrasena %},
+                codificador.encode(solicitud.{{ crear_con.nombre }}().{{ crear_con.contrasena }}()){% endif %}));
+{% endif %}
+{% for i in iniciales %}
+        {{ i.repositorio_var }}.saveAllAndFlush({{ i.clase }}.paraEmpresa({{ var }}.getId()));
+{% endfor %}
+        return {{ clase }}Mapeador.respuesta({{ var }});
+    }
+{% endif %}
+{% if 'editar' in operaciones %}
+
+    /**
+     * Edita un registro con las mismas validaciones del registro. Los cambios se revisan en una copia
+     * y solo se aplican si todo está bien.
+     *
+     * @param id el registro que se edita
+     * @param solicitud los datos, ya validados con el JSON
+     * @return lo que quedó guardado
+     * @throws NoEncontradoExcepcion si no existe (404)
+     * @throws ReglaIncumplidaExcepcion si no se cumple una regla (400)
+     * @throws DatoRepetidoExcepcion si un dato único ya lo tiene otro registro (409)
+     */
+    @Transactional
+    public {{ clase }}Respuesta editar(UUID id, {{ clase }}EditarSolicitud solicitud) {
+        {{ clase }} {{ var }} = buscar(id);
+        {{ clase }} propuesta = {{ clase }}Mapeador.copia({{ var }});
+        {{ clase }}Mapeador.aplicar(solicitud, propuesta);
+{% if reglas_por_operacion.editar %}
+        revisarReglasAlEditar(propuesta);
+{% endif %}
+{% if consultas %}
+        List<CampoInvalido> repetidos = new ArrayList<>();
+{% for c in consultas %}
+        if (repositorio.{{ c.metodo_en_otro }}(propuesta.{{ c.getter }}(), id)) {
+            repetidos.add(new CampoInvalido("{{ c.campo }}", "{{ c.clave }}"));
+        }
+{% endfor %}
+        if (!repetidos.isEmpty()) {
+            throw new DatoRepetidoExcepcion(repetidos);
+        }
+{% endif %}
+        {{ clase }}Mapeador.aplicar(solicitud, {{ var }});
+        repositorio.flush();
+        return {{ clase }}Mapeador.respuesta({{ var }});
+    }
+{% endif %}
+{% for operacion, valor in (('desactivar', 'false'), ('reactivar', 'true')) if operacion in operaciones %}
+
+    /**
+     * {{ 'Desactiva' if operacion == 'desactivar' else 'Reactiva' }} un registro: cambia {@code {{ activo.campo }}} y no borra nada.
+     *
+     * @param id el registro
+     * @return lo que quedó guardado
+     * @throws NoEncontradoExcepcion si no existe (404)
+     */
+    @Transactional
+    public {{ clase }}Respuesta {{ operacion }}(UUID id) {
+        {{ clase }} {{ var }} = buscar(id);
+{% if reglas_por_operacion[operacion] %}
+        revisarReglasAl{{ operacion | capitalize }}({{ var }});
+{% endif %}
+        {{ var }}.{{ activo.setter }}({{ valor }});
+        repositorio.flush();
+        return {{ clase }}Mapeador.respuesta({{ var }});
+    }
+{% endfor %}
+{% if ['ver', 'editar', 'desactivar', 'reactivar'] | select('in', operaciones) | list %}
+
+    private {{ clase }} buscar(UUID id) {
+        return repositorio.findById(id).orElseThrow(() -> new NoEncontradoExcepcion("{{ entidad }} " + id));
+    }
+{% endif %}
+{% for operacion, lista in reglas_por_operacion.items() if lista %}
+
+    private void revisarReglasAl{{ operacion | capitalize }}({{ clase }} {{ var }}) {
+        List<CampoInvalido> incumplidas = new ArrayList<>();
+{% for r in lista %}
+        if (!reglas.{{ r.metodo }}({{ var }})) {
+            incumplidas.add(new CampoInvalido({{ ('"' ~ r.campo ~ '"') if r.campo else 'null' }}, "{{ r.clave }}"));
+        }
+{% endfor %}
+        if (!incumplidas.isEmpty()) {
+            throw new ReglaIncumplidaExcepcion(incumplidas);
+        }
+    }
+{% endfor %}
+}

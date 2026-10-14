@@ -2,7 +2,13 @@
 # deben conservar LF aunque se editen en Windows; si no, fallan con "bad interpreter".
 * text=auto
 *.sh text eol=lf
+*.sql text eol=lf
 mvnw text eol=lf
 *.cmd text eol=crlf
 *.bat text eol=crlf
 *.ps1 text eol=crlf
+# Lo generado (RP-23) se escribe con LF y se deja así también en Windows, para que
+# «generar.py comprobar» no vea diferencias falsas.
+backend/src/generated/** text eol=lf
+backend/src/test-generated/** text eol=lf
+docs/casos-de-prueba.md text eol=lf

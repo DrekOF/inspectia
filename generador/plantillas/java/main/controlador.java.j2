@@ -1,0 +1,118 @@
+{#
+  Nombre: controlador.java.j2
+  Descripción: Plantilla del controlador REST de una entidad, con roles y OpenAPI (RP-23).
+  Fecha de creación: 13/10/2026
+  Actualización: 13/10/2026
+  Autor: Equipo InspectIA
+  Versión: 1.0
+#}
+{% from 'java/_macros.j2' import encabezado %}
+{{ encabezado(header) }}
+package {{ paquete }};
+
+{% for i in importaciones %}
+import {{ i }};
+{% endfor %}
+
+/**
+ * API REST de {@code {{ entidad }}} en {@code {{ ruta_api }}} ({{ fichas | join(', ') }}). Intercambia JSON.
+ *
+ * <p>Los roles de cada operación salen de {@code operaciones} del JSON: la cadena de seguridad los
+ * revisa por ruta ({@link {{ clase }}Acceso}) y {@code @PreAuthorize} es la segunda barrera (RNF-04).
+ */
+@RestController
+@RequestMapping("{{ ruta_api }}")
+@RequiredArgsConstructor
+@Tag(name = {{ (plural | capitalize) | java }}, description = {{ descripcion | java }})
+public class {{ clase }}Controlador {
+
+    private final {{ clase }}Servicio servicio;
+{% for r in rutas %}
+{% set roles = 'Roles: ' ~ (r.roles | join(', ')) ~ '.' %}
+{% if r.operacion == 'listar' %}
+
+    /**
+     * Lista {{ plural }} por páginas, {{ orden_texto }}.
+     *
+     * @param pagina número de la página, desde 0
+     * @param tamano filas por página
+     * @return la página
+     */
+    @GetMapping
+    @PreAuthorize("{{ r.preautorizar }}")
+    @Operation(summary = "{{ r.verbo }} {{ plural }}", description = {{ ('Página de ' ~ plural ~ ', ' ~ orden_texto ~ '. ' ~ roles) | java }})
+    public Pagina<{{ clase }}Respuesta> listar(
+            @Parameter(description = "Número de la página, desde 0.")
+            @RequestParam(name = "pagina", defaultValue = "0")
+            @Min(value = 0, message = "{validacion.minimo}") int pagina,
+            @Parameter(description = "Filas por página, de 1 a " + Pagina.TAMANO_MAXIMO + ".")
+            @RequestParam(name = "tamano", defaultValue = "" + Pagina.TAMANO_POR_DEFECTO)
+            @Min(value = 1, message = "{validacion.minimo}")
+            @Max(value = Pagina.TAMANO_MAXIMO, message = "{validacion.maximo}") int tamano) {
+        return servicio.listar(pagina, tamano);
+    }
+{% elif r.operacion == 'ver' %}
+
+    /**
+     * Un registro por su identificador.
+     *
+     * @param id el identificador
+     * @return el registro
+     */
+    @GetMapping("/{id}")
+    @PreAuthorize("{{ r.preautorizar }}")
+    @Operation(summary = "{{ r.verbo }} {{ singular }}", description = {{ roles | java }})
+    public {{ clase }}Respuesta ver(@PathVariable("id") UUID id) {
+        return servicio.ver(id);
+    }
+{% elif r.operacion == 'crear' %}
+
+    /**
+     * Registra un registro nuevo. Responde 201 con su ubicación.
+     *
+     * @param solicitud los datos
+     * @param ubicacion la dirección de esta petición, para armar la del registro nuevo
+     * @return lo que quedó guardado
+     */
+    @PostMapping
+    @PreAuthorize("{{ r.preautorizar }}")
+    @Operation(summary = "{{ r.verbo }} {{ singular }}", description = {{ roles | java }})
+    public ResponseEntity<{{ clase }}Respuesta> crear(@Valid @RequestBody {{ clase }}CrearSolicitud solicitud,
+            UriComponentsBuilder ubicacion) {
+        {{ clase }}Respuesta respuesta = servicio.crear(solicitud);
+        URI uri = ubicacion.path("{{ ruta_api }}/{id}").buildAndExpand(respuesta.id()).toUri();
+        return ResponseEntity.created(uri).body(respuesta);
+    }
+{% elif r.operacion == 'editar' %}
+
+    /**
+     * Edita un registro.
+     *
+     * @param id el registro
+     * @param solicitud los datos nuevos
+     * @return lo que quedó guardado
+     */
+    @PutMapping("/{id}")
+    @PreAuthorize("{{ r.preautorizar }}")
+    @Operation(summary = "{{ r.verbo }} {{ singular }}", description = {{ roles | java }})
+    public {{ clase }}Respuesta editar(@PathVariable("id") UUID id,
+            @Valid @RequestBody {{ clase }}EditarSolicitud solicitud) {
+        return servicio.editar(id, solicitud);
+    }
+{% else %}
+
+    /**
+     * {{ r.verbo[:-1] }} un registro; no borra nada.
+     *
+     * @param id el registro
+     * @return lo que quedó guardado
+     */
+    @PostMapping("/{id}/{{ r.operacion }}")
+    @PreAuthorize("{{ r.preautorizar }}")
+    @Operation(summary = "{{ r.verbo }} {{ singular }}", description = {{ ('No borra nada. ' ~ roles) | java }})
+    public {{ clase }}Respuesta {{ r.operacion }}(@PathVariable("id") UUID id) {
+        return servicio.{{ r.operacion }}(id);
+    }
+{% endif %}
+{% endfor %}
+}

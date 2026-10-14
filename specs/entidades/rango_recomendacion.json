@@ -5,10 +5,12 @@
     "fecha_creacion": "13/10/2026",
     "actualizacion": "13/10/2026",
     "autor": "Equipo InspectIA",
-    "version": "1.0"
+    "version": "1.1"
   },
   "entidad": "rango_recomendacion",
   "clase": "RangoRecomendacion",
+  "modulo": "rango",
+  "ruta": "rangos-recomendacion",
   "descripcion": "Rango de una categoría probable: desde qué porcentaje de granos sanos aplica y qué se recomienda (D-10, anexo A.3). Cada empresa tiene siempre las 4 categorías; solo cambian sus límites y sus textos (RF-13).",
   "etiquetas": {
     "es": { "singular": "Rango de recomendación", "plural": "Rangos de recomendación" },

@@ -4,7 +4,7 @@ Descripción: Decisiones (D-xx) y pendientes (P-xx) del proyecto. Fuente: 01_Req
 Fecha de creación: 12/10/2026
 Actualización: 13/10/2026
 Autor: Equipo InspectIA (exportado del documento de requerimientos v2.1)
-Versión: 1.2
+Versión: 1.3
 -->
 
 # Decisiones y pendientes
@@ -62,3 +62,4 @@ Copia de trabajo del anexo A del documento de requerimientos (v2.1). Si una tare
 | P-13 | Probar el modelo con fotos de granos de cacao colombiano: el dataset es de granos de Ecuador y el resultado puede variar con granos de otra región. | Equipo |
 | P-14 | Revisar las fichas RF-08 y RNF-07 (secciones 5 y 6), incluida la métrica propuesta: F1-score macro. | Julián |
 | P-15 | Fijar con los resultados de validación el umbral de confianza baja y el porcentaje de granos dudosos que pide repetir una foto (10 % inicial, RF-09). Son parámetros del sistema. | Julián |
+| P-16 | Definir cómo se generan las migraciones de la base después del primer despliegue. Hasta entonces, `V1__esquema_inicial.sql` se regenera completa desde los JSON y la base local se reinicia. | Equipo |

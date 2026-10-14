@@ -1,0 +1,133 @@
+{#
+  Nombre: mapeador.java.j2
+  Descripción: Plantilla de la conversión entre una entidad y sus solicitudes y respuesta (RP-23).
+  Fecha de creación: 13/10/2026
+  Actualización: 13/10/2026
+  Autor: Equipo InspectIA
+  Versión: 1.0
+#}
+{% from 'java/_macros.j2' import encabezado %}
+{{ encabezado(header) }}
+package {{ paquete }};
+{% if importaciones %}
+
+{% for i in importaciones %}
+import {{ i }};
+{% endfor %}
+{% endif %}
+
+/** Conversión entre {@link {{ clase }}} y sus solicitudes y respuesta. Solo copia datos. */
+public final class {{ clase }}Mapeador {
+
+    private {{ clase }}Mapeador() {
+    }
+{% if 'crear' in operaciones %}
+
+    /**
+     * Arma un registro nuevo con los datos de la solicitud; lo demás queda con su valor por defecto.
+     *
+     * @param solicitud los datos validados
+     * @return el registro, sin guardar
+     */
+    public static {{ clase }} deSolicitud({{ clase }}CrearSolicitud solicitud) {
+        {{ clase }} {{ var }} = new {{ clase }}();
+{% for c in campos %}
+{% if c.opcional_con_defecto %}
+        if (solicitud.{{ c.nombre }}() != null) {
+            {{ var }}.{{ c.setter }}(solicitud.{{ c.nombre }}());
+        }
+{% else %}
+        {{ var }}.{{ c.setter }}(solicitud.{{ c.nombre }}());
+{% endif %}
+{% endfor %}
+        return {{ var }};
+    }
+{% endif %}
+{% if 'editar' in operaciones %}
+
+    /**
+     * Copia en el registro los datos de la solicitud.
+     *
+     * @param solicitud los datos validados
+     * @param {{ var }} el registro que se edita
+     */
+    public static void aplicar({{ clase }}EditarSolicitud solicitud, {{ clase }} {{ var }}) {
+{% for c in campos %}
+{% if c.opcional_con_defecto %}
+        if (solicitud.{{ c.nombre }}() != null) {
+            {{ var }}.{{ c.setter }}(solicitud.{{ c.nombre }}());
+        }
+{% else %}
+        {{ var }}.{{ c.setter }}(solicitud.{{ c.nombre }}());
+{% endif %}
+{% endfor %}
+    }
+
+    /**
+     * Copia un registro sin ligarlo a la base: sirve para revisar los cambios antes de aplicarlos.
+     *
+     * @param original el registro guardado
+     * @return la copia
+     */
+    public static {{ clase }} copia({{ clase }} original) {
+        {{ clase }} copia = new {{ clase }}();
+        copia.setId(original.getId());
+{% if con_empresa %}
+        copia.setEmpresaId(original.getEmpresaId());
+{% endif %}
+{% for a in atributos_entidad %}
+        copia.{{ a.setter }}(original.{{ a.getter }}());
+{% endfor %}
+        copia.setFechaCreacion(original.getFechaCreacion());
+        copia.setFechaActualizacion(original.getFechaActualizacion());
+        return copia;
+    }
+{% endif %}
+
+    /**
+     * La respuesta de la API para un registro.
+     *
+     * @param {{ var }} el registro
+     * @return la respuesta
+     */
+    public static {{ clase }}Respuesta respuesta({{ clase }} {{ var }}) {
+        return new {{ clase }}Respuesta(
+{% for c in respuesta %}
+                {{ var }}.{{ c.getter }}(){{ ',' if not loop.last else ');' }}
+{% endfor %}
+    }
+{% if crear_con %}
+{% set cc = crear_con %}
+
+    /**
+     * Arma el registro de {@code {{ cc.entidad }}} que se crea junto con el de {@code {{ entidad }}}
+     * ({{ cc.fichas | join(', ') }}).
+     *
+     * @param solicitud los datos validados
+{% if cc.con_empresa %}
+     * @param empresaId la empresa recién creada
+{% endif %}
+{% if cc.contrasena %}
+     * @param contrasenaHash la contraseña ya codificada con BCrypt
+{% endif %}
+     * @return el registro, sin guardar
+     */
+    public static {{ cc.clase }} {{ cc.metodo }}({{ cc.clase_solicitud }} solicitud{{ ', UUID empresaId' if cc.con_empresa else '' }}{{ ', String contrasenaHash' if cc.contrasena else '' }}) {
+        {{ cc.clase }} nuevo = new {{ cc.clase }}();
+{% if cc.con_empresa %}
+        nuevo.setEmpresaId(empresaId);
+{% endif %}
+{% for c in cc.campos %}
+{% if c.tipo_atributo == 'contrasena' %}
+        nuevo.{{ c.setter }}(contrasenaHash);
+{% else %}
+        nuevo.{{ c.setter }}(solicitud.{{ c.nombre }}());
+{% endif %}
+{% endfor %}
+{% for f in cc.fijos %}
+        nuevo.{{ f.setter }}({{ f.valor }});
+{% endfor %}
+        return nuevo;
+    }
+{% endif %}
+}

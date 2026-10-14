@@ -2,9 +2,9 @@
 Nombre: README.md
 Descripción: Presentación del monorepo de InspectIA: estructura, versiones, requisitos del entorno de desarrollo, base de datos local y cita del dataset.
 Fecha de creación: 12/10/2026
-Actualización: 12/10/2026
+Actualización: 13/10/2026
 Autor: Equipo InspectIA
-Versión: 1.1
+Versión: 1.2
 -->
 
 # InspectIA
@@ -20,10 +20,10 @@ Proyecto final de Inteligencia Artificial, Universidad Surcolombiana. Docente: J
 | `frontend/` | Página web: React y Material UI. |
 | `backend/` | Servidor: Java y Spring Boot, un solo programa dividido en módulos (D-21). |
 | `ia-servicio/` | Servicio de IA: Python, OpenCV y ONNX. |
-| `generador/` | Scripts de Python que generan los CRUD a partir de `specs/entidades/` (RP-23). |
+| `generador/` | Scripts de Python que generan los CRUD a partir de `specs/entidades/` (RP-23) y la lista de casos de prueba (RP-13). |
 | `infra/` | Docker Compose, scripts de base de datos, de compilación y de despliegue. |
 | `specs/` | Especificación: fichas RF y RNF, decisiones, arquitectura, pautas del docente y entidades. |
-| `docs/` | Bitácora de construcción (RP-24) y documentación. |
+| `docs/` | Bitácora de construcción (RP-24), casos de prueba (RP-13) y documentación. |
 
 ## Versiones
 
@@ -38,7 +38,7 @@ Fijadas el 12/10/2026. La versión exacta de cada librería queda en `backend/po
 | Node | 24 LTS | |
 | React | 19.x, con Vite | |
 | Material UI | 9.x (9.5.0) | Versión mayor estable actual. |
-| Python | 3.13 | Para `ia-servicio/` y `generador/`. |
+| Python | 3.13 | Para `ia-servicio/` y `generador/`. El generador usa Jinja2 3.1.6 y pytest 9.1.1 (`generador/requirements*.txt`). |
 | PostgreSQL | 18 | Corre en Docker; no hace falta instalarlo. |
 
 ### Imágenes de Docker
@@ -128,6 +128,15 @@ netsh interface ipv4 show excludedportrange protocol=tcp
 
 Elige un puerto que no esté en esos rangos, por ejemplo el 5433, escríbelo en `POSTGRES_PORT` de `infra/.env` y vuelve a encender la base.
 
+## Backend, generador y pruebas
+
+Los comandos están en la sección Comandos de `CLAUDE.md`. En resumen:
+
+- **Backend:** desde `backend/`, `./mvnw verify` corre todas las pruebas (las de integración usan PostgreSQL 18 en Testcontainers, con Docker Desktop abierto) y `./mvnw spring-boot:run` lo arranca contra la base local. La API queda documentada con OpenAPI en http://localhost:8080/swagger-ui.html.
+- **Primer administrador de la plataforma:** lo crea un script de la base de datos; los pasos están en `infra/README.md`.
+- **Generador:** los CRUD (tablas, backend y, más adelante, pantallas) salen de `specs/entidades/*.json` y no se editan a mano (RP-23). Ver `generador/README.md`.
+- **Casos de prueba:** `docs/casos-de-prueba.md` lista cada criterio de aceptación con sus pruebas y los que aún no tienen ninguna (RP-13). Lo arma `generador/casos_de_prueba.py` desde las marcas de las pruebas.
+
 ## Dataset y licencia (RNF-08)
 
 Los modelos se entrenan con el dataset [*cacao-beans-for-classification*](https://www.kaggle.com/datasets/luiszhinin979/ecuadorian-cocoa-beans-for-classification) de Kaggle, con licencia [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/): hay que citar a sus autores y no se puede usar con fines comerciales. Mientras InspectIA use modelos entrenados con este dataset, no se cobra. El dataset no se sube a este repositorio.
@@ -143,4 +152,6 @@ Artículo de los autores:
 ## Documentación
 
 - Especificación: `specs/` (fichas, decisiones, arquitectura y pautas del docente).
+- Formato de las entidades y de la API generada: `specs/entidades/README.md`.
+- Casos de prueba por criterio de aceptación (RP-13): `docs/casos-de-prueba.md`.
 - Bitácora de construcción: `docs/bitacora.md`.

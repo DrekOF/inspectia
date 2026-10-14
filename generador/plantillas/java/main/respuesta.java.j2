@@ -1,0 +1,29 @@
+{#
+  Nombre: respuesta.java.j2
+  Descripción: Plantilla de la respuesta de la API de una entidad (record con OpenAPI) (RP-23).
+  Fecha de creación: 13/10/2026
+  Actualización: 13/10/2026
+  Autor: Equipo InspectIA
+  Versión: 1.0
+#}
+{% from 'java/_macros.j2' import encabezado %}
+{{ encabezado(header) }}
+package {{ paquete }};
+
+{% for i in importaciones %}
+import {{ i }};
+{% endfor %}
+
+/**
+ * Un registro de {@code {{ entidad }}} como lo responde la API. Nunca trae contraseñas.
+ *
+{% for c in respuesta %}
+ * @param {{ c.nombre }} {{ c.descripcion }}
+{% endfor %}
+ */
+@Schema(description = {{ (singular | capitalize ~ '.') | java }})
+public record {{ clase }}Respuesta(
+{% for c in respuesta %}
+        @Schema({{ c.esquema }}) {{ c.tipo }} {{ c.nombre }}{{ ',' if not loop.last else ') {' }}
+{% endfor %}
+}

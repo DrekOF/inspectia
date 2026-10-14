@@ -1,0 +1,21 @@
+{#
+  Nombre: _macros.j2
+  Descripción: Macros compartidas por las plantillas de Java: el header de cada archivo (RP-10).
+  Fecha de creación: 13/10/2026
+  Actualización: 13/10/2026
+  Autor: Equipo InspectIA
+  Versión: 1.0
+#}
+{% macro encabezado(h) -%}
+/*
+ * Nombre: {{ h.nombre }}
+ * Descripción: {{ h.descripcion | envolver(' *              ') }}
+ *              Archivo generado por generador/ (RP-23): no se edita a mano; se cambia el JSON
+ *              o la plantilla, y se regenera.
+ * Fecha de creación: {{ h.fecha_creacion }}
+ * Actualización: {{ h.actualizacion }}
+ * Autor: Equipo InspectIA (generado por generador/ v{{ h.version }})
+ * Versión: {{ h.version }}
+ * Entidades: {{ h.versiones }}
+ */
+{%- endmacro %}

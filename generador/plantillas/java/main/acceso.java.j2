@@ -1,0 +1,35 @@
+{#
+  Nombre: acceso.java.j2
+  Descripción: Plantilla de las reglas de acceso por ruta de la API de una entidad (RNF-04, RP-23).
+  Fecha de creación: 13/10/2026
+  Actualización: 13/10/2026
+  Autor: Equipo InspectIA
+  Versión: 1.0
+#}
+{% from 'java/_macros.j2' import encabezado %}
+{{ encabezado(header) }}
+package {{ paquete }};
+
+import co.edu.usco.inspectia.comun.seguridad.ReglasDeAcceso;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.AuthorizeHttpRequestsConfigurer;
+import org.springframework.stereotype.Component;
+
+/**
+ * Roles que pueden usar cada operación de la API de {@code {{ entidad }}}, según {@code operaciones} del
+ * JSON (RNF-04). La cadena de seguridad los revisa antes de leer la petición: un rol sin permiso
+ * recibe 403 aunque envíe datos inválidos.
+ */
+@Component
+public class {{ clase }}Acceso implements ReglasDeAcceso {
+
+    @Override
+    public void registrar(
+            AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry autorizaciones) {
+        autorizaciones
+{% for r in rutas %}
+                .requestMatchers(HttpMethod.{{ r.metodo }}, "{{ r.ruta }}").{{ r.regla }}{{ ';' if loop.last else '' }}
+{% endfor %}
+    }
+}

@@ -1,0 +1,25 @@
+{#
+  Nombre: textos.properties.j2
+  Descripción: Plantilla de los textos de las entidades en un idioma: etiquetas, valores de las listas
+               y mensajes (RP-11, RP-23).
+  Fecha de creación: 13/10/2026
+  Actualización: 13/10/2026
+  Autor: Equipo InspectIA
+  Versión: 1.0
+#}
+# Nombre: {{ nombre }}
+# Descripción: Textos en {{ 'español' if idioma == 'es' else 'inglés' }} de las entidades de specs/entidades (RP-11): etiquetas,
+#              valores de las listas y mensajes. Archivo generado por generador/ (RP-23): no se edita a mano;
+#              se cambia el JSON o la plantilla y se regenera.
+# Fecha de creación: {{ header.fecha_creacion }}
+# Actualización: {{ header.actualizacion }}
+# Autor: Equipo InspectIA (generado por generador/ v{{ header.version }})
+# Versión: {{ header.version }}
+# Entidades: {{ header.versiones }}
+{% for titulo, filas in secciones %}
+
+# {{ titulo }}
+{% for clave, es, en in filas %}
+{{ clave }}={{ (es if idioma == 'es' else en) | properties }}
+{% endfor %}
+{% endfor %}

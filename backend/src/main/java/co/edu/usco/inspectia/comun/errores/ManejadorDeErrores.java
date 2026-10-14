@@ -1,0 +1,172 @@
+/*
+ * Nombre: ManejadorDeErrores.java
+ * Descripción: Convierte los errores de la API en respuestas application/problem+json (RFC 9457), con
+ *              la lista «errores» y los mensajes en el idioma de la petición (RP-03, RP-11).
+ * Fecha de creación: 13/10/2026
+ * Actualización: 13/10/2026
+ * Autor: Equipo InspectIA
+ * Versión: 1.0
+ */
+package co.edu.usco.inspectia.comun.errores;
+
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.TypeMismatchException;
+import org.springframework.context.MessageSource;
+import org.springframework.context.i18n.LocaleContextHolder;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.ProblemDetail;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
+
+/**
+ * Convierte los errores de la API en respuestas {@code application/problem+json} (RFC 9457). Las de
+ * datos inválidos (400) y repetidos (409) traen la lista {@code errores}, con un {@link ErrorDeCampo}
+ * por cada campo que corregir. Los mensajes salen en el idioma de la petición ({@code Accept-Language});
+ * si no pide ninguno, en español (RP-11).
+ *
+ * <p>Los 401 y 403 no pasan por aquí: los responde la cadena de seguridad
+ * ({@code co.edu.usco.inspectia.comun.seguridad.RespuestasDeSeguridad}).
+ */
+@Slf4j
+@RestControllerAdvice
+public class ManejadorDeErrores extends ResponseEntityExceptionHandler {
+
+    /** Código de PostgreSQL de una violación de un índice único. */
+    private static final String VIOLACION_DE_UNICO = "23505";
+
+    /** Si un campo falla varias validaciones, se informa primero que falta. */
+    private static final List<String> FALTA_EL_DATO = List.of("NotNull", "NotBlank", "NotEmpty");
+
+    @ExceptionHandler(NoEncontradoExcepcion.class)
+    ProblemDetail noEncontrado(NoEncontradoExcepcion excepcion) {
+        return problema(HttpStatus.NOT_FOUND, "error.no_encontrado", List.of());
+    }
+
+    @ExceptionHandler(DatoRepetidoExcepcion.class)
+    ProblemDetail datoRepetido(DatoRepetidoExcepcion excepcion) {
+        return problema(HttpStatus.CONFLICT, "error.dato_repetido", traducir(excepcion.getCampos()));
+    }
+
+    @ExceptionHandler(ReglaIncumplidaExcepcion.class)
+    ProblemDetail reglaIncumplida(ReglaIncumplidaExcepcion excepcion) {
+        return problema(HttpStatus.BAD_REQUEST, "error.datos_invalidos", traducir(excepcion.getCampos()));
+    }
+
+    /**
+     * La base rechazó un dato. Si fue un índice único, es una carrera: dos peticiones guardaron el
+     * mismo valor a la vez, después de que el servicio revisó que no existía (409). Lo demás es un
+     * error del servidor: los CHECK de la base son la última defensa, no la validación.
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    ProblemDetail integridad(DataIntegrityViolationException excepcion) {
+        if (excepcion.getMostSpecificCause() instanceof SQLException sql
+                && VIOLACION_DE_UNICO.equals(sql.getSQLState())) {
+            return problema(HttpStatus.CONFLICT, "error.dato_repetido", List.of());
+        }
+        return errorInterno(excepcion);
+    }
+
+    /**
+     * Cualquier otro error: se registra en el servidor y el usuario ve un mensaje general (500). Los
+     * de seguridad siguen su camino hasta la cadena de seguridad, que responde 401 o 403.
+     */
+    @ExceptionHandler(Exception.class)
+    ProblemDetail inesperado(Exception excepcion) throws Exception {
+        if (excepcion instanceof AccessDeniedException || excepcion instanceof AuthenticationException) {
+            throw excepcion;
+        }
+        return errorInterno(excepcion);
+    }
+
+    @Override
+    protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException excepcion,
+            HttpHeaders encabezados, HttpStatusCode estado, WebRequest peticion) {
+        ProblemDetail problema = problema(estado, "error.datos_invalidos", errores(excepcion.getBindingResult()));
+        return handleExceptionInternal(excepcion, problema, encabezados, estado, peticion);
+    }
+
+    @Override
+    protected ResponseEntity<Object> handleHandlerMethodValidationException(
+            HandlerMethodValidationException excepcion, HttpHeaders encabezados, HttpStatusCode estado,
+            WebRequest peticion) {
+        List<ErrorDeCampo> errores = excepcion.getParameterValidationResults().stream()
+                .flatMap(resultado -> resultado.getResolvableErrors().stream().limit(1)
+                        .map(error -> new ErrorDeCampo(resultado.getMethodParameter().getParameterName(),
+                                error.getDefaultMessage())))
+                .toList();
+        ProblemDetail problema = problema(estado, "error.datos_invalidos", errores);
+        return handleExceptionInternal(excepcion, problema, encabezados, estado, peticion);
+    }
+
+    @Override
+    protected ResponseEntity<Object> handleHttpMessageNotReadable(HttpMessageNotReadableException excepcion,
+            HttpHeaders encabezados, HttpStatusCode estado, WebRequest peticion) {
+        ProblemDetail problema = problema(estado, "error.cuerpo_invalido", List.of());
+        return handleExceptionInternal(excepcion, problema, encabezados, estado, peticion);
+    }
+
+    @Override
+    protected ResponseEntity<Object> handleTypeMismatch(TypeMismatchException excepcion, HttpHeaders encabezados,
+            HttpStatusCode estado, WebRequest peticion) {
+        String campo = excepcion instanceof MethodArgumentTypeMismatchException argumento
+                ? argumento.getName() : excepcion.getPropertyName();
+        ProblemDetail problema = problema(estado, "error.datos_invalidos",
+                List.of(new ErrorDeCampo(campo, mensaje("error.valor_invalido"))));
+        return handleExceptionInternal(excepcion, problema, encabezados, estado, peticion);
+    }
+
+    private ProblemDetail errorInterno(Exception excepcion) {
+        log.error("Error inesperado en la API", excepcion);
+        return problema(HttpStatus.INTERNAL_SERVER_ERROR, "error.interno", List.of());
+    }
+
+    private ProblemDetail problema(HttpStatusCode estado, String clave, List<ErrorDeCampo> errores) {
+        ProblemDetail problema = ProblemDetail.forStatusAndDetail(estado, mensaje(clave));
+        if (!errores.isEmpty()) {
+            problema.setProperty("errores", errores);
+        }
+        return problema;
+    }
+
+    /** Un error por campo, en orden alfabético de campo; los errores que no son de un campo, al final. */
+    private List<ErrorDeCampo> errores(BindingResult resultado) {
+        Map<String, FieldError> porCampo = new TreeMap<>();
+        resultado.getFieldErrors().stream()
+                .sorted(Comparator.comparing((FieldError error) -> !FALTA_EL_DATO.contains(error.getCode()))
+                        .thenComparing(error -> String.valueOf(error.getCode())))
+                .forEach(error -> porCampo.putIfAbsent(error.getField(), error));
+        List<ErrorDeCampo> errores = new ArrayList<>();
+        porCampo.forEach((campo, error) -> errores.add(new ErrorDeCampo(campo, error.getDefaultMessage())));
+        resultado.getGlobalErrors().forEach(error -> errores.add(new ErrorDeCampo(null, error.getDefaultMessage())));
+        return errores;
+    }
+
+    private List<ErrorDeCampo> traducir(List<CampoInvalido> campos) {
+        return campos.stream().map(campo -> new ErrorDeCampo(campo.campo(), mensaje(campo.clave()))).toList();
+    }
+
+    private String mensaje(String clave) {
+        MessageSource mensajes = getMessageSource();
+        return mensajes == null ? clave : mensajes.getMessage(clave, null, clave, LocaleContextHolder.getLocale());
+    }
+}

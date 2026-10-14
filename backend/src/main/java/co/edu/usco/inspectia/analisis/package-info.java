@@ -1,0 +1,20 @@
+/*
+ * Nombre: package-info.java (analisis)
+ * Descripción: Módulo analisis del servidor de InspectIA (D-21).
+ * Fecha de creación: 13/10/2026
+ * Actualización: 13/10/2026
+ * Autor: Equipo InspectIA
+ * Versión: 1.0
+ */
+/**
+ * Módulo analisis, con arquitectura hexagonal (D-21). Maneja lote, muestra, foto, grano y modelo
+ * (RF-04 a RF-12, RF-14 y RF-15) y se escribe a mano.
+ *
+ * <ul>
+ *   <li>{@code dominio}: las reglas del lote (% de granos sanos, categoría y sugerencia), sin
+ *       depender de Spring.</li>
+ *   <li>{@code aplicacion}: el caso de uso {@code AnalizarLote} y sus puertos (interfaces).</li>
+ *   <li>{@code adaptadores}: REST, servicio de IA, S3, PDF y JPA.</li>
+ * </ul>
+ */
+package co.edu.usco.inspectia.analisis;

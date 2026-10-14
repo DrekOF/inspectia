@@ -1,0 +1,77 @@
+{
+  "_header": {
+    "nombre": "producto.json",
+    "descripcion": "Entidad de ejemplo de la pauta del docente para el back-end (id, nombre, categoria, descripcion, estado). Solo la usan las pruebas del generador para demostrar que sirve para otra temática (RP-23); no entra a la app.",
+    "fecha_creacion": "13/10/2026",
+    "actualizacion": "13/10/2026",
+    "autor": "Equipo InspectIA",
+    "version": "1.0"
+  },
+  "entidad": "producto",
+  "clase": "Producto",
+  "modulo": "producto",
+  "ruta": "productos",
+  "descripcion": "Producto de la pauta del docente para el back-end: un CRUD con nombre, categoría, descripción y estado. No se borra: se pasa a estado INACTIVO.",
+  "etiquetas": {
+    "es": { "singular": "Producto", "plural": "Productos" },
+    "en": { "singular": "Product", "plural": "Products" }
+  },
+  "fichas": ["RP-01", "RP-23"],
+  "crud": true,
+  "por_empresa": "no",
+  "operaciones": {
+    "listar": ["ADMIN_PLATAFORMA"],
+    "ver": ["ADMIN_PLATAFORMA"],
+    "crear": ["ADMIN_PLATAFORMA"],
+    "editar": ["ADMIN_PLATAFORMA"]
+  },
+  "atributos": [
+    {
+      "nombre": "nombre",
+      "tipo": "texto",
+      "longitud": 120,
+      "obligatorio": true,
+      "validaciones": { "recortar": true },
+      "en_lista": true,
+      "en_formulario": true,
+      "etiquetas": { "es": "Nombre", "en": "Name" },
+      "fichas": ["RP-01"]
+    },
+    {
+      "nombre": "categoria",
+      "tipo": "texto",
+      "longitud": 80,
+      "obligatorio": true,
+      "validaciones": { "recortar": true },
+      "en_lista": true,
+      "en_formulario": true,
+      "etiquetas": { "es": "Categoría", "en": "Category" },
+      "fichas": ["RP-01"]
+    },
+    {
+      "nombre": "descripcion",
+      "tipo": "texto",
+      "longitud": 500,
+      "obligatorio": false,
+      "validaciones": { "recortar": true },
+      "en_lista": false,
+      "en_formulario": true,
+      "etiquetas": { "es": "Descripción", "en": "Description" },
+      "fichas": ["RP-01"]
+    },
+    {
+      "nombre": "estado",
+      "tipo": "lista",
+      "obligatorio": true,
+      "por_defecto": "ACTIVO",
+      "valores": [
+        { "codigo": "ACTIVO", "etiquetas": { "es": "Activo", "en": "Active" } },
+        { "codigo": "INACTIVO", "etiquetas": { "es": "Inactivo", "en": "Inactive" } }
+      ],
+      "en_lista": true,
+      "en_formulario": true,
+      "etiquetas": { "es": "Estado", "en": "Status" },
+      "fichas": ["RP-01"]
+    }
+  ]
+}

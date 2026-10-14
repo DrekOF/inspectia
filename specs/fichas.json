@@ -5,7 +5,7 @@
     "fecha_creacion": "12/10/2026",
     "actualizacion": "13/10/2026",
     "autor": "Equipo InspectIA",
-    "version": "1.4"
+    "version": "1.5"
   },
   "rf": [
     {
@@ -62,7 +62,7 @@
       "encabezado": "Registrar empresas y su primer administrador",
       "titulo": "Registrar empresas y su primer administrador",
       "codigo": "RF-02",
-      "version": "1.1",
+      "version": "1.2",
       "fuente": "D-13: el administrador de la plataforma registra las empresas.",
       "descripcion": "El administrador de la plataforma registra una empresa con sus datos básicos y crea el primer administrador de esa empresa. También puede editar los datos de una empresa, desactivarla y reactivarla (D-27).",
       "justificacion": "InspectIA atiende a varias empresas (multiempresa). Cada una necesita su propio espacio y un responsable que gestione sus usuarios.",
@@ -105,12 +105,13 @@
           "El administrador creado puede iniciar sesión con la contraseña inicial.",
           "Al desactivar una empresa, sus usuarios no pueden iniciar sesión y sus lotes y resultados se conservan (D-27).",
           "Al reactivar una empresa, sus usuarios activos pueden volver a iniciar sesión (D-27).",
-          "Al editar una empresa, el NIT pasa por las mismas validaciones del registro: único y con dígito de verificación válido (D-27)."
+          "Al editar una empresa, el NIT pasa por las mismas validaciones del registro: único y con dígito de verificación válido (D-27).",
+          "El administrador de la plataforma puede restablecer la contraseña de un administrador de empresa; la nueva contraseña pasa por las mismas validaciones de la contraseña inicial."
         ]
       },
       "rnf": "RNF-02 (capacidad), RNF-03 (datos separados por empresa) y RNF-04 (autenticación y permisos).",
       "estado": "Propuesto",
-      "observaciones": "CRUD generado desde el JSON de la entidad empresa (RP-23, D-21). Los campos exactos están en specs/modelo-datos.md."
+      "observaciones": "CRUD generado desde el JSON de la entidad empresa (RP-23, D-21). Los campos exactos están en specs/modelo-datos.md. El criterio 12 (restablecer la contraseña de un administrador de empresa) se implementa con la API de usuario (RF-03)."
     },
     {
       "encabezado": "Gestionar los usuarios de la empresa",

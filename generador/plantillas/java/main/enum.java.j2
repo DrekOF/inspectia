@@ -1,0 +1,23 @@
+{#
+  Nombre: enum.java.j2
+  Descripción: Plantilla del enum de los valores de un atributo lista (RP-23).
+  Fecha de creación: 13/10/2026
+  Actualización: 13/10/2026
+  Autor: Equipo InspectIA
+  Versión: 1.0
+#}
+{% from 'java/_macros.j2' import encabezado %}
+{{ encabezado(header) }}
+package {{ paquete }};
+
+/**
+ * {{ etiqueta }}: valores de la lista {@code {{ atributo }}} de {@code {{ entidad }}} ({{ fichas | join(', ') }}). Se guardan
+ * con su código; las etiquetas en español y en inglés están en {@code i18n/generado.properties}.
+ */
+public enum {{ clase }} {
+{% for codigo, etiqueta in valores %}
+
+    /** {{ etiqueta }}. */
+    {{ codigo }}{{ ',' if not loop.last else '' }}
+{% endfor %}
+}
