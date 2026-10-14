@@ -4,7 +4,7 @@
  * Fecha de creación: 14/10/2026
  * Actualización: 14/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.usuario.sesion;
 
@@ -120,7 +120,16 @@ final class ApiSesion {
      * @param empresa su empresa; {@code null} para el administrador de la plataforma
      */
     UUID crearUsuario(UUID empresa, String nombre, String correo, String rol) {
-        String hash = BCRYPT.encode(CONTRASENA);
+        return crearUsuario(empresa, nombre, correo, rol, CONTRASENA);
+    }
+
+    /**
+     * Crea un usuario activo con la contraseña dada.
+     *
+     * @param empresa su empresa; {@code null} para el administrador de la plataforma
+     */
+    UUID crearUsuario(UUID empresa, String nombre, String correo, String rol, String contrasena) {
+        String hash = BCRYPT.encode(contrasena);
         if (empresa == null) {
             return jdbc.queryForObject("""
                     INSERT INTO usuario (nombre, correo, contrasena_hash, rol)

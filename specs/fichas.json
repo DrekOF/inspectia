@@ -3,16 +3,16 @@
     "nombre": "fichas.json",
     "descripcion": "Fichas de los requerimientos funcionales (formato largo) y no funcionales (formato corto) de InspectIA. Fuente única para las secciones 5 y 6 del documento de requerimientos y, más adelante, para el listado de casos de prueba (RP-13).",
     "fecha_creacion": "12/10/2026",
-    "actualizacion": "13/10/2026",
+    "actualizacion": "14/10/2026",
     "autor": "Equipo InspectIA",
-    "version": "1.5"
+    "version": "1.6"
   },
   "rf": [
     {
       "encabezado": "Iniciar sesión según el rol",
       "titulo": "Iniciar sesión según el rol",
       "codigo": "RF-01",
-      "version": "1.1",
+      "version": "1.2",
       "fuente": "Levantamiento inicial: tres roles con funciones distintas (D-05 y D-13).",
       "descripcion": "El usuario entra con su correo y su contraseña. El sistema verifica los datos y lo lleva al menú de su rol: usuario final, administrador de empresa o administrador de la plataforma.",
       "justificacion": "Cada rol usa funciones distintas y cada empresa solo debe ver sus propios datos (RNF-03 y RNF-04).",
@@ -51,7 +51,9 @@
           "Un usuario desactivado no puede iniciar sesión.",
           "Un usuario de una empresa desactivada no puede iniciar sesión (D-27).",
           "Después de 5 intentos fallidos seguidos, la cuenta se bloquea 15 minutos.",
-          "La sesión vence a las 8 horas y el sistema pide iniciar sesión de nuevo."
+          "La sesión vence a las 8 horas y el sistema pide iniciar sesión de nuevo.",
+          "Al terminar el bloqueo, la cuenta vuelve a tener 5 intentos: un fallo más no la bloquea.",
+          "Una contraseña de más de 72 bytes nunca inicia sesión, aunque sus primeros 72 bytes coincidan con la guardada. Recibe la misma respuesta y tarda lo mismo que cualquier intento fallido, y cuenta como uno."
         ]
       },
       "rnf": "RNF-03 (datos separados por empresa) y RNF-04 (autenticación y permisos).",

@@ -1,11 +1,12 @@
 /*
  * Nombre: InicioSesionIT.java
  * Descripción: Pruebas del inicio de sesión por la API, con PostgreSQL 18: credenciales, usuarios y
- *              empresas desactivados, y bloqueo por intentos fallidos (RF-01, RNF-04, RF-02).
+ *              empresas desactivados, bloqueo por intentos fallidos y contraseñas de más de 72 bytes
+ *              (RF-01, RNF-04, RF-02).
  * Fecha de creación: 14/10/2026
  * Actualización: 14/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.usuario.sesion;
 
@@ -205,6 +206,37 @@ class InicioSesionIT {
         fallar(1);
         api.iniciar(CORREO, CONTRASENA);
         assertThat(bloqueadoHasta(id)).isEqualTo(hasta);
+    }
+
+    @Test
+    @DisplayName("RF-01 · C7 · al terminar el bloqueo, la cuenta vuelve a tener 5 intentos: un fallo más no la bloquea")
+    void alTerminarElBloqueoVuelvenLosCincoIntentos() {
+        UUID id = api.crearUsuario(null, "Ana Pérez", CORREO, "ADMIN_PLATAFORMA");
+        fallar(5);
+        jdbc.update("UPDATE usuario SET bloqueado_hasta = now() - interval '1 second' WHERE id = ?", id);
+
+        fallar(4);
+
+        assertThat(api.iniciar(CORREO, CONTRASENA)).as("4 fallos después del bloqueo no lo repiten")
+                .hasStatus(HttpStatus.OK);
+    }
+
+    @Test
+    @DisplayName("RF-01 · C8 · una contraseña de más de 72 bytes nunca inicia sesión, aunque sus primeros 72 bytes coincidan con la guardada, y cuenta como intento fallido")
+    void unaContrasenaDeMasDe72BytesNoEntra() {
+        String guardada = "ñ".repeat(8) + "a".repeat(56);
+        api.crearUsuario(null, "Ana Pérez", CORREO, "ADMIN_PLATAFORMA", guardada);
+        assertThat(api.iniciar(CORREO, guardada)).as("la guardada, de 64 caracteres y 72 bytes, sí entra")
+                .hasStatus(HttpStatus.OK);
+
+        MvcTestResult larga = api.iniciar(CORREO, guardada + "b");
+
+        assertThat(larga).hasStatus(HttpStatus.UNAUTHORIZED);
+        assertThat(json(larga)).as("la misma respuesta de cualquier intento fallido")
+                .isEqualTo(json(api.iniciar("nadie@cacaos.test", ERRADA)));
+        fallar(4);
+        assertThat(api.iniciar(CORREO, guardada)).as("contó como el primero de los 5 fallos que bloquean la cuenta")
+                .hasStatus(HttpStatus.UNAUTHORIZED);
     }
 
     @Test

@@ -21,12 +21,12 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 
 ## Resumen
 
-- **134 criterios de aceptación** en 25 fichas: 24 con prueba y 110 pendientes.
-- **117 pruebas:** 77 de Java (6 generadas) y 40 de Python. Una prueba parametrizada cuenta una vez.
+- **136 criterios de aceptación** en 25 fichas: 26 con prueba y 110 pendientes.
+- **119 pruebas:** 79 de Java (6 generadas) y 40 de Python. Una prueba parametrizada cuenta una vez.
 
 | Ficha | Criterios | Con prueba | Pendientes |
 |---|---:|---:|---:|
-| RF-01 · Iniciar sesión según el rol | 6 | 6 | 0 |
+| RF-01 · Iniciar sesión según el rol | 8 | 8 | 0 |
 | RF-02 · Registrar empresas y su primer administrador | 12 | 11 | 1 |
 | RF-03 · Gestionar los usuarios de la empresa | 10 | 0 | 10 |
 | RF-04 · Registrar un lote | 4 | 1 | 3 |
@@ -62,6 +62,8 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 | C4. Un usuario de una empresa desactivada no puede iniciar sesión (D-27). | [`InicioSesionIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/InicioSesionIT.java) · un usuario de una empresa desactivada no puede iniciar sesión<br>[`SesionAbiertaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/SesionAbiertaIT.java) · al desactivar una empresa, las sesiones abiertas de sus usuarios dejan de servir |
 | C5. Después de 5 intentos fallidos seguidos, la cuenta se bloquea 15 minutos. | [`InicioSesionIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/InicioSesionIT.java) · después de 5 intentos fallidos seguidos la cuenta se bloquea: ni la contraseña correcta entra hasta que pasen 15 minutos<br>[`InicioSesionIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/InicioSesionIT.java) · los intentos fallidos deben ser seguidos: iniciar sesión vuelve a contar desde cero |
 | C6. La sesión vence a las 8 horas y el sistema pide iniciar sesión de nuevo. | [`SesionAbiertaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/SesionAbiertaIT.java) · la sesión vence a las 8 horas y pide iniciar sesión de nuevo (prueba de límite) (parametrizada) |
+| C7. Al terminar el bloqueo, la cuenta vuelve a tener 5 intentos: un fallo más no la bloquea. | [`InicioSesionIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/InicioSesionIT.java) · al terminar el bloqueo, la cuenta vuelve a tener 5 intentos: un fallo más no la bloquea |
+| C8. Una contraseña de más de 72 bytes nunca inicia sesión, aunque sus primeros 72 bytes coincidan con la guardada. Recibe la misma respuesta y tarda lo mismo que cualquier intento fallido, y cuenta como uno. | [`InicioSesionIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/InicioSesionIT.java) · una contraseña de más de 72 bytes nunca inicia sesión, aunque sus primeros 72 bytes coincidan con la guardada, y cuenta como intento fallido |
 
 Otras pruebas de RF-01, que no cubren un criterio:
 
