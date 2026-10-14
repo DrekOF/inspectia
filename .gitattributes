@@ -11,3 +11,4 @@ mvnw text eol=lf
 # «generar.py comprobar» no vea diferencias falsas.
 backend/src/generated/** text eol=lf
 backend/src/test-generated/** text eol=lf
+docs/casos-de-prueba.md text eol=lf

@@ -4,7 +4,7 @@ Descripción: Qué hace el generador de InspectIA (RP-23), cómo se usa y cómo 
 Fecha de creación: 12/10/2026
 Actualización: 13/10/2026
 Autor: Equipo InspectIA
-Versión: 1.2
+Versión: 1.3
 -->
 
 # generador
@@ -46,14 +46,26 @@ generador/.venv/Scripts/python generador/generar.py comprobar   # compara sin es
 
 Si una entidad de `alcance.json` usa algo que la API todavía no soporta, `generar` se detiene y dice qué falta.
 
+## Casos de prueba (RP-13)
+
+`casos_de_prueba.py` arma `docs/casos-de-prueba.md` desde `specs/fichas.json` y las marcas de las pruebas (`@DisplayName` en Java y `@pytest.mark.caso` en Python). Muestra cada criterio de aceptación con sus pruebas y, como pendientes, los que todavía no tienen ninguna. El documento no se escribe a mano:
+
+```bash
+generador/.venv/Scripts/python generador/casos_de_prueba.py generar     # escribe el documento
+generador/.venv/Scripts/python generador/casos_de_prueba.py comprobar   # código 1 si no está al día
+```
+
+Los dos terminan con código 1 si una prueba no tiene marca, si la marca no tiene la forma «<código> · C<n> · …» o «<código> · …», o si cita una ficha, un criterio o un código que no existe. Con `--sin-pendientes` también fallan si queda algún criterio sin prueba, para revisar RP-13 al cerrar el proyecto. Una prueba del generador revisa que el documento esté al día: si agregas o cambias pruebas, vuelve a armarlo.
+
 ## Estructura
 
 ```
 generador/
-├── generar.py               línea de comandos
+├── generar.py               línea de comandos del generador
+├── casos_de_prueba.py       línea de comandos de la lista de casos de prueba (RP-13)
 ├── alcance.json             entidades con API
-├── inspectia_generador/     carga, validación, modelo, SQL, Java, textos, headers y escritura
-├── plantillas/              plantillas de Jinja2: sql/, java/main/, java/test/ e i18n/
+├── inspectia_generador/     carga, validación, modelo, SQL, Java, textos, headers, escritura y casos
+├── plantillas/              plantillas de Jinja2: sql/, java/main/, java/test/, i18n/ y docs/
 └── pruebas/                 pruebas con pytest y ejemplos/producto.json
 ```
 
