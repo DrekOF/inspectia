@@ -5,12 +5,13 @@
  * Fecha de creación: 14/10/2026
  * Actualización: 14/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.usuario.sesion;
 
 import co.edu.usco.inspectia.comun.seguridad.UsuarioEnSesion;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -54,9 +55,11 @@ public class SesionControlador {
      * @return el token, cuándo vence y el usuario con su rol y su empresa
      */
     @PostMapping
+    @SecurityRequirements
     @Operation(summary = "Iniciar sesión", description = "Revisa el correo y la contraseña y entrega el token, con "
             + "el usuario, su rol y su empresa para armar el menú de su rol. Todo intento fallido responde 401 con "
-            + "«Correo o contraseña incorrectos»; después de 5 seguidos, la cuenta se bloquea 15 minutos. Pública.")
+            + "«Correo o contraseña incorrectos»; después de 5 seguidos, la cuenta se bloquea 15 minutos. Pública: "
+            + "no lee el encabezado Authorization, así que con la sesión vencida se puede volver a entrar.")
     public SesionRespuesta iniciar(@Valid @RequestBody InicioDeSesionSolicitud solicitud) {
         return servicio.iniciar(solicitud.correo(), solicitud.contrasena());
     }

@@ -22,7 +22,7 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 ## Resumen
 
 - **136 criterios de aceptación** en 25 fichas: 26 con prueba y 110 pendientes.
-- **131 pruebas:** 91 de Java (6 generadas) y 40 de Python. Una prueba parametrizada cuenta una vez.
+- **132 pruebas:** 92 de Java (6 generadas) y 40 de Python. Una prueba parametrizada cuenta una vez.
 
 | Ficha | Criterios | Con prueba | Pendientes |
 |---|---:|---:|---:|
@@ -363,6 +363,10 @@ Pruebas que no cubren un criterio de una ficha, sino una pauta del docente (RP) 
 ### RP-01 · API REST con el CRUD de las entidades del sistema, en Java con Spring Boot, JPA y Lombok
 
 - [`VerificacionDeClasesTest`](../backend/src/test/java/co/edu/usco/inspectia/VerificacionDeClasesTest.java) · la JVM acepta todas las clases compiladas del backend
+
+### RP-04 · Documentación con JavaDoc, comentarios y OpenAPI
+
+- [`DocumentacionApiIT`](../backend/src/test/java/co/edu/usco/inspectia/comun/api/DocumentacionApiIT.java) · la documentación OpenAPI pide el token Bearer en toda la API, salvo para iniciar sesión
 
 ### RP-10 · Header en cada artefacto con nombre, descripción, fecha de creación, fecha de actualización, autor y versión
 
