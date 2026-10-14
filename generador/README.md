@@ -2,9 +2,9 @@
 Nombre: README.md (generador)
 Descripción: Qué hace el generador de InspectIA (RP-23), cómo se usa y cómo se prueba.
 Fecha de creación: 12/10/2026
-Actualización: 13/10/2026
+Actualización: 14/10/2026
 Autor: Equipo InspectIA
-Versión: 1.3
+Versión: 1.4
 -->
 
 # generador
@@ -56,6 +56,8 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py comprobar   # códig
 ```
 
 Los dos terminan con código 1 si una prueba no tiene marca, si la marca no tiene la forma «<código> · C<n> · …» o «<código> · …», o si cita una ficha, un criterio o un código que no existe. Con `--sin-pendientes` también fallan si queda algún criterio sin prueba, para revisar RP-13 al cerrar el proyecto. Una prueba del generador revisa que el documento esté al día: si agregas o cambias pruebas, vuelve a armarlo.
+
+Una ficha solo pasa a «Implementado» cuando funciona de punta a punta, todos sus criterios tienen prueba y está en `main` (D-29). Si una ficha en «Implementado» tiene criterios sin prueba, `comprobar` termina con código 1 y `generar` solo lo avisa.
 
 ## Estructura
 

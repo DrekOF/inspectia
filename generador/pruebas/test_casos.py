@@ -1,17 +1,20 @@
 # Nombre: test_casos.py
 # Descripción: Pruebas de la lista de casos de prueba que arma casos_de_prueba.py (RP-13).
 # Fecha de creación: 13/10/2026
-# Actualización: 13/10/2026
+# Actualización: 14/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.0
+# Versión: 1.1
 """Pruebas de la lista de casos de prueba (RP-13): la lectura de las marcas de Java y de Python, el
-reparto por criterio y el documento del repositorio."""
+reparto por criterio, el documento del repositorio y las fichas «Implementado» sin todas sus pruebas
+(D-29)."""
 
 import pytest
 
+import casos_de_prueba
 from conftest import RAIZ
-from inspectia_generador.casos import (RUTA_DOCUMENTO, Criterio, Ficha, Prueba, armar_documento, documento,
-                                       pruebas_java, pruebas_python, revisar)
+from inspectia_generador.casos import (RUTA_DOCUMENTO, Criterio, Ficha, Prueba, Resultado, armar_documento,
+                                       documento, implementadas_incompletas, pruebas_java, pruebas_python,
+                                       revisar)
 
 JAVA = '''package co.edu.usco.inspectia.ejemplo;
 
@@ -144,3 +147,35 @@ def test_documento_al_dia():
 @pytest.mark.caso('RP-13 · el documento sale igual cada vez que se arma')
 def test_documento_determinista():
     assert armar_documento(RAIZ).texto == armar_documento(RAIZ).texto
+
+
+@pytest.mark.caso('D-29 · una ficha «Implementado» con criterios sin prueba se señala; los eliminados no cuentan')
+def test_implementada_con_criterios_pendientes():
+    implementada = Ficha('RF-02', 'Registrar empresas', FICHA.criterios, 'Implementado')
+    aprobada = Ficha('RF-01', 'Iniciar sesión', (Criterio(1, 'Uno.'),), 'Aprobado')
+    codigos = {'RF-01', 'RF-02', 'D-27'}
+    a_medias = revisar([implementada, aprobada], [prueba('RF-02 · C1 · cubre el primero')], codigos)
+    completa = revisar([implementada], [prueba('RF-02 · C1 · uno'), prueba('RF-02 · C2 · dos', 2)], codigos)
+
+    assert implementadas_incompletas([implementada, aprobada], a_medias) == [
+        'RF-02 está «Implementado», pero le faltan pruebas para C2 (D-29)']
+    assert implementadas_incompletas([implementada], completa) == []
+
+
+@pytest.mark.caso('D-29 · comprobar falla si una ficha «Implementado» tiene criterios sin prueba; generar solo avisa')
+def test_comprobar_falla_con_una_implementada_incompleta(monkeypatch, capsys):
+    # El mismo texto del documento, para que «generar» no escriba nada.
+    texto = (RAIZ / RUTA_DOCUMENTO).read_bytes().decode('utf-8').replace('\r\n', '\n')
+    aviso = 'RF-02 está «Implementado», pero le faltan pruebas para C12 (D-29)'
+    monkeypatch.setattr(casos_de_prueba, 'armar_documento',
+                        lambda raiz: Resultado(texto, [], ['RF-02 C12'], [aviso]))
+
+    assert casos_de_prueba.main(['comprobar']) == 1
+    assert aviso in capsys.readouterr().out
+    assert casos_de_prueba.main(['generar']) == 0
+    assert aviso in capsys.readouterr().out
+
+
+@pytest.mark.caso('D-29 · ninguna ficha del repositorio está «Implementado» con criterios sin prueba')
+def test_implementadas_del_repositorio():
+    assert armar_documento(RAIZ).implementadas_incompletas == []

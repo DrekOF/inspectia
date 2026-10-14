@@ -2,9 +2,9 @@
 # Descripción: Lista de casos de prueba (RP-13): junta las marcas de las pruebas con los criterios de
 #              aceptación de specs/fichas.json y señala los criterios sin prueba.
 # Fecha de creación: 13/10/2026
-# Actualización: 13/10/2026
+# Actualización: 14/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.0
+# Versión: 1.1
 """Lista de casos de prueba (RP-13).
 
 Cada prueba dice qué cubre con una marca (ver CLAUDE.md):
@@ -17,6 +17,8 @@ En Java la marca va en ``@DisplayName`` y en Python en ``@pytest.mark.caso``. Co
 fichas se arma ``docs/casos-de-prueba.md``: cada criterio con sus pruebas, y los que no tienen ninguna
 como pendientes. El documento no lleva números de línea, para que no cambie cada vez que se edita una
 prueba.
+
+También señala las fichas en estado «Implementado» que todavía tienen criterios sin prueba (D-29).
 """
 
 import ast
@@ -31,8 +33,9 @@ from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
 from inspectia_generador.carga import cargar_codigos
 
-VERSION = '1.0'
+VERSION = '1.1'
 RUTA_DOCUMENTO = 'docs/casos-de-prueba.md'
+IMPLEMENTADO = 'Implementado'
 #: Carpetas de pruebas de Java y si lo que tienen es generado.
 CARPETAS_JAVA = (('backend/src/test/java', False), ('backend/src/test-generated/java', True))
 CARPETA_PYTHON = 'generador/pruebas'
@@ -75,11 +78,12 @@ class Criterio:
 
 @dataclass(frozen=True)
 class Ficha:
-    """Una ficha de ``specs/fichas.json`` con sus criterios."""
+    """Una ficha de ``specs/fichas.json`` con sus criterios y su estado (D-29); las RNF no tienen estado."""
 
     codigo: str
     titulo: str
     criterios: tuple
+    estado: str = None
 
 
 @dataclass
@@ -93,11 +97,13 @@ class Revision:
 
 @dataclass
 class Resultado:
-    """El documento armado, los errores de las marcas y los criterios pendientes."""
+    """El documento armado, los errores de las marcas, los criterios pendientes y las fichas
+    «Implementado» que todavía tienen criterios sin prueba (D-29)."""
 
     texto: str
     errores: list
     pendientes: list
+    implementadas_incompletas: list = field(default_factory=list)
 
 
 # --- Fichas ---------------------------------------------------------------------------------------
@@ -112,7 +118,7 @@ def leer_fichas(ruta):
         if isinstance(criterios, dict):
             criterios = criterios.get('b') or criterios.get('n') or []
         fichas.append(Ficha(f['codigo'], f['titulo'],
-                            tuple(Criterio(n, texto) for n, texto in enumerate(criterios, 1))))
+                            tuple(Criterio(n, texto) for n, texto in enumerate(criterios, 1)), f.get('estado')))
     return fichas
 
 
@@ -401,6 +407,29 @@ def documento(fichas, pruebas, revision, titulos, header):
         version=VERSION, header=header, resumen=resumen, fichas=contexto_fichas, otros=otros)
 
 
+def _sin_prueba(ficha, revision):
+    """Los criterios de una ficha que no tienen prueba; los eliminados no cuentan."""
+    return [c for c in ficha.criterios if not c.eliminado and (ficha.codigo, c.numero) not in revision.por_criterio]
+
+
+def implementadas_incompletas(fichas, revision):
+    """Fichas en estado «Implementado» que todavía tienen criterios sin prueba.
+
+    D-29: una ficha solo está «Implementado» si funciona de punta a punta, todos sus criterios tienen
+    prueba y está en main. Este script revisa la parte de las pruebas.
+
+    Returns:
+        list: un mensaje por ficha, con los criterios que les faltan.
+    """
+    mensajes = []
+    for f in fichas:
+        faltan = _sin_prueba(f, revision) if f.estado == IMPLEMENTADO else []
+        if faltan:
+            numeros = ', '.join(f'C{c.numero}' for c in faltan)
+            mensajes.append(f'{f.codigo} está «{IMPLEMENTADO}», pero le faltan pruebas para {numeros} (D-29)')
+    return mensajes
+
+
 def armar_documento(raiz):
     """Arma el documento con las pruebas y las fichas del repositorio en ``raiz``."""
     raiz = Path(raiz)
@@ -410,6 +439,5 @@ def armar_documento(raiz):
     revision = revisar(fichas, pruebas, cargar_codigos(specs))
     fuentes = sorted({p.archivo for p in pruebas}) + ['specs/requisitos-docente.md', 'specs/decisiones.md']
     texto = documento(fichas, pruebas, revision, titulos_de_otros(specs), _fechas(raiz, fuentes))
-    pendientes = [f'{f.codigo} C{c.numero}' for f in fichas for c in f.criterios
-                  if not c.eliminado and (f.codigo, c.numero) not in revision.por_criterio]
-    return Resultado(texto, errores + revision.errores, pendientes)
+    pendientes = [f'{f.codigo} C{c.numero}' for f in fichas for c in _sin_prueba(f, revision)]
+    return Resultado(texto, errores + revision.errores, pendientes, implementadas_incompletas(fichas, revision))

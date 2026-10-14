@@ -5,8 +5,8 @@ Descripción: Casos de prueba de InspectIA por ficha y criterio de aceptación, 
              sale de specs/fichas.json y de las marcas de las pruebas.
 Fecha de creación: 12/10/2026
 Actualización: 14/10/2026
-Autor: Equipo InspectIA (generado por generador/casos_de_prueba.py v1.0)
-Versión: 1.0
+Autor: Equipo InspectIA (generado por generador/casos_de_prueba.py v1.1)
+Versión: 1.1
 -->
 
 # Casos de prueba
@@ -22,7 +22,7 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 ## Resumen
 
 - **136 criterios de aceptación** en 25 fichas: 26 con prueba y 110 pendientes.
-- **132 pruebas:** 92 de Java (6 generadas) y 40 de Python. Una prueba parametrizada cuenta una vez.
+- **135 pruebas:** 92 de Java (6 generadas) y 43 de Python. Una prueba parametrizada cuenta una vez.
 
 | Ficha | Criterios | Con prueba | Pendientes |
 |---|---:|---:|---:|
@@ -436,3 +436,9 @@ Pruebas que no cubren un criterio de una ficha, sino una pauta del docente (RP) 
 ### D-27 · El administrador de la plataforma puede desactivar una empresa
 
 - [`EdicionEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/EdicionEmpresaIT.java) · al editar, los datos obligatorios se validan igual que en el registro
+
+### D-29 · Estados de las fichas (amplía D-07)
+
+- [`test_casos.py`](../generador/pruebas/test_casos.py) · comprobar falla si una ficha «Implementado» tiene criterios sin prueba; generar solo avisa
+- [`test_casos.py`](../generador/pruebas/test_casos.py) · ninguna ficha del repositorio está «Implementado» con criterios sin prueba
+- [`test_casos.py`](../generador/pruebas/test_casos.py) · una ficha «Implementado» con criterios sin prueba se señala; los eliminados no cuentan

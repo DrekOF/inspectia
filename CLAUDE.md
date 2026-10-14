@@ -4,7 +4,7 @@ Descripción: Instrucciones del proyecto InspectIA para Claude Code. Se lee al i
 Fecha de creación: 12/10/2026
 Actualización: 14/10/2026
 Autor: Equipo InspectIA
-Versión: 1.8
+Versión: 1.9
 -->
 
 # InspectIA
@@ -92,5 +92,5 @@ Desde la raíz del repositorio. Las versiones y cómo instalarlas están en `REA
   - Generar: `generador/.venv/Scripts/python generador/generar.py generar`
   - Comprobar que lo generado está al día y nadie lo editó: `generador/.venv/Scripts/python generador/generar.py comprobar`
   - Pruebas: `cd generador` y `.venv/Scripts/python -m pytest`
-- Casos de prueba (RP-13): `generador/.venv/Scripts/python generador/casos_de_prueba.py generar`, o `comprobar` para revisar que el documento esté al día.
+- Casos de prueba (RP-13): `generador/.venv/Scripts/python generador/casos_de_prueba.py generar`, o `comprobar` para revisar que el documento esté al día. `comprobar` también falla si una ficha está «Implementado» y tiene criterios sin prueba (D-29).
 - Frontend y servicio de IA: se agregan aquí cuando se cree cada proyecto.

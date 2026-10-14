@@ -4,7 +4,7 @@ Descripción: Registro paso a paso de cómo se construyó InspectIA, para la sus
 Fecha de creación: 12/10/2026
 Actualización: 14/10/2026
 Autor: Equipo InspectIA
-Versión: 1.8
+Versión: 1.9
 -->
 
 # Bitácora de construcción (RP-24)
@@ -176,7 +176,7 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
        - El inicio de sesión no lee el encabezado `Authorization`: quien tiene la sesión vencida puede volver a entrar aunque el frontend todavía envíe el token viejo.
     4. **Documentación y prueba completa:**
        - El esquema Bearer en OpenAPI (botón «Authorize» de Swagger UI), `infra/.env.example`, los README y los Comandos de `CLAUDE.md`.
-       - El recorrido se probó con el backend real en una base aparte: crear la clave, arrancar, crear el administrador con el script y entrar desde Swagger UI.
+       - El recorrido se probó con el backend real en una base aparte: crear la clave, arrancar, crear el administrador con el script y entrar desde Swagger UI. Después, Cristhian lo repitió en su PC, con su base.
   - **Problemas que encontraron las pruebas:**
     - **Constructores de Lombok con el JDK 25.**
       - Al correr las pruebas del paso 1, todo el backend falló con `VerifyError`. Al recompilar sin `clean`, los constructores que crea `@RequiredArgsConstructor` quedaban sin la llamada a `super()`, y la JVM rechazaba `EmpresaServicio`, `EmpresaControlador` y `RespuestasDeSeguridad`.
@@ -190,9 +190,13 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
   - **Otras anotaciones:**
     - P-16: después del primer despliegue, las migraciones aplicadas quedan congeladas, incluido su header.
     - P-17: queda como riesgo aceptado la diferencia de tiempo, del orden de 1 ms, al guardar un intento fallido.
+    - D-29: criterio de los estados de las fichas.
+      - «Aprobado»: el equipo revisó la ficha. Pasan a Aprobado todos los RF menos RF-08, que espera la revisión de Julián (P-14).
+      - «Implementado»: funciona de punta a punta, todos sus criterios tienen prueba y está en `main`. Ninguno lo está todavía: a RF-01 le falta el menú en el frontend, y a RF-02, el criterio C12 y sus pantallas.
+      - `casos_de_prueba.py comprobar` falla si un RF está «Implementado» y tiene criterios sin prueba.
   - **Resultado:**
     - Backend: 201 pruebas (50 unitarias y 151 de integración), todas en verde.
-    - Generador: 40 pruebas, todas en verde.
+    - Generador: 43 pruebas, todas en verde.
     - Criterios: RF-01 tiene sus 8 criterios con prueba y RNF-04 sus 5. De los 136 de las fichas, 26 tienen prueba.
 - Por qué: todas las demás funciones dependen del inicio de sesión (RF-01), y RNF-04 pide sesión y permisos por rol en toda la API. La revisión en cada petición hace que desactivar un usuario o una empresa (RF-03, D-27) surta efecto de inmediato y no 8 horas después.
 - Cómo se pidió: Cristhian pidió el plan del inicio de sesión con JWT (D-21) antes de escribir código. El plan debía cubrir el token, la API, la revisión en cada petición, el bloqueo sin revelar si un correo existe, las pruebas y cómo probarlo en su PC. Aprobó las cinco decisiones y pidió registrarlas como D-28 y P-17. En el camino pidió:
@@ -200,6 +204,7 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
   - Agregar C7 y C8 a RF-01.
   - Que el inicio de sesión ignore el token viejo, con su prueba marcada como RF-01 C6.
   - Anotar en P-17 el riesgo aceptado.
+  - Registrar D-29 con el criterio de los estados de las fichas, y que `comprobar` falle si un RF «Implementado» tiene criterios sin prueba.
 - Archivos o PR: la rama `feature/RF-01-inicio-sesion`; el PR lo abre Cristhian.
 
 ## Plantilla para nuevas entradas
