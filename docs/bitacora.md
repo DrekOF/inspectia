@@ -4,7 +4,7 @@ Descripción: Registro paso a paso de cómo se construyó InspectIA, para la sus
 Fecha de creación: 12/10/2026
 Actualización: 13/10/2026
 Autor: Equipo InspectIA
-Versión: 1.6
+Versión: 1.7
 -->
 
 # Bitácora de construcción (RP-24)
@@ -111,6 +111,49 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
 - Por qué: en GitHub solo deben aparecer los integrantes como autores. El PR #1 no existirá en el repositorio nuevo, así que su merge no puede nombrarlo. La bitácora sigue registrando cómo se trabajó con Claude Code (RP-24).
 - Cómo se pidió: Cristhian pidió rehacer el repositorio con la historia limpia, en seis pasos: respaldo, traer el merge del PR #1, reescribir la historia, verificar, configurar para el futuro y esperar antes de subir. Él borra el repositorio en GitHub y lo crea vacío; después se sube `main`.
 - Archivos o PR: historia reescrita de `main`, y un commit con `.claude/settings.json`, `.gitignore`, `CLAUDE.md` y esta bitácora. La subida a GitHub queda pendiente.
+
+## 13/10/2026 · RF-02 y generador: backend de empresas, API generada y casos de prueba
+
+- Quién: Cristhian Sánchez (`DrekOF`), con Claude Code.
+- Qué se hizo:
+  - **Antes de la rama, en `main`:** `decisiones.md` (v1.3) apunta al documento de requerimientos v2.1.
+  - **Luego, en la rama `feature/RF-02-generador-empresa`, seis pasos, cada uno revisado por Cristhian antes del siguiente:**
+    1. **Esqueleto del backend:** Spring Boot 4.1.1 con Java 25, los 6 módulos de D-21 y una prueba de arranque con PostgreSQL 18 en Testcontainers.
+    2. **Generador con validación y SQL:**
+       - `generador/` valida los JSON contra su formato y contra `specs/`.
+       - Genera `V1__esquema_inicial.sql` con las 8 tablas, que Flyway aplica al arrancar.
+       - `comprobar` detecta lo generado que alguien editó a mano.
+       - Claves nuevas `modulo` y `ruta`, y el pendiente P-16 para las migraciones después del primer despliegue.
+       - `producto.json`, la entidad de la pauta del docente, demuestra que el generador sirve para otra temática.
+    3. **Primer administrador de la plataforma:**
+       - `infra/bd/crear-admin-plataforma.sql` (psql y pgcrypto), con envoltorios `.sh` y `.ps1`.
+       - Toma los datos de `infra/.env` o del entorno.
+       - La contraseña no pasa por la línea de comandos ni queda en el registro de PostgreSQL.
+    4. **Pruebas de RF-02 antes del código:** 73 pruebas, todas en rojo hasta el paso 5. Cubren los criterios C1 a C11 de RF-02, C1 a C3 de RNF-04 y el formato del listado.
+    5. **Código:**
+       - `comun`, escrito a mano: errores en `application/problem+json`, roles por ruta, BCrypt e i18n.
+       - El generador produce la persistencia de los 3 CRUD y la API de empresa, con su prueba generada.
+       - `ReglasEmpresaImpl` revisa el dígito de verificación del NIT.
+       - Claves nuevas `crear_con.nombre` y `ejemplo`, y `generador/alcance.json` para decidir qué entidades tienen API.
+    6. **Documentación:**
+       - `generador/casos_de_prueba.py` arma `docs/casos-de-prueba.md` desde las marcas de las pruebas.
+       - RF-02 (v1.2) tiene el criterio C12, restablecer la contraseña de un administrador, pendiente hasta la API de usuario (RF-03).
+       - README, Comandos de `CLAUDE.md` y esta bitácora.
+  - **Reglas nuevas en `CLAUDE.md`:**
+    - Cada prueba lleva su marca: «<código> · C<n> · …» si cubre un criterio y «<código> · …» si no.
+    - Los criterios nuevos van al final de su lista, y los que dejan de aplicar se marcan «Eliminado (D-xx)» sin borrarlos. Las pruebas citan el número del criterio, y ya pasó con RF-04: el criterio de la fecha cambió de C3 a C4.
+  - **Resultado:**
+    - Backend: 148 pruebas (31 unitarias y 117 de integración, 47 de ellas generadas), todas en verde.
+    - Generador: 39 pruebas, todas en verde.
+    - Criterios: de los 134 de las fichas, 16 tienen prueba; los demás llegan con sus fichas.
+  - **Queda para otras fichas:** el inicio de sesión y la decisión sobre CSRF (RF-01), la API de usuario y el criterio C12 de RF-02 (RF-03), y la de rangos (RF-13).
+- Por qué: RF-02 es la base de las demás funciones de la empresa, y el primer CRUD generado (RP-23) fija cómo serán todos: formato de la API, errores, permisos y pruebas. La lista de casos de prueba se arma desde el código para que no se desactualice (RP-13).
+- Cómo se pidió: Cristhian pidió primero el plan del generador (RP-23) y del backend de empresas (RF-02). Lo aprobó con tres agregados: dónde se generan los UUID v7, el ejemplo producto y la marca de cada prueba. En el camino pidió:
+  - El formato del listado: una página con `contenido`, `pagina`, `tamano`, `totalElementos` y `totalPaginas`, de 20 filas y ordenada por nombre.
+  - Que el permiso se revise antes que los datos.
+  - El criterio C12 de RF-02.
+  - Que la lista de casos de prueba la arme un script.
+- Archivos o PR: la rama `feature/RF-02-generador-empresa`; el PR lo abre Cristhian.
 
 ## Plantilla para nuevas entradas
 

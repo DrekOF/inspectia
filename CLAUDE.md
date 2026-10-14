@@ -4,7 +4,7 @@ Descripción: Instrucciones del proyecto InspectIA para Claude Code. Se lee al i
 Fecha de creación: 12/10/2026
 Actualización: 13/10/2026
 Autor: Equipo InspectIA
-Versión: 1.5
+Versión: 1.6
 -->
 
 # InspectIA
@@ -25,7 +25,7 @@ App web multiempresa que estima el % de granos de cacao sanos de un lote a parti
 
 - Una rama y un PR por requerimiento, por ejemplo `feature/RF-04-registrar-lote`. Commits en español que citen el código: `RF-04: valida que el código del lote no se repita`.
 - Primero las pruebas de los criterios de aceptación de la ficha; después el código.
-- Cada prueba dice qué cubre, porque la lista de casos de prueba (RP-13) se arma desde ellas:
+- Cada prueba dice qué cubre, porque `docs/casos-de-prueba.md` (RP-13) se arma desde sus marcas con `generador/casos_de_prueba.py` (ver Comandos). Después de agregar o cambiar pruebas, vuelve a armarlo:
   - `«<código> · C<n> · …»` si cubre un criterio de `specs/fichas.json`, por ejemplo `@DisplayName("RF-02 · C4 · dígito de verificación inválido")`. En Python va en `@pytest.mark.caso("…")`.
   - Solo `«<código> · …»` si no cubre un criterio, por ejemplo `«RP-15 · …»`.
   - Los criterios nuevos de una ficha van al final de su lista, para que no cambie el número de los que ya tienen pruebas.
@@ -78,4 +78,18 @@ Desde la raíz del repositorio. Las versiones y cómo instalarlas están en `REA
   - Consola SQL: `docker compose -f infra/docker-compose.yml exec postgres sh -c 'psql -U $POSTGRES_USER -d $POSTGRES_DB'`
   - Apagar: `docker compose -f infra/docker-compose.yml down`. Los datos quedan en el volumen; `down -v` los borra.
   - Validar el archivo: `docker compose -f infra/docker-compose.yml config`
-- Backend, frontend, servicio de IA y generador: se agregan aquí cuando se cree cada proyecto.
+- Backend (desde `backend/`; en PowerShell también sirve `./mvnw`):
+  - Todas las pruebas: `./mvnw verify`. Docker Desktop debe estar abierto: las de integración usan PostgreSQL 18 en Testcontainers.
+  - Solo las unitarias: `./mvnw test`
+  - Una prueba de integración: `./mvnw verify -Dit.test=RegistroEmpresaIT`
+  - Arrancar contra la base local: `./mvnw spring-boot:run`. Lee `infra/.env`, Flyway crea las tablas y la documentación OpenAPI queda en http://localhost:8080/swagger-ui.html.
+- Primer administrador de la plataforma (base encendida, backend arrancado una vez y los datos en `infra/.env`; ver `infra/README.md`):
+  - Windows: `powershell -ExecutionPolicy Bypass -File infra\bd\crear-admin-plataforma.ps1`
+  - Linux, macOS o Git Bash: `sh infra/bd/crear-admin-plataforma.sh`
+- Generador (la primera vez, crea su entorno como dice `generador/README.md`; en Linux o macOS, `generador/.venv/bin/python`):
+  - Revisar los JSON: `generador/.venv/Scripts/python generador/generar.py validar`
+  - Generar: `generador/.venv/Scripts/python generador/generar.py generar`
+  - Comprobar que lo generado está al día y nadie lo editó: `generador/.venv/Scripts/python generador/generar.py comprobar`
+  - Pruebas: `cd generador` y `.venv/Scripts/python -m pytest`
+- Casos de prueba (RP-13): `generador/.venv/Scripts/python generador/casos_de_prueba.py generar`, o `comprobar` para revisar que el documento esté al día.
+- Frontend y servicio de IA: se agregan aquí cuando se cree cada proyecto.
