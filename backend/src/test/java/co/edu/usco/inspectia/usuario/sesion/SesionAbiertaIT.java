@@ -1,12 +1,12 @@
 /*
  * Nombre: SesionAbiertaIT.java
  * Descripción: Pruebas de una sesión abierta, por la API y con PostgreSQL 18: vencimiento a las 8
- *              horas, revisión del usuario y su empresa en cada petición y tokens que no sirven
- *              (RF-01, RNF-04, D-28).
+ *              horas, volver a entrar con la sesión vencida, revisión del usuario y su empresa en
+ *              cada petición y tokens que no sirven (RF-01, RNF-04, D-28).
  * Fecha de creación: 14/10/2026
  * Actualización: 14/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.usuario.sesion;
 
@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import co.edu.usco.inspectia.PruebaIntegracion;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -104,6 +105,23 @@ class SesionAbiertaIT {
         if (estado == 401) {
             assertThat(json(resultado)).containsEntry("detail", SESION_VENCIDA);
         }
+    }
+
+    @Test
+    @DisplayName("RF-01 · C6 · con la sesión vencida se puede volver a iniciar sesión, aunque el frontend todavía envíe el token viejo")
+    void conLaSesionVencidaSePuedeVolverAEntrar() {
+        UUID id = api.crearUsuario(null, "Ana Pérez", CORREO, "ADMIN_PLATAFORMA");
+        String vencido = TokensDePrueba.token(id, Instant.now().minus(Duration.ofHours(9)));
+        Map<String, Object> datos = new LinkedHashMap<>();
+        datos.put("correo", CORREO);
+        datos.put("contrasena", CONTRASENA);
+
+        MvcTestResult conTokenVencido = api.enviar(HttpMethod.POST, ApiSesion.RUTA, datos, vencido);
+        MvcTestResult conTokenMalFormado = api.enviar(HttpMethod.POST, ApiSesion.RUTA, datos, "abc.def");
+
+        assertThat(conTokenVencido).hasStatus(HttpStatus.OK);
+        assertThat(conTokenMalFormado).hasStatus(HttpStatus.OK);
+        rechazada(api.sesion(vencido), SESION_VENCIDA);
     }
 
     @Test

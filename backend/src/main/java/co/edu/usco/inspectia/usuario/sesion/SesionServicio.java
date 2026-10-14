@@ -1,11 +1,11 @@
 /*
  * Nombre: SesionServicio.java
- * Descripción: Inicio de sesión con correo y contraseña, bloqueo por intentos fallidos y usuario de
- *              cada token (RF-01, RNF-04, D-28).
+ * Descripción: Inicio de sesión con correo y contraseña, bloqueo por intentos fallidos y revisión
+ *              del usuario de cada token en cada petición (RF-01, RNF-04, D-28).
  * Fecha de creación: 14/10/2026
  * Actualización: 14/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.usuario.sesion;
 
@@ -110,18 +110,25 @@ public class SesionServicio implements CargadorDeSesion {
     }
 
     /**
-     * El usuario de un token válido, leído de la base en cada petición (D-28).
+     * El usuario de un token válido, leído de la base en cada petición (D-28). Si el usuario o su
+     * empresa ya no están activos, la sesión deja de servir en esta misma petición (RF-01 C3 y C4).
      *
      * @param id el identificador que trae el token
      * @param vence cuándo vence el token
      * @return el usuario, con su rol y su empresa de este momento
-     * @throws SesionNoValidaExcepcion si el usuario ya no existe
+     * @throws SesionNoValidaExcepcion si el usuario ya no existe, o si él o su empresa están desactivados
      */
     @Override
     public UsuarioEnSesion cargar(UUID id, Instant vence) {
-        return repositorio.buscarPorId(id)
-                .map(usuario -> usuario.enSesion(vence))
+        DatosDeSesion usuario = repositorio.buscarPorId(id)
                 .orElseThrow(() -> new SesionNoValidaExcepcion("error.sesion_invalida"));
+        if (usuario.desactivado()) {
+            throw new SesionNoValidaExcepcion("error.usuario_desactivado");
+        }
+        if (usuario.empresaDesactivada()) {
+            throw new SesionNoValidaExcepcion("error.empresa_desactivada");
+        }
+        return usuario.enSesion(vence);
     }
 
     /** La respuesta de todo intento fallido: el mismo mensaje y la regla del bloqueo. */
