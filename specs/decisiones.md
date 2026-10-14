@@ -4,7 +4,7 @@ Descripción: Decisiones (D-xx) y pendientes (P-xx) del proyecto. Fuente: 01_Req
 Fecha de creación: 12/10/2026
 Actualización: 14/10/2026
 Autor: Equipo InspectIA (exportado del documento de requerimientos v2.1)
-Versión: 1.5
+Versión: 1.6
 -->
 
 # Decisiones y pendientes
@@ -64,4 +64,4 @@ Copia de trabajo del anexo A del documento de requerimientos (v2.1). Si una tare
 | P-14 | Revisar las fichas RF-08 y RNF-07 (secciones 5 y 6), incluida la métrica propuesta: F1-score macro. | Julián |
 | P-15 | Fijar con los resultados de validación el umbral de confianza baja y el porcentaje de granos dudosos que pide repetir una foto (10 % inicial, RF-09). Son parámetros del sistema. | Julián |
 | P-16 | Definir cómo se generan las migraciones de la base después del primer despliegue. Hasta entonces, `V1__esquema_inicial.sql` se regenera completa desde los JSON y la base local se reinicia. Después, las migraciones aplicadas quedan congeladas: el generador no puede reescribirlas, ni siquiera su header (ni la versión del generador ni las de los JSON), porque Flyway no arranca si una migración ya aplicada cambió. | Equipo |
-| P-17 | Limitar en el despliegue los intentos de inicio de sesión por IP, para que nadie pueda bloquear a propósito la cuenta de otro con intentos fallidos (D-28). | Equipo |
+| P-17 | Limitar en el despliegue los intentos de inicio de sesión por IP, para que nadie pueda bloquear a propósito la cuenta de otro con intentos fallidos (D-28). Riesgo aceptado: cuando el correo existe y la contraseña falla, guardar el intento hace que la respuesta tarde del orden de 1 ms más (la comparación BCrypt tarda unos 40 ms); con este límite, esa diferencia no alcanza para averiguar qué correos están registrados. | Equipo |
