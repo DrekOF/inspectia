@@ -4,7 +4,7 @@ Descripción: Casos de prueba de InspectIA por ficha y criterio de aceptación, 
              tienen prueba (RP-13). Archivo generado por generador/casos_de_prueba.py: no se edita a mano;
              sale de specs/fichas.json y de las marcas de las pruebas.
 Fecha de creación: 12/10/2026
-Actualización: 14/10/2026
+Actualización: 18/10/2026
 Autor: Equipo InspectIA (generado por generador/casos_de_prueba.py v1.1)
 Versión: 1.1
 -->
@@ -21,7 +21,7 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 
 ## Resumen
 
-- **136 criterios de aceptación** en 25 fichas: 26 con prueba y 110 pendientes.
+- **140 criterios de aceptación** en 26 fichas: 26 con prueba y 114 pendientes.
 - **135 pruebas:** 92 de Java (6 generadas) y 43 de Python. Una prueba parametrizada cuenta una vez.
 
 | Ficha | Criterios | Con prueba | Pendientes |
@@ -43,6 +43,7 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 | RF-15 · Descargar el reporte del lote en PDF | 5 | 0 | 5 |
 | RF-16 · Consultar las estadísticas de la empresa | 4 | 0 | 4 |
 | RF-17 · Consultar las métricas del modelo | 3 | 0 | 3 |
+| RF-18 · Cambiar la propia contraseña | 4 | 0 | 4 |
 | RNF-01 · Entregar el resultado del análisis de un lote en 5 a 8 segundos | 4 | 0 | 4 |
 | RNF-02 · Soportar hasta 30 empresas con 25 usuarios cada una | 4 | 0 | 4 |
 | RNF-03 · Mantener separados los datos de cada empresa | 5 | 1 | 4 |
@@ -265,6 +266,15 @@ Otras pruebas de RF-02, que no cubren un criterio:
 | C1. Las métricas coinciden con la tabla comparativa de los modelos (D-18). | **Pendiente** |
 | C2. La confianza promedio usa solo análisis de la empresa. | **Pendiente** |
 | C3. Un usuario final no puede entrar a esta pantalla (RNF-04). | **Pendiente** |
+
+## RF-18 · Cambiar la propia contraseña
+
+| Criterio | Pruebas |
+|---|---|
+| C1. Con la contraseña actual correcta y una nueva válida, la contraseña cambia: la nueva inicia sesión y la anterior ya no. | **Pendiente** |
+| C2. Con la contraseña actual errada no cambia nada, y el intento cuenta para el bloqueo de RF-01: después de 5 fallos seguidos, la cuenta se bloquea 15 minutos y tampoco se puede cambiar la contraseña hasta que termine. | **Pendiente** |
+| C3. La contraseña nueva acepta de 8 a 64 caracteres: con 7 o con 65 se rechaza (prueba de límite). | **Pendiente** |
+| C4. Una contraseña nueva de 64 caracteres con 8 eñes (72 bytes) se acepta; con 9 eñes (73 bytes) se rechaza con el mensaje «La contraseña es demasiado larga: usa menos caracteres o menos tildes y eñes» (prueba de límite). | **Pendiente** |
 
 ## RNF-01 · Entregar el resultado del análisis de un lote en 5 a 8 segundos
 

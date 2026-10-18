@@ -2,9 +2,9 @@
 Nombre: arquitectura.md
 Descripción: Resumen de la arquitectura del sistema y del software de InspectIA (D-16, D-18, D-21, D-23 y D-25). Detalle en 02_Analisis_Diseno/InspectIA_Despliegue_AWS.pdf.
 Fecha de creación: 12/10/2026
-Actualización: 13/10/2026
+Actualización: 18/10/2026
 Autor: Equipo InspectIA
-Versión: 1.1
+Versión: 1.2
 -->
 
 # Arquitectura de InspectIA
@@ -75,6 +75,6 @@ El servidor le envía al servicio de IA las fotos de la muestra (sus enlaces de 
 |---|---|---|
 | Análisis del lote | Hexagonal | RF-04 a RF-12, RF-14 y RF-15 |
 | Empresas | Capas (generado) | RF-02 |
-| Usuarios | Capas (generado) | RF-01 y RF-03 |
+| Usuarios | Capas (generado) | RF-01, RF-03 y RF-18 |
 | Rangos de recomendación | Capas (generado) | RF-13 |
 | Estadísticas | Capas | RF-16 y RF-17 |
