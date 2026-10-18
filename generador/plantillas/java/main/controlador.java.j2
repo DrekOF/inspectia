@@ -2,9 +2,9 @@
   Nombre: controlador.java.j2
   Descripción: Plantilla del controlador REST de una entidad, con roles y OpenAPI (RP-23).
   Fecha de creación: 13/10/2026
-  Actualización: 13/10/2026
+  Actualización: 14/10/2026
   Autor: Equipo InspectIA
-  Versión: 1.0
+  Versión: 1.1
 #}
 {% from 'java/_macros.j2' import encabezado %}
 {{ encabezado(header) }}
@@ -22,11 +22,19 @@ import {{ i }};
  */
 @RestController
 @RequestMapping("{{ ruta_api }}")
-@RequiredArgsConstructor
 @Tag(name = {{ (plural | capitalize) | java }}, description = {{ descripcion | java }})
 public class {{ clase }}Controlador {
 
     private final {{ clase }}Servicio servicio;
+
+    /**
+     * Crea el controlador; Spring le pasa el servicio.
+     *
+     * @param servicio las operaciones de {@code {{ entidad }}}
+     */
+    public {{ clase }}Controlador({{ clase }}Servicio servicio) {
+        this.servicio = servicio;
+    }
 {% for r in rutas %}
 {% set roles = 'Roles: ' ~ (r.roles | join(', ')) ~ '.' %}
 {% if r.operacion == 'listar' %}

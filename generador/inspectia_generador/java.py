@@ -2,9 +2,9 @@
 # Descripción: Arma los datos de las plantillas de Java: la persistencia de cada CRUD y, para las
 #              entidades de alcance.json, su API y sus pruebas (RP-23).
 # Fecha de creación: 13/10/2026
-# Actualización: 13/10/2026
+# Actualización: 14/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.0
+# Versión: 1.1
 """Datos de las plantillas de Java.
 
 - De cada entidad con ``"crud": true`` sale su persistencia: entidad JPA, repositorio, un ``enum``
@@ -504,6 +504,23 @@ def modelo_api(entidades, e):
     al_crear = 'Guarda el registro nuevo.' + (
         f" En la misma transacción guarda también {' y '.join(guardados)}." if guardados else '')
 
+    # Lo que necesita el servicio. El constructor va escrito, no con Lombok: con el JDK 25, al recompilar
+    # sin «clean», los constructores de Lombok quedan sin la llamada a super() (VerifyError).
+    dependencias = [{'tipo': f'{clase}Repositorio', 'nombre': 'repositorio',
+                     'descripcion': f'el repositorio de {{@code {n}}}'}]
+    if e.get('reglas'):
+        dependencias.append({'tipo': f'Reglas{clase}', 'nombre': 'reglas',
+                             'descripcion': 'las reglas que se programan a mano'})
+    if crear_con:
+        dependencias.append({'tipo': crear_con['repositorio'], 'nombre': crear_con['repositorio_var'],
+                             'descripcion': f"el repositorio de {{@code {crear_con['entidad']}}}"})
+        if crear_con['contrasena']:
+            dependencias.append({'tipo': 'PasswordEncoder', 'nombre': 'codificador',
+                                 'descripcion': 'el codificador BCrypt de las contraseñas'})
+    for i in iniciales:
+        dependencias.append({'tipo': i['repositorio'], 'nombre': i['repositorio_var'],
+                             'descripcion': f"el repositorio de {{@code {i['entidad']}}}"})
+
     reglas = [{'codigo': r['codigo'], 'metodo': 'cumple' + pascal(r['codigo']), 'descripcion': r['descripcion'],
                'cuando': [o for o in OPERACIONES_API if o in r.get('cuando', [])],
                'cuando_texto': _cuando([o for o in OPERACIONES_API if o in r.get('cuando', [])]),
@@ -561,7 +578,8 @@ def modelo_api(entidades, e):
             'plural': e['etiquetas']['es']['plural'].lower(), 'descripcion': e['descripcion'],
             'fichas': e['fichas'], 'operaciones': operaciones, 'rutas': rutas, 'ruta_api': ruta_api,
             'campos': _publicos(campos), 'campos_internos': campos, 'crear_con': crear_con,
-            'iniciales': iniciales, 'al_crear': al_crear, 'reglas': reglas, 'reglas_por_operacion': reglas_por_operacion,
+            'iniciales': iniciales, 'al_crear': al_crear, 'dependencias': dependencias,
+            'reglas': reglas, 'reglas_por_operacion': reglas_por_operacion,
             'consultas': consultas_unicas(e), 'activo': activo, 'orden': orden, 'orden_texto': orden_texto,
             'respuesta': respuesta,
             'atributos_entidad': [{'setter': 'set' + pascal(a['nombre']), 'getter': 'get' + pascal(a['nombre'])}
@@ -656,7 +674,7 @@ def _importaciones_mapeador(m):
 def _importaciones_servicio(m):
     importaciones = {'co.edu.usco.inspectia.comun.api.Pagina',
                      'co.edu.usco.inspectia.comun.errores.NoEncontradoExcepcion',
-                     'java.util.UUID', 'lombok.RequiredArgsConstructor',
+                     'java.util.UUID',
                      'org.springframework.data.domain.PageRequest', 'org.springframework.data.domain.Sort',
                      'org.springframework.stereotype.Service',
                      'org.springframework.transaction.annotation.Transactional'}
@@ -682,7 +700,7 @@ def _importaciones_servicio(m):
 
 def _importaciones_controlador(m):
     importaciones = {'io.swagger.v3.oas.annotations.Operation', 'io.swagger.v3.oas.annotations.tags.Tag',
-                     'lombok.RequiredArgsConstructor', 'org.springframework.security.access.prepost.PreAuthorize',
+                     'org.springframework.security.access.prepost.PreAuthorize',
                      'org.springframework.web.bind.annotation.RequestMapping',
                      'org.springframework.web.bind.annotation.RestController'}
     operaciones = m['operaciones']

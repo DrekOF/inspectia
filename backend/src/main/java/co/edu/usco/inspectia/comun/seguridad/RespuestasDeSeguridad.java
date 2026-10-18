@@ -1,11 +1,11 @@
 /*
  * Nombre: RespuestasDeSeguridad.java
  * Descripción: Respuestas 401 y 403 de la API en application/problem+json, en el idioma de la
- *              petición (RNF-04, RP-11).
+ *              petición; el 401 explica por qué no hay sesión (RNF-04, RP-11, D-28).
  * Fecha de creación: 13/10/2026
- * Actualización: 13/10/2026
+ * Actualización: 14/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.2
  */
 package co.edu.usco.inspectia.comun.seguridad;
 
@@ -16,12 +16,13 @@ import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
-import lombok.RequiredArgsConstructor;
 import org.springframework.context.MessageSource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.jwt.JwtValidationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.stereotype.Component;
@@ -30,20 +31,64 @@ import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Respuestas de la cadena de seguridad en {@code application/problem+json}, con el mismo formato
- * que los demás errores de la API (RNF-04): 401 sin sesión y 403 con un rol sin permiso.
+ * que los demás errores de la API (RNF-04): 401 sin sesión y 403 con un rol sin permiso. El 401 dice
+ * por qué no hay sesión, para que el frontend lo muestre y pida iniciar sesión de nuevo.
  */
 @Component
-@RequiredArgsConstructor
 public class RespuestasDeSeguridad implements AuthenticationEntryPoint, AccessDeniedHandler {
 
     private final MessageSource mensajes;
     private final LocaleResolver idiomas;
     private final JsonMapper json;
 
+    /**
+     * Crea las respuestas; Spring les pasa los mensajes, el idioma de cada petición y el JSON.
+     *
+     * @param mensajes los textos en español y en inglés
+     * @param idiomas el idioma de cada petición, según {@code Accept-Language}
+     * @param json el convertidor a JSON
+     */
+    public RespuestasDeSeguridad(MessageSource mensajes, LocaleResolver idiomas, JsonMapper json) {
+        this.mensajes = mensajes;
+        this.idiomas = idiomas;
+        this.json = json;
+    }
+
     @Override
     public void commence(HttpServletRequest peticion, HttpServletResponse respuesta,
             AuthenticationException excepcion) throws IOException {
-        escribir(peticion, respuesta, HttpStatus.UNAUTHORIZED, "error.no_autenticado");
+        escribir(peticion, respuesta, HttpStatus.UNAUTHORIZED, motivo(excepcion));
+    }
+
+    /**
+     * El mensaje de un 401 según su causa (D-28):
+     * <ul>
+     *   <li>El usuario del token no puede usar la sesión: su motivo; por ejemplo, que está desactivado.</li>
+     *   <li>El token venció: «Tu sesión venció».</li>
+     *   <li>El token no sirve (alterado, de otra clave, sin firma, de otro emisor o mal formado):
+     *       «La sesión no es válida».</li>
+     *   <li>No hay token: «Inicia sesión para continuar».</li>
+     * </ul>
+     */
+    static String motivo(AuthenticationException excepcion) {
+        if (excepcion instanceof SesionNoValidaExcepcion sesion) {
+            return sesion.getClave();
+        }
+        if (excepcion instanceof OAuth2AuthenticationException) {
+            return vencida(excepcion) ? "error.sesion_vencida" : "error.sesion_invalida";
+        }
+        return "error.no_autenticado";
+    }
+
+    /** Si el único problema del token es que venció: su firma y su emisor estaban bien. */
+    private static boolean vencida(Throwable excepcion) {
+        for (Throwable causa = excepcion; causa != null; causa = causa.getCause()) {
+            if (causa instanceof JwtValidationException validacion) {
+                return !validacion.getErrors().isEmpty() && validacion.getErrors().stream()
+                        .allMatch(error -> ValidadorDeVigencia.SESION_VENCIDA.equals(error.getErrorCode()));
+            }
+        }
+        return false;
     }
 
     @Override

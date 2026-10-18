@@ -3,9 +3,9 @@
 Nombre: pom.xml
 Descripción: Proyecto Maven del servidor de InspectIA: Spring Boot 4.1.1 con Java 25 (D-21). Las versiones las fija el BOM de Spring Boot, salvo springdoc.
 Fecha de creación: 13/10/2026
-Actualización: 13/10/2026
+Actualización: 14/10/2026
 Autor: Equipo InspectIA
-Versión: 1.0
+Versión: 1.1
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
@@ -43,6 +43,11 @@ Versión: 1.0
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-security</artifactId>
+		</dependency>
+		<!-- Tokens JWT del inicio de sesión (D-28): Spring Security con Nimbus, sin librerías aparte -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-security-oauth2-resource-server</artifactId>
 		</dependency>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

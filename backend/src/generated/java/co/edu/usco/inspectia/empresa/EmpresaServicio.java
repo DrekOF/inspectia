@@ -5,8 +5,8 @@
  *              o la plantilla, y se regenera.
  * Fecha de creación: 13/10/2026
  * Actualización: 13/10/2026
- * Autor: Equipo InspectIA (generado por generador/ v1.1)
- * Versión: 1.1
+ * Autor: Equipo InspectIA (generado por generador/ v1.2)
+ * Versión: 1.2
  * Entidades: empresa 1.2, usuario 1.3, rango_recomendacion 1.1
  */
 package co.edu.usco.inspectia.empresa;
@@ -22,7 +22,6 @@ import co.edu.usco.inspectia.usuario.UsuarioRepositorio;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -39,7 +38,6 @@ import org.springframework.transaction.annotation.Transactional;
  * Lo que se guarda en una operación queda en una sola transacción: o se guarda todo o nada.
  */
 @Service
-@RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class EmpresaServicio {
 
@@ -51,6 +49,28 @@ public class EmpresaServicio {
     private final UsuarioRepositorio usuarioRepositorio;
     private final PasswordEncoder codificador;
     private final RangoRecomendacionRepositorio rangoRecomendacionRepositorio;
+
+    /**
+     * Crea el servicio; Spring le pasa sus dependencias.
+     *
+     * @param repositorio el repositorio de {@code empresa}
+     * @param reglas las reglas que se programan a mano
+     * @param usuarioRepositorio el repositorio de {@code usuario}
+     * @param codificador el codificador BCrypt de las contraseñas
+     * @param rangoRecomendacionRepositorio el repositorio de {@code rango_recomendacion}
+     */
+    public EmpresaServicio(
+            EmpresaRepositorio repositorio,
+            ReglasEmpresa reglas,
+            UsuarioRepositorio usuarioRepositorio,
+            PasswordEncoder codificador,
+            RangoRecomendacionRepositorio rangoRecomendacionRepositorio) {
+        this.repositorio = repositorio;
+        this.reglas = reglas;
+        this.usuarioRepositorio = usuarioRepositorio;
+        this.codificador = codificador;
+        this.rangoRecomendacionRepositorio = rangoRecomendacionRepositorio;
+    }
 
     /**
      * Una página de empresas, por nombre, sin distinguir mayúsculas.

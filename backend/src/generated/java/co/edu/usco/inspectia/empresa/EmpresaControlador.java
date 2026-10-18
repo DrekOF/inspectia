@@ -5,8 +5,8 @@
  *              o la plantilla, y se regenera.
  * Fecha de creación: 13/10/2026
  * Actualización: 13/10/2026
- * Autor: Equipo InspectIA (generado por generador/ v1.1)
- * Versión: 1.1
+ * Autor: Equipo InspectIA (generado por generador/ v1.2)
+ * Versión: 1.2
  * Entidades: empresa 1.2, usuario 1.3, rango_recomendacion 1.1
  */
 package co.edu.usco.inspectia.empresa;
@@ -20,7 +20,6 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import java.net.URI;
 import java.util.UUID;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -41,11 +40,19 @@ import org.springframework.web.util.UriComponentsBuilder;
  */
 @RestController
 @RequestMapping("/api/v1/empresas")
-@RequiredArgsConstructor
 @Tag(name = "Empresas", description = "Empresa cliente de InspectIA. Sus usuarios, rangos, lotes y resultados están separados de los de las demás empresas (RNF-03). No se borra: se desactiva (D-27).")
 public class EmpresaControlador {
 
     private final EmpresaServicio servicio;
+
+    /**
+     * Crea el controlador; Spring le pasa el servicio.
+     *
+     * @param servicio las operaciones de {@code empresa}
+     */
+    public EmpresaControlador(EmpresaServicio servicio) {
+        this.servicio = servicio;
+    }
 
     /**
      * Lista empresas por páginas, por nombre, sin distinguir mayúsculas.

@@ -2,9 +2,9 @@
 Nombre: decisiones.md
 Descripción: Decisiones (D-xx) y pendientes (P-xx) del proyecto. Fuente: 01_Requerimientos/InspectIA_Requerimientos.docx, anexo A.
 Fecha de creación: 12/10/2026
-Actualización: 13/10/2026
+Actualización: 14/10/2026
 Autor: Equipo InspectIA (exportado del documento de requerimientos v2.1)
-Versión: 1.3
+Versión: 1.7
 -->
 
 # Decisiones y pendientes
@@ -42,6 +42,8 @@ Copia de trabajo del anexo A del documento de requerimientos (v2.1). Si una tare
 | D-25 | Un lote tiene como máximo 2 muestras. La segunda solo se habilita cuando la app la sugiere (D-24). El resultado del lote suma los granos de las dos: por ejemplo, 107 sanos de 120 y 113 de 125 dan 220 de 245 = 89,8 %, Corriente. Con 2 muestras ya no se sugiere otra. Si alguna muestra tiene el aviso de confianza baja (RF-09), el lote también lo muestra. | 13/10/2026 |
 | D-26 | Cambia D-23: si la muestra pasa de 150 granos, se acepta. El mínimo de 100 sigue siendo obligatorio; la guía sigue pidiendo de 100 a 150 y RNF-01 se mide con ese tamaño. | 13/10/2026 |
 | D-27 | El administrador de la plataforma puede desactivar una empresa: sus usuarios no pueden entrar y no se borra nada. También puede reactivarla y editar sus datos (nombre, NIT y ciudad), con las mismas validaciones del registro. | 13/10/2026 |
+| D-28 | Inicio de sesión (RF-01, RNF-04). El backend emite un JWT firmado con HS256, que viaja en el encabezado Authorization (Bearer); por eso la API no usa CSRF. La clave sale de la variable de entorno INSPECTIA_JWT_CLAVE (Base64, de al menos 32 bytes) y nunca se guarda en el repositorio. El token solo lleva el emisor, el identificador del usuario y sus fechas; vence a las 8 horas y no se renueva. Las rutas son POST /api/v1/sesion (iniciar sesión) y GET /api/v1/sesion (sesión actual); para cerrar sesión, el frontend borra el token. En cada petición se leen de la base el usuario, su rol y su empresa: desactivar un usuario o una empresa corta sus sesiones de inmediato, y un cambio de rol se aplica en la siguiente petición. Todo intento fallido recibe la misma respuesta, «Correo o contraseña incorrectos», con la regla del bloqueo; que el usuario o la empresa están desactivados solo se informa con la contraseña correcta. | 14/10/2026 |
+| D-29 | Estados de las fichas (amplía D-07). «Aprobado»: el equipo revisó la ficha; pasan a Aprobado todos los RF menos RF-08, que espera la revisión de Julián (P-14). «Implementado»: funciona de punta a punta (backend y frontend), todos sus criterios tienen prueba y está en main. A RF-01 le falta el menú en el frontend, y a RF-02, el criterio C12 y sus pantallas. `generador/casos_de_prueba.py comprobar` falla si un RF está «Implementado» y tiene criterios sin prueba. | 14/10/2026 |
 
 ## Pendientes
 
@@ -62,4 +64,5 @@ Copia de trabajo del anexo A del documento de requerimientos (v2.1). Si una tare
 | P-13 | Probar el modelo con fotos de granos de cacao colombiano: el dataset es de granos de Ecuador y el resultado puede variar con granos de otra región. | Equipo |
 | P-14 | Revisar las fichas RF-08 y RNF-07 (secciones 5 y 6), incluida la métrica propuesta: F1-score macro. | Julián |
 | P-15 | Fijar con los resultados de validación el umbral de confianza baja y el porcentaje de granos dudosos que pide repetir una foto (10 % inicial, RF-09). Son parámetros del sistema. | Julián |
-| P-16 | Definir cómo se generan las migraciones de la base después del primer despliegue. Hasta entonces, `V1__esquema_inicial.sql` se regenera completa desde los JSON y la base local se reinicia. | Equipo |
+| P-16 | Definir cómo se generan las migraciones de la base después del primer despliegue. Hasta entonces, `V1__esquema_inicial.sql` se regenera completa desde los JSON y la base local se reinicia. Después, las migraciones aplicadas quedan congeladas: el generador no puede reescribirlas, ni siquiera su header (ni la versión del generador ni las de los JSON), porque Flyway no arranca si una migración ya aplicada cambió. | Equipo |
+| P-17 | Limitar en el despliegue los intentos de inicio de sesión por IP, para que nadie pueda bloquear a propósito la cuenta de otro con intentos fallidos (D-28). Riesgo aceptado: cuando el correo existe y la contraseña falla, guardar el intento hace que la respuesta tarde del orden de 1 ms más (la comparación BCrypt tarda unos 40 ms); con este límite, esa diferencia no alcanza para averiguar qué correos están registrados. | Equipo |

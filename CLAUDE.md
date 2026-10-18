@@ -2,9 +2,9 @@
 Nombre: CLAUDE.md
 Descripción: Instrucciones del proyecto InspectIA para Claude Code. Se lee al inicio de cada sesión.
 Fecha de creación: 12/10/2026
-Actualización: 13/10/2026
+Actualización: 14/10/2026
 Autor: Equipo InspectIA
-Versión: 1.6
+Versión: 1.9
 -->
 
 # InspectIA
@@ -66,13 +66,14 @@ App web multiempresa que estima el % de granos de cacao sanos de un lote a parti
 - No reentrenar modelos desde la app (D-03).
 - No fijar el puerto de la base (5432) en el código ni en la configuración: el backend lo lee de `POSTGRES_PORT`, porque cambia en cada equipo (en algunos Windows el 5432 está reservado).
 - No agregar a Claude como coautor (`Co-Authored-By`) ni la línea «Generated with Claude Code» en commits ni PR: la autoría es de los integrantes. `.claude/settings.json` lo desactiva para todo el equipo.
+- No usar las anotaciones de Lombok que generan constructores (`@RequiredArgsConstructor`, `@AllArgsConstructor`, `@NoArgsConstructor`, `@Builder`, `@Data` ni `@Value`). Con el JDK 25, al recompilar sin `clean`, esos constructores quedan sin la llamada a `super()` y la JVM rechaza la clase (`VerifyError`). Escribe el constructor; Lombok queda para getters, setters y `@Slf4j`. `VerificacionDeClasesTest` lo revisa.
 
 ## Comandos
 
 Desde la raíz del repositorio. Las versiones y cómo instalarlas están en `README.md`.
 
 - Base de datos local (PostgreSQL 18 en Docker; Docker Desktop debe estar abierto):
-  - Primera vez: `cp infra/.env.example infra/.env` y escribe una contraseña en `POSTGRES_PASSWORD`. Si el 5432 está ocupado o reservado, cambia `POSTGRES_PORT` (ver README).
+  - Primera vez: `cp infra/.env.example infra/.env` y escribe una contraseña en `POSTGRES_PASSWORD` y la clave de los tokens en `INSPECTIA_JWT_CLAVE` (el comando para crearla está en el archivo). Si el 5432 está ocupado o reservado, cambia `POSTGRES_PORT` (ver README).
   - Encender: `docker compose -f infra/docker-compose.yml up -d`
   - Estado: `docker compose -f infra/docker-compose.yml ps`
   - Consola SQL: `docker compose -f infra/docker-compose.yml exec postgres sh -c 'psql -U $POSTGRES_USER -d $POSTGRES_DB'`
@@ -82,7 +83,7 @@ Desde la raíz del repositorio. Las versiones y cómo instalarlas están en `REA
   - Todas las pruebas: `./mvnw verify`. Docker Desktop debe estar abierto: las de integración usan PostgreSQL 18 en Testcontainers.
   - Solo las unitarias: `./mvnw test`
   - Una prueba de integración: `./mvnw verify -Dit.test=RegistroEmpresaIT`
-  - Arrancar contra la base local: `./mvnw spring-boot:run`. Lee `infra/.env`, Flyway crea las tablas y la documentación OpenAPI queda en http://localhost:8080/swagger-ui.html.
+  - Arrancar contra la base local: `./mvnw spring-boot:run`. Lee `infra/.env` (sin `INSPECTIA_JWT_CLAVE` no arranca), Flyway crea las tablas y la documentación OpenAPI queda en http://localhost:8080/swagger-ui.html. Para usar la API ahí, inicia sesión con `POST /api/v1/sesion` y pega el token en «Authorize» (ver `infra/README.md`).
 - Primer administrador de la plataforma (base encendida, backend arrancado una vez y los datos en `infra/.env`; ver `infra/README.md`):
   - Windows: `powershell -ExecutionPolicy Bypass -File infra\bd\crear-admin-plataforma.ps1`
   - Linux, macOS o Git Bash: `sh infra/bd/crear-admin-plataforma.sh`
@@ -91,5 +92,5 @@ Desde la raíz del repositorio. Las versiones y cómo instalarlas están en `REA
   - Generar: `generador/.venv/Scripts/python generador/generar.py generar`
   - Comprobar que lo generado está al día y nadie lo editó: `generador/.venv/Scripts/python generador/generar.py comprobar`
   - Pruebas: `cd generador` y `.venv/Scripts/python -m pytest`
-- Casos de prueba (RP-13): `generador/.venv/Scripts/python generador/casos_de_prueba.py generar`, o `comprobar` para revisar que el documento esté al día.
+- Casos de prueba (RP-13): `generador/.venv/Scripts/python generador/casos_de_prueba.py generar`, o `comprobar` para revisar que el documento esté al día. `comprobar` también falla si una ficha está «Implementado» y tiene criterios sin prueba (D-29).
 - Frontend y servicio de IA: se agregan aquí cuando se cree cada proyecto.

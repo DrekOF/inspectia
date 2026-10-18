@@ -2,9 +2,9 @@
 # Descripción: Configuración del servidor de InspectIA. La conexión a la base sale de variables
 #              de entorno; en local se leen de infra/.env, que no se sube al repositorio.
 # Fecha de creación: 13/10/2026
-# Actualización: 13/10/2026
+# Actualización: 14/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.1
+# Versión: 1.2
 
 spring:
   application:
@@ -34,5 +34,12 @@ spring:
     # Idioma de la respuesta si la petición no trae Accept-Language (RP-11).
     locale: es
   autoconfigure:
-    # Sin el usuario de prueba en memoria de Spring Boot: el inicio de sesión llega con RF-01.
+    # Sin el usuario de prueba en memoria de Spring Boot: los usuarios están en la base (RF-01).
     exclude: org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration
+
+inspectia:
+  jwt:
+    # Clave HS256 de los tokens del inicio de sesión, en Base64 y de al menos 32 bytes (D-28). Sale
+    # de la variable de entorno INSPECTIA_JWT_CLAVE (en local, de infra/.env) y nunca se escribe
+    # aquí. Sin ella, el servidor no arranca.
+    clave: ${INSPECTIA_JWT_CLAVE:}
