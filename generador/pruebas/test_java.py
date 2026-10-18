@@ -3,7 +3,7 @@
 # Fecha de creación: 13/10/2026
 # Actualización: 18/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.3
+# Versión: 1.4
 """Pruebas de lo que genera el generador para el backend: la persistencia de cada CRUD, la API de las
 entidades del alcance, incluidas las de una entidad por empresa, y los textos en español e inglés."""
 
@@ -132,6 +132,50 @@ def test_contrasena_de_solo_espacios(entidades):
         'un caso al crear y otro al editar'
     assert ('Arguments.of("administrador.contrasena", " ".repeat(8), "Este dato es obligatorio.")'
             in archivos[f'{PRUEBAS}/empresa/EmpresaApiGeneradaIT.java'])
+
+
+@pytest.mark.caso('RP-23 · un efecto de la contraseña se programa a mano y la edición generada lo llama solo si llega una contraseña nueva, después de guardar su hash')
+def test_efecto_al_cambiar_contrasena(entidades):
+    archivos = generar(entidades, api=('empresa', 'usuario'))
+
+    reglas = archivos[f'{JAVA}/usuario/ReglasUsuario.java']
+    assert 'void cortarSesionesAlCambiarContrasena(Usuario usuario, UsuarioEnSesion sesion);' in reglas
+    servicio = archivos[f'{JAVA}/usuario/UsuarioServicio.java']
+    bloque = servicio[servicio.index('if (solicitud.contrasena() != null) {'):]
+    bloque = bloque[:bloque.index('}')]
+    assert bloque.index('codificador.encode(') < bloque.index('reglas.cortarSesionesAlCambiarContrasena(usuario, sesion);')
+    assert servicio.count('reglas.cortarSesionesAlCambiarContrasena(') == 1, 'solo al editar'
+
+
+@pytest.mark.caso('RP-23 · un efecto sin atributo se llama en cada operación de cuando, después de los cambios y antes de escribirlos en la base')
+def test_efecto_en_una_operacion(entidades):
+    entidades['empresa']['reglas'].append({
+        'codigo': 'avisar_al_desactivar', 'tipo': 'efecto', 'cuando': ['desactivar'],
+        'descripcion': 'Avisa que la empresa se desactivó.', 'fichas': ['RF-02']})
+
+    archivos = generar(entidades)
+
+    assert 'void avisarAlDesactivar(Empresa empresa);' in archivos[f'{JAVA}/empresa/ReglasEmpresa.java']
+    servicio = archivos[f'{JAVA}/empresa/EmpresaServicio.java']
+    desactivar = servicio[servicio.index('public EmpresaRespuesta desactivar('):]
+    desactivar = desactivar[:desactivar.index('return ')]
+    assert (desactivar.index('empresa.setActiva(false);') < desactivar.index('reglas.avisarAlDesactivar(empresa);')
+            < desactivar.index('repositorio.flush();'))
+    assert servicio.count('reglas.avisarAlDesactivar(') == 1, 'solo al desactivar'
+
+
+@pytest.mark.caso('RP-23 · el generador se detiene con un efecto que no sabe llamar: en listar o ver, o atado a un atributo que no es una contraseña')
+def test_efectos_que_no_sabe_llamar(entidades):
+    entidades['empresa']['reglas'] += [
+        {'codigo': 'al_listar', 'tipo': 'efecto', 'cuando': ['listar'], 'descripcion': 'x', 'fichas': ['RF-02']},
+        {'codigo': 'al_cambiar_nit', 'tipo': 'efecto', 'cuando': ['editar'], 'atributo': 'nit', 'descripcion': 'x',
+         'fichas': ['RF-02']}]
+
+    with pytest.raises(ErrorGeneracion) as error:
+        generar(entidades)
+
+    assert 'al_listar' in str(error.value)
+    assert 'al_cambiar_nit' in str(error.value)
 
 
 @pytest.mark.caso('RP-23 · la respuesta solo lleva los atributos de la lista o del formulario: nunca el hash ni los datos internos')

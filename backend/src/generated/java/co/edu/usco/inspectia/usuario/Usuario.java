@@ -5,9 +5,9 @@
  *              o la plantilla, y se regenera.
  * Fecha de creación: 13/10/2026
  * Actualización: 18/10/2026
- * Autor: Equipo InspectIA (generado por generador/ v1.4)
- * Versión: 1.4
- * Entidades: usuario 1.4
+ * Autor: Equipo InspectIA (generado por generador/ v1.5)
+ * Versión: 1.5
+ * Entidades: usuario 1.5
  */
 package co.edu.usco.inspectia.usuario;
 
@@ -76,6 +76,10 @@ public class Usuario {
     /** Bloqueado hasta (RF-01, RNF-04). */
     @Column(name = "bloqueado_hasta")
     private OffsetDateTime bloqueadoHasta;
+
+    /** Sesiones válidas desde (RNF-04, D-30). */
+    @Column(name = "sesiones_desde")
+    private OffsetDateTime sesionesDesde;
 
     /** Fecha de creación del registro: la pone la base al insertar. */
     @Generated

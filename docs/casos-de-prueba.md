@@ -22,7 +22,7 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 ## Resumen
 
 - **143 criterios de aceptación** en 26 fichas: 41 con prueba y 102 pendientes.
-- **193 pruebas:** 143 de Java (17 generadas) y 50 de Python. Una prueba parametrizada cuenta una vez.
+- **200 pruebas:** 147 de Java (17 generadas) y 53 de Python. Una prueba parametrizada cuenta una vez.
 
 | Ficha | Criterios | Con prueba | Pendientes |
 |---|---:|---:|---:|
@@ -341,13 +341,14 @@ Otras pruebas de RNF-03, que no cubren un criterio:
 | C3. Las contraseñas se guardan con hash (BCrypt), nunca en texto plano. | [`RegistroEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/RegistroEmpresaIT.java) · la contraseña del administrador se guarda con hash BCrypt y no sale en la respuesta |
 | C4. La sesión vence a las 8 horas. | [`EmisorDeTokensTest`](../backend/src/test/java/co/edu/usco/inspectia/comun/seguridad/EmisorDeTokensTest.java) · el token vence 8 horas después de emitido, en segundos enteros, y solo lleva el emisor, el usuario y las fechas<br>[`SesionAbiertaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/SesionAbiertaIT.java) · el token del inicio de sesión dura exactamente 8 horas y solo lleva el emisor, el usuario y las fechas |
 | C5. Después de 5 intentos fallidos seguidos, la cuenta se bloquea 15 minutos. | [`InicioSesionIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/InicioSesionIT.java) · el bloqueo dura 15 minutos desde el quinto fallo y los intentos durante el bloqueo no lo alargan |
-| C6. Al cambiar o restablecer una contraseña, las sesiones abiertas antes del cambio dejan de servir. | [`GestionUsuariosIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/GestionUsuariosIT.java) · al restablecer la contraseña de un usuario desde la gestión de usuarios, sus sesiones abiertas dejan de servir<br>[`RestablecerContrasenaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/administradores/RestablecerContrasenaIT.java) · al restablecer la contraseña de un administrador de empresa, sus sesiones abiertas dejan de servir |
+| C6. Al cambiar o restablecer una contraseña, las sesiones abiertas antes del cambio dejan de servir. | [`GestionUsuariosIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/GestionUsuariosIT.java) · al restablecer la contraseña de un usuario desde la gestión de usuarios, sus sesiones abiertas dejan de servir<br>[`RestablecerContrasenaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/administradores/RestablecerContrasenaIT.java) · al restablecer la contraseña de un administrador de empresa, sus sesiones abiertas dejan de servir<br>[`ReglasUsuarioImplTest`](../backend/src/test/java/co/edu/usco/inspectia/usuario/reglas/ReglasUsuarioImplTest.java) · al cambiar una contraseña, sesiones_desde toma la hora del cambio en segundos enteros y la cuenta se desbloquea<br>[`SesionServicioTest`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/SesionServicioTest.java) · un token emitido antes del segundo en que cambió la contraseña ya no sirve; uno de ese mismo segundo, sí (prueba de límite) (parametrizada) |
 
 Otras pruebas de RNF-04, que no cubren un criterio:
 
 - [`UsuarioApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/usuario/UsuarioApiGeneradaIT.java) · un valor de una lista de usuario que existe pero no se puede asignar responde 403 y no guarda nada (parametrizada, generada)
 - [`ConfiguracionJwtTest`](../backend/src/test/java/co/edu/usco/inspectia/comun/seguridad/ConfiguracionJwtTest.java) · sin INSPECTIA_JWT_CLAVE, o si no está en Base64 o tiene menos de 32 bytes, el servidor no arranca (parametrizada)
 - [`ConfiguracionJwtTest`](../backend/src/test/java/co/edu/usco/inspectia/comun/seguridad/ConfiguracionJwtTest.java) · una clave de 32 bytes en Base64 sirve para firmar con HS256 (prueba de límite)
+- [`ValidadorDeVigenciaTest`](../backend/src/test/java/co/edu/usco/inspectia/comun/seguridad/ValidadorDeVigenciaTest.java) · un token sin fecha de emisión no sirve: sin ella no se sabe si es de antes de cambiar la contraseña
 - [`ValidadorDeVigenciaTest`](../backend/src/test/java/co/edu/usco/inspectia/comun/seguridad/ValidadorDeVigenciaTest.java) · un token sin fecha de vencimiento no sirve, y no se informa como vencido
 - [`GestionUsuariosIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/GestionUsuariosIT.java) · editar un usuario sin cambiar su contraseña no corta sus sesiones
 - [`SesionAbiertaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/SesionAbiertaIT.java) · el rol sale de la base en cada petición: si cambia, la sesión abierta lo refleja sin otro token
@@ -357,6 +358,7 @@ Otras pruebas de RNF-04, que no cubren un criterio:
 - [`SesionAbiertaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/SesionAbiertaIT.java) · un token de otro emisor no sirve, aunque esté firmado con la clave correcta
 - [`SesionAbiertaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/SesionAbiertaIT.java) · un token firmado con otra clave no sirve
 - [`SesionAbiertaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/SesionAbiertaIT.java) · un token sin firma (alg none) no sirve
+- [`SesionServicioTest`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/SesionServicioTest.java) · si la contraseña nunca cambió, cualquier token vigente del usuario sirve
 - [`test_java.py`](../generador/pruebas/test_java.py) · las reglas de acceso por ruta y @PreAuthorize salen de operaciones del JSON
 
 ## RNF-05 · Funcionar en PC y en celular desde el navegador
@@ -444,6 +446,7 @@ Pruebas que no cubren un criterio de una ficha, sino una pauta del docente (RP) 
 
 - [`test_java.py`](../generador/pruebas/test_java.py) · cada CRUD tiene persistencia y solo las entidades del alcance tienen API
 - [`test_java.py`](../generador/pruebas/test_java.py) · el código generado escribe sus constructores, sin las anotaciones de Lombok que los crean
+- [`test_java.py`](../generador/pruebas/test_java.py) · el generador se detiene con un efecto que no sabe llamar: en listar o ver, o atado a un atributo que no es una contraseña
 - [`test_java.py`](../generador/pruebas/test_java.py) · la API de una entidad por empresa toma la empresa de la sesión y limita cada consulta a ella (RNF-03)
 - [`test_java.py`](../generador/pruebas/test_java.py) · la contraseña del formulario es obligatoria al crear y opcional al editar, y solo se guarda su hash
 - [`test_java.py`](../generador/pruebas/test_java.py) · la respuesta solo lleva los atributos de la lista o del formulario: nunca el hash ni los datos internos
@@ -451,6 +454,8 @@ Pruebas que no cubren un criterio de una ficha, sino una pauta del docente (RP) 
 - [`test_java.py`](../generador/pruebas/test_java.py) · las validaciones del JSON pasan a Bean Validation con la clave de su mensaje
 - [`test_java.py`](../generador/pruebas/test_java.py) · lo generado de empresa no cambia al agregar la API por empresa: solo su header
 - [`test_java.py`](../generador/pruebas/test_java.py) · los rangos por defecto de una empresa nueva salen de valores_iniciales del JSON
+- [`test_java.py`](../generador/pruebas/test_java.py) · un efecto de la contraseña se programa a mano y la edición generada lo llama solo si llega una contraseña nueva, después de guardar su hash
+- [`test_java.py`](../generador/pruebas/test_java.py) · un efecto sin atributo se llama en cada operación de cuando, después de los cambios y antes de escribirlos en la base
 - [`test_java.py`](../generador/pruebas/test_java.py) · una contraseña de solo espacios se rechaza como si faltara: al crear con @NotBlank y al editar, si llega, con @NoEnBlanco
 - [`test_java.py`](../generador/pruebas/test_java.py) · una entidad por empresa no puede dar operaciones al administrador de la plataforma, que no tiene empresa
 - [`test_java.py`](../generador/pruebas/test_java.py) · valores_en_formulario se valida con @ValorPermitido, que responde 403 antes que los demás errores

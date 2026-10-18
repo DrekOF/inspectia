@@ -5,9 +5,9 @@
  *              o la plantilla, y se regenera.
  * Fecha de creación: 13/10/2026
  * Actualización: 18/10/2026
- * Autor: Equipo InspectIA (generado por generador/ v1.4)
- * Versión: 1.4
- * Entidades: usuario 1.4
+ * Autor: Equipo InspectIA (generado por generador/ v1.5)
+ * Versión: 1.5
+ * Entidades: usuario 1.5
  */
 package co.edu.usco.inspectia.usuario;
 
@@ -122,6 +122,7 @@ public class UsuarioServicio {
      * Edita un registro con las mismas validaciones del registro. Los cambios se revisan en una copia
      * y solo se aplican si todo está bien.
      * Si llega una contraseña, la restablece; si no, la deja como estaba.
+     * Después aplica el efecto {@code cortar_sesiones_al_cambiar_contrasena}, si llega una contraseña.
      *
      * @param id el registro que se edita
      * @param solicitud los datos, ya validados con el JSON
@@ -147,6 +148,7 @@ public class UsuarioServicio {
         UsuarioMapeador.aplicar(solicitud, usuario);
         if (solicitud.contrasena() != null) {
             usuario.setContrasenaHash(codificador.encode(solicitud.contrasena()));
+            reglas.cortarSesionesAlCambiarContrasena(usuario, sesion);
         }
         repositorio.flush();
         return UsuarioMapeador.respuesta(usuario);

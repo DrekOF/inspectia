@@ -5,7 +5,7 @@
     "fecha_creacion": "13/10/2026",
     "actualizacion": "18/10/2026",
     "autor": "Equipo InspectIA",
-    "version": "1.4"
+    "version": "1.5"
   },
   "entidad": "usuario",
   "clase": "Usuario",
@@ -134,6 +134,15 @@
       "en_formulario": false,
       "etiquetas": { "es": "Bloqueado hasta", "en": "Locked until" },
       "fichas": ["RF-01", "RNF-04"]
+    },
+    {
+      "nombre": "sesiones_desde",
+      "tipo": "fecha_hora",
+      "obligatorio": false,
+      "en_lista": false,
+      "en_formulario": false,
+      "etiquetas": { "es": "Sesiones válidas desde", "en": "Sessions valid since" },
+      "fichas": ["RNF-04", "D-30"]
     }
   ],
   "unicos": [
@@ -204,10 +213,18 @@
       "fichas": ["RF-03", "RF-18", "D-30"]
     },
     {
+      "codigo": "cortar_sesiones_al_cambiar_contrasena",
+      "tipo": "efecto",
+      "cuando": ["editar"],
+      "atributo": "contrasena_hash",
+      "descripcion": "Al restablecer o cambiar una contraseña, las sesiones abiertas antes del cambio dejan de servir y la cuenta se desbloquea: sesiones_desde toma la hora del cambio, en segundos enteros como el iat del token, y los intentos fallidos vuelven a cero. Lo aplican la edición de usuarios, el restablecimiento de RF-02 C12 y, después, RF-18.",
+      "fichas": ["RNF-04", "RF-02", "RF-03", "RF-18", "D-30"]
+    },
+    {
       "codigo": "restablecer_contrasena_administrador",
       "tipo": "accion",
       "roles": ["ADMIN_PLATAFORMA"],
-      "descripcion": "El administrador de la plataforma restablece la contraseña de un administrador de empresa, con las mismas validaciones de la contraseña.",
+      "descripcion": "El administrador de la plataforma restablece la contraseña de un administrador de empresa, con las mismas validaciones de la contraseña, y aplica cortar_sesiones_al_cambiar_contrasena.",
       "fichas": ["RF-02"]
     }
   ]

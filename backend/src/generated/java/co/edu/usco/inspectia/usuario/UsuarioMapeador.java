@@ -5,9 +5,9 @@
  *              o la plantilla, y se regenera.
  * Fecha de creación: 13/10/2026
  * Actualización: 18/10/2026
- * Autor: Equipo InspectIA (generado por generador/ v1.4)
- * Versión: 1.4
- * Entidades: usuario 1.4
+ * Autor: Equipo InspectIA (generado por generador/ v1.5)
+ * Versión: 1.5
+ * Entidades: usuario 1.5
  */
 package co.edu.usco.inspectia.usuario;
 
@@ -60,6 +60,7 @@ public final class UsuarioMapeador {
         copia.setActivo(original.getActivo());
         copia.setIntentosFallidos(original.getIntentosFallidos());
         copia.setBloqueadoHasta(original.getBloqueadoHasta());
+        copia.setSesionesDesde(original.getSesionesDesde());
         copia.setFechaCreacion(original.getFechaCreacion());
         copia.setFechaActualizacion(original.getFechaActualizacion());
         return copia;

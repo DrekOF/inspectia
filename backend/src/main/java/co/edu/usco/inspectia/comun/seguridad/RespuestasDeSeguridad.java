@@ -3,9 +3,9 @@
  * Descripción: Respuestas 401 y 403 de la API en application/problem+json, en el idioma de la
  *              petición; el 401 explica por qué no hay sesión (RNF-04, RP-11, D-28).
  * Fecha de creación: 13/10/2026
- * Actualización: 14/10/2026
+ * Actualización: 18/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.2
+ * Versión: 1.3
  */
 package co.edu.usco.inspectia.comun.seguridad;
 
@@ -63,7 +63,8 @@ public class RespuestasDeSeguridad implements AuthenticationEntryPoint, AccessDe
     /**
      * El mensaje de un 401 según su causa (D-28):
      * <ul>
-     *   <li>El usuario del token no puede usar la sesión: su motivo; por ejemplo, que está desactivado.</li>
+     *   <li>El usuario del token no puede usar la sesión: su motivo; por ejemplo, que está desactivado o
+     *       que su contraseña cambió después de emitir el token («Tu contraseña cambió»).</li>
      *   <li>El token venció: «Tu sesión venció».</li>
      *   <li>El token no sirve (alterado, de otra clave, sin firma, de otro emisor o mal formado):
      *       «La sesión no es válida».</li>

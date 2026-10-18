@@ -3,9 +3,9 @@
  * Descripción: Consultas del inicio de sesión sobre la tabla usuario: el usuario con su empresa y el
  *              conteo de intentos fallidos (RF-01, RNF-04).
  * Fecha de creación: 14/10/2026
- * Actualización: 14/10/2026
+ * Actualización: 18/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.usuario.sesion;
 
@@ -29,7 +29,8 @@ public interface SesionRepositorio extends Repository<Usuario, UUID> {
 
     /** El usuario con su empresa; los datos de la empresa quedan en {@code null} si no tiene. */
     String USUARIO_CON_EMPRESA = "select new co.edu.usco.inspectia.usuario.sesion.DatosDeSesion("
-            + "u.id, u.nombre, u.correo, u.contrasenaHash, u.rol, u.activo, u.bloqueadoHasta, e.id, e.nombre, e.activa)"
+            + "u.id, u.nombre, u.correo, u.contrasenaHash, u.rol, u.activo, u.bloqueadoHasta, u.sesionesDesde, e.id,"
+            + " e.nombre, e.activa)"
             + " from Usuario u left join Empresa e on e.id = u.empresaId";
 
     /**

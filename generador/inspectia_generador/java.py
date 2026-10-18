@@ -4,7 +4,7 @@
 # Fecha de creación: 13/10/2026
 # Actualización: 18/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.3
+# Versión: 1.4
 """Datos de las plantillas de Java.
 
 - De cada entidad con ``"crud": true`` sale su persistencia: entidad JPA, repositorio, un ``enum``
@@ -39,6 +39,8 @@ SESION = 'co.edu.usco.inspectia.comun.seguridad.UsuarioEnSesion'
 
 #: Operaciones que genera la API, en el orden del controlador.
 OPERACIONES_API = ('listar', 'ver', 'crear', 'editar', 'desactivar', 'reactivar')
+#: Operaciones que cambian el registro: en ellas puede pasar un efecto.
+OPERACIONES_CON_CAMBIOS = ('crear', 'editar', 'desactivar', 'reactivar')
 #: Verbo de cada operación en la documentación y en los nombres de las reglas.
 VERBOS = {'listar': 'Listar', 'ver': 'Ver', 'crear': 'Crear', 'editar': 'Editar',
           'desactivar': 'Desactivar', 'reactivar': 'Reactivar'}
@@ -314,13 +316,19 @@ def verificar_api(entidades, e):
         if a.get('en_formulario') and a['tipo'] == 'referencia':
             problemas.append(f"{a['nombre']}, de tipo {a['tipo']}, en el formulario")
     for r in e.get('reglas', []):
-        # Las acciones son operaciones extra que se programan a mano: el generador no las genera.
-        if r['tipo'] not in ('validacion', 'accion'):
-            problemas.append(f"la regla {r['codigo']}, de tipo {r['tipo']}")
+        # Las validaciones y los efectos se programan a mano y el código generado los llama. Las acciones
+        # son operaciones extra que también se programan a mano: el generador no las genera.
         a = atributo(e, r['atributo']) if r.get('atributo') else None
         if a is not None and a['tipo'] == 'contrasena' and r.get('cuando') != ['editar']:
             problemas.append(f"la regla {r['codigo']}: la de una contraseña solo se revisa al editar, cuando llega "
                              'una nueva')
+        if r['tipo'] == 'efecto':
+            sin_cambios = [o for o in r.get('cuando', []) if o not in OPERACIONES_CON_CAMBIOS]
+            if sin_cambios:
+                problemas.append(f"el efecto {r['codigo']} en {', '.join(sin_cambios)}, que no cambia el registro")
+            if a is not None and a['tipo'] != 'contrasena':
+                problemas.append(f"el efecto {r['codigo']} depende de {a['nombre']}: solo se sabe llamar cuando llega "
+                                 'una contraseña nueva')
     if 'crear_con' in e:
         cc = e['crear_con']
         otra = entidades[cc['entidad']]
@@ -573,11 +581,35 @@ def modelo_api(entidades, e):
     al_crear = 'Guarda el registro nuevo.' + (
         f" En la misma transacción guarda también {' y '.join(guardados)}." if guardados else '')
 
+    reglas, efectos = [], []
+    for r in e.get('reglas', []):
+        a = atributo(e, r['atributo']) if r.get('atributo') else None
+        de_contrasena = a is not None and a['tipo'] == 'contrasena'
+        cuando = [o for o in OPERACIONES_API if o in r.get('cuando', [])]
+        if r['tipo'] == 'validacion':
+            reglas.append({
+                'codigo': r['codigo'], 'metodo': 'cumple' + pascal(r['codigo']), 'descripcion': r['descripcion'],
+                'cuando': cuando, 'cuando_texto': _cuando(cuando),
+                # El error de una regla de la contraseña va en el campo del formulario, no en el del hash.
+                'campo': (camel(a['entrada']['nombre']) if de_contrasena else camel(a['nombre'])) if a else None,
+                'solo_con_contrasena': de_contrasena,
+                'clave': f"{n}.reglas.{r['codigo']}", 'fichas': r['fichas']})
+        elif r['tipo'] == 'efecto':
+            # Un efecto cambia el registro antes de escribirlo en la base; el de una contraseña, solo si
+            # llega una nueva y después de guardar su hash.
+            efectos.append({
+                'codigo': r['codigo'], 'metodo': camel(r['codigo']), 'descripcion': r['descripcion'],
+                'cuando': cuando, 'cuando_texto': _cuando(cuando), 'solo_con_contrasena': de_contrasena,
+                'fichas': r['fichas']})
+    reglas_por_operacion = {o: [r for r in reglas if o in r['cuando']] for o in operaciones}
+    efectos_por_operacion = {o: [f for f in efectos if o in f['cuando']] for o in operaciones}
+    constantes = _constantes_de_reglas(e)
+
     # Lo que necesita el servicio. El constructor va escrito, no con Lombok: con el JDK 25, al recompilar
     # sin «clean», los constructores de Lombok quedan sin la llamada a super() (VerifyError).
     dependencias = [{'tipo': f'{clase}Repositorio', 'nombre': 'repositorio',
                      'descripcion': f'el repositorio de {{@code {n}}}'}]
-    if e.get('reglas'):
+    if reglas or efectos:
         dependencias.append({'tipo': f'Reglas{clase}', 'nombre': 'reglas',
                              'descripcion': 'las reglas que se programan a mano'})
     if crear_con:
@@ -592,23 +624,6 @@ def modelo_api(entidades, e):
     for i in iniciales:
         dependencias.append({'tipo': i['repositorio'], 'nombre': i['repositorio_var'],
                              'descripcion': f"el repositorio de {{@code {i['entidad']}}}"})
-
-    reglas = []
-    for r in e.get('reglas', []):
-        if r['tipo'] != 'validacion':
-            continue
-        a = atributo(e, r['atributo']) if r.get('atributo') else None
-        de_contrasena = a is not None and a['tipo'] == 'contrasena'
-        cuando = [o for o in OPERACIONES_API if o in r.get('cuando', [])]
-        reglas.append({
-            'codigo': r['codigo'], 'metodo': 'cumple' + pascal(r['codigo']), 'descripcion': r['descripcion'],
-            'cuando': cuando, 'cuando_texto': _cuando(cuando),
-            # El error de una regla de la contraseña va en el campo del formulario, no en el del hash.
-            'campo': (camel(a['entrada']['nombre']) if de_contrasena else camel(a['nombre'])) if a else None,
-            'solo_con_contrasena': de_contrasena,
-            'clave': f"{n}.reglas.{r['codigo']}", 'fichas': r['fichas']})
-    reglas_por_operacion = {o: [r for r in reglas if o in r['cuando']] for o in operaciones}
-    constantes = _constantes_de_reglas(e)
 
     activo = None
     if 'atributo_activo' in e:
@@ -663,6 +678,7 @@ def modelo_api(entidades, e):
             'editar_con_contrasena': any(r['solo_con_contrasena'] for r in reglas_por_operacion.get('editar', [])),
             'iniciales': iniciales, 'al_crear': al_crear, 'dependencias': dependencias,
             'reglas': reglas, 'reglas_por_operacion': reglas_por_operacion,
+            'efectos': efectos, 'efectos_por_operacion': efectos_por_operacion,
             'consultas': consultas_unicas(e), 'activo': activo, 'orden': orden, 'orden_texto': orden_texto,
             'respuesta': respuesta,
             'atributos_entidad': [{'setter': 'set' + pascal(a['nombre']), 'getter': 'get' + pascal(a['nombre'])}
@@ -683,7 +699,7 @@ def archivos_api(entidades, e):
                 dict(m, **extra, header=_header(entidades, involucradas, f'{nombre}.java', descripcion)))
 
     archivos = []
-    if m['reglas']:
+    if m['reglas'] or m['efectos']:
         archivos.append(archivo(f'Reglas{clase}', 'java/main/reglas.java.j2',
                                 f"Reglas de {m['entidad']} que se programan a mano ({m['fichas'][0]}).",
                                 importaciones=([SESION] if m['con_empresa'] else [])))

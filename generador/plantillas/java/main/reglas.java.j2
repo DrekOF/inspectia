@@ -1,11 +1,12 @@
 {#
   Nombre: reglas.java.j2
-  Descripción: Plantilla de la interfaz de las reglas de una entidad que se programan a mano (RP-23). Sus
-               parámetros salen como constantes y, en una entidad por empresa, cada regla recibe la sesión.
+  Descripción: Plantilla de la interfaz de las reglas de una entidad que se programan a mano (RP-23):
+               las validaciones y los efectos. Sus parámetros salen como constantes y, en una entidad por
+               empresa, cada regla recibe la sesión.
   Fecha de creación: 13/10/2026
   Actualización: 18/10/2026
   Autor: Equipo InspectIA
-  Versión: 1.1
+  Versión: 1.2
 #}
 {% from 'java/_macros.j2' import encabezado %}
 {{ encabezado(header) }}
@@ -23,6 +24,11 @@ import {{ i }};
 {% if constantes %}
  *
  * <p>Los parámetros de las reglas salen del JSON como constantes: el valor solo vive allí.
+{% endif %}
+{% if efectos %}
+ *
+ * <p>Las validaciones dicen si se cumplen; los efectos cambian el registro antes de que se escriba en
+ * la base, dentro de la misma transacción.
 {% endif %}
  */
 public interface Reglas{{ clase }} {
@@ -45,5 +51,17 @@ public interface Reglas{{ clase }} {
      * @return {@code true} si se cumple; si no, la API responde 400{{ (' en el campo ' ~ r.campo) if r.campo else '' }} con el mensaje de la regla
      */
     boolean {{ r.metodo }}({{ clase }} {{ var }}{{ ', UsuarioEnSesion sesion' if con_empresa else '' }});
+{% endfor %}
+{% for f in efectos %}
+
+    /**
+     * {{ (f.codigo ~ ': ' ~ f.descripcion ~ ' Pasa ' ~ f.cuando_texto ~ (', solo si llega una contraseña nueva y después de guardar su hash' if f.solo_con_contrasena else '') ~ ', antes de escribir los cambios en la base (' ~ (f.fichas | join(', ')) ~ ').') | envolver('     * ') }}
+     *
+     * @param {{ var }} el registro con los datos que se van a guardar: el efecto lo cambia
+{% if con_empresa %}
+     * @param sesion el usuario de la sesión, con su empresa
+{% endif %}
+     */
+    void {{ f.metodo }}({{ clase }} {{ var }}{{ ', UsuarioEnSesion sesion' if con_empresa else '' }});
 {% endfor %}
 }

@@ -5,9 +5,9 @@
  *              o la plantilla, y se regenera.
  * Fecha de creación: 13/10/2026
  * Actualización: 18/10/2026
- * Autor: Equipo InspectIA (generado por generador/ v1.4)
- * Versión: 1.4
- * Entidades: usuario 1.4
+ * Autor: Equipo InspectIA (generado por generador/ v1.5)
+ * Versión: 1.5
+ * Entidades: usuario 1.5
  */
 package co.edu.usco.inspectia.usuario;
 
@@ -18,6 +18,9 @@ import co.edu.usco.inspectia.comun.seguridad.UsuarioEnSesion;
  * implementa una clase del paquete {@code co.edu.usco.inspectia.usuario.reglas}; si falta, la aplicación no arranca.
  *
  * <p>Los parámetros de las reglas salen del JSON como constantes: el valor solo vive allí.
+ *
+ * <p>Las validaciones dicen si se cumplen; los efectos cambian el registro antes de que se escriba en
+ * la base, dentro de la misma transacción.
  */
 public interface ReglasUsuario {
 
@@ -69,4 +72,17 @@ public interface ReglasUsuario {
      * @return {@code true} si se cumple; si no, la API responde 400 en el campo contrasena con el mensaje de la regla
      */
     boolean cumpleNoCambiarSuPropiaContrasena(Usuario usuario, UsuarioEnSesion sesion);
+
+    /**
+     * cortar_sesiones_al_cambiar_contrasena: Al restablecer o cambiar una contraseña, las sesiones
+     * abiertas antes del cambio dejan de servir y la cuenta se desbloquea: sesiones_desde toma la hora
+     * del cambio, en segundos enteros como el iat del token, y los intentos fallidos vuelven a cero. Lo
+     * aplican la edición de usuarios, el restablecimiento de RF-02 C12 y, después, RF-18. Pasa al
+     * editar, solo si llega una contraseña nueva y después de guardar su hash, antes de escribir los
+     * cambios en la base (RNF-04, RF-02, RF-03, RF-18, D-30).
+     *
+     * @param usuario el registro con los datos que se van a guardar: el efecto lo cambia
+     * @param sesion el usuario de la sesión, con su empresa
+     */
+    void cortarSesionesAlCambiarContrasena(Usuario usuario, UsuarioEnSesion sesion);
 }

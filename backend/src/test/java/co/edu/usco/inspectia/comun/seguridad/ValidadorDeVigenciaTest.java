@@ -1,11 +1,11 @@
 /*
  * Nombre: ValidadorDeVigenciaTest.java
  * Descripción: Pruebas unitarias del vencimiento de los tokens: sirven hasta el segundo en que vencen,
- *              sin tolerancia (RF-01, RNF-04, D-28).
+ *              sin tolerancia, y deben traer sus fechas (RF-01, RNF-04, D-28).
  * Fecha de creación: 14/10/2026
- * Actualización: 14/10/2026
+ * Actualización: 18/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.comun.seguridad;
 
@@ -49,6 +49,19 @@ class ValidadorDeVigenciaTest {
         ValidadorDeVigencia validador = new ValidadorDeVigencia(reloj(VENCE));
         Jwt token = Jwt.withTokenValue("token").header("alg", "HS256").subject("usuario")
                 .issuedAt(VENCE.minus(Duration.ofHours(8))).build();
+
+        OAuth2TokenValidatorResult resultado = validador.validate(token);
+
+        assertThat(resultado.hasErrors()).isTrue();
+        assertThat(resultado.getErrors()).extracting(OAuth2Error::getErrorCode)
+                .doesNotContain(ValidadorDeVigencia.SESION_VENCIDA);
+    }
+
+    @Test
+    @DisplayName("RNF-04 · un token sin fecha de emisión no sirve: sin ella no se sabe si es de antes de cambiar la contraseña")
+    void unTokenSinEmisionNoSirve() {
+        ValidadorDeVigencia validador = new ValidadorDeVigencia(reloj(VENCE.minusSeconds(60)));
+        Jwt token = Jwt.withTokenValue("token").header("alg", "HS256").subject("usuario").expiresAt(VENCE).build();
 
         OAuth2TokenValidatorResult resultado = validador.validate(token);
 
