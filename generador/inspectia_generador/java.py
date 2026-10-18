@@ -2,19 +2,22 @@
 # Descripción: Arma los datos de las plantillas de Java: la persistencia de cada CRUD y, para las
 #              entidades de alcance.json, su API y sus pruebas (RP-23).
 # Fecha de creación: 13/10/2026
-# Actualización: 14/10/2026
+# Actualización: 18/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.1
+# Versión: 1.2
 """Datos de las plantillas de Java.
 
 - De cada entidad con ``"crud": true`` sale su persistencia: entidad JPA, repositorio, un ``enum``
   por lista y, si tiene ``valores_iniciales``, la clase que los arma.
 - De las entidades de ``alcance.json`` sale además la API: reglas, servicio, controlador, reglas de
   acceso por ruta, solicitudes, respuesta, mapeador y una prueba de integración.
+- En una entidad por empresa, la empresa sale de la sesión y cada consulta se limita a ella (RNF-03).
 
 La API todavía no soporta todo el formato. Si una entidad del alcance usa algo que falta (por
-ejemplo, ser por empresa, que necesita la sesión de RF-01), la generación se detiene y dice qué.
+ejemplo, una referencia en el formulario), la generación se detiene y dice qué.
 """
+
+import re
 
 from inspectia_generador.encabezado import datos_header
 from inspectia_generador.modelo import atributo, tiene_empresa
@@ -30,6 +33,9 @@ TIPOS_JAVA = {'texto': 'String', 'contrasena': 'String', 'entero': 'Integer', 'd
               'referencia': 'UUID'}
 IMPORTACION_DE_TIPO = {'BigDecimal': 'java.math.BigDecimal', 'LocalDate': 'java.time.LocalDate',
                        'OffsetDateTime': 'java.time.OffsetDateTime', 'UUID': 'java.util.UUID'}
+
+#: El usuario de la sesión: en una entidad por empresa, de él sale la empresa (RNF-03).
+SESION = 'co.edu.usco.inspectia.comun.seguridad.UsuarioEnSesion'
 
 #: Operaciones que genera la API, en el orden del controlador.
 OPERACIONES_API = ('listar', 'ver', 'crear', 'editar', 'desactivar', 'reactivar')
@@ -127,6 +133,8 @@ def ejemplo(a):
     if tipo == 'fecha_hora':
         return '2026-01-15T10:00:00-05:00'
     if tipo == 'lista':
+        if 'valores_en_formulario' in a:
+            return a['valores_en_formulario'][0]
         return a['valores'][0]['codigo'] if 'valores' in a else None
     return None
 
@@ -254,10 +262,14 @@ def archivos_persistencia(entidades, e):
     if consultas:
         importaciones |= {'org.springframework.data.jpa.repository.Query',
                           'org.springframework.data.repository.query.Param'}
+    if tiene_empresa(e):
+        importaciones |= {'java.util.Optional', 'org.springframework.data.domain.Page',
+                          'org.springframework.data.domain.Pageable'}
     for c in consultas:
         importaciones |= importaciones_tipo(entidades, e, atributo(e, c['atributo']), p)
     archivos.append((ruta(e, e['clase'] + 'Repositorio'), 'java/main/repositorio.java.j2', {
         'paquete': p, 'clase': e['clase'], 'entidad': e['entidad'], 'importaciones': sorted(importaciones),
+        'con_empresa': tiene_empresa(e),
         'consultas': [dict(c, tipo=tipo_java(entidades, e, atributo(e, c['atributo']))) for c in consultas],
         'header': _header(entidades, [e], f"{e['clase']}Repositorio.java",
                           f"Repositorio de Spring Data JPA de la tabla {e['entidad']}.")}))
@@ -284,11 +296,12 @@ def verificar_api(entidades, e):
     operaciones = e.get('operaciones', {})
     if not e['crud']:
         problemas.append('no tiene CRUD')
-    if tiene_empresa(e):
-        problemas.append('es por empresa: necesita la empresa de la sesión, que llega con RF-01')
-    for operacion in operaciones:
+    for operacion, roles in operaciones.items():
         if operacion not in OPERACIONES_API:
             problemas.append(f'la operación {operacion}')
+        if tiene_empresa(e) and 'ADMIN_PLATAFORMA' in roles:
+            problemas.append(f'la operación {operacion} da permiso a ADMIN_PLATAFORMA, que no tiene empresa: '
+                             'una entidad por empresa solo la usan roles con empresa (RNF-03)')
     if e.get('edicion_en_bloque'):
         problemas.append('edicion_en_bloque')
     if {'desactivar', 'reactivar'} & set(operaciones) and 'atributo_activo' not in e:
@@ -298,13 +311,16 @@ def verificar_api(entidades, e):
             problemas += _problemas_de_campo(a, a['nombre'])
         if not a.get('en_formulario') and a.get('obligatorio') and 'por_defecto' not in a:
             problemas.append(f"{a['nombre']} es obligatorio, pero no va en el formulario ni tiene por_defecto")
-        if a.get('en_formulario') and a['tipo'] in ('referencia', 'contrasena'):
+        if a.get('en_formulario') and a['tipo'] == 'referencia':
             problemas.append(f"{a['nombre']}, de tipo {a['tipo']}, en el formulario")
     for r in e.get('reglas', []):
-        if r['tipo'] != 'validacion':
+        # Las acciones son operaciones extra que se programan a mano: el generador no las genera.
+        if r['tipo'] not in ('validacion', 'accion'):
             problemas.append(f"la regla {r['codigo']}, de tipo {r['tipo']}")
-        if r.get('parametros'):
-            problemas.append(f"la regla {r['codigo']}, con parametros")
+        a = atributo(e, r['atributo']) if r.get('atributo') else None
+        if a is not None and a['tipo'] == 'contrasena' and r.get('cuando') != ['editar']:
+            problemas.append(f"la regla {r['codigo']}: la de una contraseña solo se revisa al editar, cuando llega "
+                             'una nueva')
     if 'crear_con' in e:
         cc = e['crear_con']
         otra = entidades[cc['entidad']]
@@ -329,9 +345,8 @@ def verificar_api(entidades, e):
 
 def _problemas_de_campo(a, donde):
     problemas = []
-    for clave in ('valores_en_formulario', 'solo_lectura_si'):
-        if clave in a:
-            problemas.append(f'{clave} en {donde}')
+    if 'solo_lectura_si' in a:
+        problemas.append(f'solo_lectura_si en {donde}')
     v = a.get('validaciones', {})
     if 'no_posterior_a_hoy' in v:
         problemas.append(f'no_posterior_a_hoy en {donde}')
@@ -359,6 +374,11 @@ def campo_solicitud(e, a, campo_json, nombre=None, obligatorio=None):
     if requerido:
         anotaciones.append(f'@{"NotBlank" if texto else "NotNull"}(message = "{{validacion.obligatorio}}")')
         casos.append(('null', mensaje_esperado(e, a, 'obligatorio')))
+    if 'valores_en_formulario' in a:
+        # Un valor que existe pero no se puede asignar responde 403, no 400: va en la prueba de permisos.
+        valores = ', '.join(f'"{codigo}"' for codigo in a['valores_en_formulario'])
+        clave = clave_mensaje(e, a, 'valores_en_formulario')
+        anotaciones.append(f'@ValorPermitido(valores = {{{valores}}}, message = "{{{clave}}}")')
     if a['tipo'] == 'texto' or 'longitud_max' in v:
         limites = ([(a['longitud'], False)] if a['tipo'] == 'texto' else []) + (
             [(v['longitud_max'], True)] if 'longitud_max' in v else [])
@@ -427,20 +447,23 @@ def _importaciones_solicitud(entidades, e, campos):
         importaciones |= importaciones_tipo(entidades, c['_entidad'], a, paquete(e))
         for anotacion in c['anotaciones']:
             nombre = anotacion[1:anotacion.index('(')]
-            importaciones.add(f'co.edu.usco.inspectia.comun.validacion.{nombre}' if nombre == 'MaximoBytes'
+            importaciones.add(f'co.edu.usco.inspectia.comun.validacion.{nombre}'
+                              if nombre in ('MaximoBytes', 'ValorPermitido')
                               else f'jakarta.validation.constraints.{nombre}')
         if c['normalizacion']:
             importaciones.add('co.edu.usco.inspectia.comun.texto.Textos')
     return importaciones
 
 
-def _campos(entidades, e, atributos, prefijo=''):
+def _campos(entidades, e, atributos, prefijo='', al_editar=False):
+    """Los campos de una solicitud. Al editar, la contraseña es obligatoria solo si su ``entrada`` lo dice."""
     campos = []
     for a in atributos:
         if a['tipo'] == 'contrasena':
             entrada = a['entrada']
             nombre = camel(entrada['nombre'])
-            c = campo_solicitud(e, a, prefijo + nombre, nombre, entrada['obligatoria_al_crear'])
+            obligatoria = entrada['obligatoria_al_editar'] if al_editar else entrada['obligatoria_al_crear']
+            c = campo_solicitud(e, a, prefijo + nombre, nombre, obligatoria)
         else:
             c = campo_solicitud(e, a, prefijo + camel(a['nombre']))
         c['tipo'] = tipo_java(entidades, e, a)
@@ -459,6 +482,39 @@ def _cuando(operaciones):
     return partes[0] if len(partes) == 1 else ', '.join(partes[:-1]) + ' y ' + partes[-1]
 
 
+def _de_la_respuesta(e):
+    """Los atributos que van en la respuesta: los de la lista o del formulario, nunca una contraseña.
+
+    Los demás son datos internos, como los intentos fallidos o el bloqueo de un usuario.
+    """
+    return [a for a in e['atributos']
+            if a['tipo'] != 'contrasena' and (a.get('en_lista') or a.get('en_formulario'))]
+
+
+def _constantes_de_reglas(e):
+    """Los ``parametros`` de las reglas, como constantes de la interfaz que se programa a mano.
+
+    Si la regla tiene un solo parámetro, la constante se llama como la regla; si tiene varios, como la
+    regla y el parámetro. Así el valor vive solo en el JSON.
+    """
+    constantes = []
+    for r in e.get('reglas', []):
+        parametros = r.get('parametros', {})
+        for nombre, valor in parametros.items():
+            constante = r['codigo'] if len(parametros) == 1 else f"{r['codigo']}_{nombre}"
+            if isinstance(valor, bool):
+                tipo, java = 'boolean', 'true' if valor else 'false'
+            elif isinstance(valor, int):
+                tipo, java = 'int', str(valor)
+            elif isinstance(valor, float):
+                tipo, java = 'double', repr(valor)
+            else:
+                tipo, java = 'String', texto_java(valor)
+            constantes.append({'nombre': constante.upper(), 'tipo': tipo, 'valor': java,
+                               'descripcion': f"Parámetro {nombre} de la regla {r['codigo']}: {r['descripcion']}"})
+    return constantes
+
+
 def modelo_api(entidades, e):
     """Todo lo que necesitan las plantillas de la API de una entidad."""
     verificar_api(entidades, e)
@@ -466,7 +522,13 @@ def modelo_api(entidades, e):
     operaciones = {o: e['operaciones'][o] for o in OPERACIONES_API if o in e['operaciones']}
     formulario = [a for a in e['atributos'] if a.get('en_formulario')]
     campos = _campos(entidades, e, formulario)
+    campos_editar = _campos(entidades, e, formulario, al_editar=True)
     singular = e['etiquetas']['es']['singular'].lower()
+    con_empresa = tiene_empresa(e)
+    # La contraseña del formulario no se copia al registro: el servicio guarda su hash BCrypt.
+    campo_contrasena = next((c for c in campos if c['tipo_atributo'] == 'contrasena'), None)
+    contrasena_formulario = campo_contrasena and {'nombre': campo_contrasena['nombre'],
+                                                  'setter': campo_contrasena['setter']}
 
     crear_con = None
     if 'crear_con' in e:
@@ -517,17 +579,29 @@ def modelo_api(entidades, e):
         if crear_con['contrasena']:
             dependencias.append({'tipo': 'PasswordEncoder', 'nombre': 'codificador',
                                  'descripcion': 'el codificador BCrypt de las contraseñas'})
+    if contrasena_formulario and not any(d['nombre'] == 'codificador' for d in dependencias):
+        dependencias.append({'tipo': 'PasswordEncoder', 'nombre': 'codificador',
+                             'descripcion': 'el codificador BCrypt de las contraseñas'})
     for i in iniciales:
         dependencias.append({'tipo': i['repositorio'], 'nombre': i['repositorio_var'],
                              'descripcion': f"el repositorio de {{@code {i['entidad']}}}"})
 
-    reglas = [{'codigo': r['codigo'], 'metodo': 'cumple' + pascal(r['codigo']), 'descripcion': r['descripcion'],
-               'cuando': [o for o in OPERACIONES_API if o in r.get('cuando', [])],
-               'cuando_texto': _cuando([o for o in OPERACIONES_API if o in r.get('cuando', [])]),
-               'campo': camel(r['atributo']) if r.get('atributo') else None,
-               'clave': f"{n}.reglas.{r['codigo']}", 'fichas': r['fichas']}
-              for r in e.get('reglas', []) if r['tipo'] == 'validacion']
+    reglas = []
+    for r in e.get('reglas', []):
+        if r['tipo'] != 'validacion':
+            continue
+        a = atributo(e, r['atributo']) if r.get('atributo') else None
+        de_contrasena = a is not None and a['tipo'] == 'contrasena'
+        cuando = [o for o in OPERACIONES_API if o in r.get('cuando', [])]
+        reglas.append({
+            'codigo': r['codigo'], 'metodo': 'cumple' + pascal(r['codigo']), 'descripcion': r['descripcion'],
+            'cuando': cuando, 'cuando_texto': _cuando(cuando),
+            # El error de una regla de la contraseña va en el campo del formulario, no en el del hash.
+            'campo': (camel(a['entrada']['nombre']) if de_contrasena else camel(a['nombre'])) if a else None,
+            'solo_con_contrasena': de_contrasena,
+            'clave': f"{n}.reglas.{r['codigo']}", 'fichas': r['fichas']})
     reglas_por_operacion = {o: [r for r in reglas if o in r['cuando']] for o in operaciones}
+    constantes = _constantes_de_reglas(e)
 
     activo = None
     if 'atributo_activo' in e:
@@ -558,14 +632,13 @@ def modelo_api(entidades, e):
 
     respuesta = [{'tipo': 'UUID', 'nombre': 'id', 'esquema': 'description = "Identificador (UUID v7)."',
                   'descripcion': 'identificador (UUID v7)'}]
-    for a in e['atributos']:
-        if a['tipo'] != 'contrasena':
-            esquema = [f'description = {texto_java(a["etiquetas"]["es"])}']
-            if ejemplo(a) is not None:
-                esquema.append(f'example = {texto_java(ejemplo(a))}')
-            respuesta.append({'tipo': tipo_java(entidades, e, a), 'nombre': camel(a['nombre']),
-                              'getter': 'get' + pascal(a['nombre']), 'esquema': ', '.join(esquema),
-                              'descripcion': a['etiquetas']['es']})
+    for a in _de_la_respuesta(e):
+        esquema = [f'description = {texto_java(a["etiquetas"]["es"])}']
+        if ejemplo(a) is not None:
+            esquema.append(f'example = {texto_java(ejemplo(a))}')
+        respuesta.append({'tipo': tipo_java(entidades, e, a), 'nombre': camel(a['nombre']),
+                          'getter': 'get' + pascal(a['nombre']), 'esquema': ', '.join(esquema),
+                          'descripcion': a['etiquetas']['es']})
     respuesta += [{'tipo': 'OffsetDateTime', 'nombre': 'fechaCreacion', 'getter': 'getFechaCreacion',
                    'esquema': 'description = "Fecha de creación del registro."',
                    'descripcion': 'fecha de creación del registro'},
@@ -578,13 +651,16 @@ def modelo_api(entidades, e):
             'plural': e['etiquetas']['es']['plural'].lower(), 'descripcion': e['descripcion'],
             'fichas': e['fichas'], 'operaciones': operaciones, 'rutas': rutas, 'ruta_api': ruta_api,
             'campos': _publicos(campos), 'campos_internos': campos, 'crear_con': crear_con,
+            'campos_editar': _publicos(campos_editar), 'campos_editar_internos': campos_editar,
+            'contrasena': contrasena_formulario, 'constantes': constantes,
+            'editar_con_contrasena': any(r['solo_con_contrasena'] for r in reglas_por_operacion.get('editar', [])),
             'iniciales': iniciales, 'al_crear': al_crear, 'dependencias': dependencias,
             'reglas': reglas, 'reglas_por_operacion': reglas_por_operacion,
             'consultas': consultas_unicas(e), 'activo': activo, 'orden': orden, 'orden_texto': orden_texto,
             'respuesta': respuesta,
             'atributos_entidad': [{'setter': 'set' + pascal(a['nombre']), 'getter': 'get' + pascal(a['nombre'])}
                                   for a in e['atributos']],
-            'con_empresa': tiene_empresa(e)}
+            'con_empresa': con_empresa}
 
 
 def archivos_api(entidades, e):
@@ -602,7 +678,8 @@ def archivos_api(entidades, e):
     archivos = []
     if m['reglas']:
         archivos.append(archivo(f'Reglas{clase}', 'java/main/reglas.java.j2',
-                                f"Reglas de {m['entidad']} que se programan a mano ({m['fichas'][0]})."))
+                                f"Reglas de {m['entidad']} que se programan a mano ({m['fichas'][0]}).",
+                                importaciones=([SESION] if m['con_empresa'] else [])))
     if 'crear' in m['operaciones']:
         archivos.append(archivo(f'{clase}CrearSolicitud', 'java/main/solicitud.java.j2',
                                 f'Datos para registrar {m["singular"]} por la API.',
@@ -626,10 +703,10 @@ def archivos_api(entidades, e):
     if 'editar' in m['operaciones']:
         archivos.append(archivo(f'{clase}EditarSolicitud', 'java/main/solicitud.java.j2',
                                 f'Datos para editar {m["singular"]} por la API.',
-                                solicitud={'clase': f'{clase}EditarSolicitud', 'campos': m['campos'],
+                                solicitud={'clase': f'{clase}EditarSolicitud', 'campos': m['campos_editar'],
                                            'crear_con': None, 'descripcion': f'Datos para editar {m["singular"]}.',
                                            'importaciones': sorted(_importaciones_solicitud(
-                                               entidades, e, m['campos_internos']))}))
+                                               entidades, e, m['campos_editar_internos']))}))
     archivos.append(archivo(f'{clase}Respuesta', 'java/main/respuesta.java.j2',
                             f'{m["singular"].capitalize()} como la responde la API.',
                             importaciones=sorted(_importaciones_respuesta(entidades, e))))
@@ -652,9 +729,8 @@ def archivos_api(entidades, e):
 
 def _importaciones_respuesta(entidades, e):
     importaciones = {'io.swagger.v3.oas.annotations.media.Schema', 'java.time.OffsetDateTime', 'java.util.UUID'}
-    for a in e['atributos']:
-        if a['tipo'] != 'contrasena':
-            importaciones |= importaciones_tipo(entidades, e, a, paquete(e))
+    for a in _de_la_respuesta(e):
+        importaciones |= importaciones_tipo(entidades, e, a, paquete(e))
     return importaciones
 
 
@@ -691,6 +767,10 @@ def _importaciones_servicio(m):
             importaciones.add(f"{cc['paquete']}.{cc['repositorio']}")
         if cc['contrasena']:
             importaciones.add('org.springframework.security.crypto.password.PasswordEncoder')
+    if m['contrasena']:
+        importaciones.add('org.springframework.security.crypto.password.PasswordEncoder')
+    if m['con_empresa']:
+        importaciones.add(SESION)
     for inicial in m['iniciales']:
         if inicial['paquete'] != m['paquete']:
             importaciones |= {f"{inicial['paquete']}.{inicial['repositorio']}",
@@ -722,6 +802,9 @@ def _importaciones_controlador(m):
     if 'editar' in operaciones:
         importaciones |= {'jakarta.validation.Valid', 'org.springframework.web.bind.annotation.PutMapping',
                           'org.springframework.web.bind.annotation.RequestBody'}
+    if m['con_empresa']:
+        importaciones |= {SESION, 'io.swagger.v3.oas.annotations.Parameter',
+                          'org.springframework.security.core.annotation.AuthenticationPrincipal'}
     return importaciones
 
 
@@ -738,21 +821,64 @@ def _modelo_prueba(entidades, e, m):
     if cc:
         unicos += [(c['campo_json'], c['mensaje']) for c in cc['consultas']]
     tablas = [m['entidad']] + ([cc['entidad']] if cc else []) + [
-        o['entidad'] for o in entidades.values() if m['iniciales'] and 'valores_iniciales' in o]
+        o['entidad'] for o in entidades.values() if m['iniciales'] and 'valores_iniciales' in o] + (
+        ['empresa'] if m['con_empresa'] else [])
+    editar = m['campos_editar_internos']
+    listas = [c for c in crear if c['tipo_atributo'] == 'lista']
+    # Un valor que existe pero no se puede asignar responde 403 (valores_en_formulario).
+    no_permitidos = [(c['campo_json'], texto_java(v['codigo']),
+                      mensaje_esperado(e, c['_atributo'], 'valores_en_formulario'))
+                     for c in listas if 'valores_en_formulario' in c['_atributo']
+                     for v in c['_atributo']['valores'] if v['codigo'] not in c['_atributo']['valores_en_formulario']]
     return {
         'roles': roles,
         'permisos': [(r['operacion'], rol, rol in r['roles']) for r in m['rutas'] for rol in roles],
         'datos_crear': [(c['campo_json'], c['ejemplo']) for c in crear],
         'datos_crear_con': [(c['campo_json'].split('.', 1)[1], c['ejemplo']) for c in cc['campos_internos']] if cc else [],
-        'datos_editar': [(c['campo_json'], c['ejemplo']) for c in crear],
+        'datos_editar': [(c['campo_json'], c['ejemplo']) for c in editar],
         'validaciones_crear': validaciones_crear,
-        'validaciones_editar': [(c['campo_json'], valor, mensaje) for c in crear for valor, mensaje in c['casos']],
+        'validaciones_editar': [(c['campo_json'], valor, mensaje) for c in editar for valor, mensaje in c['casos']],
         'unicos': unicos,
         'normalizados': [(c['campo_json'], c['ejemplo']) for c in crear if c['recorta'] and c['tipo'] == 'String'],
         'usa_correo_largo': any('correoDeLargo' in valor for _, valor, _ in validaciones_crear),
         'tablas': ', '.join(dict.fromkeys(tablas)),
         'ficha': m['fichas'][0],
+        'con_empresa': m['con_empresa'],
+        'empresas': _empresas_de_prueba(entidades) if m['con_empresa'] else None,
+        'no_permitidos': no_permitidos,
+        'listas': [c['campo_json'] for c in listas],
+        'con_registro': [o for o in ('ver', 'editar', 'desactivar', 'reactivar') if o in m['operaciones']],
     }
+
+
+def _empresas_de_prueba(entidades):
+    """Dos empresas para la prueba generada de una entidad por empresa: la de la sesión y otra.
+
+    Llevan los ejemplos de los atributos obligatorios de empresa. En la segunda, cada dato único cambia
+    cada dígito por el siguiente: así no se repite y sigue cumpliendo su patrón.
+    """
+    empresa = entidades['empresa']
+    unicos = {a['nombre'] for a in empresa['atributos'] if a.get('unico')}
+    unicos |= {u['atributos'][0] for u in empresa.get('unicos', []) if len(u['atributos']) == 1}
+    obligatorios = [a for a in empresa['atributos'] if a.get('obligatorio') and 'por_defecto' not in a]
+    primera = [ejemplo(a) for a in obligatorios]
+    segunda = [_otro_valor(a, valor) if a['nombre'] in unicos else valor for a, valor in zip(obligatorios, primera)]
+    return {'columnas': ', '.join(a['nombre'] for a in obligatorios),
+            'marcadores': ', '.join('?' for _ in obligatorios),
+            'primera': ', '.join(json_java(v) for v in primera),
+            'segunda': ', '.join(json_java(v) for v in segunda)}
+
+
+def _otro_valor(a, valor):
+    """Un valor distinto del ejemplo que cumple las mismas validaciones: cada dígito pasa al siguiente."""
+    otro = re.sub(r'\d', lambda digito: str((int(digito.group()) + 1) % 10), str(valor))
+    patron = a.get('validaciones', {}).get('patron')
+    if otro == str(valor) and a['tipo'] == 'texto' and not patron:
+        otro = (str(valor) + ' 2')[:a['longitud']]
+    if otro == str(valor) or (patron and not re.fullmatch(patron, otro)):
+        raise ErrorGeneracion(f"empresa.{a['nombre']}: no se pudo armar a partir de su ejemplo otro valor válido, "
+                              'que necesita la prueba generada de una entidad por empresa')
+    return otro
 
 
 # --- Header -------------------------------------------------------------------------------------

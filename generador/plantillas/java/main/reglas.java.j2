@@ -1,28 +1,49 @@
 {#
   Nombre: reglas.java.j2
-  Descripción: Plantilla de la interfaz de las reglas de una entidad que se programan a mano (RP-23).
+  Descripción: Plantilla de la interfaz de las reglas de una entidad que se programan a mano (RP-23). Sus
+               parámetros salen como constantes y, en una entidad por empresa, cada regla recibe la sesión.
   Fecha de creación: 13/10/2026
-  Actualización: 13/10/2026
+  Actualización: 18/10/2026
   Autor: Equipo InspectIA
-  Versión: 1.0
+  Versión: 1.1
 #}
 {% from 'java/_macros.j2' import encabezado %}
 {{ encabezado(header) }}
 package {{ paquete }};
+{% if importaciones %}
+
+{% for i in importaciones %}
+import {{ i }};
+{% endfor %}
+{% endif %}
 
 /**
  * Reglas de {@code {{ entidad }}} que no se pueden declarar en el JSON y se programan a mano (RP-23). Las
  * implementa una clase del paquete {@code {{ paquete }}.reglas}; si falta, la aplicación no arranca.
+{% if constantes %}
+ *
+ * <p>Los parámetros de las reglas salen del JSON como constantes: el valor solo vive allí.
+{% endif %}
  */
 public interface Reglas{{ clase }} {
+{% for k in constantes %}
+
+    /**
+     * {{ k.descripcion | envolver('     * ') }}
+     */
+    {{ k.tipo }} {{ k.nombre }} = {{ k.valor }};
+{% endfor %}
 {% for r in reglas %}
 
     /**
-     * {{ (r.codigo ~ ': ' ~ r.descripcion ~ ' Se revisa ' ~ r.cuando_texto ~ ' (' ~ (r.fichas | join(', ')) ~ ').') | envolver('     * ') }}
+     * {{ (r.codigo ~ ': ' ~ r.descripcion ~ ' Se revisa ' ~ r.cuando_texto ~ (', solo si llega una contraseña nueva' if r.solo_con_contrasena else '') ~ ' (' ~ (r.fichas | join(', ')) ~ ').') | envolver('     * ') }}
      *
      * @param {{ var }} el registro con los datos que se van a guardar
+{% if con_empresa %}
+     * @param sesion el usuario de la sesión, con su empresa
+{% endif %}
      * @return {@code true} si se cumple; si no, la API responde 400{{ (' en el campo ' ~ r.campo) if r.campo else '' }} con el mensaje de la regla
      */
-    boolean {{ r.metodo }}({{ clase }} {{ var }});
+    boolean {{ r.metodo }}({{ clase }} {{ var }}{{ ', UsuarioEnSesion sesion' if con_empresa else '' }});
 {% endfor %}
 }

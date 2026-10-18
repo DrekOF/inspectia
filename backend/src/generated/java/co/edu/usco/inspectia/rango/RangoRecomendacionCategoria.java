@@ -5,8 +5,8 @@
  *              o la plantilla, y se regenera.
  * Fecha de creación: 13/10/2026
  * Actualización: 13/10/2026
- * Autor: Equipo InspectIA (generado por generador/ v1.2)
- * Versión: 1.2
+ * Autor: Equipo InspectIA (generado por generador/ v1.3)
+ * Versión: 1.3
  * Entidades: rango_recomendacion 1.1
  */
 package co.edu.usco.inspectia.rango;

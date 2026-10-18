@@ -2,9 +2,9 @@
   Nombre: repositorio.java.j2
   Descripción: Plantilla del repositorio de Spring Data JPA de una tabla con CRUD (RP-23).
   Fecha de creación: 13/10/2026
-  Actualización: 13/10/2026
+  Actualización: 18/10/2026
   Autor: Equipo InspectIA
-  Versión: 1.0
+  Versión: 1.1
 #}
 {% from 'java/_macros.j2' import encabezado %}
 {{ encabezado(header) }}
@@ -44,4 +44,24 @@ public interface {{ clase }}Repositorio extends JpaRepository<{{ clase }}, UUID>
     @Query("{{ c.jpql_en_otro }}")
     boolean {{ c.metodo_en_otro }}(@Param("valor") {{ c.tipo }} valor, @Param("id") UUID id);
 {% endfor %}
+{% if con_empresa %}
+
+    /**
+     * Una página de los registros de una empresa: la API nunca lista los de otra (RNF-03).
+     *
+     * @param empresaId la empresa de la sesión
+     * @param pagina la página que se pide
+     * @return la página
+     */
+    Page<{{ clase }}> findAllByEmpresaId(UUID empresaId, Pageable pagina);
+
+    /**
+     * Un registro de una empresa: si es de otra, la API responde que no existe (RNF-03).
+     *
+     * @param id el registro
+     * @param empresaId la empresa de la sesión
+     * @return el registro, si existe y es de esa empresa
+     */
+    Optional<{{ clase }}> findByIdAndEmpresaId(UUID id, UUID empresaId);
+{% endif %}
 }
