@@ -5,14 +5,15 @@
  *              o la plantilla, y se regenera.
  * Fecha de creación: 13/10/2026
  * Actualización: 18/10/2026
- * Autor: Equipo InspectIA (generado por generador/ v1.3)
- * Versión: 1.3
+ * Autor: Equipo InspectIA (generado por generador/ v1.4)
+ * Versión: 1.4
  * Entidades: usuario 1.4
  */
 package co.edu.usco.inspectia.usuario;
 
 import co.edu.usco.inspectia.comun.texto.Textos;
 import co.edu.usco.inspectia.comun.validacion.MaximoBytes;
+import co.edu.usco.inspectia.comun.validacion.NoEnBlanco;
 import co.edu.usco.inspectia.comun.validacion.ValorPermitido;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
@@ -42,6 +43,7 @@ public record UsuarioEditarSolicitud(
         @Email(message = "{validacion.correo}")
         String correo,
         @Schema(description = "Contraseña")
+        @NoEnBlanco(message = "{validacion.obligatorio}")
         @Size(max = 64, message = "{usuario.contrasena_hash.longitud_max}")
         @Size(min = 8, message = "{usuario.contrasena_hash.longitud_min}")
         @MaximoBytes(value = 72, message = "{usuario.contrasena_hash.bytes_max}")

@@ -4,7 +4,7 @@ Descripción: Qué hay en specs/entidades/ y formato de los JSON de entidades qu
 Fecha de creación: 12/10/2026
 Actualización: 18/10/2026
 Autor: Equipo InspectIA
-Versión: 1.6
+Versión: 1.7
 -->
 
 # specs/entidades
@@ -35,7 +35,7 @@ Un archivo JSON por cada tabla de la base de datos. Es la entrada de `generador/
 - **Por empresa:** la empresa sale de la sesión y nunca de la petición. Cada consulta se limita a ella, y un registro de otra empresa responde 404, como si no existiera (RNF-03). Por eso ninguna operación de una entidad por empresa puede ser del administrador de la plataforma, que no tiene empresa.
 - **Orden de las revisiones:** primero las validaciones del JSON y las `reglas` (400); después los datos únicos (409). Un valor de `valores_en_formulario` que no se puede asignar responde 403 antes que todo lo demás. Lo que se guarda en una operación, incluido lo de `crear_con` y `valores_iniciales`, va en una sola transacción.
 - **Listado:** una página con `contenido`, `pagina` (desde 0), `tamano`, `totalElementos` y `totalPaginas`. Trae 20 filas por página si no se pide otro tamaño (máximo 100) y se ordena por `nombre`, sin distinguir mayúsculas, si la entidad tiene ese atributo; si no, por antigüedad. Se pide otra página con `?pagina=` y otro tamaño con `?tamano=`.
-- **Respuesta:** los atributos de la lista o del formulario; los demás, como los intentos fallidos de un usuario, son internos. Una contraseña nunca sale: se guarda su hash BCrypt. Al editar, la contraseña es opcional si su `entrada` lo dice.
+- **Respuesta:** los atributos de la lista o del formulario; los demás, como los intentos fallidos de un usuario, son internos. Una contraseña nunca sale: se guarda su hash BCrypt. Al editar, la contraseña es opcional si su `entrada` lo dice; si llega con solo espacios, se rechaza con el mismo mensaje que al crear, «Este dato es obligatorio.».
 - **Reglas:** las de `validacion` se programan a mano y, en una entidad por empresa, reciben el usuario de la sesión. Sus `parametros` salen como constantes de la interfaz generada. Las de tipo `accion` son operaciones extra que se escriben a mano, fuera de lo generado.
 - **Errores:** `application/problem+json` (RFC 9457). Los 400 y 409 traen `errores`, con un `campo` y un `mensaje` por cada dato que corregir, uno por campo. Los mensajes salen en el idioma de `Accept-Language`; si la petición no pide ninguno, en español.
 

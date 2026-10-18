@@ -5,8 +5,8 @@
  *              o la plantilla, y se regenera.
  * Fecha de creación: 13/10/2026
  * Actualización: 18/10/2026
- * Autor: Equipo InspectIA (generado por generador/ v1.3)
- * Versión: 1.3
+ * Autor: Equipo InspectIA (generado por generador/ v1.4)
+ * Versión: 1.4
  * Entidades: usuario 1.4
  */
 package co.edu.usco.inspectia.usuario;
@@ -154,6 +154,7 @@ class UsuarioApiGeneradaIT {
                 Arguments.of("correo", correoDeLargo(255), "Puede tener como máximo 254 caracteres."),
                 Arguments.of("correo", "sin-arroba", "Escribe un correo válido."),
                 Arguments.of("contrasena", null, "Este dato es obligatorio."),
+                Arguments.of("contrasena", " ".repeat(8), "Este dato es obligatorio."),
                 Arguments.of("contrasena", "x".repeat(65), "La contraseña puede tener como máximo 64 caracteres."),
                 Arguments.of("contrasena", "x".repeat(7), "La contraseña debe tener al menos 8 caracteres."),
                 Arguments.of("contrasena", "ñ".repeat(37), "La contraseña es demasiado larga: usa menos caracteres o menos tildes y eñes"),
@@ -181,6 +182,7 @@ class UsuarioApiGeneradaIT {
                 Arguments.of("correo", null, "Este dato es obligatorio."),
                 Arguments.of("correo", correoDeLargo(255), "Puede tener como máximo 254 caracteres."),
                 Arguments.of("correo", "sin-arroba", "Escribe un correo válido."),
+                Arguments.of("contrasena", " ".repeat(8), "Este dato es obligatorio."),
                 Arguments.of("contrasena", "x".repeat(65), "La contraseña puede tener como máximo 64 caracteres."),
                 Arguments.of("contrasena", "x".repeat(7), "La contraseña debe tener al menos 8 caracteres."),
                 Arguments.of("contrasena", "ñ".repeat(37), "La contraseña es demasiado larga: usa menos caracteres o menos tildes y eñes"),

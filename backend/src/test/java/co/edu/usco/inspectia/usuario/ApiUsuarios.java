@@ -5,7 +5,7 @@
  * Fecha de creación: 18/10/2026
  * Actualización: 18/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.usuario;
 
@@ -23,7 +23,8 @@ import org.springframework.test.web.servlet.assertj.MvcTestResult;
  * <p>Contrato que fijan estas pruebas (RF-03):
  * <ul>
  *   <li>Crear y editar reciben {@code nombre}, {@code correo}, {@code rol} y {@code contrasena}; al
- *       editar, la contraseña es opcional y, si llega, se restablece.</li>
+ *       editar, la contraseña es opcional y, si llega, se restablece. Una contraseña de solo espacios
+ *       se rechaza como si faltara.</li>
  *   <li>Responden el usuario con {@code id}, {@code nombre}, {@code correo}, {@code rol},
  *       {@code activo} y las fechas: nunca la contraseña ni su hash, los intentos fallidos o el
  *       bloqueo.</li>
@@ -38,6 +39,7 @@ final class ApiUsuarios {
     static final String CORREO_REPETIDO = "Ya existe un usuario con este correo.";
     static final String ROL_NO_PERMITIDO = "Solo puedes asignar los roles Usuario final o Administrador de empresa.";
     static final String VALOR_INVALIDO = "El valor no es válido.";
+    static final String OBLIGATORIO = "Este dato es obligatorio.";
     static final String CONTRASENA_CORTA = "La contraseña debe tener al menos 8 caracteres.";
     static final String CONTRASENA_LARGA = "La contraseña puede tener como máximo 64 caracteres.";
     static final String CONTRASENA_BYTES =

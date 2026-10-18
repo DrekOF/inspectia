@@ -5,7 +5,7 @@
  * Fecha de creación: 13/10/2026
  * Actualización: 18/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.2
+ * Versión: 1.3
  */
 package co.edu.usco.inspectia.comun.errores;
 
@@ -59,8 +59,11 @@ public class ManejadorDeErrores extends ResponseEntityExceptionHandler {
     /** Código de PostgreSQL de una violación de un índice único. */
     private static final String VIOLACION_DE_UNICO = "23505";
 
-    /** Si un campo falla varias validaciones, se informa primero que falta. */
-    private static final List<String> FALTA_EL_DATO = List.of("NotNull", "NotBlank", "NotEmpty");
+    /**
+     * Si un campo falla varias validaciones, se informa primero que falta. Un dato opcional que llega en
+     * blanco ({@code @NoEnBlanco}) cuenta como uno que falta: responde lo mismo que {@code @NotBlank}.
+     */
+    private static final List<String> FALTA_EL_DATO = List.of("NotNull", "NotBlank", "NotEmpty", "NoEnBlanco");
 
     /** Código del error de {@code @ValorPermitido}: un valor de una lista que no se puede asignar. */
     private static final String VALOR_NO_PERMITIDO = "ValorPermitido";

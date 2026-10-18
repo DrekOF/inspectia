@@ -5,11 +5,12 @@
  * Fecha de creación: 18/10/2026
  * Actualización: 18/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.usuario.reglas;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -23,6 +24,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -53,6 +55,19 @@ class ReglasUsuarioImplTest {
         nuevo.setEmpresaId(EMPRESA);
 
         assertThat(reglas.cumpleMaximoUsuariosActivos(nuevo, sesion())).isEqualTo(cumple);
+    }
+
+    @Test
+    @DisplayName("RF-03 · C5 · antes de contar los activos bloquea la fila de la empresa, para que dos altas a la vez no pasen de 25")
+    void bloqueaLaEmpresaAntesDeContar() {
+        Usuario nuevo = new Usuario();
+        nuevo.setEmpresaId(EMPRESA);
+
+        reglas.cumpleMaximoUsuariosActivos(nuevo, sesion());
+
+        InOrder orden = inOrder(activos);
+        orden.verify(activos).bloquearEmpresa(EMPRESA);
+        orden.verify(activos).countByEmpresaIdAndActivoTrue(EMPRESA);
     }
 
     @Test

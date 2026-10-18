@@ -4,7 +4,7 @@
 # Fecha de creación: 13/10/2026
 # Actualización: 18/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.2
+# Versión: 1.3
 """Datos de las plantillas de Java.
 
 - De cada entidad con ``"crud": true`` sale su persistencia: entidad JPA, repositorio, un ``enum``
@@ -374,6 +374,13 @@ def campo_solicitud(e, a, campo_json, nombre=None, obligatorio=None):
     if requerido:
         anotaciones.append(f'@{"NotBlank" if texto else "NotNull"}(message = "{{validacion.obligatorio}}")')
         casos.append(('null', mensaje_esperado(e, a, 'obligatorio')))
+    elif a['tipo'] == 'contrasena':
+        # Opcional, como al editar: si no llega, queda la que había; si llega en blanco, se rechaza con
+        # el mismo mensaje que al crear, porque tampoco serviría para iniciar sesión.
+        anotaciones.append('@NoEnBlanco(message = "{validacion.obligatorio}")')
+    if a['tipo'] == 'contrasena':
+        # Solo espacios y con el largo mínimo: falla solo por estar en blanco (prueba de límite).
+        casos.append((f'" ".repeat({v.get("longitud_min", 1)})', mensaje_esperado(e, a, 'obligatorio')))
     if 'valores_en_formulario' in a:
         # Un valor que existe pero no se puede asignar responde 403, no 400: va en la prueba de permisos.
         valores = ', '.join(f'"{codigo}"' for codigo in a['valores_en_formulario'])
@@ -448,7 +455,7 @@ def _importaciones_solicitud(entidades, e, campos):
         for anotacion in c['anotaciones']:
             nombre = anotacion[1:anotacion.index('(')]
             importaciones.add(f'co.edu.usco.inspectia.comun.validacion.{nombre}'
-                              if nombre in ('MaximoBytes', 'ValorPermitido')
+                              if nombre in ('MaximoBytes', 'NoEnBlanco', 'ValorPermitido')
                               else f'jakarta.validation.constraints.{nombre}')
         if c['normalizacion']:
             importaciones.add('co.edu.usco.inspectia.comun.texto.Textos')

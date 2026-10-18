@@ -2,9 +2,9 @@
 Nombre: modelo-datos.md
 Descripción: Modelo de datos de InspectIA: diagrama entidad-relación, tablas con su trazabilidad a las fichas y decisiones de diseño.
 Fecha de creación: 13/10/2026
-Actualización: 13/10/2026
+Actualización: 18/10/2026
 Autor: Equipo InspectIA
-Versión: 1.3
+Versión: 1.4
 -->
 
 # Modelo de datos de InspectIA
@@ -166,8 +166,9 @@ En las tablas, «Oblig.» dice si el campo es obligatorio y «Único» si no se 
   - ADMIN_PLATAFORMA, que existe pero no se puede asignar: «prohibido» (403, RNF-04), sin guardar nada. Es una prueba de seguridad de RF-03.
   - Un código que no existe, como «JEFE»: «dato inválido» (400).
 - Reglas (RF-03): máximo 25 usuarios activos por empresa. El administrador no puede desactivarse a sí mismo ni cambiar su propio rol, porque la empresa podría quedar sin administrador y el de la plataforma no edita usuarios.
+- Para contar los 25 activos al crear o reactivar un usuario, el backend bloquea la fila de la empresa hasta terminar (`SELECT … FOR UPDATE`). Si dos administradores lo hacen a la vez, el segundo espera al primero y cuenta con su usuario incluido, así la empresa no pasa de 25.
 - El administrador de la plataforma puede restablecer la contraseña de un administrador de empresa (RF-02).
-- La contraseña se escribe en el formulario: de 8 a 64 caracteres y como máximo 72 bytes. Se guarda solo su hash (RF-02, RF-03).
+- La contraseña se escribe en el formulario: de 8 a 64 caracteres y como máximo 72 bytes. Una de solo espacios se rechaza como si faltara, también al restablecerla, porque tampoco serviría para iniciar sesión. Se guarda solo su hash (RF-02, RF-03).
 - Un CHECK exige que `empresa_id` vaya vacía si y solo si el rol es ADMIN_PLATAFORMA (RNF-03).
 
 ### 3.3 rango_recomendacion (CRUD generado: editar y restaurar)

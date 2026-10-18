@@ -5,7 +5,7 @@
  * Fecha de creación: 18/10/2026
  * Actualización: 18/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.usuario.administradores;
 
@@ -58,6 +58,7 @@ class RestablecerContrasenaIT {
     private static final String MARTA = "marta@cacaosur.test";
     private static final String NUEVA = "Nueva-Clave-2026";
     private static final String NO_EXISTE = "No existe un registro con ese identificador.";
+    private static final String OBLIGATORIO = "Este dato es obligatorio.";
 
     @Autowired
     private MockMvcTester mvc;
@@ -136,6 +137,21 @@ class RestablecerContrasenaIT {
             assertThat(api.iniciar(ANA, CONTRASENA)).as("no cambió").hasStatus(HttpStatus.OK);
         } else {
             assertThat(api.iniciar(ANA, nueva)).hasStatus(HttpStatus.OK);
+        }
+    }
+
+    @ParameterizedTest(name = "«{0}»: {1}")
+    @DisplayName("RF-02 · C12 · una contraseña nueva de solo espacios se rechaza como si faltara, igual que la inicial; con una letra se acepta (prueba de límite)")
+    @CsvSource({"'        ', 400", "'       x', 204"})
+    void contrasenaDeSoloEspacios(String nueva, int estado) {
+        MvcTestResult resultado = restablecer(empresa, ana, nueva);
+
+        assertThat(resultado).hasStatus(estado);
+        if (estado == 400) {
+            assertThat(errores(resultado)).containsExactly(error("contrasena", OBLIGATORIO));
+            assertThat(api.iniciar(ANA, CONTRASENA)).as("no cambió").hasStatus(HttpStatus.OK);
+        } else {
+            assertThat(api.iniciar(ANA, nueva)).as("entra con ella, espacios incluidos").hasStatus(HttpStatus.OK);
         }
     }
 

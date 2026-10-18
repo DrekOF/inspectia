@@ -1,12 +1,12 @@
 /*
  * Nombre: GestionUsuariosIT.java
  * Descripción: Pruebas de la gestión de usuarios de la empresa por la API, con PostgreSQL 18 y tokens
- *              reales: crear, editar, desactivar y reactivar con sus reglas, y el corte de sesiones al
- *              restablecer una contraseña (RF-03, RNF-04).
+ *              reales: crear, editar, desactivar y reactivar con sus reglas, el límite de 25 con dos
+ *              altas a la vez y el corte de sesiones al restablecer una contraseña (RF-03, RNF-04).
  * Fecha de creación: 18/10/2026
  * Actualización: 18/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.usuario;
 
@@ -14,6 +14,7 @@ import static co.edu.usco.inspectia.usuario.ApiUsuarios.CONTRASENA_BYTES;
 import static co.edu.usco.inspectia.usuario.ApiUsuarios.CONTRASENA_CORTA;
 import static co.edu.usco.inspectia.usuario.ApiUsuarios.CONTRASENA_LARGA;
 import static co.edu.usco.inspectia.usuario.ApiUsuarios.CORREO_REPETIDO;
+import static co.edu.usco.inspectia.usuario.ApiUsuarios.OBLIGATORIO;
 import static co.edu.usco.inspectia.usuario.ApiUsuarios.REGLA_CONTRASENA;
 import static co.edu.usco.inspectia.usuario.ApiUsuarios.REGLA_DESACTIVARSE;
 import static co.edu.usco.inspectia.usuario.ApiUsuarios.REGLA_MAXIMO;
@@ -32,16 +33,26 @@ import static org.assertj.core.api.Assertions.assertThat;
 import co.edu.usco.inspectia.PruebaIntegracion;
 import co.edu.usco.inspectia.usuario.sesion.ApiSesion;
 import co.edu.usco.inspectia.usuario.sesion.TokensDePrueba;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import javax.sql.DataSource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -58,6 +69,7 @@ import org.springframework.test.web.servlet.assertj.MvcTestResult;
 class GestionUsuariosIT {
 
     private static final String ADMIN = "admin@cacaos.test";
+    private static final String BETO = "beto@cacaos.test";
     private static final String LUIS = "luis@cacaos.test";
     private static final String NUEVA = "Nueva-Clave-2026";
 
@@ -66,6 +78,9 @@ class GestionUsuariosIT {
 
     @Autowired
     private JdbcTemplate jdbc;
+
+    @Autowired
+    private DataSource fuente;
 
     private ApiSesion api;
     private ApiUsuarios usuarios;
@@ -154,6 +169,30 @@ class GestionUsuariosIT {
         }
     }
 
+    @ParameterizedTest(name = "al {0}, «{1}»: {2}")
+    @DisplayName("RF-03 · una contraseña de solo espacios se rechaza al crear y al restablecer, con el mismo mensaje que si faltara; con una letra se acepta (prueba de límite)")
+    @CsvSource({
+        "crear,       '        ', 400",
+        "crear,       '       x', 201",
+        "restablecer, '        ', 400",
+        "restablecer, '       x', 200"})
+    void contrasenaDeSoloEspacios(String operacion, String contrasena, int estado) {
+        MvcTestResult resultado;
+        if ("crear".equals(operacion)) {
+            resultado = usuarios.crear(token, datos("Luis Gómez", LUIS, "USUARIO_FINAL", contrasena));
+        } else {
+            UUID luis = api.crearUsuario(empresa, "Luis Gómez", LUIS, "USUARIO_FINAL");
+            resultado = usuarios.editar(token, luis, datos("Luis Gómez", LUIS, "USUARIO_FINAL", contrasena));
+        }
+
+        assertThat(resultado).hasStatus(estado);
+        if (estado == 400) {
+            assertThat(errores(resultado)).containsExactly(error("contrasena", OBLIGATORIO));
+        } else {
+            assertThat(api.iniciar(LUIS, contrasena)).as("entra con ella, espacios incluidos").hasStatus(HttpStatus.OK);
+        }
+    }
+
     @Test
     @DisplayName("RF-03 · C5 · con 25 usuarios activos no deja crear ni reactivar otro, y explica por qué (prueba de límite)")
     void maximoVeinticincoActivos() {
@@ -172,6 +211,34 @@ class GestionUsuariosIT {
             assertThat(resultado).hasStatus(HttpStatus.BAD_REQUEST);
             assertThat(errores(resultado)).containsExactly(error(null, REGLA_MAXIMO));
         }
+        assertThat(activosDeLaEmpresa()).isEqualTo(25);
+    }
+
+    @ParameterizedTest(name = "el otro administrador {0}")
+    @DisplayName("RF-03 · C5 · con 24 activos, si dos administradores crean o reactivan un usuario al mismo tiempo, solo uno lo logra y la empresa queda con 25 (prueba de límite)")
+    @ValueSource(strings = {"crea", "reactiva"})
+    void dosAltasAlMismoTiempo(String otro) throws Exception {
+        api.crearUsuario(empresa, "Beto Díaz", BETO, "ADMIN_EMPRESA");
+        for (int i = 1; i <= 22; i++) {
+            api.crearUsuario(empresa, "Usuario " + i, "usuario" + i + "@cacaos.test", "USUARIO_FINAL");
+        }
+        UUID inactivo = api.crearUsuario(empresa, "Usuario inactivo", "inactivo@cacaos.test", "USUARIO_FINAL");
+        jdbc.update("UPDATE usuario SET activo = false WHERE id = ?", inactivo);
+        String tokenBeto = api.token(BETO);
+        assertThat(activosDeLaEmpresa()).isEqualTo(24);
+
+        List<MvcTestResult> resultados = aLaVez(
+                () -> usuarios.crear(token, datos("Usuario 23", "usuario23@cacaos.test", "USUARIO_FINAL", CONTRASENA)),
+                "crea".equals(otro)
+                        ? () -> usuarios.crear(tokenBeto, datos("Usuario 24", "usuario24@cacaos.test", "USUARIO_FINAL",
+                                CONTRASENA))
+                        : () -> usuarios.reactivar(tokenBeto, inactivo));
+
+        assertThat(resultados).filteredOn(resultado -> resultado.getResponse().getStatus() == 400)
+                .as("uno de los dos se rechaza con el mensaje de la regla").singleElement()
+                .satisfies(rechazado -> assertThat(errores(rechazado)).containsExactly(error(null, REGLA_MAXIMO)));
+        assertThat(resultados).filteredOn(resultado -> resultado.getResponse().getStatus() < 300)
+                .as("y el otro se guarda").hasSize(1);
         assertThat(activosDeLaEmpresa()).isEqualTo(25);
     }
 
@@ -310,6 +377,54 @@ class GestionUsuariosIT {
         assertThat(usuarios.editar(token, luis, datos("Luis Gómez", LUIS, "USUARIO_FINAL", NUEVA))).hasStatus(HttpStatus.OK);
 
         assertThat(api.iniciar(LUIS, NUEVA)).hasStatus(HttpStatus.OK);
+    }
+
+    /**
+     * Manda dos peticiones al mismo tiempo, cada una en su hilo. Mientras salen, la prueba tiene tomada
+     * la fila de la empresa ({@code SELECT … FOR UPDATE}), así las dos llegan a la base antes de que
+     * alguna termine, sin depender de la suerte. La suelta cuando cada una terminó o quedó esperando un
+     * bloqueo.
+     *
+     * <p>Sin el bloqueo del límite de 25, las dos cuentan 24 y la prueba suelta la empresa cuando las dos
+     * esperan para guardar: quedarían 26. Con él, las dos esperan antes de contar y se atienden una tras
+     * otra.
+     */
+    private List<MvcTestResult> aLaVez(Callable<MvcTestResult> primera, Callable<MvcTestResult> segunda)
+            throws Exception {
+        ExecutorService hilos = Executors.newFixedThreadPool(2);
+        try (Connection bloqueo = fuente.getConnection()) {
+            bloqueo.setAutoCommit(false);
+            try (PreparedStatement sentencia = bloqueo.prepareStatement("SELECT id FROM empresa WHERE id = ? FOR UPDATE")) {
+                sentencia.setObject(1, empresa);
+                sentencia.executeQuery().close();
+            }
+            List<Future<MvcTestResult>> peticiones = List.of(hilos.submit(primera), hilos.submit(segunda));
+            esperarALasDos(peticiones);
+            bloqueo.commit();
+            List<MvcTestResult> resultados = new ArrayList<>();
+            for (Future<MvcTestResult> peticion : peticiones) {
+                resultados.add(peticion.get(30, TimeUnit.SECONDS));
+            }
+            return resultados;
+        } finally {
+            hilos.shutdownNow();
+        }
+    }
+
+    /** Espera, hasta 10 segundos, a que cada petición haya terminado o esté esperando un bloqueo de la base. */
+    private void esperarALasDos(List<Future<MvcTestResult>> peticiones) throws InterruptedException {
+        long limite = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+        while (peticiones.stream().filter(Future::isDone).count() + esperandoUnBloqueo() < peticiones.size()) {
+            assertThat(System.nanoTime()).as("las dos peticiones no llegaron a la base").isLessThan(limite);
+            Thread.sleep(20);
+        }
+    }
+
+    /** Cuántas conexiones a la base esperan un bloqueo que tiene otra transacción. */
+    private int esperandoUnBloqueo() {
+        return jdbc.queryForObject("""
+                SELECT count(*) FROM pg_stat_activity
+                WHERE datname = current_database() AND wait_event_type = 'Lock'""", Integer.class);
     }
 
     private int usuariosEnLaBase() {

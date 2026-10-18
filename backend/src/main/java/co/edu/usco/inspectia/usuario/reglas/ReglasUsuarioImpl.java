@@ -5,7 +5,7 @@
  * Fecha de creación: 18/10/2026
  * Actualización: 18/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.usuario.reglas;
 
@@ -35,12 +35,17 @@ public class ReglasUsuarioImpl implements ReglasUsuario {
     /**
      * Cuenta los activos de la empresa de la sesión: el usuario que se crea o se reactiva todavía no
      * está entre ellos. Reactivar a uno que ya está activo no suma otro (RF-03 C5).
+     *
+     * <p>Antes de contar bloquea la fila de la empresa hasta que termine la transacción. Si dos
+     * administradores crean o reactivan un usuario a la vez, el segundo espera a que el primero guarde
+     * y cuenta con ese usuario incluido; sin el bloqueo, los dos contarían 24 y quedarían 26.
      */
     @Override
     public boolean cumpleMaximoUsuariosActivos(Usuario usuario, UsuarioEnSesion sesion) {
         if (usuario.getId() != null && Boolean.TRUE.equals(usuario.getActivo())) {
             return true;
         }
+        activos.bloquearEmpresa(sesion.empresaId());
         return activos.countByEmpresaIdAndActivoTrue(sesion.empresaId()) < MAXIMO_USUARIOS_ACTIVOS;
     }
 

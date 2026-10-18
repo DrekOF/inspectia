@@ -5,7 +5,7 @@
     "fecha_creacion": "12/10/2026",
     "actualizacion": "18/10/2026",
     "autor": "Equipo InspectIA",
-    "version": "1.9"
+    "version": "1.10"
   },
   "rf": [
     {
@@ -801,7 +801,7 @@
       "encabezado": "Cambiar la propia contraseña",
       "titulo": "Cambiar la propia contraseña",
       "codigo": "RF-18",
-      "version": "1.1",
+      "version": "1.2",
       "fuente": "D-30: cada contraseña tiene quién la restablezca, y cada usuario puede cambiar la suya.",
       "descripcion": "Cualquier usuario con sesión cambia su propia contraseña desde la app: escribe la actual y la nueva.",
       "justificacion": "Sin integración con correo no hay recuperación de contraseña por correo (RF-01). Así cada usuario puede cambiar la suya sin depender de otra persona; por ejemplo, la contraseña inicial que le dio su administrador.",
@@ -840,7 +840,7 @@
       },
       "rnf": "RNF-04 (autenticación y permisos).",
       "estado": "Aprobado",
-      "observaciones": "Si el administrador de la plataforma olvida su contraseña, la restablece el equipo con un script de la base que solo se corre con acceso al servidor (D-30)."
+      "observaciones": "Si el administrador de la plataforma olvida su contraseña, la restablece el equipo con un script de la base que solo se corre con acceso al servidor (D-30). Una contraseña nueva de solo espacios se rechaza con «Este dato es obligatorio.», como al crear o restablecer una contraseña (RF-02 C12, RF-03) y en el script del administrador de la plataforma."
     }
   ],
   "rnf": [

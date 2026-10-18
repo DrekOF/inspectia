@@ -3,9 +3,9 @@
  * Descripción: Pruebas del script infra/bd/crear-admin-plataforma.sql, que crea el primer administrador
  *              de la plataforma, corrido con psql dentro del contenedor de PostgreSQL 18.
  * Fecha de creación: 13/10/2026
- * Actualización: 13/10/2026
+ * Actualización: 18/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 package co.edu.usco.inspectia;
 
@@ -137,6 +137,16 @@ class CrearAdminPlataformaIT {
             """)
     void limiteDeBytes(int enes, String error) throws Exception {
         comprobarLimite("ñ".repeat(enes) + "a".repeat(64 - enes), error);
+    }
+
+    @ParameterizedTest(name = "«{0}»")
+    @DisplayName("RF-01 · una contraseña de solo espacios cuenta como si faltara, como en la API; con una letra se acepta (prueba de límite)")
+    @CsvSource(delimiter = '|', textBlock = """
+            '        ' | Falta INSPECTIA_ADMIN_CONTRASENA
+            '       x' |
+            """)
+    void contrasenaDeSoloEspacios(String contrasena, String error) throws Exception {
+        comprobarLimite(contrasena, error);
     }
 
     @ParameterizedTest(name = "{0}")

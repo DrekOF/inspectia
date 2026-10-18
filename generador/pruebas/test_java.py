@@ -3,7 +3,7 @@
 # Fecha de creación: 13/10/2026
 # Actualización: 18/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.2
+# Versión: 1.3
 """Pruebas de lo que genera el generador para el backend: la persistencia de cada CRUD, la API de las
 entidades del alcance, incluidas las de una entidad por empresa, y los textos en español e inglés."""
 
@@ -117,6 +117,21 @@ def test_contrasena_en_formulario(entidades):
         assert '@MaximoBytes(value = 72, message = "{usuario.contrasena_hash.bytes_max}")' in anotaciones
     assert 'codificador.encode(solicitud.contrasena())' in archivos[f'{JAVA}/usuario/UsuarioServicio.java']
     assert 'setContrasenaHash(solicitud.' not in archivos[f'{JAVA}/usuario/UsuarioMapeador.java']
+
+
+@pytest.mark.caso('RP-23 · una contraseña de solo espacios se rechaza como si faltara: al crear con @NotBlank y al editar, si llega, con @NoEnBlanco')
+def test_contrasena_de_solo_espacios(entidades):
+    archivos = generar(entidades, api=('empresa', 'usuario'))
+
+    editar = archivos[f'{JAVA}/usuario/UsuarioEditarSolicitud.java']
+    assert '@NoEnBlanco(message = "{validacion.obligatorio}")' in anotaciones_de(editar, 'contrasena')
+    assert 'import co.edu.usco.inspectia.comun.validacion.NoEnBlanco;' in editar
+    assert '@NoEnBlanco' not in archivos[f'{JAVA}/usuario/UsuarioCrearSolicitud.java'], 'al crear ya está @NotBlank'
+    prueba = archivos[f'{PRUEBAS}/usuario/UsuarioApiGeneradaIT.java']
+    assert prueba.count('Arguments.of("contrasena", " ".repeat(8), "Este dato es obligatorio.")') == 2, \
+        'un caso al crear y otro al editar'
+    assert ('Arguments.of("administrador.contrasena", " ".repeat(8), "Este dato es obligatorio.")'
+            in archivos[f'{PRUEBAS}/empresa/EmpresaApiGeneradaIT.java'])
 
 
 @pytest.mark.caso('RP-23 · la respuesta solo lleva los atributos de la lista o del formulario: nunca el hash ni los datos internos')
