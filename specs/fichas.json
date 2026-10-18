@@ -5,14 +5,14 @@
     "fecha_creacion": "12/10/2026",
     "actualizacion": "18/10/2026",
     "autor": "Equipo InspectIA",
-    "version": "1.8"
+    "version": "1.9"
   },
   "rf": [
     {
       "encabezado": "Iniciar sesión según el rol",
       "titulo": "Iniciar sesión según el rol",
       "codigo": "RF-01",
-      "version": "1.3",
+      "version": "1.4",
       "fuente": "Levantamiento inicial: tres roles con funciones distintas (D-05 y D-13).",
       "descripcion": "El usuario entra con su correo y su contraseña. El sistema verifica los datos y lo lleva al menú de su rol: usuario final, administrador de empresa o administrador de la plataforma.",
       "justificacion": "Cada rol usa funciones distintas y cada empresa solo debe ver sus propios datos (RNF-03 y RNF-04).",
@@ -58,7 +58,7 @@
       },
       "rnf": "RNF-03 (datos separados por empresa) y RNF-04 (autenticación y permisos).",
       "estado": "Aprobado",
-      "observaciones": "Recuperar la contraseña por correo queda fuera de la v1 porque no hay integración con correo. Cada contraseña tiene quién la restablezca (D-30): la de un usuario final, el administrador de su empresa (RF-03); la de un administrador de empresa, el administrador de la plataforma (RF-02); y la del administrador de la plataforma, el equipo, con un script de la base que solo se corre con acceso al servidor. Además, cualquier usuario con sesión cambia su propia contraseña escribiendo la actual (RF-18)."
+      "observaciones": "Recuperar la contraseña por correo queda fuera de la v1 porque no hay integración con correo. Cada contraseña tiene quién la restablezca (D-30): la de un usuario final, el administrador de su empresa (RF-03); la de un administrador de empresa, el administrador de la plataforma (RF-02) u otro administrador de su empresa (RF-03); y la del administrador de la plataforma, el equipo, con un script de la base que solo se corre con acceso al servidor. Además, cualquier usuario con sesión cambia su propia contraseña escribiendo la actual (RF-18). Cambiar o restablecer una contraseña corta las sesiones abiertas de ese usuario (RNF-04); al cambiar la propia, sigue abierta la sesión desde la que se cambió (RF-18)."
     },
     {
       "encabezado": "Registrar empresas y su primer administrador",
@@ -119,7 +119,7 @@
       "encabezado": "Gestionar los usuarios de la empresa",
       "titulo": "Gestionar los usuarios de la empresa",
       "codigo": "RF-03",
-      "version": "1.3",
+      "version": "1.4",
       "fuente": "Levantamiento inicial: hasta 25 usuarios por empresa, incluido el administrador.",
       "descripcion": "El administrador de la empresa crea, edita y desactiva los usuarios de su empresa, hasta 25 contando al administrador.",
       "justificacion": "Cada empresa controla quién usa InspectIA y con qué rol.",
@@ -131,7 +131,8 @@
           "La contraseña tiene de 8 a 64 caracteres y ocupa como máximo 72 bytes, porque BCrypt solo usa 72; cada letra con tilde y cada eñe ocupan 2 bytes.",
           "Solo ve y gestiona los usuarios de su propia empresa (RNF-03).",
           "Los usuarios no se borran, se desactivan, para no perder quién hizo cada análisis.",
-          "El administrador no puede cambiar su propio rol: si fuera el único administrador, la empresa quedaría sin quien la gestione, porque el administrador de la plataforma no edita usuarios."
+          "El administrador no puede cambiar su propio rol: si fuera el único administrador, la empresa quedaría sin quien la gestione, porque el administrador de la plataforma no edita usuarios.",
+          "El administrador no puede cambiar su propia contraseña desde la gestión de usuarios: la cambia en «Cambiar contraseña» (RF-18), escribiendo la actual."
         ]
       },
       "prioridad": "Alta",
@@ -160,12 +161,13 @@
           "El administrador no puede desactivarse a sí mismo.",
           "El administrador no puede cambiar su propio rol: si lo intenta, el sistema no guarda el cambio y explica por qué.",
           "No puede ver ni editar usuarios de otra empresa.",
-          "Si un administrador de empresa envía a la API un usuario con rol ADMIN_PLATAFORMA, la API responde «prohibido» (403) y no guarda nada (prueba de seguridad, RP-12)."
+          "Si un administrador de empresa envía a la API un usuario con rol ADMIN_PLATAFORMA, la API responde «prohibido» (403) y no guarda nada (prueba de seguridad, RP-12).",
+          "El administrador no puede cambiar su propia contraseña desde la gestión de usuarios: para eso está «Cambiar contraseña» (RF-18)."
         ]
       },
       "rnf": "RNF-02 (capacidad), RNF-03 (datos separados por empresa) y RNF-04 (autenticación y permisos).",
       "estado": "Aprobado",
-      "observaciones": "CRUD generado desde el JSON de la entidad usuario (RP-23, D-21), más la regla del límite de 25."
+      "observaciones": "CRUD generado desde el JSON de la entidad usuario (RP-23, D-21), más la regla del límite de 25. La parte del historial de C6 (sus análisis siguen en el historial) se prueba con RF-14."
     },
     {
       "encabezado": "Registrar un lote",
@@ -799,7 +801,7 @@
       "encabezado": "Cambiar la propia contraseña",
       "titulo": "Cambiar la propia contraseña",
       "codigo": "RF-18",
-      "version": "1.0",
+      "version": "1.1",
       "fuente": "D-30: cada contraseña tiene quién la restablezca, y cada usuario puede cambiar la suya.",
       "descripcion": "Cualquier usuario con sesión cambia su propia contraseña desde la app: escribe la actual y la nueva.",
       "justificacion": "Sin integración con correo no hay recuperación de contraseña por correo (RF-01). Así cada usuario puede cambiar la suya sin depender de otra persona; por ejemplo, la contraseña inicial que le dio su administrador.",
@@ -832,11 +834,12 @@
           "Con la contraseña actual correcta y una nueva válida, la contraseña cambia: la nueva inicia sesión y la anterior ya no.",
           "Con la contraseña actual errada no cambia nada, y el intento cuenta para el bloqueo de RF-01: después de 5 fallos seguidos, la cuenta se bloquea 15 minutos y tampoco se puede cambiar la contraseña hasta que termine.",
           "La contraseña nueva acepta de 8 a 64 caracteres: con 7 o con 65 se rechaza (prueba de límite).",
-          "Una contraseña nueva de 64 caracteres con 8 eñes (72 bytes) se acepta; con 9 eñes (73 bytes) se rechaza con el mensaje «La contraseña es demasiado larga: usa menos caracteres o menos tildes y eñes» (prueba de límite)."
+          "Una contraseña nueva de 64 caracteres con 8 eñes (72 bytes) se acepta; con 9 eñes (73 bytes) se rechaza con el mensaje «La contraseña es demasiado larga: usa menos caracteres o menos tildes y eñes» (prueba de límite).",
+          "Al cambiarla, la sesión desde la que se cambió sigue abierta y las demás dejan de servir."
         ]
       },
       "rnf": "RNF-04 (autenticación y permisos).",
-      "estado": "Propuesto",
+      "estado": "Aprobado",
       "observaciones": "Si el administrador de la plataforma olvida su contraseña, la restablece el equipo con un script de la base que solo se corre con acceso al servidor (D-30)."
     }
   ],
@@ -898,7 +901,7 @@
       "titulo": "Exigir autenticación y restringir cada función según el rol",
       "codigo": "RNF-04",
       "tipo": "Seguridad",
-      "version": "1.0",
+      "version": "1.1",
       "descripcion": "Todo, salvo la pantalla de inicio de sesión, exige una sesión iniciada, y cada función solo la puede usar el rol que le corresponde. La conexión siempre va cifrada (HTTPS).",
       "prioridad": "Alta",
       "criterios": {
@@ -907,7 +910,8 @@
           "Con un rol sin permiso, responde «prohibido» (403); por ejemplo, cuando un usuario final intenta gestionar usuarios.",
           "Las contraseñas se guardan con hash (BCrypt), nunca en texto plano.",
           "La sesión vence a las 8 horas.",
-          "Después de 5 intentos fallidos seguidos, la cuenta se bloquea 15 minutos."
+          "Después de 5 intentos fallidos seguidos, la cuenta se bloquea 15 minutos.",
+          "Al cambiar o restablecer una contraseña, las sesiones abiertas antes del cambio dejan de servir."
         ]
       }
     },

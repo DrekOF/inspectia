@@ -21,14 +21,14 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 
 ## Resumen
 
-- **140 criterios de aceptación** en 26 fichas: 26 con prueba y 114 pendientes.
+- **143 criterios de aceptación** en 26 fichas: 26 con prueba y 117 pendientes.
 - **135 pruebas:** 92 de Java (6 generadas) y 43 de Python. Una prueba parametrizada cuenta una vez.
 
 | Ficha | Criterios | Con prueba | Pendientes |
 |---|---:|---:|---:|
 | RF-01 · Iniciar sesión según el rol | 8 | 8 | 0 |
 | RF-02 · Registrar empresas y su primer administrador | 12 | 11 | 1 |
-| RF-03 · Gestionar los usuarios de la empresa | 10 | 0 | 10 |
+| RF-03 · Gestionar los usuarios de la empresa | 11 | 0 | 11 |
 | RF-04 · Registrar un lote | 4 | 1 | 3 |
 | RF-05 · Tomar o subir las fotos de la muestra del lote, con guía de captura | 5 | 0 | 5 |
 | RF-06 · Validar la calidad de cada foto (nitidez y luz) y pedir repetirla si no sirve | 3 | 0 | 3 |
@@ -43,11 +43,11 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 | RF-15 · Descargar el reporte del lote en PDF | 5 | 0 | 5 |
 | RF-16 · Consultar las estadísticas de la empresa | 4 | 0 | 4 |
 | RF-17 · Consultar las métricas del modelo | 3 | 0 | 3 |
-| RF-18 · Cambiar la propia contraseña | 4 | 0 | 4 |
+| RF-18 · Cambiar la propia contraseña | 5 | 0 | 5 |
 | RNF-01 · Entregar el resultado del análisis de un lote en 5 a 8 segundos | 4 | 0 | 4 |
 | RNF-02 · Soportar hasta 30 empresas con 25 usuarios cada una | 4 | 0 | 4 |
 | RNF-03 · Mantener separados los datos de cada empresa | 5 | 1 | 4 |
-| RNF-04 · Exigir autenticación y restringir cada función según el rol | 5 | 5 | 0 |
+| RNF-04 · Exigir autenticación y restringir cada función según el rol | 6 | 5 | 1 |
 | RNF-05 · Funcionar en PC y en celular desde el navegador | 3 | 0 | 3 |
 | RNF-06 · Ser sencilla de usar para el usuario final | 4 | 0 | 4 |
 | RNF-07 · Alcanzar el F1-score mínimo del modelo de IA | 4 | 0 | 4 |
@@ -122,6 +122,7 @@ Otras pruebas de RF-02, que no cubren un criterio:
 | C8. El administrador no puede cambiar su propio rol: si lo intenta, el sistema no guarda el cambio y explica por qué. | **Pendiente** |
 | C9. No puede ver ni editar usuarios de otra empresa. | **Pendiente** |
 | C10. Si un administrador de empresa envía a la API un usuario con rol ADMIN_PLATAFORMA, la API responde «prohibido» (403) y no guarda nada (prueba de seguridad, RP-12). | **Pendiente** |
+| C11. El administrador no puede cambiar su propia contraseña desde la gestión de usuarios: para eso está «Cambiar contraseña» (RF-18). | **Pendiente** |
 
 ## RF-04 · Registrar un lote
 
@@ -275,6 +276,7 @@ Otras pruebas de RF-02, que no cubren un criterio:
 | C2. Con la contraseña actual errada no cambia nada, y el intento cuenta para el bloqueo de RF-01: después de 5 fallos seguidos, la cuenta se bloquea 15 minutos y tampoco se puede cambiar la contraseña hasta que termine. | **Pendiente** |
 | C3. La contraseña nueva acepta de 8 a 64 caracteres: con 7 o con 65 se rechaza (prueba de límite). | **Pendiente** |
 | C4. Una contraseña nueva de 64 caracteres con 8 eñes (72 bytes) se acepta; con 9 eñes (73 bytes) se rechaza con el mensaje «La contraseña es demasiado larga: usa menos caracteres o menos tildes y eñes» (prueba de límite). | **Pendiente** |
+| C5. Al cambiarla, la sesión desde la que se cambió sigue abierta y las demás dejan de servir. | **Pendiente** |
 
 ## RNF-01 · Entregar el resultado del análisis de un lote en 5 a 8 segundos
 
@@ -317,6 +319,7 @@ Otras pruebas de RNF-03, que no cubren un criterio:
 | C3. Las contraseñas se guardan con hash (BCrypt), nunca en texto plano. | [`RegistroEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/RegistroEmpresaIT.java) · la contraseña del administrador se guarda con hash BCrypt y no sale en la respuesta |
 | C4. La sesión vence a las 8 horas. | [`EmisorDeTokensTest`](../backend/src/test/java/co/edu/usco/inspectia/comun/seguridad/EmisorDeTokensTest.java) · el token vence 8 horas después de emitido, en segundos enteros, y solo lleva el emisor, el usuario y las fechas<br>[`SesionAbiertaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/SesionAbiertaIT.java) · el token del inicio de sesión dura exactamente 8 horas y solo lleva el emisor, el usuario y las fechas |
 | C5. Después de 5 intentos fallidos seguidos, la cuenta se bloquea 15 minutos. | [`InicioSesionIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/InicioSesionIT.java) · el bloqueo dura 15 minutos desde el quinto fallo y los intentos durante el bloqueo no lo alargan |
+| C6. Al cambiar o restablecer una contraseña, las sesiones abiertas antes del cambio dejan de servir. | **Pendiente** |
 
 Otras pruebas de RNF-04, que no cubren un criterio:
 
