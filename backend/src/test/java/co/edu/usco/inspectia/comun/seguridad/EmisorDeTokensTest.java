@@ -1,11 +1,12 @@
 /*
  * Nombre: EmisorDeTokensTest.java
  * Descripción: Pruebas unitarias de la emisión de los tokens: firma HS256, contenido y vigencia de 8
- *              horas (RNF-04, D-28).
+ *              horas (RNF-04, D-28), y el token con el que sigue una sesión al cambiar la contraseña
+ *              (RF-18).
  * Fecha de creación: 14/10/2026
- * Actualización: 14/10/2026
+ * Actualización: 19/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.comun.seguridad;
 
@@ -49,6 +50,25 @@ class EmisorDeTokensTest {
         assertThat(token.getClaimAsString("iss")).isEqualTo(EmisorDeTokens.EMISOR);
         assertThat(token.getSubject()).isEqualTo(usuario.toString());
         assertThat(token.getIssuedAt()).isEqualTo(Instant.parse("2026-10-14T15:20:30Z"));
+        assertThat(token.getExpiresAt()).isEqualTo(Instant.parse("2026-10-14T23:20:30Z"));
+        assertThat(emitido.vence()).isEqualTo(token.getExpiresAt());
+    }
+
+    @Test
+    @DisplayName("RF-18 · C5 · el token con el que sigue una sesión lleva la hora de emisión y el vencimiento dados, en segundos enteros, sin alargar la sesión")
+    void emiteElTokenDeUnaSesionQueSigue() {
+        EmisorDeTokens emisor = new EmisorDeTokens(
+                NimbusJwtEncoder.withSecretKey(CLAVE).algorithm(MacAlgorithm.HS256).build(),
+                Clock.fixed(Instant.parse("2026-10-14T18:00:00Z"), ZoneOffset.UTC));
+        UUID usuario = UUID.fromString("0199e2a0-0000-7000-8000-000000000001");
+
+        EmisorDeTokens.TokenEmitido emitido = emisor.emitir(usuario, Instant.parse("2026-10-14T17:30:05.400Z"),
+                Instant.parse("2026-10-14T23:20:30Z"));
+
+        Jwt token = leer(emitido.token());
+        assertThat(token.getClaims()).containsOnlyKeys("iss", "sub", "iat", "exp");
+        assertThat(token.getSubject()).isEqualTo(usuario.toString());
+        assertThat(token.getIssuedAt()).isEqualTo(Instant.parse("2026-10-14T17:30:05Z"));
         assertThat(token.getExpiresAt()).isEqualTo(Instant.parse("2026-10-14T23:20:30Z"));
         assertThat(emitido.vence()).isEqualTo(token.getExpiresAt());
     }

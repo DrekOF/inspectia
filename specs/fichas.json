@@ -5,7 +5,7 @@
     "fecha_creacion": "12/10/2026",
     "actualizacion": "19/10/2026",
     "autor": "Equipo InspectIA",
-    "version": "1.13"
+    "version": "1.14"
   },
   "rf": [
     {
@@ -803,7 +803,7 @@
       "encabezado": "Cambiar la propia contraseña",
       "titulo": "Cambiar la propia contraseña",
       "codigo": "RF-18",
-      "version": "1.3",
+      "version": "1.4",
       "fuente": "D-30: cada contraseña tiene quién la restablezca, y cada usuario puede cambiar la suya.",
       "descripcion": "Cualquier usuario con sesión cambia su propia contraseña desde la app: escribe la actual y la nueva.",
       "justificacion": "Sin integración con correo no hay recuperación de contraseña por correo (RF-01). Así cada usuario puede cambiar la suya sin depender de otra persona; por ejemplo, la contraseña inicial que le dio su administrador.",
@@ -813,7 +813,7 @@
           "Pide la contraseña actual.",
           "La contraseña nueva tiene de 8 a 64 caracteres y ocupa como máximo 72 bytes, porque BCrypt solo usa 72; cada letra con tilde y cada eñe ocupan 2 bytes. Una contraseña nueva de solo espacios se rechaza con «Este dato es obligatorio.», como al crearla o restablecerla.",
           "Una contraseña actual errada cuenta como intento fallido para el bloqueo de RF-01, para que esta función no sirva para adivinar contraseñas. Durante el bloqueo tampoco se puede cambiar la contraseña.",
-          "Cada usuario solo cambia la suya. Las de los demás las restablece quien corresponde (D-30): la de un usuario final, su administrador (RF-03); la de un administrador de empresa, el administrador de la plataforma (RF-02)."
+          "Cada usuario solo cambia la suya. Las de los demás las restablece quien corresponde (D-30): la de un usuario final, su administrador (RF-03); la de un administrador de empresa, el administrador de la plataforma (RF-02) u otro administrador de su empresa (RF-03)."
         ]
       },
       "prioridad": "Media",

@@ -1,10 +1,10 @@
 <!--
 Nombre: README.md (infra)
-Descripción: Qué va en la carpeta infra/ de InspectIA, cómo reiniciar la base local y cómo probar el inicio de sesión en local.
+Descripción: Qué va en la carpeta infra/ de InspectIA, cómo reiniciar la base local, cómo crear el administrador de la plataforma y restablecer su contraseña, y cómo probar la sesión en local.
 Fecha de creación: 12/10/2026
 Actualización: 19/10/2026
 Autor: Equipo InspectIA
-Versión: 1.3
+Versión: 1.4
 -->
 
 # infra
@@ -16,6 +16,7 @@ Qué hay hoy:
 - `docker-compose.yml`: PostgreSQL 18 para desarrollo local. El servidor y el servicio de IA se agregan cuando existan.
 - `.env.example`: variables locales de la base de datos, la clave de los tokens del inicio de sesión y el primer administrador de la plataforma. Cópialo a `infra/.env`, que no se sube al repositorio, y escribe tus valores.
 - `bd/crear-admin-plataforma.sql`, con sus envoltorios `.sh` y `.ps1`: crea el primer administrador de la plataforma (RF-01, RP-15). Las tablas no se crean aquí: las crea Flyway al arrancar el backend, con la migración que genera `generador/` (RP-23).
+- `bd/restablecer-admin-plataforma.sql`, con sus envoltorios `.sh` y `.ps1`: restablece la contraseña del administrador de la plataforma si la olvida (D-30).
 
 Qué irá aquí:
 
@@ -66,6 +67,34 @@ Qué hace:
 
 `backend/src/test/java/co/edu/usco/inspectia/CrearAdminPlataformaIT.java` lo prueba con Testcontainers. En la EC2, el despliegue tomará los datos de AWS SSM en lugar de `infra/.env`.
 
+## Restablecer la contraseña del administrador de la plataforma
+
+Si el administrador de la plataforma olvida su contraseña, la restablece el equipo con este script, que solo se corre con acceso al servidor (D-30). Los demás no lo necesitan: cada usuario cambia la suya desde la app (RF-18); la de un usuario de una empresa la restablece su administrador (RF-03), y la de un administrador de empresa, el administrador de la plataforma (RF-02) u otro administrador de su empresa.
+
+Con la base encendida, desde la raíz del repositorio:
+
+- Windows: `powershell -ExecutionPolicy Bypass -File infra\bd\restablecer-admin-plataforma.ps1`
+- Linux, macOS, Git Bash o el servidor: `sh infra/bd/restablecer-admin-plataforma.sh`
+
+Qué pide y qué hace:
+
+- El correo sale de `INSPECTIA_ADMIN_CORREO`, del entorno o de `infra/.env`. Si no está en ninguno, lo pide, y se ve al escribirlo: así se puede correr en el servidor sin crear archivos.
+- La contraseña nueva la pide dos veces y sin mostrarla, así que no queda en ningún archivo ni en el historial de la consola. Pasa por las reglas de siempre: de 8 a 64 caracteres, como máximo 72 bytes y no solo espacios.
+- Guarda la contraseña nueva, corta las sesiones abiertas del administrador y quita su bloqueo por intentos fallidos (D-30). No reactiva nada.
+- Si el correo es de un usuario de una empresa, o no existe, se detiene sin cambiar nada.
+- La contraseña nueva viaja en `INSPECTIA_ADMIN_CONTRASENA_NUEVA`, una variable que nunca va en `infra/.env`. Si viajara en `INSPECTIA_ADMIN_CONTRASENA` y quedara vacía, docker compose tomaría de `infra/.env` la del script de creación.
+
+`backend/src/test/java/co/edu/usco/inspectia/RestablecerAdminPlataformaIT.java` lo prueba con Testcontainers.
+
+### Relojes en local
+
+El script toma la hora del cambio del reloj de la base, y el backend la compara con la hora de emisión de cada token. En el servidor, la base y el backend comparten reloj, así que esto no pasa. En tu PC, Docker Desktop corre en su propia máquina virtual, y su reloj puede quedar unos segundos distinto del de Windows, o más después de suspender el equipo:
+
+- Si el reloj de Docker va atrasado, una sesión abierta en ese atraso no se corta.
+- Si va adelantado, el token de un inicio de sesión hecho justo después del cambio se rechaza con «Tu contraseña cambió» durante esos segundos.
+
+Para comparar los dos relojes, mira `docker compose -f infra/docker-compose.yml exec postgres date -u` y la hora de Windows en UTC (`date -u` en Git Bash). Si no coinciden, reinicia Docker Desktop: al arrancar vuelve a tomar la hora de Windows.
+
 ## Probar el inicio de sesión en Swagger UI
 
 Con el backend arrancado y el administrador creado:
@@ -76,3 +105,5 @@ Con el backend arrancado y el administrador creado:
 4. Abre `GET /api/v1/sesion`, pulsa «Try it out» y «Execute»: responde 200 con tu usuario. Con el mismo token también responde la API de empresas.
 
 Con datos incorrectos, el inicio de sesión responde 401 «Correo o contraseña incorrectos». Después de 5 fallos seguidos, la cuenta se bloquea 15 minutos, también para la contraseña correcta.
+
+Para cambiar tu propia contraseña (RF-18), abre `PUT /api/v1/sesion/contrasena` con `contrasenaActual` y `contrasenaNueva`. La respuesta 200 trae un token nuevo, que vence a la misma hora que el anterior: pégalo en «Authorize», porque el anterior y los de tus demás sesiones responden 401 «Tu contraseña cambió». Una contraseña actual errada responde 400 y cuenta para el bloqueo; desde el quinto fallo seguido responde 429 hasta que termine.

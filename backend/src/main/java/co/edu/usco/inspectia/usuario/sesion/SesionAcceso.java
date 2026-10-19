@@ -1,11 +1,11 @@
 /*
  * Nombre: SesionAcceso.java
  * Descripción: Reglas de acceso de la sesión: iniciar sesión es público y no lee el token; ver la
- *              sesión exige uno válido (RF-01, RNF-04).
+ *              sesión y cambiar la propia contraseña exigen uno válido (RF-01, RF-18, RNF-04).
  * Fecha de creación: 14/10/2026
- * Actualización: 14/10/2026
+ * Actualización: 19/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 package co.edu.usco.inspectia.usuario.sesion;
 
@@ -20,7 +20,8 @@ import org.springframework.stereotype.Component;
 
 /**
  * Reglas de acceso de la sesión (RNF-04): iniciar sesión es lo único público de la API y no lee el
- * token; ver la sesión actual lo puede cualquier rol con un token válido.
+ * token; ver la sesión actual y cambiar la propia contraseña (RF-18) los puede cualquier rol con un token
+ * válido.
  */
 @Component
 public class SesionAcceso implements ReglasDeAcceso {
@@ -30,7 +31,8 @@ public class SesionAcceso implements ReglasDeAcceso {
             AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry autorizaciones) {
         autorizaciones
                 .requestMatchers(HttpMethod.POST, SesionControlador.RUTA).permitAll()
-                .requestMatchers(HttpMethod.GET, SesionControlador.RUTA).authenticated();
+                .requestMatchers(HttpMethod.GET, SesionControlador.RUTA).authenticated()
+                .requestMatchers(HttpMethod.PUT, SesionControlador.CONTRASENA).authenticated();
     }
 
     /**

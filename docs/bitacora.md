@@ -4,7 +4,7 @@ Descripción: Registro paso a paso de cómo se construyó InspectIA, para la sus
 Fecha de creación: 12/10/2026
 Actualización: 19/10/2026
 Autor: Equipo InspectIA
-Versión: 1.12
+Versión: 1.13
 -->
 
 # Bitácora de construcción (RP-24)
@@ -253,6 +253,60 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
   - Avisar en el PR y en `infra/README.md` que V1 cambió y cómo reiniciar la base.
   - Dejar que cambiar o restablecer una contraseña ponga en cero los intentos fallidos y quite el bloqueo de RF-01, aunque no estaba en los requisitos, para que el usuario entre de una vez con la nueva. Quedó anotado en D-30, en las observaciones de RF-01 y en las restricciones de RF-02 y RF-03, sin criterio nuevo.
 - Archivos o PR: la rama `feature/RF-03-usuarios`; el PR lo abre Cristhian.
+
+## 19/10/2026 · RF-18: cambiar la propia contraseña y restablecer la del administrador de la plataforma
+
+- Quién: Cristhian Sánchez (`DrekOF`), con Claude Code.
+- Qué se hizo:
+  - **Antes del código:** la restricción 4 de RF-18 (v1.4) dice ahora, como D-30, que la contraseña de un administrador de empresa también la puede restablecer otro administrador de su empresa (RF-03).
+  - **En la rama `feature/RF-18-cambiar-contrasena`, cuatro pasos, cada uno revisado por Cristhian antes del siguiente:**
+    1. **Pruebas antes del código:**
+       - `CambioDeContrasenaIT`, con tokens reales, para RF-18 C1 a C5 y los demás casos del plan.
+       - `RestablecerAdminPlataformaIT`, para el script (D-30).
+       - Fallaban 22 de 23 y 16 de 17. Ya pasaban la de sin sesión (401) y la de no reactivar.
+       - Las sesiones «de antes» se emiten 5 segundos atrás, fuera de la ventana del mismo segundo.
+    2. **Cambiar la propia contraseña:**
+       - `PUT /api/v1/sesion/contrasena` lo usa cualquier rol con sesión. El usuario sale del token, así que cada uno solo cambia la suya.
+       - Revisa primero los datos (400, sin contar intento), después el bloqueo (429) y después la contraseña actual, con una sola comparación BCrypt.
+       - Si la actual no coincide, responde 400 con la regla del bloqueo y el intento cuenta para el de RF-01. Desde el quinto fallo seguido responde 429, con `bloqueadoHasta` y `Retry-After`.
+       - Si cambia, aplica la regla `cortar_sesiones_al_cambiar_contrasena`. La sesión sigue con un token nuevo, emitido con la hora de `sesiones_desde` y que vence cuando vencía el anterior (C5).
+       - No cambiaron los JSON ni lo generado: `V1` sigue igual y no hubo que reiniciar la base.
+    3. **Script del administrador de la plataforma:**
+       - `infra/bd/restablecer-admin-plataforma.sql`, con sus envoltorios `.sh` y `.ps1`. Valida la contraseña nueva, guarda su hash, corta las sesiones abiertas y quita el bloqueo (D-30). No toca a usuarios de una empresa ni reactiva a nadie.
+       - Los envoltorios piden la contraseña nueva dos veces sin mostrarla. Si `INSPECTIA_ADMIN_CORREO` no está en el entorno ni en `infra/.env`, piden también el correo.
+       - Se probaron en una base aparte, en otro proyecto de Docker Compose: el `.sh` con las respuestas por la entrada estándar y el `.ps1` con `Read-Host` simulado.
+    4. **Documentación:**
+       - La sección del script en `infra/README.md`, con la diferencia de relojes en local en los dos sentidos y cómo corregirla.
+       - El cambio de contraseña en Swagger UI.
+       - Los Comandos de `CLAUDE.md`, el README y esta bitácora.
+  - **Problemas encontrados:**
+    - **La variable vacía tomaba la contraseña de `infra/.env`.**
+      - Al probar el `.ps1`, el script «restableció» la contraseña sin que nadie la escribiera.
+      - La causa: PowerShell borra una variable de entorno si se le asigna un texto vacío. Al no encontrar `INSPECTIA_ADMIN_CONTRASENA` en el entorno, docker compose tomó la del script de creación, que seguía en `infra/.env`. También pasaría al pulsar Enter dos veces.
+      - Se resolvió con una variable propia para la contraseña nueva, `INSPECTIA_ADMIN_CONTRASENA_NUEVA`, que nunca va en `infra/.env`. Una prueba nueva lo cubre.
+    - **Tildes con «?» en los `.ps1`.**
+      - Llamados con `.\` desde la consola o desde otro script, el `.sql` le llegaba a psql en ASCII: el `$OutputEncoding` que el script asignaba en su propio ámbito solo contaba con `powershell -File`.
+      - Si PowerShell capturaba la salida (PowerShell ISE, una variable o `Tee-Object`), además la leía con la página de códigos de la consola.
+      - Ahora los dos `.ps1`, el de creación y el de restablecimiento, usan UTF-8 en los dos sentidos mientras corre psql, y al terminar dejan la consola como estaba. Se comprobó con las dos versiones de cada script.
+  - **Resultado:**
+    - Backend: 374 pruebas (80 unitarias y 294 de integración, 103 de ellas generadas), todas en verde.
+    - Generador: 53 pruebas, todas en verde.
+    - Criterios: RF-18 tiene sus 5 criterios con prueba. De los 143 de las fichas, 46 tienen prueba.
+    - El 19/10, Cristhian probó en su PC:
+      - Cambió su contraseña por la API: el token anterior respondió 401 y el nuevo sirvió, con el mismo vencimiento.
+      - Corrió el script de restablecimiento, escribiendo la contraseña dos veces, y las tildes salieron bien.
+    - RF-18 sigue en «Aprobado»: falta su pantalla (D-29).
+- Por qué: sin recuperación por correo (RF-01), cada usuario necesita poder cambiar su contraseña, y toda contraseña necesita quién la restablezca (D-30), incluida la del administrador de la plataforma. Que el intento fallido cuente para el bloqueo evita que esta función sirva para adivinar contraseñas.
+- Cómo se pidió: Cristhian pidió primero el plan de RF-18 y del script, sin código. El plan debía responder seis preguntas: la ruta y sus respuestas, C5 con `sesiones_desde`, qué produce el generador, el script, las pruebas y si cambiaba V1. Lo aprobó con las seis decisiones propuestas y tres ajustes:
+  - Corregir la restricción 4 de RF-18.
+  - Que la otra sesión de la prueba de C5 se emita al menos un segundo antes del cambio.
+  - Que el script pida también el correo si no está en el entorno ni en `infra/.env`.
+
+  En el camino pidió:
+  - Anotar en `infra/README.md` la diferencia de relojes en local en los dos sentidos, cómo corregirla y que en el servidor no pasa.
+  - Corregir las tildes de los dos `.ps1` y dejar la consola como estaba.
+  - Probar RF-18 y el script en su PC antes de la documentación.
+- Archivos o PR: la rama `feature/RF-18-cambiar-contrasena`; el PR lo abre Cristhian.
 
 ## Plantilla para nuevas entradas
 

@@ -3,9 +3,9 @@
  * Descripción: Convierte los errores de la API en respuestas application/problem+json (RFC 9457), con
  *              la lista «errores» y los mensajes en el idioma de la petición (RP-03, RP-11).
  * Fecha de creación: 13/10/2026
- * Actualización: 18/10/2026
+ * Actualización: 19/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.3
+ * Versión: 1.4
  */
 package co.edu.usco.inspectia.comun.errores;
 
@@ -91,6 +91,31 @@ public class ManejadorDeErrores extends ResponseEntityExceptionHandler {
             problema.setProperty("ayuda", mensaje(excepcion.getAyuda(), excepcion.getArgumentosAyuda()));
         }
         return problema;
+    }
+
+    /**
+     * Al cambiar la propia contraseña, la actual no es la correcta (RF-18): 400 con el error en su campo
+     * y, en {@code ayuda}, la regla del bloqueo, como en el inicio de sesión.
+     */
+    @ExceptionHandler(ContrasenaActualIncorrectaExcepcion.class)
+    ProblemDetail contrasenaActualIncorrecta(ContrasenaActualIncorrectaExcepcion excepcion) {
+        ProblemDetail problema = problema(HttpStatus.BAD_REQUEST, "error.datos_invalidos", traducir(excepcion.getCampos()));
+        problema.setProperty("ayuda", mensaje("error.ayuda_bloqueo", excepcion.getIntentosPermitidos(),
+                excepcion.getMinutosDeBloqueo()));
+        return problema;
+    }
+
+    /**
+     * La cuenta está bloqueada por intentos fallidos (RF-18 C2): 429 con la hora en que termina el
+     * bloqueo en {@code bloqueadoHasta} y los segundos que faltan en el encabezado {@code Retry-After}.
+     */
+    @ExceptionHandler(CuentaBloqueadaExcepcion.class)
+    ResponseEntity<ProblemDetail> cuentaBloqueada(CuentaBloqueadaExcepcion excepcion) {
+        ProblemDetail problema = problema(HttpStatus.TOO_MANY_REQUESTS, "error.cuenta_bloqueada", List.of());
+        problema.setProperty("bloqueadoHasta", excepcion.getBloqueadoHasta());
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header(HttpHeaders.RETRY_AFTER, String.valueOf(excepcion.getSegundosRestantes()))
+                .body(problema);
     }
 
     /**
