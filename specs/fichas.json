@@ -5,7 +5,7 @@
     "fecha_creacion": "12/10/2026",
     "actualizacion": "18/10/2026",
     "autor": "Equipo InspectIA",
-    "version": "1.10"
+    "version": "1.11"
   },
   "rf": [
     {
@@ -64,7 +64,7 @@
       "encabezado": "Registrar empresas y su primer administrador",
       "titulo": "Registrar empresas y su primer administrador",
       "codigo": "RF-02",
-      "version": "1.2",
+      "version": "1.3",
       "fuente": "D-13: el administrador de la plataforma registra las empresas.",
       "descripcion": "El administrador de la plataforma registra una empresa con sus datos básicos y crea el primer administrador de esa empresa. También puede editar los datos de una empresa, desactivarla y reactivarla (D-27).",
       "justificacion": "InspectIA atiende a varias empresas (multiempresa). Cada una necesita su propio espacio y un responsable que gestione sus usuarios.",
@@ -73,7 +73,7 @@
         "b": [
           "El NIT de la empresa no se puede repetir. Se escribe con su dígito de verificación (por ejemplo, 900123456-8) y el sistema valida ese dígito.",
           "El correo del administrador es único en toda la plataforma.",
-          "La contraseña inicial tiene de 8 a 64 caracteres y ocupa como máximo 72 bytes, porque BCrypt solo usa 72; cada letra con tilde y cada eñe ocupan 2 bytes.",
+          "La contraseña inicial tiene de 8 a 64 caracteres y ocupa como máximo 72 bytes, porque BCrypt solo usa 72; cada letra con tilde y cada eñe ocupan 2 bytes. Una contraseña de solo espacios se rechaza con «Este dato es obligatorio.», también al restablecerla.",
           "Al crearse, la empresa recibe los rangos de recomendación por defecto (D-10).",
           "El administrador de la plataforma también puede restablecer la contraseña de un administrador de empresa.",
           "Al desactivar una empresa, sus usuarios no pueden iniciar sesión y no se borra ningún dato; al reactivarla, sus usuarios activos pueden volver a entrar (D-27).",
@@ -119,7 +119,7 @@
       "encabezado": "Gestionar los usuarios de la empresa",
       "titulo": "Gestionar los usuarios de la empresa",
       "codigo": "RF-03",
-      "version": "1.4",
+      "version": "1.5",
       "fuente": "Levantamiento inicial: hasta 25 usuarios por empresa, incluido el administrador.",
       "descripcion": "El administrador de la empresa crea, edita y desactiva los usuarios de su empresa, hasta 25 contando al administrador.",
       "justificacion": "Cada empresa controla quién usa InspectIA y con qué rol.",
@@ -128,7 +128,7 @@
         "b": [
           "Máximo 25 usuarios activos por empresa, incluido el administrador.",
           "El correo es único en toda la plataforma, porque con él se inicia sesión (RF-01).",
-          "La contraseña tiene de 8 a 64 caracteres y ocupa como máximo 72 bytes, porque BCrypt solo usa 72; cada letra con tilde y cada eñe ocupan 2 bytes.",
+          "La contraseña tiene de 8 a 64 caracteres y ocupa como máximo 72 bytes, porque BCrypt solo usa 72; cada letra con tilde y cada eñe ocupan 2 bytes. Una contraseña de solo espacios se rechaza con «Este dato es obligatorio.», al crearla y al restablecerla.",
           "Solo ve y gestiona los usuarios de su propia empresa (RNF-03).",
           "Los usuarios no se borran, se desactivan, para no perder quién hizo cada análisis.",
           "El administrador no puede cambiar su propio rol: si fuera el único administrador, la empresa quedaría sin quien la gestione, porque el administrador de la plataforma no edita usuarios.",
@@ -801,7 +801,7 @@
       "encabezado": "Cambiar la propia contraseña",
       "titulo": "Cambiar la propia contraseña",
       "codigo": "RF-18",
-      "version": "1.2",
+      "version": "1.3",
       "fuente": "D-30: cada contraseña tiene quién la restablezca, y cada usuario puede cambiar la suya.",
       "descripcion": "Cualquier usuario con sesión cambia su propia contraseña desde la app: escribe la actual y la nueva.",
       "justificacion": "Sin integración con correo no hay recuperación de contraseña por correo (RF-01). Así cada usuario puede cambiar la suya sin depender de otra persona; por ejemplo, la contraseña inicial que le dio su administrador.",
@@ -809,7 +809,7 @@
       "restricciones": {
         "b": [
           "Pide la contraseña actual.",
-          "La contraseña nueva tiene de 8 a 64 caracteres y ocupa como máximo 72 bytes, porque BCrypt solo usa 72; cada letra con tilde y cada eñe ocupan 2 bytes.",
+          "La contraseña nueva tiene de 8 a 64 caracteres y ocupa como máximo 72 bytes, porque BCrypt solo usa 72; cada letra con tilde y cada eñe ocupan 2 bytes. Una contraseña nueva de solo espacios se rechaza con «Este dato es obligatorio.», como al crearla o restablecerla.",
           "Una contraseña actual errada cuenta como intento fallido para el bloqueo de RF-01, para que esta función no sirva para adivinar contraseñas. Durante el bloqueo tampoco se puede cambiar la contraseña.",
           "Cada usuario solo cambia la suya. Las de los demás las restablece quien corresponde (D-30): la de un usuario final, su administrador (RF-03); la de un administrador de empresa, el administrador de la plataforma (RF-02)."
         ]
@@ -840,7 +840,7 @@
       },
       "rnf": "RNF-04 (autenticación y permisos).",
       "estado": "Aprobado",
-      "observaciones": "Si el administrador de la plataforma olvida su contraseña, la restablece el equipo con un script de la base que solo se corre con acceso al servidor (D-30). Una contraseña nueva de solo espacios se rechaza con «Este dato es obligatorio.», como al crear o restablecer una contraseña (RF-02 C12, RF-03) y en el script del administrador de la plataforma."
+      "observaciones": "Si el administrador de la plataforma olvida su contraseña, la restablece el equipo con un script de la base que solo se corre con acceso al servidor (D-30)."
     }
   ],
   "rnf": [
