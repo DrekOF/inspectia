@@ -21,8 +21,8 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 
 ## Resumen
 
-- **143 criterios de aceptación** en 26 fichas: 41 con prueba y 102 pendientes.
-- **200 pruebas:** 147 de Java (17 generadas) y 53 de Python. Una prueba parametrizada cuenta una vez.
+- **143 criterios de aceptación** en 26 fichas: 46 con prueba y 97 pendientes.
+- **225 pruebas:** 172 de Java (17 generadas) y 53 de Python. Una prueba parametrizada cuenta una vez.
 
 | Ficha | Criterios | Con prueba | Pendientes |
 |---|---:|---:|---:|
@@ -43,7 +43,7 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 | RF-15 · Descargar el reporte del lote en PDF | 5 | 0 | 5 |
 | RF-16 · Consultar las estadísticas de la empresa | 4 | 0 | 4 |
 | RF-17 · Consultar las métricas del modelo | 3 | 0 | 3 |
-| RF-18 · Cambiar la propia contraseña | 5 | 0 | 5 |
+| RF-18 · Cambiar la propia contraseña | 5 | 5 | 0 |
 | RNF-01 · Entregar el resultado del análisis de un lote en 5 a 8 segundos | 4 | 0 | 4 |
 | RNF-02 · Soportar hasta 30 empresas con 25 usuarios cada una | 4 | 0 | 4 |
 | RNF-03 · Mantener separados los datos de cada empresa | 5 | 3 | 2 |
@@ -292,11 +292,19 @@ Otras pruebas de RF-03, que no cubren un criterio:
 
 | Criterio | Pruebas |
 |---|---|
-| C1. Con la contraseña actual correcta y una nueva válida, la contraseña cambia: la nueva inicia sesión y la anterior ya no. | **Pendiente** |
-| C2. Con la contraseña actual errada no cambia nada, y el intento cuenta para el bloqueo de RF-01: después de 5 fallos seguidos, la cuenta se bloquea 15 minutos y tampoco se puede cambiar la contraseña hasta que termine. | **Pendiente** |
-| C3. La contraseña nueva acepta de 8 a 64 caracteres: con 7 o con 65 se rechaza (prueba de límite). | **Pendiente** |
-| C4. Una contraseña nueva de 64 caracteres con 8 eñes (72 bytes) se acepta; con 9 eñes (73 bytes) se rechaza con el mensaje «La contraseña es demasiado larga: usa menos caracteres o menos tildes y eñes» (prueba de límite). | **Pendiente** |
-| C5. Al cambiarla, la sesión desde la que se cambió sigue abierta y las demás dejan de servir. | **Pendiente** |
+| C1. Con la contraseña actual correcta y una nueva válida, la contraseña cambia: la nueva inicia sesión y la anterior ya no. | [`CambioDeContrasenaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/CambioDeContrasenaIT.java) · con la contraseña actual correcta y una nueva válida, la contraseña cambia: la nueva inicia sesión y la anterior ya no |
+| C2. Con la contraseña actual errada no cambia nada, y el intento cuenta para el bloqueo de RF-01: después de 5 fallos seguidos, la cuenta se bloquea 15 minutos y tampoco se puede cambiar la contraseña hasta que termine. | [`CambioDeContrasenaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/CambioDeContrasenaIT.java) · al terminar el bloqueo se puede cambiar la contraseña otra vez<br>[`CambioDeContrasenaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/CambioDeContrasenaIT.java) · con la contraseña actual errada no cambia nada, responde con la regla del bloqueo y el intento cuenta<br>[`CambioDeContrasenaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/CambioDeContrasenaIT.java) · después de 5 fallos seguidos la cuenta se bloquea 15 minutos: el quinto ya responde 429 y durante el bloqueo tampoco se cambia con la contraseña correcta<br>[`CambioDeContrasenaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/CambioDeContrasenaIT.java) · los fallos del inicio de sesión y los del cambio de contraseña cuentan juntos para el bloqueo de RF-01 |
+| C3. La contraseña nueva acepta de 8 a 64 caracteres: con 7 o con 65 se rechaza (prueba de límite). | [`CambioDeContrasenaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/CambioDeContrasenaIT.java) · la contraseña nueva acepta de 8 a 64 caracteres: con 7 o con 65 se rechaza (prueba de límite) (parametrizada) |
+| C4. Una contraseña nueva de 64 caracteres con 8 eñes (72 bytes) se acepta; con 9 eñes (73 bytes) se rechaza con el mensaje «La contraseña es demasiado larga: usa menos caracteres o menos tildes y eñes» (prueba de límite). | [`CambioDeContrasenaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/CambioDeContrasenaIT.java) · una contraseña nueva de 64 caracteres con 8 eñes (72 bytes) se acepta y con 9 (73 bytes) se rechaza con su mensaje (prueba de límite) (parametrizada) |
+| C5. Al cambiarla, la sesión desde la que se cambió sigue abierta y las demás dejan de servir. | [`CambioDeContrasenaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/CambioDeContrasenaIT.java) · al cambiarla, la sesión desde la que se cambió sigue abierta con un token nuevo, que vence cuando vencía el anterior, y las demás dejan de servir |
+
+Otras pruebas de RF-18, que no cubren un criterio:
+
+- [`CambioDeContrasenaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/CambioDeContrasenaIT.java) · cada usuario solo cambia la suya: un identificador en el cuerpo se ignora y la contraseña y las sesiones de los demás no cambian (prueba de seguridad)
+- [`CambioDeContrasenaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/CambioDeContrasenaIT.java) · la contraseña nueva puede ser igual a la actual: el cambio igual corta las demás sesiones
+- [`CambioDeContrasenaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/CambioDeContrasenaIT.java) · sin la contraseña actual ni la nueva responde 400 en los dos campos y no cuenta como intento
+- [`CambioDeContrasenaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/CambioDeContrasenaIT.java) · una contraseña actual de más de 72 bytes cuenta como errada aunque sus primeros 72 coincidan, como al iniciar sesión (RF-01 C8)
+- [`CambioDeContrasenaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/CambioDeContrasenaIT.java) · una contraseña nueva de solo espacios se rechaza con el mismo mensaje que si faltara; con una letra se acepta (prueba de límite) (parametrizada)
 
 ## RNF-01 · Entregar el resultado del análisis de un lote en 5 a 8 segundos
 
@@ -336,7 +344,7 @@ Otras pruebas de RNF-03, que no cubren un criterio:
 
 | Criterio | Pruebas |
 |---|---|
-| C1. Sin sesión, la API responde «no autorizado» (401). | [`EmpresaApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/empresa/EmpresaApiGeneradaIT.java) · sin sesión, cada operación de empresa responde 401 (parametrizada, generada)<br>[`UsuarioApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/usuario/UsuarioApiGeneradaIT.java) · sin sesión, cada operación de usuario responde 401 (parametrizada, generada)<br>[`SeguridadEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/SeguridadEmpresaIT.java) · sin sesión, cada operación de la API de empresas responde 401 en JSON (parametrizada)<br>[`SesionAbiertaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/SesionAbiertaIT.java) · sin token, la sesión actual responde 401 |
+| C1. Sin sesión, la API responde «no autorizado» (401). | [`EmpresaApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/empresa/EmpresaApiGeneradaIT.java) · sin sesión, cada operación de empresa responde 401 (parametrizada, generada)<br>[`UsuarioApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/usuario/UsuarioApiGeneradaIT.java) · sin sesión, cada operación de usuario responde 401 (parametrizada, generada)<br>[`SeguridadEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/SeguridadEmpresaIT.java) · sin sesión, cada operación de la API de empresas responde 401 en JSON (parametrizada)<br>[`CambioDeContrasenaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/CambioDeContrasenaIT.java) · sin sesión, cambiar la contraseña responde 401 y no cambia nada<br>[`SesionAbiertaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/SesionAbiertaIT.java) · sin token, la sesión actual responde 401 |
 | C2. Con un rol sin permiso, responde «prohibido» (403); por ejemplo, cuando un usuario final intenta gestionar usuarios. | [`EmpresaApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/empresa/EmpresaApiGeneradaIT.java) · cada operación de empresa solo la usan los roles de su JSON (parametrizada, generada)<br>[`UsuarioApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/usuario/UsuarioApiGeneradaIT.java) · cada operación de usuario solo la usan los roles de su JSON (parametrizada, generada)<br>[`SeguridadEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/SeguridadEmpresaIT.java) · el permiso se revisa antes que los datos: un usuario final recibe 403 aunque envíe datos inválidos<br>[`SeguridadEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/SeguridadEmpresaIT.java) · un administrador de empresa o un usuario final recibe 403 en cada operación de la API de empresas (parametrizada)<br>[`RestablecerContrasenaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/administradores/RestablecerContrasenaIT.java) · solo el administrador de la plataforma lista y restablece a los administradores de empresa: los demás roles reciben 403<br>[`SesionAbiertaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/SesionAbiertaIT.java) · con el token de un administrador de empresa, la API de empresas responde 403; con el de la plataforma, 200 |
 | C3. Las contraseñas se guardan con hash (BCrypt), nunca en texto plano. | [`RegistroEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/RegistroEmpresaIT.java) · la contraseña del administrador se guarda con hash BCrypt y no sale en la respuesta |
 | C4. La sesión vence a las 8 horas. | [`EmisorDeTokensTest`](../backend/src/test/java/co/edu/usco/inspectia/comun/seguridad/EmisorDeTokensTest.java) · el token vence 8 horas después de emitido, en segundos enteros, y solo lleva el emisor, el usuario y las fechas<br>[`SesionAbiertaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/SesionAbiertaIT.java) · el token del inicio de sesión dura exactamente 8 horas y solo lleva el emisor, el usuario y las fechas |
@@ -351,6 +359,7 @@ Otras pruebas de RNF-04, que no cubren un criterio:
 - [`ValidadorDeVigenciaTest`](../backend/src/test/java/co/edu/usco/inspectia/comun/seguridad/ValidadorDeVigenciaTest.java) · un token sin fecha de emisión no sirve: sin ella no se sabe si es de antes de cambiar la contraseña
 - [`ValidadorDeVigenciaTest`](../backend/src/test/java/co/edu/usco/inspectia/comun/seguridad/ValidadorDeVigenciaTest.java) · un token sin fecha de vencimiento no sirve, y no se informa como vencido
 - [`GestionUsuariosIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/GestionUsuariosIT.java) · editar un usuario sin cambiar su contraseña no corta sus sesiones
+- [`CambioDeContrasenaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/CambioDeContrasenaIT.java) · todos los roles cambian su propia contraseña: usuario final, administrador de empresa y administrador de la plataforma (parametrizada)
 - [`SesionAbiertaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/SesionAbiertaIT.java) · el rol sale de la base en cada petición: si cambia, la sesión abierta lo refleja sin otro token
 - [`SesionAbiertaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/SesionAbiertaIT.java) · el token de un usuario que no existe no sirve
 - [`SesionAbiertaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/SesionAbiertaIT.java) · un encabezado Authorization mal formado no sirve (parametrizada)
@@ -495,3 +504,16 @@ Pruebas que no cubren un criterio de una ficha, sino una pauta del docente (RP) 
 - [`test_casos.py`](../generador/pruebas/test_casos.py) · comprobar falla si una ficha «Implementado» tiene criterios sin prueba; generar solo avisa
 - [`test_casos.py`](../generador/pruebas/test_casos.py) · ninguna ficha del repositorio está «Implementado» con criterios sin prueba
 - [`test_casos.py`](../generador/pruebas/test_casos.py) · una ficha «Implementado» con criterios sin prueba se señala; los eliminados no cuentan
+
+### D-30 · Quién cambia o restablece cada contraseña
+
+- [`RestablecerAdminPlataformaIT`](../backend/src/test/java/co/edu/usco/inspectia/RestablecerAdminPlataformaIT.java) · el script corta las sesiones abiertas del administrador y quita su bloqueo por intentos fallidos: entra de una vez con la nueva
+- [`RestablecerAdminPlataformaIT`](../backend/src/test/java/co/edu/usco/inspectia/RestablecerAdminPlataformaIT.java) · el script no cambia nada si falta un dato, si el correo no es de ningún usuario o si sus caracteres no venían en UTF-8 (parametrizada)
+- [`RestablecerAdminPlataformaIT`](../backend/src/test/java/co/edu/usco/inspectia/RestablecerAdminPlataformaIT.java) · el script no reactiva a un administrador desactivado
+- [`RestablecerAdminPlataformaIT`](../backend/src/test/java/co/edu/usco/inspectia/RestablecerAdminPlataformaIT.java) · el script no toca a un usuario de una empresa: su contraseña se restablece desde la app
+- [`RestablecerAdminPlataformaIT`](../backend/src/test/java/co/edu/usco/inspectia/RestablecerAdminPlataformaIT.java) · el script restablece la contraseña del administrador de la plataforma: entra la nueva y no la anterior, con un hash que Spring Security acepta
+- [`RestablecerAdminPlataformaIT`](../backend/src/test/java/co/edu/usco/inspectia/RestablecerAdminPlataformaIT.java) · la contraseña nueva acepta de 8 a 64 caracteres, con los mensajes de la API (prueba de límite) (parametrizada)
+- [`RestablecerAdminPlataformaIT`](../backend/src/test/java/co/edu/usco/inspectia/RestablecerAdminPlataformaIT.java) · la contraseña nueva no sale en pantalla ni en el registro de PostgreSQL, aunque el servidor registre todas las sentencias
+- [`RestablecerAdminPlataformaIT`](../backend/src/test/java/co/edu/usco/inspectia/RestablecerAdminPlataformaIT.java) · la contraseña nueva ocupa como máximo 72 bytes, con el mensaje de la API (prueba de límite) (parametrizada)
+- [`RestablecerAdminPlataformaIT`](../backend/src/test/java/co/edu/usco/inspectia/RestablecerAdminPlataformaIT.java) · una contraseña nueva de solo espacios cuenta como si faltara; con una letra se acepta (prueba de límite) (parametrizada)
+- [`CambioDeContrasenaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/CambioDeContrasenaIT.java) · cambiar la propia contraseña deja los intentos fallidos en cero
