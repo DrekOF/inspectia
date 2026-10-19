@@ -6,7 +6,7 @@
  * Fecha de creación: 19/10/2026
  * Actualización: 19/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia;
 
@@ -48,7 +48,8 @@ import org.testcontainers.utility.MountableFile;
  * Pruebas del script que restablece la contraseña del administrador de la plataforma (D-30). El script
  * corre como en {@code restablecer-admin-plataforma.sh} y {@code .ps1}: psql dentro del contenedor lo lee
  * por la entrada estándar y toma el correo y la contraseña nueva de variables de entorno. Los envoltorios
- * piden la contraseña por teclado y la pasan en esa variable.
+ * piden la contraseña por teclado y la pasan en {@code INSPECTIA_ADMIN_CONTRASENA_NUEVA}, una variable que
+ * nunca está en {@code infra/.env}.
  *
  * <p>La sesión «de antes» se arma con el reloj de la base: el script toma de él la hora del cambio, y en
  * Docker Desktop puede diferir unos segundos del reloj del equipo donde corren las pruebas.
@@ -188,6 +189,18 @@ class RestablecerAdminPlataformaIT {
     }
 
     @Test
+    @DisplayName("D-30 · el script no toma la contraseña de INSPECTIA_ADMIN_CONTRASENA, la del script de creación que puede seguir en infra/.env: si falta la nueva, no cambia nada")
+    void noTomaLaContrasenaDelScriptDeCreacion() throws Exception {
+        String antes = hash();
+
+        Resultado resultado = correr(ADMIN, null, Map.of("INSPECTIA_ADMIN_CONTRASENA", "Inicial-de-env-2026"));
+
+        assertThat(resultado.codigo()).as(resultado.salida()).isEqualTo(ERROR_DEL_SCRIPT);
+        assertThat(resultado.salida()).contains("Falta la contraseña nueva.");
+        assertThat(hash()).isEqualTo(antes);
+    }
+
+    @Test
     @DisplayName("D-30 · el script no toca a un usuario de una empresa: su contraseña se restablece desde la app")
     void noTocaUnUsuarioDeEmpresa() throws Exception {
         UUID empresa = api.crearEmpresa("Cacaos del Huila", "900123456-8");
@@ -266,7 +279,7 @@ class RestablecerAdminPlataformaIT {
             entorno.put("INSPECTIA_ADMIN_CORREO", correo);
         }
         if (contrasena != null) {
-            entorno.put("INSPECTIA_ADMIN_CONTRASENA", contrasena);
+            entorno.put("INSPECTIA_ADMIN_CONTRASENA_NUEVA", contrasena);
         }
         ExecResult ejecucion = postgres.execInContainer(StandardCharsets.UTF_8, ExecConfig.builder()
                 .command(new String[] {"sh", "-c", PSQL + " < " + SCRIPT_EN_CONTENEDOR})

@@ -22,7 +22,7 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 ## Resumen
 
 - **143 criterios de aceptación** en 26 fichas: 46 con prueba y 97 pendientes.
-- **231 pruebas:** 178 de Java (17 generadas) y 53 de Python. Una prueba parametrizada cuenta una vez.
+- **232 pruebas:** 179 de Java (17 generadas) y 53 de Python. Una prueba parametrizada cuenta una vez.
 
 | Ficha | Criterios | Con prueba | Pendientes |
 |---|---:|---:|---:|
@@ -512,6 +512,7 @@ Pruebas que no cubren un criterio de una ficha, sino una pauta del docente (RP) 
 - [`RestablecerAdminPlataformaIT`](../backend/src/test/java/co/edu/usco/inspectia/RestablecerAdminPlataformaIT.java) · el script no cambia nada si falta un dato, si el correo no es de ningún usuario o si sus caracteres no venían en UTF-8 (parametrizada)
 - [`RestablecerAdminPlataformaIT`](../backend/src/test/java/co/edu/usco/inspectia/RestablecerAdminPlataformaIT.java) · el script no reactiva a un administrador desactivado
 - [`RestablecerAdminPlataformaIT`](../backend/src/test/java/co/edu/usco/inspectia/RestablecerAdminPlataformaIT.java) · el script no toca a un usuario de una empresa: su contraseña se restablece desde la app
+- [`RestablecerAdminPlataformaIT`](../backend/src/test/java/co/edu/usco/inspectia/RestablecerAdminPlataformaIT.java) · el script no toma la contraseña de INSPECTIA_ADMIN_CONTRASENA, la del script de creación que puede seguir en infra/.env: si falta la nueva, no cambia nada
 - [`RestablecerAdminPlataformaIT`](../backend/src/test/java/co/edu/usco/inspectia/RestablecerAdminPlataformaIT.java) · el script restablece la contraseña del administrador de la plataforma: entra la nueva y no la anterior, con un hash que Spring Security acepta
 - [`RestablecerAdminPlataformaIT`](../backend/src/test/java/co/edu/usco/inspectia/RestablecerAdminPlataformaIT.java) · la contraseña nueva acepta de 8 a 64 caracteres, con los mensajes de la API (prueba de límite) (parametrizada)
 - [`RestablecerAdminPlataformaIT`](../backend/src/test/java/co/edu/usco/inspectia/RestablecerAdminPlataformaIT.java) · la contraseña nueva no sale en pantalla ni en el registro de PostgreSQL, aunque el servidor registre todas las sentencias
