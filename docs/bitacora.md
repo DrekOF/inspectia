@@ -2,9 +2,9 @@
 Nombre: bitacora.md
 Descripción: Registro paso a paso de cómo se construyó InspectIA, para la sustentación (RP-24).
 Fecha de creación: 12/10/2026
-Actualización: 14/10/2026
+Actualización: 19/10/2026
 Autor: Equipo InspectIA
-Versión: 1.9
+Versión: 1.10
 -->
 
 # Bitácora de construcción (RP-24)
@@ -206,6 +206,52 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
   - Anotar en P-17 el riesgo aceptado.
   - Registrar D-29 con el criterio de los estados de las fichas, y que `comprobar` falle si un RF «Implementado» tiene criterios sin prueba.
 - Archivos o PR: la rama `feature/RF-01-inicio-sesion`; el PR lo abre Cristhian.
+
+## 18/10/2026 · RF-03 y RF-02 C12: gestión de usuarios y restablecimiento de contraseñas
+
+- Quién: Cristhian Sánchez (`DrekOF`), con Claude Code.
+- Qué se hizo:
+  - **Antes del plan:**
+    - D-30 en `decisiones.md`: quién cambia o restablece cada contraseña. La de un usuario final la restablece su administrador (RF-03); la de un administrador de empresa, el administrador de la plataforma (RF-02 C12) u otro administrador de su empresa. Cambiar o restablecer una contraseña corta las sesiones abiertas de ese usuario.
+    - La ficha RF-18, «Cambiar la propia contraseña», en «Aprobado». Se implementa en otra rama, junto con el script que restablece la contraseña del administrador de la plataforma.
+    - Criterios nuevos, al final de su lista: RF-03 C11 (el administrador no cambia su propia contraseña desde la gestión de usuarios), RNF-04 C6 (cambiar o restablecer una contraseña corta las sesiones abiertas) y RF-18 C5.
+  - **En la rama `feature/RF-03-usuarios`, cuatro pasos, cada uno revisado por Cristhian antes del siguiente:**
+    1. **Pruebas antes del código:** `GestionUsuariosIT`, `UsuariosPorEmpresaIT` y `RestablecerContrasenaIT`, con tokens reales, para RF-03 C1 a C11, RF-02 C12, RNF-03 C2 y C5 y RNF-04 C6. Las 36 ejecuciones nuevas fallaban porque las rutas no existían, y también las 6 pruebas nuevas del generador.
+    2. **Generador y API de usuarios:**
+       - El generador (1.3) produce la API de una entidad por empresa: la empresa sale de la sesión, cada consulta se limita a ella y un registro de otra empresa responde 404.
+       - Un rol que existe pero no se puede asignar (`valores_en_formulario`) responde 403, antes que los 400; uno que no existe responde 400 con su campo.
+       - La contraseña va en el formulario: obligatoria al crear y opcional al editar, donde enviar una nueva es restablecerla. La respuesta no lleva el hash ni los datos internos.
+       - `/api/v1/usuarios` sale generada, con su prueba. `ReglasUsuarioImpl` programa a mano el máximo de 25 activos y lo que el administrador no puede hacer consigo mismo.
+       - Una copia de lo generado para empresa revisa que no cambie, salvo el header.
+    3. **Ajustes de la revisión del paso 2:**
+       - Para contar los 25 activos, la regla bloquea la fila de la empresa (`SELECT … FOR UPDATE`) dentro de la transacción. Una prueba manda dos altas al mismo tiempo.
+       - Una contraseña de solo espacios se rechaza con «Este dato es obligatorio.» al crear, al editar, en RF-02 C12 y en el script del administrador de la plataforma. La regla quedó en las restricciones de RF-02, RF-03 y RF-18.
+    4. **RF-02 C12 y corte de sesiones:**
+       - `GET /api/v1/empresas/{empresaId}/administradores` y `PUT …/{usuarioId}/contrasena`, escritos a mano y solo para el administrador de la plataforma. No reactivan nada.
+       - Una columna nueva, `usuario.sesiones_desde`, y una regla de tipo efecto, `cortar_sesiones_al_cambiar_contrasena`, que guarda la hora del cambio y desbloquea la cuenta. El generador (1.5) ya llama los efectos.
+       - En cada petición, un token emitido antes de esa hora responde 401 «Tu contraseña cambió: inicia sesión de nuevo.».
+       - Como cambió `V1__esquema_inicial.sql`, la base local se reinicia (P-16). Los pasos quedaron en `infra/README.md` y en el PR.
+       - Documentación: `modelo-datos.md`, `arquitectura.md`, los README de entidades, del generador y de `infra/`, y esta bitácora.
+  - **Problemas encontrados:**
+    - **Marcas de las pruebas generadas.** Las de usuario citaban RF-01, la primera ficha de `usuario.json`. Ahora la primera ficha de una entidad es la de su CRUD (RF-03), y el README de entidades lo dice.
+    - **Dos altas a la vez.** Cristhian notó al revisar el paso 2 que el límite de 25 no aguantaba dos altas simultáneas. La prueba nueva lo confirmó antes del arreglo: quedaban 26 activos.
+    - **Contraseña de solo espacios.** Al editar se aceptaba, y el usuario quedaba sin poder entrar, porque el inicio de sesión la rechaza. Cristhian decidió rechazarla en todas partes.
+  - **Otras anotaciones:**
+    - Un token emitido en el mismo segundo del cambio de contraseña sigue sirviendo, porque el token guarda segundos enteros. Es una ventana de menos de 1 s, aceptada en el plan.
+    - Un token sin fecha de emisión (`iat`) ya no sirve: sin ella no se sabe si es de antes del cambio.
+  - **Resultado:**
+    - Backend: 327 pruebas (74 unitarias y 253 de integración, 103 de ellas generadas), todas en verde.
+    - Generador: 53 pruebas, todas en verde.
+    - Criterios: RF-02 tiene sus 12 criterios con prueba, RF-03 sus 11 (la parte del historial de C6 se prueba con RF-14) y RNF-04 sus 6. De los 143 de las fichas, 41 tienen prueba.
+    - El 19/10, Cristhian reinició su base con `down -v`, creó el administrador con el script y probó en Swagger UI.
+    - Ninguna ficha pasa a «Implementado»: faltan las pantallas (D-29).
+- Por qué: RF-03 deja que cada empresa gestione sus usuarios, con un máximo de 25 activos, y RF-02 C12 con D-30 asegura que toda contraseña tenga quién la restablezca. Cortar las sesiones al cambiar una contraseña impide que siga entrando quien conocía la anterior (RNF-04).
+- Cómo se pidió: Cristhian pidió registrar D-30 y la ficha RF-18, y después el plan de RF-03 y RF-02 C12, sin código. Lo aprobó con cinco decisiones: el 403 antes que los 400, la regla `no_cambiar_su_propia_contrasena`, las rutas de RF-02 C12, cortar las sesiones con `sesiones_desde` y sacar los datos internos de la respuesta. En el camino pidió:
+  - Ajustar D-30 y agregar RF-03 C11, RNF-04 C6 y RF-18 C5 antes de las pruebas.
+  - Bloquear la fila de la empresa al contar el límite de 25, con una prueba de dos peticiones a la vez.
+  - Rechazar en todas partes las contraseñas de solo espacios, con la regla en las restricciones de RF-02, RF-03 y RF-18.
+  - Avisar en el PR y en `infra/README.md` que V1 cambió y cómo reiniciar la base.
+- Archivos o PR: la rama `feature/RF-03-usuarios`; el PR lo abre Cristhian.
 
 ## Plantilla para nuevas entradas
 
