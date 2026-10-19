@@ -2,10 +2,10 @@
 -- Descripción: Crea las tablas de InspectIA desde specs/entidades (RP-15). Archivo generado por
 --              generador/ (RP-23): no se edita a mano; se cambia el JSON o la plantilla y se regenera.
 -- Fecha de creación: 13/10/2026
--- Actualización: 13/10/2026
--- Autor: Equipo InspectIA (generado por generador/ v1.2)
--- Versión: 1.2
--- Entidades: empresa 1.2, foto 1.0, grano 1.0, lote 1.0, modelo 1.0, muestra 1.0, rango_recomendacion 1.1, usuario 1.3
+-- Actualización: 18/10/2026
+-- Autor: Equipo InspectIA (generado por generador/ v1.5)
+-- Versión: 1.5
+-- Entidades: empresa 1.2, foto 1.0, grano 1.0, lote 1.0, modelo 1.0, muestra 1.0, rango_recomendacion 1.1, usuario 1.5
 
 -- Mantiene fecha_actualizacion en cada cambio, también cuando lo hace un script.
 CREATE FUNCTION actualizar_fecha_actualizacion() RETURNS trigger
@@ -120,6 +120,7 @@ CREATE TABLE usuario (
     activo boolean NOT NULL DEFAULT true,
     intentos_fallidos integer NOT NULL DEFAULT 0,
     bloqueado_hasta timestamptz,
+    sesiones_desde timestamptz,
     fecha_creacion timestamptz NOT NULL DEFAULT now(),
     fecha_actualizacion timestamptz NOT NULL DEFAULT now(),
     CONSTRAINT usuario_pk PRIMARY KEY (id),
@@ -143,6 +144,7 @@ COMMENT ON COLUMN usuario.rol IS 'Rol (RF-01, RF-03, D-05, D-13)';
 COMMENT ON COLUMN usuario.activo IS 'Activo (RF-01, RF-03)';
 COMMENT ON COLUMN usuario.intentos_fallidos IS 'Intentos fallidos (RF-01, RNF-04)';
 COMMENT ON COLUMN usuario.bloqueado_hasta IS 'Bloqueado hasta (RF-01, RNF-04)';
+COMMENT ON COLUMN usuario.sesiones_desde IS 'Sesiones válidas desde (RNF-04, D-30)';
 COMMENT ON COLUMN usuario.fecha_creacion IS 'Fecha de creación del registro';
 COMMENT ON COLUMN usuario.fecha_actualizacion IS 'Fecha de la última actualización; la mantiene un trigger';
 

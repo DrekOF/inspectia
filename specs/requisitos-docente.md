@@ -2,9 +2,9 @@
 Nombre: requisitos-docente.md
 Descripción: Requisitos del docente (RP-01 a RP-25) y listado de requerimientos RF y RNF.
 Fecha de creación: 12/10/2026
-Actualización: 12/10/2026
+Actualización: 18/10/2026
 Autor: Equipo InspectIA (exportado del documento de requerimientos v2.0)
-Versión: 1.0
+Versión: 1.1
 -->
 
 # Requisitos del docente y listado de requerimientos
@@ -60,6 +60,7 @@ Versión: 1.0
 | RF-15 | Descargar el reporte del lote en PDF. | Media |
 | RF-16 | Consultar las estadísticas de la empresa. | Media |
 | RF-17 | Consultar las métricas del modelo: F1-score, precisión, recall y confianza promedio (D-14). | Baja |
+| RF-18 | Cambiar la propia contraseña, escribiendo la actual (D-30). | Media |
 
 ## Requerimientos no funcionales (detalle en fichas.json)
 

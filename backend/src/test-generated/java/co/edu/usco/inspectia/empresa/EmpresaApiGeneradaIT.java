@@ -4,10 +4,10 @@
  *              Archivo generado por generador/ (RP-23): no se edita a mano; se cambia el JSON
  *              o la plantilla, y se regenera.
  * Fecha de creación: 13/10/2026
- * Actualización: 13/10/2026
- * Autor: Equipo InspectIA (generado por generador/ v1.2)
- * Versión: 1.2
- * Entidades: empresa 1.2, usuario 1.3, rango_recomendacion 1.1
+ * Actualización: 18/10/2026
+ * Autor: Equipo InspectIA (generado por generador/ v1.5)
+ * Versión: 1.5
+ * Entidades: empresa 1.2, usuario 1.5, rango_recomendacion 1.1
  */
 package co.edu.usco.inspectia.empresa;
 
@@ -146,6 +146,7 @@ class EmpresaApiGeneradaIT {
                 Arguments.of("administrador.correo", correoDeLargo(255), "Puede tener como máximo 254 caracteres."),
                 Arguments.of("administrador.correo", "sin-arroba", "Escribe un correo válido."),
                 Arguments.of("administrador.contrasena", null, "Este dato es obligatorio."),
+                Arguments.of("administrador.contrasena", " ".repeat(8), "Este dato es obligatorio."),
                 Arguments.of("administrador.contrasena", "x".repeat(65), "La contraseña puede tener como máximo 64 caracteres."),
                 Arguments.of("administrador.contrasena", "x".repeat(7), "La contraseña debe tener al menos 8 caracteres."),
                 Arguments.of("administrador.contrasena", "ñ".repeat(37), "La contraseña es demasiado larga: usa menos caracteres o menos tildes y eñes"));

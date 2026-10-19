@@ -2,9 +2,9 @@
 Nombre: arquitectura.md
 Descripción: Resumen de la arquitectura del sistema y del software de InspectIA (D-16, D-18, D-21, D-23 y D-25). Detalle en 02_Analisis_Diseno/InspectIA_Despliegue_AWS.pdf.
 Fecha de creación: 12/10/2026
-Actualización: 13/10/2026
+Actualización: 18/10/2026
 Autor: Equipo InspectIA
-Versión: 1.1
+Versión: 1.3
 -->
 
 # Arquitectura de InspectIA
@@ -35,7 +35,8 @@ backend/src/main/java/.../inspectia/
 │   │                ClasificadorDeGranos, AlmacenDeArchivos, GeneradorDeReporte, repositorios
 │   └── adaptadores/ REST, cliente HTTP al servicio de IA, S3, PDF, JPA
 ├── empresa/         capas, generado desde specs/entidades/empresa.json
-├── usuario/         capas, generado desde specs/entidades/usuario.json
+├── usuario/         capas, generado desde specs/entidades/usuario.json; a mano, sus reglas, la
+│                    sesión (RF-01) y el restablecimiento de los administradores (RF-02 C12)
 ├── rango/           capas, generado desde specs/entidades/rango_recomendacion.json
 ├── estadistica/     capas, a mano
 └── comun/           seguridad (JWT y roles), i18n, manejo de errores
@@ -75,6 +76,6 @@ El servidor le envía al servicio de IA las fotos de la muestra (sus enlaces de 
 |---|---|---|
 | Análisis del lote | Hexagonal | RF-04 a RF-12, RF-14 y RF-15 |
 | Empresas | Capas (generado) | RF-02 |
-| Usuarios | Capas (generado) | RF-01 y RF-03 |
+| Usuarios | Capas (generado) | RF-01, RF-03, RF-18 y el criterio 12 de RF-02 |
 | Rangos de recomendación | Capas (generado) | RF-13 |
 | Estadísticas | Capas | RF-16 y RF-17 |

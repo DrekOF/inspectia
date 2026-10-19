@@ -3,9 +3,9 @@
  * Descripción: Convierte los errores de la API en respuestas application/problem+json (RFC 9457), con
  *              la lista «errores» y los mensajes en el idioma de la petición (RP-03, RP-11).
  * Fecha de creación: 13/10/2026
- * Actualización: 14/10/2026
+ * Actualización: 18/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.3
  */
 package co.edu.usco.inspectia.comun.errores;
 
@@ -14,7 +14,9 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.TypeMismatchException;
 import org.springframework.context.MessageSource;
@@ -37,6 +39,8 @@ import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.exc.InvalidFormatException;
 
 /**
  * Convierte los errores de la API en respuestas {@code application/problem+json} (RFC 9457). Las de
@@ -55,8 +59,14 @@ public class ManejadorDeErrores extends ResponseEntityExceptionHandler {
     /** Código de PostgreSQL de una violación de un índice único. */
     private static final String VIOLACION_DE_UNICO = "23505";
 
-    /** Si un campo falla varias validaciones, se informa primero que falta. */
-    private static final List<String> FALTA_EL_DATO = List.of("NotNull", "NotBlank", "NotEmpty");
+    /**
+     * Si un campo falla varias validaciones, se informa primero que falta. Un dato opcional que llega en
+     * blanco ({@code @NoEnBlanco}) cuenta como uno que falta: responde lo mismo que {@code @NotBlank}.
+     */
+    private static final List<String> FALTA_EL_DATO = List.of("NotNull", "NotBlank", "NotEmpty", "NoEnBlanco");
+
+    /** Código del error de {@code @ValorPermitido}: un valor de una lista que no se puede asignar. */
+    private static final String VALOR_NO_PERMITIDO = "ValorPermitido";
 
     @ExceptionHandler(NoEncontradoExcepcion.class)
     ProblemDetail noEncontrado(NoEncontradoExcepcion excepcion) {
@@ -109,9 +119,22 @@ public class ManejadorDeErrores extends ResponseEntityExceptionHandler {
         return errorInterno(excepcion);
     }
 
+    /**
+     * Datos inválidos: 400 con un error por campo. Si además algún valor de una lista no se puede
+     * asignar ({@code @ValorPermitido}), responde 403 solo con esos: es un tema de permisos y se
+     * revisa antes que los datos, como las reglas por ruta (RNF-04, RF-03 C10).
+     */
     @Override
     protected ResponseEntity<Object> handleMethodArgumentNotValid(MethodArgumentNotValidException excepcion,
             HttpHeaders encabezados, HttpStatusCode estado, WebRequest peticion) {
+        List<ErrorDeCampo> noPermitidos = excepcion.getBindingResult().getFieldErrors().stream()
+                .filter(error -> VALOR_NO_PERMITIDO.equals(error.getCode()))
+                .map(error -> new ErrorDeCampo(error.getField(), error.getDefaultMessage()))
+                .toList();
+        if (!noPermitidos.isEmpty()) {
+            ProblemDetail problema = problema(HttpStatus.FORBIDDEN, "error.prohibido", noPermitidos);
+            return handleExceptionInternal(excepcion, problema, encabezados, HttpStatus.FORBIDDEN, peticion);
+        }
         ProblemDetail problema = problema(estado, "error.datos_invalidos", errores(excepcion.getBindingResult()));
         return handleExceptionInternal(excepcion, problema, encabezados, estado, peticion);
     }
@@ -129,10 +152,18 @@ public class ManejadorDeErrores extends ResponseEntityExceptionHandler {
         return handleExceptionInternal(excepcion, problema, encabezados, estado, peticion);
     }
 
+    /**
+     * El cuerpo no se puede leer: 400. Si el JSON es válido pero un campo trae un valor que no es de su
+     * tipo, como un código que no existe en una lista («JEFE» como rol), dice cuál campo.
+     */
     @Override
     protected ResponseEntity<Object> handleHttpMessageNotReadable(HttpMessageNotReadableException excepcion,
             HttpHeaders encabezados, HttpStatusCode estado, WebRequest peticion) {
-        ProblemDetail problema = problema(estado, "error.cuerpo_invalido", List.of());
+        String campo = campoConValorInvalido(excepcion);
+        ProblemDetail problema = campo == null
+                ? problema(estado, "error.cuerpo_invalido", List.of())
+                : problema(estado, "error.datos_invalidos",
+                        List.of(new ErrorDeCampo(campo, mensaje("error.valor_invalido"))));
         return handleExceptionInternal(excepcion, problema, encabezados, estado, peticion);
     }
 
@@ -144,6 +175,20 @@ public class ManejadorDeErrores extends ResponseEntityExceptionHandler {
         ProblemDetail problema = problema(estado, "error.datos_invalidos",
                 List.of(new ErrorDeCampo(campo, mensaje("error.valor_invalido"))));
         return handleExceptionInternal(excepcion, problema, encabezados, estado, peticion);
+    }
+
+    /** El campo, como {@code rol} o {@code administrador.correo}, cuyo valor no es de su tipo; o {@code null}. */
+    private static String campoConValorInvalido(HttpMessageNotReadableException excepcion) {
+        for (Throwable causa = excepcion; causa != null; causa = causa.getCause()) {
+            if (causa instanceof InvalidFormatException formato) {
+                String campo = formato.getPath().stream()
+                        .map(JacksonException.Reference::getPropertyName)
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.joining("."));
+                return campo.isEmpty() ? null : campo;
+            }
+        }
+        return null;
     }
 
     private ProblemDetail errorInterno(Exception excepcion) {

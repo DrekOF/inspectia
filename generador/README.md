@@ -2,9 +2,9 @@
 Nombre: README.md (generador)
 Descripción: Qué hace el generador de InspectIA (RP-23), cómo se usa y cómo se prueba.
 Fecha de creación: 12/10/2026
-Actualización: 14/10/2026
+Actualización: 18/10/2026
 Autor: Equipo InspectIA
-Versión: 1.4
+Versión: 1.5
 -->
 
 # generador
@@ -21,7 +21,7 @@ Scripts de Python 3.13 que leen las entidades de `specs/entidades/*.json` (forma
 | Las entidades de `alcance.json` | `backend/src/generated/java/.../<modulo>/` | API REST: servicio, controlador, reglas de acceso por ruta, solicitudes, respuesta, mapeador y la interfaz de las reglas |
 | Las entidades de `alcance.json` | `backend/src/test-generated/java/.../<modulo>/<Clase>ApiGeneradaIT.java` | Prueba de integración: un caso por cada permiso y cada validación del JSON, más los datos únicos |
 
-`alcance.json` dice qué entidades con CRUD tienen API. Hoy es solo `empresa` (RF-02); usuario entra con RF-03 y los rangos con RF-13. Las pantallas del frontend llegan en otra tarea. Cómo responde la API generada y qué no soporta todavía está en `specs/entidades/README.md`.
+`alcance.json` dice qué entidades con CRUD tienen API. Hoy son `empresa` (RF-02) y `usuario` (RF-03, una API por empresa); los rangos entran con RF-13. Las pantallas del frontend llegan en otra tarea. Cómo responde la API generada y qué no soporta todavía está en `specs/entidades/README.md`.
 
 Las carpetas generadas son solo del generador: `generar` borra lo que ya no se genera. Lo escrito a mano, como las reglas de cada módulo (`<modulo>/reglas/`) y el módulo `comun`, va fuera de ellas.
 
@@ -81,3 +81,5 @@ cd generador
 Cada prueba lleva `@pytest.mark.caso("…")` con la ficha o el requisito que cubre (por ejemplo, «RP-23 · …»); una prueba sin esa marca hace fallar la ejecución. Así la lista de casos de prueba (RP-13) se arma desde las pruebas.
 
 `pruebas/ejemplos/producto.json` es la entidad producto de la pauta del docente para el back-end (id, nombre, categoria, descripcion, estado). Las pruebas generan su tabla y su API junto con empresa y usuario, para demostrar que el generador sirve para otra temática. No entra a la app.
+
+`pruebas/ejemplos/empresa_generada/` guarda lo que el generador escribe para la API de empresa. Una prueba revisa que un cambio al generador no lo mueva, salvo el header. Si cambias una plantilla a propósito y cambia lo de empresa, revisa la diferencia y copia ahí los archivos nuevos.

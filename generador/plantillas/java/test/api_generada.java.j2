@@ -1,11 +1,12 @@
 {#
   Nombre: api_generada.java.j2
   Descripción: Plantilla de la prueba generada de la API de una entidad: permisos, validaciones y
-               datos únicos del JSON (RP-13, RP-23).
+               datos únicos del JSON (RP-13, RP-23). En una entidad por empresa, también que no se
+               mezclen las empresas (RNF-03).
   Fecha de creación: 13/10/2026
-  Actualización: 13/10/2026
+  Actualización: 18/10/2026
   Autor: Equipo InspectIA
-  Versión: 1.0
+  Versión: 1.1
 #}
 {% from 'java/_macros.j2' import encabezado %}
 {% set p = prueba_api %}
@@ -14,12 +15,24 @@ package {{ paquete }};
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
+{% if p.con_empresa %}
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
+{% endif %}
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+{% if not p.con_empresa %}
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+{% endif %}
 
 import co.edu.usco.inspectia.PruebaIntegracion;
+{% if p.con_empresa %}
+import co.edu.usco.inspectia.comun.seguridad.SesionAutenticada;
+import co.edu.usco.inspectia.comun.seguridad.UsuarioEnSesion;
+{% endif %}
 import com.jayway.jsonpath.JsonPath;
 import java.nio.charset.StandardCharsets;
+{% if p.con_empresa %}
+import java.time.Instant;
+{% endif %}
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,6 +63,11 @@ import tools.jackson.databind.json.JsonMapper;
  *
  * <p>Los datos válidos salen de {@code ejemplo} de cada atributo. Las pruebas confirman sus transacciones
  * y vacían las tablas antes y después de cada una.
+{% if p.con_empresa %}
+ *
+ * <p>{@code {{ entidad }}} es por empresa: las pruebas usan una sesión como la del inicio de sesión, con
+ * una empresa de prueba, y revisan que un registro de otra empresa no exista para ella (RNF-03).
+{% endif %}
  */
 @PruebaIntegracion
 class {{ clase }}ApiGeneradaIT {
@@ -62,10 +80,22 @@ class {{ clase }}ApiGeneradaIT {
 
     @Autowired
     private JdbcTemplate jdbc;
+{% if p.con_empresa %}
+
+    /** La empresa de la sesión de las pruebas. */
+    private UUID empresa;
+
+    /** Otra empresa, para revisar que sus datos no se mezclen con los de la sesión (RNF-03). */
+    private UUID otraEmpresa;
+{% endif %}
 
     @BeforeEach
     void vaciarAntes() {
         vaciar();
+{% if p.con_empresa %}
+        empresa = crearEmpresa({{ p.empresas.primera }});
+        otraEmpresa = crearEmpresa({{ p.empresas.segunda }});
+{% endif %}
     }
 
     @AfterEach
@@ -77,7 +107,11 @@ class {{ clase }}ApiGeneradaIT {
     @DisplayName("RNF-04 · C2 · cada operación de {{ entidad }} solo la usan los roles de su JSON")
     @MethodSource("permisos")
     void permisos(String operacion, String rol, boolean permitido) {
+{% if p.con_empresa %}
+        MvcTestResult resultado = enviar(operacion, sesion(rol, empresa));
+{% else %}
         MvcTestResult resultado = enviar(operacion, user("prueba@inspectia.test").roles(rol));
+{% endif %}
 
         if (permitido) {
             assertThat(resultado.getResponse().getStatus()).isNotIn(401, 403);
@@ -149,6 +183,48 @@ class {{ clase }}ApiGeneradaIT {
 {% endfor %}
     }
 {% endif %}
+{% if 'crear' in operaciones and p.no_permitidos %}
+
+    @ParameterizedTest(name = "{0}: {1}")
+    @DisplayName("RNF-04 · un valor de una lista de {{ entidad }} que existe pero no se puede asignar responde 403 y no guarda nada")
+    @MethodSource("valoresNoPermitidos")
+    void valoresNoPermitidos(String campo, Object valor, String mensaje) {
+        Map<String, Object> datos = datosParaCrear();
+        poner(datos, campo, valor);
+
+        MvcTestResult resultado = enviar(HttpMethod.POST, RUTA, datos, conPermiso("crear"));
+
+        assertThat(resultado).hasStatus(HttpStatus.FORBIDDEN);
+        assertThat(errores(resultado)).containsExactly(tuple(campo, mensaje));
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM {{ entidad }}", Integer.class)).isZero();
+    }
+
+    static Stream<Arguments> valoresNoPermitidos() {
+        return Stream.of(
+{% for campo, valor, mensaje in p.no_permitidos %}
+                Arguments.of("{{ campo }}", {{ valor }}, {{ mensaje | java }}){{ ',' if not loop.last else ');' }}
+{% endfor %}
+    }
+{% endif %}
+{% if 'crear' in operaciones and p.listas %}
+
+    @ParameterizedTest(name = "{0}")
+    @DisplayName("RP-03 · un código que no existe en una lista de {{ entidad }} responde 400 con su campo")
+    @MethodSource("listas")
+    void codigoQueNoExiste(String campo) {
+        Map<String, Object> datos = datosParaCrear();
+        poner(datos, campo, "NO_EXISTE");
+
+        MvcTestResult resultado = enviar(HttpMethod.POST, RUTA, datos, conPermiso("crear"));
+
+        assertThat(resultado).hasStatus(HttpStatus.BAD_REQUEST);
+        assertThat(errores(resultado)).containsExactly(tuple(campo, "El valor no es válido."));
+    }
+
+    static Stream<String> listas() {
+        return Stream.of({% for campo in p.listas %}"{{ campo }}"{{ ', ' if not loop.last else '' }}{% endfor %});
+    }
+{% endif %}
 {% if 'crear' in operaciones and p.unicos %}
 
     @Test
@@ -184,10 +260,60 @@ class {{ clase }}ApiGeneradaIT {
 {% endfor %}
     }
 {% endif %}
+{% if p.con_empresa and 'crear' in operaciones and p.con_registro %}
+
+    @ParameterizedTest(name = "{0}")
+    @DisplayName("RNF-03 · un registro de {{ entidad }} de otra empresa responde 404 en cada operación que lo usa")
+    @MethodSource("operacionesConRegistro")
+    void deOtraEmpresaNoExiste(String operacion) {
+        UUID id = crear();
+
+        MvcTestResult resultado = enviar(operacion, id, conPermiso(operacion, otraEmpresa));
+
+        assertThat(resultado).hasStatus(HttpStatus.NOT_FOUND);
+    }
+
+    static Stream<String> operacionesConRegistro() {
+        return Stream.of({% for o in p.con_registro %}"{{ o }}"{{ ', ' if not loop.last else '' }}{% endfor %});
+    }
+{% endif %}
+{% if p.con_empresa and 'crear' in operaciones and 'listar' in operaciones %}
+
+    @Test
+    @DisplayName("RNF-03 · C2 · el listado de {{ entidad }} solo trae los registros de la empresa de la sesión")
+    void listadoDeLaEmpresa() {
+        UUID id = crear();
+
+        MvcTestResult deLaEmpresa = enviar(HttpMethod.GET, RUTA, null, conPermiso("listar"));
+        MvcTestResult deOtra = enviar(HttpMethod.GET, RUTA, null, conPermiso("listar", otraEmpresa));
+
+        assertThat(identificadores(deLaEmpresa)).containsExactly(id.toString());
+        assertThat(identificadores(deOtra)).isEmpty();
+    }
+{% endif %}
+{% if p.con_empresa and 'crear' in operaciones %}
+
+    @Test
+    @DisplayName("RNF-03 · el registro nuevo de {{ entidad }} queda en la empresa de la sesión")
+    void quedaEnLaEmpresaDeLaSesion() {
+        UUID id = crear();
+
+        assertThat(jdbc.queryForObject("SELECT empresa_id FROM {{ entidad }} WHERE id = ?", UUID.class, id))
+                .isEqualTo(empresa);
+    }
+{% endif %}
 
     private void vaciar() {
         jdbc.execute("TRUNCATE {{ p.tablas }} CASCADE");
     }
+{% if p.con_empresa %}
+
+    /** Una empresa con los ejemplos de su JSON, creada directamente en la base. */
+    private UUID crearEmpresa(Object... valores) {
+        return jdbc.queryForObject("INSERT INTO empresa ({{ p.empresas.columnas }}) VALUES ({{ p.empresas.marcadores }}) RETURNING id",
+                UUID.class, valores);
+    }
+{% endif %}
 {% if 'crear' in operaciones %}
 
     private static Map<String, Object> datosParaCrear() {
@@ -221,6 +347,24 @@ class {{ clase }}ApiGeneradaIT {
         return datos;
     }
 {% endif %}
+{% if p.con_empresa %}
+
+    /** Envía la operación con datos válidos; las que llevan un registro usan uno que no existe. */
+    private MvcTestResult enviar(String operacion, RequestPostProcessor usuario) {
+        return enviar(operacion, UUID.randomUUID(), usuario);
+    }
+
+    /** Envía la operación con datos válidos sobre el registro {@code id}. */
+    private MvcTestResult enviar(String operacion, UUID id, RequestPostProcessor usuario) {
+        String registro = RUTA + "/" + id;
+        return switch (operacion) {
+{% for r in rutas %}
+            case "{{ r.operacion }}" -> enviar(HttpMethod.{{ r.metodo }}, {{ r.uri_prueba }}, {{ r.datos_prueba }}, usuario);
+{% endfor %}
+            default -> throw new IllegalArgumentException(operacion);
+        };
+    }
+{% else %}
 
     /** Envía la operación con datos válidos; las que llevan un registro usan uno que no existe. */
     private MvcTestResult enviar(String operacion, RequestPostProcessor usuario) {
@@ -232,6 +376,7 @@ class {{ clase }}ApiGeneradaIT {
             default -> throw new IllegalArgumentException(operacion);
         };
     }
+{% endif %}
 
     private MvcTestResult enviar(HttpMethod metodo, String uri, Object datos, RequestPostProcessor usuario) {
         MockMvcTester.MockMvcRequestBuilder peticion = mvc.method(metodo).uri(uri).with(csrf());
@@ -243,6 +388,35 @@ class {{ clase }}ApiGeneradaIT {
         }
         return peticion.exchange();
     }
+{% if p.con_empresa %}
+
+    /** Una sesión en la empresa de prueba, con el primer rol que puede usar la operación. */
+    private RequestPostProcessor conPermiso(String operacion) {
+        return conPermiso(operacion, empresa);
+    }
+
+    /** Una sesión en la empresa dada, con el primer rol que puede usar la operación. */
+    private static RequestPostProcessor conPermiso(String operacion, UUID empresa) {
+        String rol = switch (operacion) {
+{% for r in rutas %}
+            case "{{ r.operacion }}" -> "{{ r.roles[0] }}";
+{% endfor %}
+            default -> throw new IllegalArgumentException(operacion);
+        };
+        return sesion(rol, empresa);
+    }
+
+    /**
+     * Una sesión como la que arma el inicio de sesión (D-28): un usuario del rol en la empresa dada. El
+     * administrador de la plataforma no tiene empresa.
+     */
+    private static RequestPostProcessor sesion(String rol, UUID empresa) {
+        UUID suEmpresa = "ADMIN_PLATAFORMA".equals(rol) ? null : empresa;
+        return authentication(new SesionAutenticada(new UsuarioEnSesion(UUID.randomUUID(), "Usuario de prueba",
+                "prueba@inspectia.test", rol, suEmpresa, suEmpresa == null ? null : "Empresa de prueba",
+                Instant.now().plusSeconds(3600))));
+    }
+{% else %}
 
     /** Un usuario con el primer rol que puede usar la operación. */
     private static RequestPostProcessor conPermiso(String operacion) {
@@ -254,6 +428,7 @@ class {{ clase }}ApiGeneradaIT {
         };
         return user("prueba@inspectia.test").roles(rol);
     }
+{% endif %}
 
     /** Cambia un dato; {@code administrador.correo} cambia el correo dentro de {@code administrador}. */
     @SuppressWarnings("unchecked")
@@ -269,6 +444,14 @@ class {{ clase }}ApiGeneradaIT {
     private static Map<String, Object> json(MvcTestResult resultado) {
         return JsonPath.read(new String(resultado.getResponse().getContentAsByteArray(), StandardCharsets.UTF_8), "$");
     }
+{% if p.con_empresa and 'listar' in operaciones %}
+
+    /** Los identificadores de los registros de una página del listado. */
+    private static List<String> identificadores(MvcTestResult resultado) {
+        return JsonPath.read(new String(resultado.getResponse().getContentAsByteArray(), StandardCharsets.UTF_8),
+                "$.contenido[*].id");
+    }
+{% endif %}
 
     @SuppressWarnings("unchecked")
     private static List<Tuple> errores(MvcTestResult resultado) {

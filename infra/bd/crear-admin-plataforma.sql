@@ -3,9 +3,9 @@
 --              toma los datos de variables de entorno, para que la contraseña no quede en el repositorio
 --              ni en la línea de comandos.
 -- Fecha de creación: 13/10/2026
--- Actualización: 13/10/2026
+-- Actualización: 18/10/2026
 -- Autor: Equipo InspectIA
--- Versión: 1.0
+-- Versión: 1.1
 --
 -- Uso: no se corre directamente. Lo corren crear-admin-plataforma.sh (Linux, macOS, Git Bash y la EC2)
 -- o crear-admin-plataforma.ps1 (Windows), con psql dentro del contenedor de la base.
@@ -18,7 +18,8 @@
 -- Qué hace, en una sola transacción:
 --   1. Valida los datos con las reglas de specs/entidades/usuario.json: nombre de hasta 120 caracteres;
 --      correo válido, sin espacios al inicio ni al final y en minúsculas; contraseña de 8 a 64
---      caracteres y de máximo 72 bytes (RF-02). Si cambian esas reglas, cambia también este script:
+--      caracteres y de máximo 72 bytes (RF-02). Una contraseña de solo espacios cuenta como si faltara,
+--      como en la API. Si cambian esas reglas, cambia también este script:
 --      backend/src/test/java/co/edu/usco/inspectia/CrearAdminPlataformaIT.java prueba los límites.
 --   2. Si el administrador ya existe, no cambia nada, así que se puede correr varias veces. Si el correo
 --      es de un usuario de una empresa, se detiene.
@@ -93,8 +94,9 @@ BEGIN
         RAISE EXCEPTION 'INSPECTIA_ADMIN_CORREO no es un correo válido.';
     END IF;
 
-    -- Los mismos mensajes de usuario.json.
-    IF contrasena_admin = '' THEN
+    -- Los mismos mensajes de usuario.json. Una contraseña de solo espacios (o tabuladores) cuenta como
+    -- si faltara, como en la API: tampoco serviría para iniciar sesión.
+    IF contrasena_admin !~ '[^[:space:]]' THEN
         RAISE EXCEPTION 'Falta INSPECTIA_ADMIN_CONTRASENA: escribe la contraseña inicial.';
     ELSIF char_length(contrasena_admin) < 8 THEN
         RAISE EXCEPTION 'La contraseña debe tener al menos 8 caracteres.';

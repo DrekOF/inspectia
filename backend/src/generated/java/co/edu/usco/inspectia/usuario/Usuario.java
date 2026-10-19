@@ -4,10 +4,10 @@
  *              Archivo generado por generador/ (RP-23): no se edita a mano; se cambia el JSON
  *              o la plantilla, y se regenera.
  * Fecha de creación: 13/10/2026
- * Actualización: 13/10/2026
- * Autor: Equipo InspectIA (generado por generador/ v1.2)
- * Versión: 1.2
- * Entidades: usuario 1.3
+ * Actualización: 18/10/2026
+ * Autor: Equipo InspectIA (generado por generador/ v1.5)
+ * Versión: 1.5
+ * Entidades: usuario 1.5
  */
 package co.edu.usco.inspectia.usuario;
 
@@ -29,7 +29,7 @@ import org.hibernate.generator.EventType;
  * Persona que usa InspectIA, con su rol. Los usuarios no se borran: se desactivan, para no perder quién
  * hizo cada análisis (RF-03). Solo el administrador de la plataforma no tiene empresa (RNF-03).
  *
- * <p>Tabla {@code usuario} (RF-01, RF-02, RF-03, RNF-03, RNF-04). Las fechas las pone la base: la de creación al
+ * <p>Tabla {@code usuario} (RF-03, RF-01, RF-02, RNF-03, RNF-04). Las fechas las pone la base: la de creación al
  * insertar y la de actualización con un trigger en cada cambio.
  */
 @Entity
@@ -76,6 +76,10 @@ public class Usuario {
     /** Bloqueado hasta (RF-01, RNF-04). */
     @Column(name = "bloqueado_hasta")
     private OffsetDateTime bloqueadoHasta;
+
+    /** Sesiones válidas desde (RNF-04, D-30). */
+    @Column(name = "sesiones_desde")
+    private OffsetDateTime sesionesDesde;
 
     /** Fecha de creación del registro: la pone la base al insertar. */
     @Generated

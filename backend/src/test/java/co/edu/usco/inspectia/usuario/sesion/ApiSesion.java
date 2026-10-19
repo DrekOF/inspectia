@@ -1,10 +1,11 @@
 /*
  * Nombre: ApiSesion.java
- * Descripción: Datos y llamadas comunes de las pruebas del inicio de sesión (RF-01, RNF-04, D-28).
+ * Descripción: Datos y llamadas comunes de las pruebas que usan la sesión: inicio de sesión, usuarios y
+ *              restablecimiento de contraseñas (RF-01, RF-02, RF-03, RNF-04, D-28).
  * Fecha de creación: 14/10/2026
- * Actualización: 14/10/2026
+ * Actualización: 18/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 package co.edu.usco.inspectia.usuario.sesion;
 
@@ -13,6 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.jayway.jsonpath.JsonPath;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.http.HttpHeaders;
@@ -26,9 +28,10 @@ import org.springframework.test.web.servlet.assertj.MvcTestResult;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * Datos y llamadas comunes de las pruebas del inicio de sesión.
+ * Datos y llamadas comunes de las pruebas que usan la sesión. La usan las pruebas del inicio de sesión
+ * y las de otros módulos que necesitan un token real, como la gestión de usuarios.
  *
- * <p>Contrato que fijan estas pruebas (D-28):
+ * <p>Contrato que fijan las pruebas del inicio de sesión (D-28):
  * <ul>
  *   <li>{@code POST /api/v1/sesion} con {@code correo} y {@code contrasena} responde {@code token},
  *       {@code tipo} ({@code Bearer}), {@code vence} y {@code usuario}: {@code id}, {@code nombre},
@@ -41,19 +44,21 @@ import tools.jackson.databind.json.JsonMapper;
  *   <li>La API no usa CSRF: estas pruebas no envían ese token.</li>
  * </ul>
  */
-final class ApiSesion {
+public final class ApiSesion {
 
-    static final String RUTA = "/api/v1/sesion";
-    static final String CONTRASENA = "Clave-Segura-2026";
+    public static final String RUTA = "/api/v1/sesion";
+    public static final String CONTRASENA = "Clave-Segura-2026";
 
-    static final String CREDENCIALES_INCORRECTAS = "Correo o contraseña incorrectos";
-    static final String AYUDA_BLOQUEO = "Si fallas 5 veces seguidas, la cuenta se bloquea 15 minutos.";
-    static final String USUARIO_DESACTIVADO =
+    public static final String CREDENCIALES_INCORRECTAS = "Correo o contraseña incorrectos";
+    public static final String AYUDA_BLOQUEO = "Si fallas 5 veces seguidas, la cuenta se bloquea 15 minutos.";
+    public static final String USUARIO_DESACTIVADO =
             "Tu usuario está desactivado: pide al administrador de tu empresa que lo reactive.";
-    static final String EMPRESA_DESACTIVADA = "Tu empresa está desactivada: comunícate con el equipo de InspectIA.";
-    static final String SESION_VENCIDA = "Tu sesión venció: inicia sesión de nuevo.";
-    static final String SESION_INVALIDA = "La sesión no es válida: inicia sesión de nuevo.";
-    static final String SIN_SESION = "Inicia sesión para continuar.";
+    public static final String EMPRESA_DESACTIVADA =
+            "Tu empresa está desactivada: comunícate con el equipo de InspectIA.";
+    public static final String SESION_VENCIDA = "Tu sesión venció: inicia sesión de nuevo.";
+    public static final String SESION_INVALIDA = "La sesión no es válida: inicia sesión de nuevo.";
+    public static final String SIN_SESION = "Inicia sesión para continuar.";
+    public static final String CONTRASENA_CAMBIADA = "Tu contraseña cambió: inicia sesión de nuevo.";
 
     /** Costo bajo, solo para crear rápido los usuarios de prueba: el backend acepta hashes de cualquier costo. */
     private static final BCryptPasswordEncoder BCRYPT = new BCryptPasswordEncoder(4);
@@ -62,28 +67,39 @@ final class ApiSesion {
     private final MockMvcTester mvc;
     private final JdbcTemplate jdbc;
 
-    ApiSesion(MockMvcTester mvc, JdbcTemplate jdbc) {
+    /**
+     * Crea las llamadas de una prueba.
+     *
+     * @param mvc el cliente de la API
+     * @param jdbc la base de la prueba
+     */
+    public ApiSesion(MockMvcTester mvc, JdbcTemplate jdbc) {
         this.mvc = mvc;
         this.jdbc = jdbc;
     }
 
     /** Pide iniciar sesión. */
-    MvcTestResult iniciar(String correo, String contrasena) {
+    public MvcTestResult iniciar(String correo, String contrasena) {
         Map<String, Object> datos = new LinkedHashMap<>();
         datos.put("correo", correo);
         datos.put("contrasena", contrasena);
         return enviar(HttpMethod.POST, RUTA, datos, null);
     }
 
-    /** Inicia sesión con la contraseña correcta y devuelve el token; falla si no responde 200. */
-    String token(String correo) {
-        MvcTestResult resultado = iniciar(correo, CONTRASENA);
+    /** Inicia sesión con la contraseña {@link #CONTRASENA} y devuelve el token; falla si no responde 200. */
+    public String token(String correo) {
+        return token(correo, CONTRASENA);
+    }
+
+    /** Inicia sesión con la contraseña dada y devuelve el token; falla si no responde 200. */
+    public String token(String correo, String contrasena) {
+        MvcTestResult resultado = iniciar(correo, contrasena);
         assertThat(resultado).hasStatus(HttpStatus.OK);
         return (String) json(resultado).get("token");
     }
 
     /** Pide la sesión actual con el token; sin token si es {@code null}. */
-    MvcTestResult sesion(String token) {
+    public MvcTestResult sesion(String token) {
         return enviar(HttpMethod.GET, RUTA, null, token);
     }
 
@@ -93,7 +109,7 @@ final class ApiSesion {
      * @param datos el cuerpo, que se envía como JSON; {@code null} si no lleva
      * @param token el token; {@code null} para enviar la petición sin sesión
      */
-    MvcTestResult enviar(HttpMethod metodo, String uri, Object datos, String token) {
+    public MvcTestResult enviar(HttpMethod metodo, String uri, Object datos, String token) {
         MockMvcTester.MockMvcRequestBuilder peticion = mvc.method(metodo).uri(uri);
         if (token != null) {
             peticion.header(HttpHeaders.AUTHORIZATION, "Bearer " + token);
@@ -105,11 +121,12 @@ final class ApiSesion {
     }
 
     /** Pide la sesión actual con el encabezado {@code Authorization} tal cual. */
-    MvcTestResult conEncabezado(String autorizacion) {
+    public MvcTestResult conEncabezado(String autorizacion) {
         return mvc.get().uri(RUTA).header(HttpHeaders.AUTHORIZATION, autorizacion).exchange();
     }
 
-    UUID crearEmpresa(String nombre, String nit) {
+    /** Crea una empresa activa en Neiva. */
+    public UUID crearEmpresa(String nombre, String nit) {
         return jdbc.queryForObject("INSERT INTO empresa (nombre, nit, ciudad) VALUES (?, ?, 'Neiva') RETURNING id",
                 UUID.class, nombre, nit);
     }
@@ -119,7 +136,7 @@ final class ApiSesion {
      *
      * @param empresa su empresa; {@code null} para el administrador de la plataforma
      */
-    UUID crearUsuario(UUID empresa, String nombre, String correo, String rol) {
+    public UUID crearUsuario(UUID empresa, String nombre, String correo, String rol) {
         return crearUsuario(empresa, nombre, correo, rol, CONTRASENA);
     }
 
@@ -128,7 +145,7 @@ final class ApiSesion {
      *
      * @param empresa su empresa; {@code null} para el administrador de la plataforma
      */
-    UUID crearUsuario(UUID empresa, String nombre, String correo, String rol, String contrasena) {
+    public UUID crearUsuario(UUID empresa, String nombre, String correo, String rol, String contrasena) {
         String hash = BCRYPT.encode(contrasena);
         if (empresa == null) {
             return jdbc.queryForObject("""
@@ -141,13 +158,37 @@ final class ApiSesion {
     }
 
     /** El cuerpo de la respuesta, leído como un objeto JSON. */
-    static Map<String, Object> json(MvcTestResult resultado) {
-        String cuerpo = new String(resultado.getResponse().getContentAsByteArray(), StandardCharsets.UTF_8);
-        return JsonPath.read(cuerpo, "$");
+    public static Map<String, Object> json(MvcTestResult resultado) {
+        return JsonPath.read(cuerpo(resultado), "$");
+    }
+
+    /** El cuerpo de la respuesta, leído como una lista JSON de objetos. */
+    public static List<Map<String, Object>> lista(MvcTestResult resultado) {
+        return JsonPath.read(cuerpo(resultado), "$");
+    }
+
+    /** Los errores de una respuesta 400, 403 o 409: un {@code campo} y un {@code mensaje} por cada uno. */
+    public static List<Map<String, Object>> errores(MvcTestResult resultado) {
+        return JsonPath.read(cuerpo(resultado), "$.errores");
+    }
+
+    /**
+     * Un error como lo responde la API.
+     *
+     * @param campo el campo de la petición; {@code null} si el error no es de un campo, y entonces no
+     *              aparece en la respuesta
+     */
+    public static Map<String, Object> error(String campo, String mensaje) {
+        Map<String, Object> error = new LinkedHashMap<>();
+        if (campo != null) {
+            error.put("campo", campo);
+        }
+        error.put("mensaje", mensaje);
+        return error;
     }
 
     /** El usuario que deben responder el inicio de sesión y la sesión actual. */
-    static Map<String, Object> usuario(UUID id, String nombre, String correo, String rol, UUID empresa,
+    public static Map<String, Object> usuario(UUID id, String nombre, String correo, String rol, UUID empresa,
             String nombreEmpresa) {
         Map<String, Object> usuario = new LinkedHashMap<>();
         usuario.put("id", id.toString());
@@ -159,7 +200,11 @@ final class ApiSesion {
     }
 
     /** Borra lo que guardaron las pruebas, que sí confirman sus transacciones. */
-    static void borrarDatos(JdbcTemplate jdbc) {
+    public static void borrarDatos(JdbcTemplate jdbc) {
         jdbc.execute("TRUNCATE lote, rango_recomendacion, usuario, empresa CASCADE");
+    }
+
+    private static String cuerpo(MvcTestResult resultado) {
+        return new String(resultado.getResponse().getContentAsByteArray(), StandardCharsets.UTF_8);
     }
 }

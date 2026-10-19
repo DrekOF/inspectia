@@ -1,13 +1,17 @@
 {#
   Nombre: servicio.java.j2
-  Descripción: Plantilla del servicio de la API de una entidad: valida, guarda y responde (RP-23).
+  Descripción: Plantilla del servicio de la API de una entidad: valida, guarda y responde (RP-23). En
+               una entidad por empresa, cada consulta se limita a la empresa de la sesión (RNF-03). Los
+               efectos de las reglas cambian el registro antes de escribirlo en la base.
   Fecha de creación: 13/10/2026
-  Actualización: 14/10/2026
+  Actualización: 18/10/2026
   Autor: Equipo InspectIA
-  Versión: 1.1
+  Versión: 1.3
 #}
 {% from 'java/_macros.j2' import encabezado %}
 {% set con_unicos_al_crear = consultas or (crear_con and crear_con.consultas) %}
+{% set sesion_param = ', UsuarioEnSesion sesion' if con_empresa else '' %}
+{% set sesion_arg = ', sesion' if con_empresa else '' %}
 {{ encabezado(header) }}
 package {{ paquete }};
 
@@ -23,6 +27,15 @@ import {{ i }};
  *   <li>Los datos únicos: si alguno ya existe, responde 409.</li>
  * </ol>
  * Lo que se guarda en una operación queda en una sola transacción: o se guarda todo o nada.
+{% if con_empresa %}
+ *
+ * <p>Cada operación recibe el usuario de la sesión y solo ve y modifica los registros de su empresa:
+ * un registro de otra empresa responde 404, como si no existiera (RNF-03).
+{% endif %}
+{% if contrasena %}
+ *
+ * <p>La contraseña nunca se guarda tal cual: se guarda su hash BCrypt.
+{% endif %}
  */
 @Service
 @Transactional(readOnly = true)
@@ -57,10 +70,18 @@ public class {{ clase }}Servicio {
      *
      * @param pagina número de la página, desde 0
      * @param tamano filas por página
+{% if con_empresa %}
+     * @param sesion el usuario de la sesión: solo se listan los de su empresa
+{% endif %}
      * @return la página
      */
-    public Pagina<{{ clase }}Respuesta> listar(int pagina, int tamano) {
+    public Pagina<{{ clase }}Respuesta> listar(int pagina, int tamano{{ sesion_param }}) {
+{% if con_empresa %}
+        return Pagina.de(repositorio.findAllByEmpresaId(sesion.empresaId(), PageRequest.of(pagina, tamano, ORDEN)),
+                {{ clase }}Mapeador::respuesta);
+{% else %}
         return Pagina.de(repositorio.findAll(PageRequest.of(pagina, tamano, ORDEN)), {{ clase }}Mapeador::respuesta);
+{% endif %}
     }
 {% endif %}
 {% if 'ver' in operaciones %}
@@ -69,11 +90,14 @@ public class {{ clase }}Servicio {
      * Un registro por su identificador.
      *
      * @param id el identificador
+{% if con_empresa %}
+     * @param sesion el usuario de la sesión
+{% endif %}
      * @return el registro
-     * @throws NoEncontradoExcepcion si no existe (404)
+     * @throws NoEncontradoExcepcion si no existe{{ ' o es de otra empresa' if con_empresa else '' }} (404)
      */
-    public {{ clase }}Respuesta ver(UUID id) {
-        return {{ clase }}Mapeador.respuesta(buscar(id));
+    public {{ clase }}Respuesta ver(UUID id{{ sesion_param }}) {
+        return {{ clase }}Mapeador.respuesta(buscar(id{{ sesion_arg }}));
     }
 {% endif %}
 {% if 'crear' in operaciones %}
@@ -82,15 +106,21 @@ public class {{ clase }}Servicio {
      * {{ al_crear | envolver('     * ') }}
      *
      * @param solicitud los datos, ya validados con el JSON
+{% if con_empresa %}
+     * @param sesion el usuario de la sesión: el registro queda en su empresa
+{% endif %}
      * @return lo que quedó guardado
      * @throws ReglaIncumplidaExcepcion si no se cumple una regla (400)
      * @throws DatoRepetidoExcepcion si un dato único ya existe (409)
      */
     @Transactional
-    public {{ clase }}Respuesta crear({{ clase }}CrearSolicitud solicitud) {
+    public {{ clase }}Respuesta crear({{ clase }}CrearSolicitud solicitud{{ sesion_param }}) {
         {{ clase }} {{ var }} = {{ clase }}Mapeador.deSolicitud(solicitud);
+{% if con_empresa %}
+        {{ var }}.setEmpresaId(sesion.empresaId());
+{% endif %}
 {% if reglas_por_operacion.crear %}
-        revisarReglasAlCrear({{ var }});
+        revisarReglasAlCrear({{ var }}{{ sesion_arg }});
 {% endif %}
 {% if con_unicos_al_crear %}
         List<CampoInvalido> repetidos = new ArrayList<>();
@@ -110,6 +140,12 @@ public class {{ clase }}Servicio {
             throw new DatoRepetidoExcepcion(repetidos);
         }
 {% endif %}
+{% if contrasena %}
+        {{ var }}.{{ contrasena.setter }}(codificador.encode(solicitud.{{ contrasena.nombre }}()));
+{% endif %}
+{% for f in efectos_por_operacion.crear %}
+        reglas.{{ f.metodo }}({{ var }}{{ sesion_arg }});
+{% endfor %}
         repositorio.saveAndFlush({{ var }});
 {% if crear_con %}
         {{ crear_con.repositorio_var }}.saveAndFlush({{ clase }}Mapeador.{{ crear_con.metodo }}(solicitud.{{ crear_con.nombre }}(){{ (', ' ~ var ~ '.getId()') if crear_con.con_empresa else '' }}{% if crear_con.contrasena %},
@@ -126,21 +162,30 @@ public class {{ clase }}Servicio {
     /**
      * Edita un registro con las mismas validaciones del registro. Los cambios se revisan en una copia
      * y solo se aplican si todo está bien.
+{% if contrasena %}
+     * Si llega una contraseña, la restablece; si no, la deja como estaba.
+{% endif %}
+{% for f in efectos_por_operacion.editar %}
+     * Después aplica el efecto {@code {{ f.codigo }}}{{ ', si llega una contraseña' if f.solo_con_contrasena else '' }}.
+{% endfor %}
      *
      * @param id el registro que se edita
      * @param solicitud los datos, ya validados con el JSON
+{% if con_empresa %}
+     * @param sesion el usuario de la sesión
+{% endif %}
      * @return lo que quedó guardado
-     * @throws NoEncontradoExcepcion si no existe (404)
+     * @throws NoEncontradoExcepcion si no existe{{ ' o es de otra empresa' if con_empresa else '' }} (404)
      * @throws ReglaIncumplidaExcepcion si no se cumple una regla (400)
      * @throws DatoRepetidoExcepcion si un dato único ya lo tiene otro registro (409)
      */
     @Transactional
-    public {{ clase }}Respuesta editar(UUID id, {{ clase }}EditarSolicitud solicitud) {
-        {{ clase }} {{ var }} = buscar(id);
+    public {{ clase }}Respuesta editar(UUID id, {{ clase }}EditarSolicitud solicitud{{ sesion_param }}) {
+        {{ clase }} {{ var }} = buscar(id{{ sesion_arg }});
         {{ clase }} propuesta = {{ clase }}Mapeador.copia({{ var }});
         {{ clase }}Mapeador.aplicar(solicitud, propuesta);
 {% if reglas_por_operacion.editar %}
-        revisarReglasAlEditar(propuesta);
+        revisarReglasAlEditar(propuesta{{ sesion_arg }}{{ (', solicitud.' ~ contrasena.nombre ~ '() != null') if editar_con_contrasena else '' }});
 {% endif %}
 {% if consultas %}
         List<CampoInvalido> repetidos = new ArrayList<>();
@@ -154,6 +199,17 @@ public class {{ clase }}Servicio {
         }
 {% endif %}
         {{ clase }}Mapeador.aplicar(solicitud, {{ var }});
+{% if contrasena %}
+        if (solicitud.{{ contrasena.nombre }}() != null) {
+            {{ var }}.{{ contrasena.setter }}(codificador.encode(solicitud.{{ contrasena.nombre }}()));
+{% for f in efectos_por_operacion.editar if f.solo_con_contrasena %}
+            reglas.{{ f.metodo }}({{ var }}{{ sesion_arg }});
+{% endfor %}
+        }
+{% endif %}
+{% for f in efectos_por_operacion.editar if not f.solo_con_contrasena %}
+        reglas.{{ f.metodo }}({{ var }}{{ sesion_arg }});
+{% endfor %}
         repositorio.flush();
         return {{ clase }}Mapeador.respuesta({{ var }});
     }
@@ -164,32 +220,47 @@ public class {{ clase }}Servicio {
      * {{ 'Desactiva' if operacion == 'desactivar' else 'Reactiva' }} un registro: cambia {@code {{ activo.campo }}} y no borra nada.
      *
      * @param id el registro
+{% if con_empresa %}
+     * @param sesion el usuario de la sesión
+{% endif %}
      * @return lo que quedó guardado
-     * @throws NoEncontradoExcepcion si no existe (404)
+     * @throws NoEncontradoExcepcion si no existe{{ ' o es de otra empresa' if con_empresa else '' }} (404)
      */
     @Transactional
-    public {{ clase }}Respuesta {{ operacion }}(UUID id) {
-        {{ clase }} {{ var }} = buscar(id);
+    public {{ clase }}Respuesta {{ operacion }}(UUID id{{ sesion_param }}) {
+        {{ clase }} {{ var }} = buscar(id{{ sesion_arg }});
 {% if reglas_por_operacion[operacion] %}
-        revisarReglasAl{{ operacion | capitalize }}({{ var }});
+        revisarReglasAl{{ operacion | capitalize }}({{ var }}{{ sesion_arg }});
 {% endif %}
         {{ var }}.{{ activo.setter }}({{ valor }});
+{% for f in efectos_por_operacion[operacion] %}
+        reglas.{{ f.metodo }}({{ var }}{{ sesion_arg }});
+{% endfor %}
         repositorio.flush();
         return {{ clase }}Mapeador.respuesta({{ var }});
     }
 {% endfor %}
 {% if ['ver', 'editar', 'desactivar', 'reactivar'] | select('in', operaciones) | list %}
 
+{% if con_empresa %}
+    /** El registro, solo si es de la empresa de la sesión: si es de otra, responde que no existe (RNF-03). */
+    private {{ clase }} buscar(UUID id, UsuarioEnSesion sesion) {
+        return repositorio.findByIdAndEmpresaId(id, sesion.empresaId())
+                .orElseThrow(() -> new NoEncontradoExcepcion("{{ entidad }} " + id));
+    }
+{% else %}
     private {{ clase }} buscar(UUID id) {
         return repositorio.findById(id).orElseThrow(() -> new NoEncontradoExcepcion("{{ entidad }} " + id));
     }
 {% endif %}
+{% endif %}
 {% for operacion, lista in reglas_por_operacion.items() if lista %}
+{% set con_contrasena = operacion == 'editar' and editar_con_contrasena %}
 
-    private void revisarReglasAl{{ operacion | capitalize }}({{ clase }} {{ var }}) {
+    private void revisarReglasAl{{ operacion | capitalize }}({{ clase }} {{ var }}{{ sesion_param }}{{ ', boolean cambiaContrasena' if con_contrasena else '' }}) {
         List<CampoInvalido> incumplidas = new ArrayList<>();
 {% for r in lista %}
-        if (!reglas.{{ r.metodo }}({{ var }})) {
+        if ({{ 'cambiaContrasena && ' if r.solo_con_contrasena else '' }}!reglas.{{ r.metodo }}({{ var }}{{ sesion_arg }})) {
             incumplidas.add(new CampoInvalido({{ ('"' ~ r.campo ~ '"') if r.campo else 'null' }}, "{{ r.clave }}"));
         }
 {% endfor %}

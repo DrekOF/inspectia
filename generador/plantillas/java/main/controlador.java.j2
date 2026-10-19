@@ -1,12 +1,16 @@
 {#
   Nombre: controlador.java.j2
-  Descripción: Plantilla del controlador REST de una entidad, con roles y OpenAPI (RP-23).
+  Descripción: Plantilla del controlador REST de una entidad, con roles y OpenAPI (RP-23). En una
+               entidad por empresa, cada operación recibe el usuario de la sesión (RNF-03).
   Fecha de creación: 13/10/2026
-  Actualización: 14/10/2026
+  Actualización: 18/10/2026
   Autor: Equipo InspectIA
-  Versión: 1.1
+  Versión: 1.2
 #}
 {% from 'java/_macros.j2' import encabezado %}
+{% set sesion_param = '@Parameter(hidden = true) @AuthenticationPrincipal UsuarioEnSesion sesion' %}
+{% set con_sesion = (',\n            ' ~ sesion_param) if con_empresa else '' %}
+{% set sesion_arg = ', sesion' if con_empresa else '' %}
 {{ encabezado(header) }}
 package {{ paquete }};
 
@@ -19,6 +23,11 @@ import {{ i }};
  *
  * <p>Los roles de cada operación salen de {@code operaciones} del JSON: la cadena de seguridad los
  * revisa por ruta ({@link {{ clase }}Acceso}) y {@code @PreAuthorize} es la segunda barrera (RNF-04).
+{% if con_empresa %}
+ *
+ * <p>La empresa sale de la sesión y nunca de la petición: cada operación solo ve y modifica los
+ * registros de la empresa del usuario (RNF-03).
+{% endif %}
  */
 @RestController
 @RequestMapping("{{ ruta_api }}")
@@ -44,6 +53,9 @@ public class {{ clase }}Controlador {
      *
      * @param pagina número de la página, desde 0
      * @param tamano filas por página
+{% if con_empresa %}
+     * @param sesion el usuario de la sesión: solo ve los de su empresa
+{% endif %}
      * @return la página
      */
     @GetMapping
@@ -56,8 +68,8 @@ public class {{ clase }}Controlador {
             @Parameter(description = "Filas por página, de 1 a " + Pagina.TAMANO_MAXIMO + ".")
             @RequestParam(name = "tamano", defaultValue = "" + Pagina.TAMANO_POR_DEFECTO)
             @Min(value = 1, message = "{validacion.minimo}")
-            @Max(value = Pagina.TAMANO_MAXIMO, message = "{validacion.maximo}") int tamano) {
-        return servicio.listar(pagina, tamano);
+            @Max(value = Pagina.TAMANO_MAXIMO, message = "{validacion.maximo}") int tamano{{ con_sesion }}) {
+        return servicio.listar(pagina, tamano{{ sesion_arg }});
     }
 {% elif r.operacion == 'ver' %}
 
@@ -65,13 +77,16 @@ public class {{ clase }}Controlador {
      * Un registro por su identificador.
      *
      * @param id el identificador
+{% if con_empresa %}
+     * @param sesion el usuario de la sesión: un registro de otra empresa no existe para él
+{% endif %}
      * @return el registro
      */
     @GetMapping("/{id}")
     @PreAuthorize("{{ r.preautorizar }}")
     @Operation(summary = "{{ r.verbo }} {{ singular }}", description = {{ roles | java }})
-    public {{ clase }}Respuesta ver(@PathVariable("id") UUID id) {
-        return servicio.ver(id);
+    public {{ clase }}Respuesta ver(@PathVariable("id") UUID id{{ con_sesion }}) {
+        return servicio.ver(id{{ sesion_arg }});
     }
 {% elif r.operacion == 'crear' %}
 
@@ -80,14 +95,17 @@ public class {{ clase }}Controlador {
      *
      * @param solicitud los datos
      * @param ubicacion la dirección de esta petición, para armar la del registro nuevo
+{% if con_empresa %}
+     * @param sesion el usuario de la sesión: el registro queda en su empresa
+{% endif %}
      * @return lo que quedó guardado
      */
     @PostMapping
     @PreAuthorize("{{ r.preautorizar }}")
     @Operation(summary = "{{ r.verbo }} {{ singular }}", description = {{ roles | java }})
     public ResponseEntity<{{ clase }}Respuesta> crear(@Valid @RequestBody {{ clase }}CrearSolicitud solicitud,
-            UriComponentsBuilder ubicacion) {
-        {{ clase }}Respuesta respuesta = servicio.crear(solicitud);
+            UriComponentsBuilder ubicacion{{ con_sesion }}) {
+        {{ clase }}Respuesta respuesta = servicio.crear(solicitud{{ sesion_arg }});
         URI uri = ubicacion.path("{{ ruta_api }}/{id}").buildAndExpand(respuesta.id()).toUri();
         return ResponseEntity.created(uri).body(respuesta);
     }
@@ -98,14 +116,17 @@ public class {{ clase }}Controlador {
      *
      * @param id el registro
      * @param solicitud los datos nuevos
+{% if con_empresa %}
+     * @param sesion el usuario de la sesión: un registro de otra empresa no existe para él
+{% endif %}
      * @return lo que quedó guardado
      */
     @PutMapping("/{id}")
     @PreAuthorize("{{ r.preautorizar }}")
     @Operation(summary = "{{ r.verbo }} {{ singular }}", description = {{ roles | java }})
     public {{ clase }}Respuesta editar(@PathVariable("id") UUID id,
-            @Valid @RequestBody {{ clase }}EditarSolicitud solicitud) {
-        return servicio.editar(id, solicitud);
+            @Valid @RequestBody {{ clase }}EditarSolicitud solicitud{{ con_sesion }}) {
+        return servicio.editar(id, solicitud{{ sesion_arg }});
     }
 {% else %}
 
@@ -113,13 +134,16 @@ public class {{ clase }}Controlador {
      * {{ r.verbo[:-1] }} un registro; no borra nada.
      *
      * @param id el registro
+{% if con_empresa %}
+     * @param sesion el usuario de la sesión: un registro de otra empresa no existe para él
+{% endif %}
      * @return lo que quedó guardado
      */
     @PostMapping("/{id}/{{ r.operacion }}")
     @PreAuthorize("{{ r.preautorizar }}")
     @Operation(summary = "{{ r.verbo }} {{ singular }}", description = {{ ('No borra nada. ' ~ roles) | java }})
-    public {{ clase }}Respuesta {{ r.operacion }}(@PathVariable("id") UUID id) {
-        return servicio.{{ r.operacion }}(id);
+    public {{ clase }}Respuesta {{ r.operacion }}(@PathVariable("id") UUID id{{ con_sesion }}) {
+        return servicio.{{ r.operacion }}(id{{ sesion_arg }});
     }
 {% endif %}
 {% endfor %}

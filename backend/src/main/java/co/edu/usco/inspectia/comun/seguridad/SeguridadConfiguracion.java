@@ -3,9 +3,9 @@
  * Descripción: Cadena de seguridad del servidor: todo /api exige sesión con un token JWT, cada
  *              operación su rol y las contraseñas se guardan con BCrypt (RNF-04, D-28).
  * Fecha de creación: 13/10/2026
- * Actualización: 14/10/2026
+ * Actualización: 18/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.2
+ * Versión: 1.3
  */
 package co.edu.usco.inspectia.comun.seguridad;
 
@@ -31,8 +31,8 @@ import org.springframework.security.web.util.matcher.RequestMatcher;
  * <ul>
  *   <li>Cada petición trae su token en el encabezado {@code Authorization: Bearer}
  *       ({@link ConfiguracionJwt}). En cada una se lee de la base su usuario, con su rol y su
- *       empresa ({@link CargadorDeSesion}): si el usuario o su empresa ya no están activos, la
- *       sesión deja de servir en esa misma petición.</li>
+ *       empresa ({@link CargadorDeSesion}): si el usuario o su empresa ya no están activos, o si su
+ *       contraseña cambió después de emitir el token, la sesión deja de servir en esa misma petición.</li>
  *   <li>Cada módulo aporta sus reglas por ruta ({@link ReglasDeAcceso}); lo demás exige sesión. Las
  *       rutas públicas que lo piden no leen el token; por ejemplo, iniciar sesión.</li>
  *   <li>Sin sesión responde 401 y con un rol sin permiso, 403, en JSON ({@link RespuestasDeSeguridad}).</li>
@@ -71,8 +71,8 @@ public class SeguridadConfiguracion {
                 .logout(AbstractHttpConfigurer::disable)
                 .oauth2ResourceServer(servidor -> servidor
                         .bearerTokenResolver(tokenSalvoEn(sinToken))
-                        .jwt(jwt -> jwt.jwtAuthenticationConverter(
-                                token -> new SesionAutenticada(cargador.cargar(usuarioDe(token), token.getExpiresAt()))))
+                        .jwt(jwt -> jwt.jwtAuthenticationConverter(token -> new SesionAutenticada(
+                                cargador.cargar(usuarioDe(token), token.getIssuedAt(), token.getExpiresAt()))))
                         .authenticationEntryPoint(respuestas)
                         .accessDeniedHandler(respuestas))
                 .exceptionHandling(errores -> errores

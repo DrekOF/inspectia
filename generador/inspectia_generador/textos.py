@@ -2,9 +2,9 @@
 # Descripción: Textos en español e inglés de las entidades (etiquetas, valores y mensajes) y mensajes
 #              generales de las validaciones (RP-11).
 # Fecha de creación: 13/10/2026
-# Actualización: 13/10/2026
+# Actualización: 18/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.0
+# Versión: 1.1
 """Textos en español e inglés que van a ``i18n/generado.properties`` y ``generado_en.properties``.
 
 Las claves siguen la forma ``entidad.atributo.algo``. Los mensajes del JSON llevan ``{nombre}`` con
@@ -29,6 +29,7 @@ MENSAJES_GENERALES = (
     ('validacion.minimo', 'Debe ser mayor o igual a {value}.', 'It must be greater than or equal to {value}.'),
     ('validacion.maximo', 'Debe ser menor o igual a {value}.', 'It must be less than or equal to {value}.'),
     ('validacion.unico', 'Ya existe un registro con este dato.', 'A record with this value already exists.'),
+    ('validacion.valor_no_permitido', 'No puedes asignar este valor.', 'You cannot assign this value.'),
 )
 
 _GENERALES = {clave: (es, en) for clave, es, en in MENSAJES_GENERALES}
@@ -44,6 +45,7 @@ GENERAL_DE = {
     'min': ('validacion.minimo', 'value'),
     'max': ('validacion.maximo', 'value'),
     'unico': ('validacion.unico', None),
+    'valores_en_formulario': ('validacion.valor_no_permitido', None),
 }
 
 

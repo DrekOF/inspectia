@@ -1,10 +1,10 @@
 <!--
 Nombre: README.md (infra)
-Descripción: Qué va en la carpeta infra/ de InspectIA y cómo probar el inicio de sesión en local.
+Descripción: Qué va en la carpeta infra/ de InspectIA, cómo reiniciar la base local y cómo probar el inicio de sesión en local.
 Fecha de creación: 12/10/2026
-Actualización: 14/10/2026
+Actualización: 19/10/2026
 Autor: Equipo InspectIA
-Versión: 1.2
+Versión: 1.3
 -->
 
 # infra
@@ -26,6 +26,16 @@ Qué irá aquí:
 Los flujos de GitHub Actions (RP-18 y RP-19) tienen que estar en `.github/workflows/`, en la raíz del repositorio, porque GitHub solo los busca ahí. Llaman a los scripts de esta carpeta. GitHub Actions se conecta a AWS por OIDC, sin claves guardadas.
 
 La EC2 t4g es ARM (Graviton), así que toda imagen debe funcionar en amd64 y en arm64.
+
+## Base de datos local
+
+Desde la raíz del repositorio, la base se enciende con `docker compose -f infra/docker-compose.yml up -d` y se apaga con `docker compose -f infra/docker-compose.yml down`. Los demás comandos están en la sección Comandos de `CLAUDE.md`.
+
+Si cambia `V1__esquema_inicial.sql`, como cuando RF-03 agregó la columna `usuario.sesiones_desde`, quien ya tenga la base local debe reiniciarla: Flyway no arranca si una migración ya aplicada cambió (P-16). Esto borra los datos locales:
+
+1. `docker compose -f infra/docker-compose.yml down -v`
+2. `docker compose -f infra/docker-compose.yml up -d`
+3. Arranca el backend (`./mvnw spring-boot:run` en `backend/`) y vuelve a crear el administrador con el script (ver «Primer administrador de la plataforma»).
 
 ## Clave de los tokens
 

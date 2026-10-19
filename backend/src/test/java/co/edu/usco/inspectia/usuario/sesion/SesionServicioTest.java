@@ -1,11 +1,12 @@
 /*
  * Nombre: SesionServicioTest.java
  * Descripción: Pruebas unitarias del inicio de sesión con Mockito: una sola comparación BCrypt en cada
- *              intento, bloqueo, contraseñas de más de 72 bytes y entrega del token (RF-01, D-28).
+ *              intento, bloqueo, contraseñas de más de 72 bytes y entrega del token (RF-01, D-28), y
+ *              el corte de las sesiones abiertas antes de cambiar la contraseña (RNF-04, D-30).
  * Fecha de creación: 14/10/2026
- * Actualización: 14/10/2026
+ * Actualización: 18/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.usuario.sesion;
 
@@ -20,6 +21,7 @@ import static org.mockito.Mockito.when;
 
 import co.edu.usco.inspectia.comun.errores.SesionRechazadaExcepcion;
 import co.edu.usco.inspectia.comun.seguridad.EmisorDeTokens;
+import co.edu.usco.inspectia.comun.seguridad.SesionNoValidaExcepcion;
 import co.edu.usco.inspectia.usuario.UsuarioRol;
 import java.time.Clock;
 import java.time.Duration;
@@ -160,10 +162,43 @@ class SesionServicioTest {
         verify(emisor, never()).emitir(any());
     }
 
-    /** Un administrador de empresa activo, con la empresa activa. */
+    @ParameterizedTest(name = "emitido {0} segundos antes del cambio: ¿sirve? {1}")
+    @CsvSource({"1, false", "0, true"})
+    @DisplayName("RNF-04 · C6 · un token emitido antes del segundo en que cambió la contraseña ya no sirve; uno de ese mismo segundo, sí (prueba de límite)")
+    void laSesionSirveDesdeElCambio(long segundosAntes, boolean sirve) {
+        Instant cambio = AHORA.minusSeconds(60);
+        when(repositorio.buscarPorId(ID)).thenReturn(Optional.of(usuario(null, cambio)));
+        Instant emitido = cambio.minusSeconds(segundosAntes);
+        Instant vence = emitido.plus(Duration.ofHours(8));
+
+        if (sirve) {
+            assertThat(servicio.cargar(ID, emitido, vence).id()).isEqualTo(ID);
+        } else {
+            assertThatThrownBy(() -> servicio.cargar(ID, emitido, vence))
+                    .isInstanceOfSatisfying(SesionNoValidaExcepcion.class,
+                            excepcion -> assertThat(excepcion.getClave()).isEqualTo("error.contrasena_cambiada"));
+        }
+    }
+
+    @Test
+    @DisplayName("RNF-04 · si la contraseña nunca cambió, cualquier token vigente del usuario sirve")
+    void sinCambioDeContrasenaSirve() {
+        when(repositorio.buscarPorId(ID)).thenReturn(Optional.of(usuario(null)));
+
+        assertThat(servicio.cargar(ID, AHORA.minus(Duration.ofHours(7)), AHORA.plus(Duration.ofHours(1))).id())
+                .isEqualTo(ID);
+    }
+
+    /** Un administrador de empresa activo, con la empresa activa y sin cambios de contraseña. */
     private static DatosDeSesion usuario(Instant bloqueadoHasta) {
+        return usuario(bloqueadoHasta, null);
+    }
+
+    /** Un administrador de empresa activo, con la empresa activa, que cambió su contraseña en {@code sesionesDesde}. */
+    private static DatosDeSesion usuario(Instant bloqueadoHasta, Instant sesionesDesde) {
         return new DatosDeSesion(ID, "Ana Pérez", CORREO, HASH, UsuarioRol.ADMIN_EMPRESA, true,
-                bloqueadoHasta == null ? null : enUtc(bloqueadoHasta), EMPRESA, "Cacaos del Huila", true);
+                bloqueadoHasta == null ? null : enUtc(bloqueadoHasta),
+                sesionesDesde == null ? null : enUtc(sesionesDesde), EMPRESA, "Cacaos del Huila", true);
     }
 
     private static OffsetDateTime enUtc(Instant instante) {

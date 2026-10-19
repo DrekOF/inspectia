@@ -3,16 +3,16 @@
     "nombre": "fichas.json",
     "descripcion": "Fichas de los requerimientos funcionales (formato largo) y no funcionales (formato corto) de InspectIA. Fuente única para las secciones 5 y 6 del documento de requerimientos y, más adelante, para el listado de casos de prueba (RP-13).",
     "fecha_creacion": "12/10/2026",
-    "actualizacion": "14/10/2026",
+    "actualizacion": "19/10/2026",
     "autor": "Equipo InspectIA",
-    "version": "1.7"
+    "version": "1.13"
   },
   "rf": [
     {
       "encabezado": "Iniciar sesión según el rol",
       "titulo": "Iniciar sesión según el rol",
       "codigo": "RF-01",
-      "version": "1.2",
+      "version": "1.5",
       "fuente": "Levantamiento inicial: tres roles con funciones distintas (D-05 y D-13).",
       "descripcion": "El usuario entra con su correo y su contraseña. El sistema verifica los datos y lo lleva al menú de su rol: usuario final, administrador de empresa o administrador de la plataforma.",
       "justificacion": "Cada rol usa funciones distintas y cada empresa solo debe ver sus propios datos (RNF-03 y RNF-04).",
@@ -58,13 +58,13 @@
       },
       "rnf": "RNF-03 (datos separados por empresa) y RNF-04 (autenticación y permisos).",
       "estado": "Aprobado",
-      "observaciones": "Recuperar la contraseña por correo queda fuera de la v1 porque no hay integración con correo. La restablece el administrador de la empresa (RF-03) o, si se trata de un administrador de empresa, el administrador de la plataforma (RF-02)."
+      "observaciones": "Recuperar la contraseña por correo queda fuera de la v1 porque no hay integración con correo. Cada contraseña tiene quién la restablezca (D-30): la de un usuario final, el administrador de su empresa (RF-03); la de un administrador de empresa, el administrador de la plataforma (RF-02) u otro administrador de su empresa (RF-03); y la del administrador de la plataforma, el equipo, con un script de la base que solo se corre con acceso al servidor. Además, cualquier usuario con sesión cambia su propia contraseña escribiendo la actual (RF-18). Cambiar o restablecer una contraseña corta las sesiones abiertas de ese usuario (RNF-04); al cambiar la propia, sigue abierta la sesión desde la que se cambió (RF-18). Cambiar o restablecer una contraseña también deja los intentos fallidos en cero y quita el bloqueo, para que el usuario entre de una vez con la nueva."
     },
     {
       "encabezado": "Registrar empresas y su primer administrador",
       "titulo": "Registrar empresas y su primer administrador",
       "codigo": "RF-02",
-      "version": "1.2",
+      "version": "1.4",
       "fuente": "D-13: el administrador de la plataforma registra las empresas.",
       "descripcion": "El administrador de la plataforma registra una empresa con sus datos básicos y crea el primer administrador de esa empresa. También puede editar los datos de una empresa, desactivarla y reactivarla (D-27).",
       "justificacion": "InspectIA atiende a varias empresas (multiempresa). Cada una necesita su propio espacio y un responsable que gestione sus usuarios.",
@@ -73,9 +73,10 @@
         "b": [
           "El NIT de la empresa no se puede repetir. Se escribe con su dígito de verificación (por ejemplo, 900123456-8) y el sistema valida ese dígito.",
           "El correo del administrador es único en toda la plataforma.",
-          "La contraseña inicial tiene de 8 a 64 caracteres y ocupa como máximo 72 bytes, porque BCrypt solo usa 72; cada letra con tilde y cada eñe ocupan 2 bytes.",
+          "La contraseña inicial tiene de 8 a 64 caracteres y ocupa como máximo 72 bytes, porque BCrypt solo usa 72; cada letra con tilde y cada eñe ocupan 2 bytes. Una contraseña de solo espacios se rechaza con «Este dato es obligatorio.», también al restablecerla.",
           "Al crearse, la empresa recibe los rangos de recomendación por defecto (D-10).",
           "El administrador de la plataforma también puede restablecer la contraseña de un administrador de empresa.",
+          "Restablecer la contraseña quita el bloqueo por intentos fallidos (RF-01).",
           "Al desactivar una empresa, sus usuarios no pueden iniciar sesión y no se borra ningún dato; al reactivarla, sus usuarios activos pueden volver a entrar (D-27).",
           "Al editar una empresa (nombre, NIT y ciudad) se aplican las mismas validaciones del registro (D-27)."
         ]
@@ -119,7 +120,7 @@
       "encabezado": "Gestionar los usuarios de la empresa",
       "titulo": "Gestionar los usuarios de la empresa",
       "codigo": "RF-03",
-      "version": "1.3",
+      "version": "1.6",
       "fuente": "Levantamiento inicial: hasta 25 usuarios por empresa, incluido el administrador.",
       "descripcion": "El administrador de la empresa crea, edita y desactiva los usuarios de su empresa, hasta 25 contando al administrador.",
       "justificacion": "Cada empresa controla quién usa InspectIA y con qué rol.",
@@ -128,10 +129,12 @@
         "b": [
           "Máximo 25 usuarios activos por empresa, incluido el administrador.",
           "El correo es único en toda la plataforma, porque con él se inicia sesión (RF-01).",
-          "La contraseña tiene de 8 a 64 caracteres y ocupa como máximo 72 bytes, porque BCrypt solo usa 72; cada letra con tilde y cada eñe ocupan 2 bytes.",
+          "La contraseña tiene de 8 a 64 caracteres y ocupa como máximo 72 bytes, porque BCrypt solo usa 72; cada letra con tilde y cada eñe ocupan 2 bytes. Una contraseña de solo espacios se rechaza con «Este dato es obligatorio.», al crearla y al restablecerla.",
+          "Restablecer la contraseña quita el bloqueo por intentos fallidos (RF-01).",
           "Solo ve y gestiona los usuarios de su propia empresa (RNF-03).",
           "Los usuarios no se borran, se desactivan, para no perder quién hizo cada análisis.",
-          "El administrador no puede cambiar su propio rol: si fuera el único administrador, la empresa quedaría sin quien la gestione, porque el administrador de la plataforma no edita usuarios."
+          "El administrador no puede cambiar su propio rol: si fuera el único administrador, la empresa quedaría sin quien la gestione, porque el administrador de la plataforma no edita usuarios.",
+          "El administrador no puede cambiar su propia contraseña desde la gestión de usuarios: la cambia en «Cambiar contraseña» (RF-18), escribiendo la actual."
         ]
       },
       "prioridad": "Alta",
@@ -160,12 +163,13 @@
           "El administrador no puede desactivarse a sí mismo.",
           "El administrador no puede cambiar su propio rol: si lo intenta, el sistema no guarda el cambio y explica por qué.",
           "No puede ver ni editar usuarios de otra empresa.",
-          "Si un administrador de empresa envía a la API un usuario con rol ADMIN_PLATAFORMA, la API responde «prohibido» (403) y no guarda nada (prueba de seguridad, RP-12)."
+          "Si un administrador de empresa envía a la API un usuario con rol ADMIN_PLATAFORMA, la API responde «prohibido» (403) y no guarda nada (prueba de seguridad, RP-12).",
+          "El administrador no puede cambiar su propia contraseña desde la gestión de usuarios: para eso está «Cambiar contraseña» (RF-18)."
         ]
       },
       "rnf": "RNF-02 (capacidad), RNF-03 (datos separados por empresa) y RNF-04 (autenticación y permisos).",
       "estado": "Aprobado",
-      "observaciones": "CRUD generado desde el JSON de la entidad usuario (RP-23, D-21), más la regla del límite de 25."
+      "observaciones": "CRUD generado desde el JSON de la entidad usuario (RP-23, D-21), más la regla del límite de 25. La parte del historial de C6 (sus análisis siguen en el historial) se prueba con RF-14."
     },
     {
       "encabezado": "Registrar un lote",
@@ -794,6 +798,51 @@
       "rnf": "RNF-04 (autenticación y permisos) y RNF-07 (F1-score mínimo).",
       "estado": "Aprobado",
       "observaciones": ""
+    },
+    {
+      "encabezado": "Cambiar la propia contraseña",
+      "titulo": "Cambiar la propia contraseña",
+      "codigo": "RF-18",
+      "version": "1.3",
+      "fuente": "D-30: cada contraseña tiene quién la restablezca, y cada usuario puede cambiar la suya.",
+      "descripcion": "Cualquier usuario con sesión cambia su propia contraseña desde la app: escribe la actual y la nueva.",
+      "justificacion": "Sin integración con correo no hay recuperación de contraseña por correo (RF-01). Así cada usuario puede cambiar la suya sin depender de otra persona; por ejemplo, la contraseña inicial que le dio su administrador.",
+      "precondiciones": "El usuario inició sesión (RF-01).",
+      "restricciones": {
+        "b": [
+          "Pide la contraseña actual.",
+          "La contraseña nueva tiene de 8 a 64 caracteres y ocupa como máximo 72 bytes, porque BCrypt solo usa 72; cada letra con tilde y cada eñe ocupan 2 bytes. Una contraseña nueva de solo espacios se rechaza con «Este dato es obligatorio.», como al crearla o restablecerla.",
+          "Una contraseña actual errada cuenta como intento fallido para el bloqueo de RF-01, para que esta función no sirva para adivinar contraseñas. Durante el bloqueo tampoco se puede cambiar la contraseña.",
+          "Cada usuario solo cambia la suya. Las de los demás las restablece quien corresponde (D-30): la de un usuario final, su administrador (RF-03); la de un administrador de empresa, el administrador de la plataforma (RF-02)."
+        ]
+      },
+      "prioridad": "Media",
+      "dificultad": "Baja",
+      "dependencia": "Depende de RF-01.",
+      "actores": "Usuario final, administrador de empresa y administrador de la plataforma.",
+      "entradas": "Contraseña actual y contraseña nueva.",
+      "proceso": {
+        "n": [
+          "El usuario abre «Cambiar contraseña».",
+          "Escribe su contraseña actual y la nueva.",
+          "El sistema verifica la contraseña actual y valida la nueva.",
+          "El sistema guarda la contraseña nueva."
+        ]
+      },
+      "salida": "Contraseña cambiada: desde ese momento, el usuario inicia sesión con la nueva.",
+      "postcondiciones": "La contraseña anterior ya no sirve para iniciar sesión.",
+      "criterios": {
+        "b": [
+          "Con la contraseña actual correcta y una nueva válida, la contraseña cambia: la nueva inicia sesión y la anterior ya no.",
+          "Con la contraseña actual errada no cambia nada, y el intento cuenta para el bloqueo de RF-01: después de 5 fallos seguidos, la cuenta se bloquea 15 minutos y tampoco se puede cambiar la contraseña hasta que termine.",
+          "La contraseña nueva acepta de 8 a 64 caracteres: con 7 o con 65 se rechaza (prueba de límite).",
+          "Una contraseña nueva de 64 caracteres con 8 eñes (72 bytes) se acepta; con 9 eñes (73 bytes) se rechaza con el mensaje «La contraseña es demasiado larga: usa menos caracteres o menos tildes y eñes» (prueba de límite).",
+          "Al cambiarla, la sesión desde la que se cambió sigue abierta y las demás dejan de servir."
+        ]
+      },
+      "rnf": "RNF-04 (autenticación y permisos).",
+      "estado": "Aprobado",
+      "observaciones": "Si el administrador de la plataforma olvida su contraseña, la restablece el equipo con un script de la base que solo se corre con acceso al servidor (D-30)."
     }
   ],
   "rnf": [
@@ -854,7 +903,7 @@
       "titulo": "Exigir autenticación y restringir cada función según el rol",
       "codigo": "RNF-04",
       "tipo": "Seguridad",
-      "version": "1.0",
+      "version": "1.1",
       "descripcion": "Todo, salvo la pantalla de inicio de sesión, exige una sesión iniciada, y cada función solo la puede usar el rol que le corresponde. La conexión siempre va cifrada (HTTPS).",
       "prioridad": "Alta",
       "criterios": {
@@ -863,7 +912,8 @@
           "Con un rol sin permiso, responde «prohibido» (403); por ejemplo, cuando un usuario final intenta gestionar usuarios.",
           "Las contraseñas se guardan con hash (BCrypt), nunca en texto plano.",
           "La sesión vence a las 8 horas.",
-          "Después de 5 intentos fallidos seguidos, la cuenta se bloquea 15 minutos."
+          "Después de 5 intentos fallidos seguidos, la cuenta se bloquea 15 minutos.",
+          "Al cambiar o restablecer una contraseña, las sesiones abiertas antes del cambio dejan de servir."
         ]
       }
     },
