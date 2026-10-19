@@ -4,7 +4,7 @@ Descripción: Casos de prueba de InspectIA por ficha y criterio de aceptación, 
              tienen prueba (RP-13). Archivo generado por generador/casos_de_prueba.py: no se edita a mano;
              sale de specs/fichas.json y de las marcas de las pruebas.
 Fecha de creación: 12/10/2026
-Actualización: 18/10/2026
+Actualización: 19/10/2026
 Autor: Equipo InspectIA (generado por generador/casos_de_prueba.py v1.1)
 Versión: 1.1
 -->

@@ -4,7 +4,7 @@ Descripción: Registro paso a paso de cómo se construyó InspectIA, para la sus
 Fecha de creación: 12/10/2026
 Actualización: 19/10/2026
 Autor: Equipo InspectIA
-Versión: 1.10
+Versión: 1.11
 -->
 
 # Bitácora de construcción (RP-24)
@@ -251,6 +251,7 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
   - Bloquear la fila de la empresa al contar el límite de 25, con una prueba de dos peticiones a la vez.
   - Rechazar en todas partes las contraseñas de solo espacios, con la regla en las restricciones de RF-02, RF-03 y RF-18.
   - Avisar en el PR y en `infra/README.md` que V1 cambió y cómo reiniciar la base.
+  - Dejar que cambiar o restablecer una contraseña ponga en cero los intentos fallidos y quite el bloqueo de RF-01, aunque no estaba en los requisitos, para que el usuario entre de una vez con la nueva. Quedó anotado en D-30 y en las restricciones de RF-02 y RF-03, sin criterio nuevo.
 - Archivos o PR: la rama `feature/RF-03-usuarios`; el PR lo abre Cristhian.
 
 ## Plantilla para nuevas entradas
