@@ -5,7 +5,7 @@
 # Fecha de creación: 19/10/2026
 # Actualización: 19/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.0
+# Versión: 1.1
 #
 # Uso, con la base encendida:
 #   powershell -ExecutionPolicy Bypass -File infra\bd\restablecer-admin-plataforma.ps1
@@ -76,13 +76,28 @@ if ($contrasena -cne (LeerSinMostrar 'Repítela')) {
     exit 1
 }
 
-# PowerShell 5.1 pasa el texto a los programas en ASCII si no se le indica otra cosa: las tildes del
-# script llegarían como «?».
-$OutputEncoding = New-Object System.Text.UTF8Encoding $false
-
 $env:INSPECTIA_ADMIN_CORREO = $correo
 $env:INSPECTIA_ADMIN_CONTRASENA_NUEVA = $contrasena
+
+# Las tildes van y vienen en UTF-8, y al terminar todo queda como estaba:
+#   - Lo que va a psql: Windows PowerShell 5.1 le pasa el texto a los programas en ASCII si no se le
+#     indica otra cosa, y las tildes del .sql llegarían como «?». Se cambia $OutputEncoding en el ámbito
+#     global, porque si el script se llama desde otro, o desde la consola con «.\», el de su propio
+#     ámbito no cuenta.
+#   - Lo que vuelve de psql: si PowerShell captura esa salida (en PowerShell ISE, en una variable o con
+#     Tee-Object), la lee con la página de códigos de la consola. Mientras corre psql, la consola lee en
+#     UTF-8. Sin consola no hay nada que cambiar.
+$entradaAnterior = $global:OutputEncoding
+$salidaAnterior = $null
 try {
+    $salidaAnterior = [Console]::OutputEncoding
+    [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding $false
+} catch {
+    $salidaAnterior = $null
+}
+$codigo = 1
+try {
+    $global:OutputEncoding = New-Object System.Text.UTF8Encoding $false
     Get-Content -LiteralPath (Join-Path $PSScriptRoot 'restablecer-admin-plataforma.sql') -Raw -Encoding UTF8 |
         docker compose -f $compose exec -T `
             -e INSPECTIA_ADMIN_CORREO -e INSPECTIA_ADMIN_CONTRASENA_NUEVA `
@@ -90,6 +105,10 @@ try {
             postgres sh -c 'exec psql -X -q -U $POSTGRES_USER -d $POSTGRES_DB'
     $codigo = $LASTEXITCODE
 } finally {
+    $global:OutputEncoding = $entradaAnterior
+    if ($salidaAnterior) {
+        [Console]::OutputEncoding = $salidaAnterior
+    }
     Remove-Item Env:INSPECTIA_ADMIN_CONTRASENA_NUEVA -ErrorAction SilentlyContinue
 }
 exit $codigo
