@@ -1,11 +1,12 @@
 /*
  * Nombre: EmisorDeTokens.java
  * Descripción: Emite el token JWT de una sesión: emisor, usuario y fechas, firmado con HS256 y con
- *              vigencia de 8 horas (RNF-04, D-28).
+ *              vigencia de 8 horas (RNF-04, D-28). Al cambiar la propia contraseña, emite el token con
+ *              el que sigue la misma sesión (RF-18).
  * Fecha de creación: 14/10/2026
- * Actualización: 14/10/2026
+ * Actualización: 19/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.comun.seguridad;
 
@@ -58,16 +59,31 @@ public class EmisorDeTokens {
      */
     public TokenEmitido emitir(UUID usuario) {
         Instant emitido = reloj.instant().truncatedTo(ChronoUnit.SECONDS);
-        Instant vence = emitido.plus(VIGENCIA);
+        return emitir(usuario, emitido, emitido.plus(VIGENCIA));
+    }
+
+    /**
+     * Emite el token con el que sigue una sesión ya abierta, con su hora de emisión y su vencimiento.
+     * Al cambiar la propia contraseña, la sesión sigue con un token emitido en el segundo del cambio, que
+     * vence cuando vencía el anterior: cambiar la contraseña no alarga la sesión (RF-18 C5, RNF-04 C4).
+     * Las fechas van en segundos enteros, como las guarda el token.
+     *
+     * @param usuario el identificador del usuario
+     * @param emitido la hora de emisión
+     * @param vence cuándo vence
+     * @return el token y cuándo vence
+     */
+    public TokenEmitido emitir(UUID usuario, Instant emitido, Instant vence) {
+        Instant vencimiento = vence.truncatedTo(ChronoUnit.SECONDS);
         JwtClaimsSet contenido = JwtClaimsSet.builder()
                 .issuer(EMISOR)
                 .subject(usuario.toString())
-                .issuedAt(emitido)
-                .expiresAt(vence)
+                .issuedAt(emitido.truncatedTo(ChronoUnit.SECONDS))
+                .expiresAt(vencimiento)
                 .build();
         JwsHeader encabezado = JwsHeader.with(MacAlgorithm.HS256).type("JWT").build();
         String token = codificador.encode(JwtEncoderParameters.from(encabezado, contenido)).getTokenValue();
-        return new TokenEmitido(token, vence);
+        return new TokenEmitido(token, vencimiento);
     }
 
     /**

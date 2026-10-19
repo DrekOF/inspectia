@@ -1,11 +1,11 @@
 /*
  * Nombre: SesionRepositorio.java
- * Descripción: Consultas del inicio de sesión sobre la tabla usuario: el usuario con su empresa y el
- *              conteo de intentos fallidos (RF-01, RNF-04).
+ * Descripción: Consultas de la sesión sobre la tabla usuario: el usuario con su empresa, el conteo de
+ *              intentos fallidos y el usuario para cambiar su contraseña (RF-01, RF-18, RNF-04).
  * Fecha de creación: 14/10/2026
- * Actualización: 18/10/2026
+ * Actualización: 19/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 package co.edu.usco.inspectia.usuario.sesion;
 
@@ -50,6 +50,14 @@ public interface SesionRepositorio extends Repository<Usuario, UUID> {
      */
     @Query(USUARIO_CON_EMPRESA + " where u.id = :id")
     Optional<DatosDeSesion> buscarPorId(@Param("id") UUID id);
+
+    /**
+     * El usuario como entidad, para guardar su contraseña nueva (RF-18).
+     *
+     * @param id el identificador
+     * @return el usuario, si existe
+     */
+    Optional<Usuario> findById(UUID id);
 
     /**
      * Registra un intento fallido si la cuenta no está bloqueada en este momento: los intentos durante
