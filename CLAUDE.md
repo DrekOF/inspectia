@@ -2,9 +2,9 @@
 Nombre: CLAUDE.md
 Descripción: Instrucciones del proyecto InspectIA para Claude Code. Se lee al inicio de cada sesión.
 Fecha de creación: 12/10/2026
-Actualización: 14/10/2026
+Actualización: 19/10/2026
 Autor: Equipo InspectIA
-Versión: 1.9
+Versión: 1.10
 -->
 
 # InspectIA
@@ -87,6 +87,9 @@ Desde la raíz del repositorio. Las versiones y cómo instalarlas están en `REA
 - Primer administrador de la plataforma (base encendida, backend arrancado una vez y los datos en `infra/.env`; ver `infra/README.md`):
   - Windows: `powershell -ExecutionPolicy Bypass -File infra\bd\crear-admin-plataforma.ps1`
   - Linux, macOS o Git Bash: `sh infra/bd/crear-admin-plataforma.sh`
+- Restablecer la contraseña del administrador de la plataforma (base encendida; pide la contraseña nueva por teclado y, si no está en `infra/.env`, el correo; ver `infra/README.md`):
+  - Windows: `powershell -ExecutionPolicy Bypass -File infra\bd\restablecer-admin-plataforma.ps1`
+  - Linux, macOS, Git Bash o el servidor: `sh infra/bd/restablecer-admin-plataforma.sh`
 - Generador (la primera vez, crea su entorno como dice `generador/README.md`; en Linux o macOS, `generador/.venv/bin/python`):
   - Revisar los JSON: `generador/.venv/Scripts/python generador/generar.py validar`
   - Generar: `generador/.venv/Scripts/python generador/generar.py generar`

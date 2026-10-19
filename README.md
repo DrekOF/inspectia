@@ -2,9 +2,9 @@
 Nombre: README.md
 Descripción: Presentación del monorepo de InspectIA: estructura, versiones, requisitos del entorno de desarrollo, base de datos local y cita del dataset.
 Fecha de creación: 12/10/2026
-Actualización: 14/10/2026
+Actualización: 19/10/2026
 Autor: Equipo InspectIA
-Versión: 1.3
+Versión: 1.4
 -->
 
 # InspectIA
@@ -138,6 +138,7 @@ Los comandos están en la sección Comandos de `CLAUDE.md`. En resumen:
 - **Backend:** desde `backend/`, `./mvnw verify` corre todas las pruebas (las de integración usan PostgreSQL 18 en Testcontainers, con Docker Desktop abierto) y `./mvnw spring-boot:run` lo arranca contra la base local. La API queda documentada con OpenAPI en http://localhost:8080/swagger-ui.html.
 - **Primer administrador de la plataforma:** lo crea un script de la base de datos; los pasos están en `infra/README.md`.
 - **Inicio de sesión:** `POST /api/v1/sesion` entrega un token que vence a las 8 horas; las demás rutas lo piden en el encabezado `Authorization: Bearer` (D-28). En Swagger UI, el botón «Authorize» recibe ese token. Los pasos para probarlo están en `infra/README.md`.
+- **Contraseñas:** cada usuario cambia la suya con `PUT /api/v1/sesion/contrasena` (RF-18). Si el administrador de la plataforma olvida la suya, el equipo la restablece con un script de la base de datos (D-30); los pasos están en `infra/README.md`.
 - **Generador:** los CRUD (tablas, backend y, más adelante, pantallas) salen de `specs/entidades/*.json` y no se editan a mano (RP-23). Ver `generador/README.md`.
 - **Casos de prueba:** `docs/casos-de-prueba.md` lista cada criterio de aceptación con sus pruebas y los que aún no tienen ninguna (RP-13). Lo arma `generador/casos_de_prueba.py` desde las marcas de las pruebas.
 
