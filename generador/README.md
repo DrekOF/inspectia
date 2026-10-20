@@ -2,9 +2,9 @@
 Nombre: README.md (generador)
 Descripción: Qué hace el generador de InspectIA (RP-23), cómo se usa y cómo se prueba.
 Fecha de creación: 12/10/2026
-Actualización: 18/10/2026
+Actualización: 20/10/2026
 Autor: Equipo InspectIA
-Versión: 1.5
+Versión: 1.6
 -->
 
 # generador
@@ -19,9 +19,9 @@ Scripts de Python 3.13 que leen las entidades de `specs/entidades/*.json` (forma
 | Todas las entidades | `backend/src/generated/resources/i18n/generado.properties` y `generado_en.properties` | Etiquetas, valores de las listas y mensajes en español y en inglés (RP-11) |
 | Las entidades con CRUD | `backend/src/generated/java/.../<modulo>/` | Entidad JPA, repositorio, un `enum` por lista y los valores iniciales |
 | Las entidades de `alcance.json` | `backend/src/generated/java/.../<modulo>/` | API REST: servicio, controlador, reglas de acceso por ruta, solicitudes, respuesta, mapeador y la interfaz de las reglas |
-| Las entidades de `alcance.json` | `backend/src/test-generated/java/.../<modulo>/<Clase>ApiGeneradaIT.java` | Prueba de integración: un caso por cada permiso y cada validación del JSON, más los datos únicos |
+| Las entidades de `alcance.json` | `backend/src/test-generated/java/.../<modulo>/<Clase>ApiGeneradaIT.java` | Prueba de integración: un caso por cada permiso y cada validación del JSON, más los datos únicos. En una edición en bloque, también las filas completas, los datos de solo lectura y los valores por defecto |
 
-`alcance.json` dice qué entidades con CRUD tienen API. Hoy son `empresa` (RF-02) y `usuario` (RF-03, una API por empresa); los rangos entran con RF-13. Las pantallas del frontend llegan en otra tarea. Cómo responde la API generada y qué no soporta todavía está en `specs/entidades/README.md`.
+`alcance.json` dice qué entidades con CRUD tienen API. Hoy son las tres: `empresa` (RF-02), `usuario` (RF-03, una API por empresa) y `rango_recomendacion` (RF-13, una API de edición en bloque). Las pantallas del frontend llegan en otra tarea. Cómo responde la API generada y qué no soporta todavía está en `specs/entidades/README.md`.
 
 Las carpetas generadas son solo del generador: `generar` borra lo que ya no se genera. Lo escrito a mano, como las reglas de cada módulo (`<modulo>/reglas/`) y el módulo `comun`, va fuera de ellas.
 
@@ -83,3 +83,5 @@ Cada prueba lleva `@pytest.mark.caso("…")` con la ficha o el requisito que cub
 `pruebas/ejemplos/producto.json` es la entidad producto de la pauta del docente para el back-end (id, nombre, categoria, descripcion, estado). Las pruebas generan su tabla y su API junto con empresa y usuario, para demostrar que el generador sirve para otra temática. No entra a la app.
 
 `pruebas/ejemplos/empresa_generada/` guarda lo que el generador escribe para la API de empresa. Una prueba revisa que un cambio al generador no lo mueva, salvo el header. Si cambias una plantilla a propósito y cambia lo de empresa, revisa la diferencia y copia ahí los archivos nuevos.
+
+Otra prueba revisa que lo generado no lleve valores de Python (`True`, `False` ni `None`), como un `example = "True"` en OpenAPI: un valor de un JSON va como se escribe en Java o en JSON.

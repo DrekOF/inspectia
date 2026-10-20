@@ -2,9 +2,9 @@
 Nombre: README.md
 Descripción: Presentación del monorepo de InspectIA: estructura, versiones, requisitos del entorno de desarrollo, base de datos local y cita del dataset.
 Fecha de creación: 12/10/2026
-Actualización: 19/10/2026
+Actualización: 20/10/2026
 Autor: Equipo InspectIA
-Versión: 1.4
+Versión: 1.5
 -->
 
 # InspectIA
@@ -139,6 +139,7 @@ Los comandos están en la sección Comandos de `CLAUDE.md`. En resumen:
 - **Primer administrador de la plataforma:** lo crea un script de la base de datos; los pasos están en `infra/README.md`.
 - **Inicio de sesión:** `POST /api/v1/sesion` entrega un token que vence a las 8 horas; las demás rutas lo piden en el encabezado `Authorization: Bearer` (D-28). En Swagger UI, el botón «Authorize» recibe ese token. Los pasos para probarlo están en `infra/README.md`.
 - **Contraseñas:** cada usuario cambia la suya con `PUT /api/v1/sesion/contrasena` (RF-18). Si el administrador de la plataforma olvida la suya, el equipo la restablece con un script de la base de datos (D-30); los pasos están en `infra/README.md`.
+- **Rangos de recomendación:** el administrador de empresa lista, edita en bloque y restaura los 4 rangos de su empresa en `/api/v1/rangos-recomendacion` (RF-13); los pasos para probarlo están en `infra/README.md`.
 - **Generador:** los CRUD (tablas, backend y, más adelante, pantallas) salen de `specs/entidades/*.json` y no se editan a mano (RP-23). Ver `generador/README.md`.
 - **Casos de prueba:** `docs/casos-de-prueba.md` lista cada criterio de aceptación con sus pruebas y los que aún no tienen ninguna (RP-13). Lo arma `generador/casos_de_prueba.py` desde las marcas de las pruebas.
 

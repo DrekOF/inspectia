@@ -2,9 +2,9 @@
 Nombre: modelo-datos.md
 Descripción: Modelo de datos de InspectIA: diagrama entidad-relación, tablas con su trazabilidad a las fichas y decisiones de diseño.
 Fecha de creación: 13/10/2026
-Actualización: 18/10/2026
+Actualización: 20/10/2026
 Autor: Equipo InspectIA
-Versión: 1.5
+Versión: 1.6
 -->
 
 # Modelo de datos de InspectIA
@@ -174,7 +174,7 @@ En las tablas, «Oblig.» dice si el campo es obligatorio y «Único» si no se 
 - La contraseña se escribe en el formulario: de 8 a 64 caracteres y como máximo 72 bytes. Una de solo espacios se rechaza como si faltara, también al restablecerla, porque tampoco serviría para iniciar sesión. Se guarda solo su hash (RF-02, RF-03).
 - Un CHECK exige que `empresa_id` vaya vacía si y solo si el rol es ADMIN_PLATAFORMA (RNF-03).
 
-### 3.3 rango_recomendacion (CRUD generado: editar y restaurar)
+### 3.3 rango_recomendacion (CRUD generado: listar, editar en bloque y restaurar)
 
 | Atributo | Tipo | Oblig. | Único | Ficha |
 |---|---|---|---|---|
@@ -183,8 +183,10 @@ En las tablas, «Oblig.» dice si el campo es obligatorio y «Único» si no se 
 | limite_inferior | numeric(4,1), de 0 a 100 | Sí | — | RF-12, RF-13 |
 | recomendacion | varchar(300) | Sí | — | RF-12, RF-13 |
 
-- Cada empresa tiene siempre 4 filas, que se crean con los valores de A.3 al registrarla (RF-02). «Restaurar valores por defecto» vuelve a ellos (RF-13).
-- El administrador de empresa edita las 4 filas juntas. Fuera de norma queda fijo en 0 % (CHECK), y el backend valida que los límites bajen en orden (RF-13).
+- Cada empresa tiene siempre 4 filas, que se crean con los valores de A.3 al registrarla (RF-02). «Restaurar valores por defecto» vuelve a ellos (RF-13), desde la misma fuente. Si falta una fila, editar o restaurar la repone con su valor por defecto.
+- El administrador de empresa edita las 4 filas juntas (`edicion_en_bloque`). Los límites llevan un decimal como máximo, contado sin los ceros del final, y el backend valida que bajen en orden (RF-13).
+- Fuera de norma queda fijo en 0 %: la API no deja cambiarlo (`solo_lectura_si`) y un CHECK de la base lo asegura.
+- Editar y restaurar bloquean las 4 filas de la empresa hasta terminar (`SELECT … FOR UPDATE`). Si dos administradores las cambian a la vez, el segundo espera al primero, así los límites no quedan fuera de orden.
 
 | Categoría | Límite inferior | Recomendación por defecto (A.3) |
 |---|---|---|
