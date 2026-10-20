@@ -21,8 +21,8 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 
 ## Resumen
 
-- **143 criterios de aceptación** en 26 fichas: 46 con prueba y 97 pendientes.
-- **232 pruebas:** 179 de Java (17 generadas) y 53 de Python. Una prueba parametrizada cuenta una vez.
+- **143 criterios de aceptación** en 26 fichas: 50 con prueba y 93 pendientes.
+- **257 pruebas:** 198 de Java (17 generadas) y 59 de Python. Una prueba parametrizada cuenta una vez.
 
 | Ficha | Criterios | Con prueba | Pendientes |
 |---|---:|---:|---:|
@@ -38,7 +38,7 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 | RF-10 · Calcular el porcentaje de granos sanos del lote | 7 | 0 | 7 |
 | RF-11 · Mostrar el resultado con la foto marcada (cada grano sano o no sano) | 5 | 0 | 5 |
 | RF-12 · Generar la recomendación según los rangos de la empresa | 10 | 0 | 10 |
-| RF-13 · Configurar los rangos de recomendación de la empresa | 5 | 0 | 5 |
+| RF-13 · Configurar los rangos de recomendación de la empresa | 5 | 4 | 1 |
 | RF-14 · Consultar el historial de lotes evaluados | 6 | 0 | 6 |
 | RF-15 · Descargar el reporte del lote en PDF | 5 | 0 | 5 |
 | RF-16 · Consultar las estadísticas de la empresa | 4 | 0 | 4 |
@@ -244,11 +244,23 @@ Otras pruebas de RF-03, que no cubren un criterio:
 
 | Criterio | Pruebas |
 |---|---|
-| C1. Si los límites no bajan en orden (por ejemplo, Estándar 97 % y Premium 96 %), el sistema no guarda y explica el error. | **Pendiente** |
+| C1. Si los límites no bajan en orden (por ejemplo, Estándar 97 % y Premium 96 %), el sistema no guarda y explica el error. | [`RangosRecomendacionIT`](../backend/src/test/java/co/edu/usco/inspectia/rango/RangosRecomendacionIT.java) · los límites deben bajar estrictamente: un empate o Corriente en 0 % tampoco se guardan (parametrizada)<br>[`RangosRecomendacionIT`](../backend/src/test/java/co/edu/usco/inspectia/rango/RangosRecomendacionIT.java) · si los límites no bajan en orden (Estándar 97 % y Premium 96 %), el sistema no guarda y explica el error |
 | C2. Un análisis hecho después del cambio usa los rangos nuevos. | **Pendiente** |
-| C3. Los análisis anteriores no cambian. | **Pendiente** |
-| C4. «Restaurar valores por defecto» vuelve a los rangos de D-10. | **Pendiente** |
-| C5. Un usuario final no puede entrar a esta pantalla (RNF-04). | **Pendiente** |
+| C3. Los análisis anteriores no cambian. | [`RangosRecomendacionIT`](../backend/src/test/java/co/edu/usco/inspectia/rango/RangosRecomendacionIT.java) · los análisis anteriores no cambian: un lote ya analizado conserva su categoría y su recomendación al editar y al restaurar los rangos |
+| C4. «Restaurar valores por defecto» vuelve a los rangos de D-10. | [`RangosRecomendacionIT`](../backend/src/test/java/co/edu/usco/inspectia/rango/RangosRecomendacionIT.java) · restaurar deja lo mismo que recibe una empresa nueva (RF-02): los valores por defecto salen de una sola fuente<br>[`RangosRecomendacionIT`](../backend/src/test/java/co/edu/usco/inspectia/rango/RangosRecomendacionIT.java) · «Restaurar valores por defecto» vuelve a los rangos de D-10, también si se repite |
+| C5. Un usuario final no puede entrar a esta pantalla (RNF-04). | [`RangosRecomendacionIT`](../backend/src/test/java/co/edu/usco/inspectia/rango/RangosRecomendacionIT.java) · un usuario final no puede entrar a los rangos: listar, editar y restaurar responden 403 y no cambian nada (RNF-04) |
+
+Otras pruebas de RF-13, que no cubren un criterio:
+
+- [`RangosRecomendacionIT`](../backend/src/test/java/co/edu/usco/inspectia/rango/RangosRecomendacionIT.java) · el administrador cambia los límites y los textos de las 4 categorías: se guardan sin espacios al inicio ni al final, que son los que leerá el análisis (RF-12)
+- [`RangosRecomendacionIT`](../backend/src/test/java/co/edu/usco/inspectia/rango/RangosRecomendacionIT.java) · el administrador ve los 4 rangos de su empresa, en el orden de las categorías, con los valores por defecto de una empresa nueva
+- [`RangosRecomendacionIT`](../backend/src/test/java/co/edu/usco/inspectia/rango/RangosRecomendacionIT.java) · el límite de Fuera de norma es fijo en 0 %: con 0 se acepta y con otro valor no se guarda nada (prueba de límite) (parametrizada)
+- [`RangosRecomendacionIT`](../backend/src/test/java/co/edu/usco/inspectia/rango/RangosRecomendacionIT.java) · la recomendación es obligatoria y tiene como máximo 300 caracteres: vacía, de solo espacios o de 301 se rechaza (prueba de límite) (parametrizada)
+- [`RangosRecomendacionIT`](../backend/src/test/java/co/edu/usco/inspectia/rango/RangosRecomendacionIT.java) · los límites van de 0 a 100 % con un decimal como máximo, contado sin los ceros del final: 90,50 vale 90,5 (prueba de límite) (parametrizada)
+- [`RangosRecomendacionIT`](../backend/src/test/java/co/edu/usco/inspectia/rango/RangosRecomendacionIT.java) · restaurar repone una categoría que falte: la empresa siempre queda con las 4
+- [`RangosRecomendacionIT`](../backend/src/test/java/co/edu/usco/inspectia/rango/RangosRecomendacionIT.java) · se editan las 4 categorías juntas: con menos filas, con más o con una categoría repetida no se guarda nada (parametrizada)
+- [`RangosRecomendacionIT`](../backend/src/test/java/co/edu/usco/inspectia/rango/RangosRecomendacionIT.java) · sin filas responde 400 en filas y no guarda nada
+- [`RangosRecomendacionIT`](../backend/src/test/java/co/edu/usco/inspectia/rango/RangosRecomendacionIT.java) · una categoría que no existe responde 400 en el campo de su fila
 
 ## RF-14 · Consultar el historial de lotes evaluados
 
@@ -330,10 +342,10 @@ Otras pruebas de RF-18, que no cubren un criterio:
 | Criterio | Pruebas |
 |---|---|
 | C1. Si un usuario pide un lote de otra empresa por su identificador, el sistema responde que no existe. | **Pendiente** |
-| C2. Las listas y las estadísticas nunca mezclan datos de empresas distintas. | [`UsuarioApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/usuario/UsuarioApiGeneradaIT.java) · el listado de usuario solo trae los registros de la empresa de la sesión (generada)<br>[`UsuariosPorEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/UsuariosPorEmpresaIT.java) · el listado de usuarios solo trae los de la empresa del administrador |
+| C2. Las listas y las estadísticas nunca mezclan datos de empresas distintas. | [`UsuarioApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/usuario/UsuarioApiGeneradaIT.java) · el listado de usuario solo trae los registros de la empresa de la sesión (generada)<br>[`RangosRecomendacionIT`](../backend/src/test/java/co/edu/usco/inspectia/rango/RangosRecomendacionIT.java) · cada empresa lista solo sus 4 rangos<br>[`UsuariosPorEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/UsuariosPorEmpresaIT.java) · el listado de usuarios solo trae los de la empresa del administrador |
 | C3. Las fotos y los reportes en S3 solo se abren con enlaces temporales generados para la empresa dueña. | **Pendiente** |
 | C4. Solo el administrador de la plataforma puede no tener empresa: la base de datos rechaza un usuario de otro rol sin empresa. | [`EsquemaIT`](../backend/src/test/java/co/edu/usco/inspectia/EsquemaIT.java) · la base rechaza un usuario sin empresa que no sea ADMIN_PLATAFORMA |
-| C5. Hay pruebas de seguridad que lo verifican (RP-12). | [`UsuariosPorEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/UsuariosPorEmpresaIT.java) · la empresa del usuario nuevo sale de la sesión: si la petición trae otra, la API la ignora (prueba de seguridad) |
+| C5. Hay pruebas de seguridad que lo verifican (RP-12). | [`RangosRecomendacionIT`](../backend/src/test/java/co/edu/usco/inspectia/rango/RangosRecomendacionIT.java) · editar y restaurar los rangos de una empresa no toca los de otra, aunque el cuerpo traiga sus identificadores y su empresa (prueba de seguridad)<br>[`UsuariosPorEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/UsuariosPorEmpresaIT.java) · la empresa del usuario nuevo sale de la sesión: si la petición trae otra, la API la ignora (prueba de seguridad) |
 
 Otras pruebas de RNF-03, que no cubren un criterio:
 
@@ -345,8 +357,8 @@ Otras pruebas de RNF-03, que no cubren un criterio:
 
 | Criterio | Pruebas |
 |---|---|
-| C1. Sin sesión, la API responde «no autorizado» (401). | [`EmpresaApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/empresa/EmpresaApiGeneradaIT.java) · sin sesión, cada operación de empresa responde 401 (parametrizada, generada)<br>[`UsuarioApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/usuario/UsuarioApiGeneradaIT.java) · sin sesión, cada operación de usuario responde 401 (parametrizada, generada)<br>[`SeguridadEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/SeguridadEmpresaIT.java) · sin sesión, cada operación de la API de empresas responde 401 en JSON (parametrizada)<br>[`CambioDeContrasenaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/CambioDeContrasenaIT.java) · sin sesión, cambiar la contraseña responde 401 y no cambia nada<br>[`SesionAbiertaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/SesionAbiertaIT.java) · sin token, la sesión actual responde 401 |
-| C2. Con un rol sin permiso, responde «prohibido» (403); por ejemplo, cuando un usuario final intenta gestionar usuarios. | [`EmpresaApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/empresa/EmpresaApiGeneradaIT.java) · cada operación de empresa solo la usan los roles de su JSON (parametrizada, generada)<br>[`UsuarioApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/usuario/UsuarioApiGeneradaIT.java) · cada operación de usuario solo la usan los roles de su JSON (parametrizada, generada)<br>[`SeguridadEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/SeguridadEmpresaIT.java) · el permiso se revisa antes que los datos: un usuario final recibe 403 aunque envíe datos inválidos<br>[`SeguridadEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/SeguridadEmpresaIT.java) · un administrador de empresa o un usuario final recibe 403 en cada operación de la API de empresas (parametrizada)<br>[`RestablecerContrasenaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/administradores/RestablecerContrasenaIT.java) · solo el administrador de la plataforma lista y restablece a los administradores de empresa: los demás roles reciben 403<br>[`SesionAbiertaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/SesionAbiertaIT.java) · con el token de un administrador de empresa, la API de empresas responde 403; con el de la plataforma, 200 |
+| C1. Sin sesión, la API responde «no autorizado» (401). | [`EmpresaApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/empresa/EmpresaApiGeneradaIT.java) · sin sesión, cada operación de empresa responde 401 (parametrizada, generada)<br>[`UsuarioApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/usuario/UsuarioApiGeneradaIT.java) · sin sesión, cada operación de usuario responde 401 (parametrizada, generada)<br>[`SeguridadEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/SeguridadEmpresaIT.java) · sin sesión, cada operación de la API de empresas responde 401 en JSON (parametrizada)<br>[`RangosRecomendacionIT`](../backend/src/test/java/co/edu/usco/inspectia/rango/RangosRecomendacionIT.java) · sin sesión, las rutas de los rangos responden 401<br>[`CambioDeContrasenaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/CambioDeContrasenaIT.java) · sin sesión, cambiar la contraseña responde 401 y no cambia nada<br>[`SesionAbiertaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/SesionAbiertaIT.java) · sin token, la sesión actual responde 401 |
+| C2. Con un rol sin permiso, responde «prohibido» (403); por ejemplo, cuando un usuario final intenta gestionar usuarios. | [`EmpresaApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/empresa/EmpresaApiGeneradaIT.java) · cada operación de empresa solo la usan los roles de su JSON (parametrizada, generada)<br>[`UsuarioApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/usuario/UsuarioApiGeneradaIT.java) · cada operación de usuario solo la usan los roles de su JSON (parametrizada, generada)<br>[`SeguridadEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/SeguridadEmpresaIT.java) · el permiso se revisa antes que los datos: un usuario final recibe 403 aunque envíe datos inválidos<br>[`SeguridadEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/SeguridadEmpresaIT.java) · un administrador de empresa o un usuario final recibe 403 en cada operación de la API de empresas (parametrizada)<br>[`RangosRecomendacionIT`](../backend/src/test/java/co/edu/usco/inspectia/rango/RangosRecomendacionIT.java) · el administrador de la plataforma tampoco gestiona los rangos de una empresa: responde 403<br>[`RestablecerContrasenaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/administradores/RestablecerContrasenaIT.java) · solo el administrador de la plataforma lista y restablece a los administradores de empresa: los demás roles reciben 403<br>[`SesionAbiertaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/SesionAbiertaIT.java) · con el token de un administrador de empresa, la API de empresas responde 403; con el de la plataforma, 200 |
 | C3. Las contraseñas se guardan con hash (BCrypt), nunca en texto plano. | [`RegistroEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/RegistroEmpresaIT.java) · la contraseña del administrador se guarda con hash BCrypt y no sale en la respuesta |
 | C4. La sesión vence a las 8 horas. | [`EmisorDeTokensTest`](../backend/src/test/java/co/edu/usco/inspectia/comun/seguridad/EmisorDeTokensTest.java) · el token vence 8 horas después de emitido, en segundos enteros, y solo lleva el emisor, el usuario y las fechas<br>[`SesionAbiertaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/SesionAbiertaIT.java) · el token del inicio de sesión dura exactamente 8 horas y solo lleva el emisor, el usuario y las fechas |
 | C5. Después de 5 intentos fallidos seguidos, la cuenta se bloquea 15 minutos. | [`InicioSesionIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/InicioSesionIT.java) · el bloqueo dura 15 minutos desde el quinto fallo y los intentos durante el bloqueo no lo alargan |
@@ -455,8 +467,10 @@ Pruebas que no cubren un criterio de una ficha, sino una pauta del docente (RP) 
 ### RP-23 · Generación automatizada
 
 - [`test_java.py`](../generador/pruebas/test_java.py) · cada CRUD tiene persistencia y solo las entidades del alcance tienen API
+- [`test_java.py`](../generador/pruebas/test_java.py) · edicion_en_bloque: lista las filas sin páginas, las edita todas juntas y restaura los valores por defecto, siempre en la empresa de la sesión (RF-13, RNF-03)
 - [`test_java.py`](../generador/pruebas/test_java.py) · el código generado escribe sus constructores, sin las anotaciones de Lombok que los crean
 - [`test_java.py`](../generador/pruebas/test_java.py) · el generador se detiene con un efecto que no sabe llamar: en listar o ver, o atado a un atributo que no es una contraseña
+- [`test_java.py`](../generador/pruebas/test_java.py) · el generador se detiene con una edición en bloque que no sabe generar: con crear, sin una lista que identifique cada fila o con restaurar_por_defecto sin valores_iniciales
 - [`test_java.py`](../generador/pruebas/test_java.py) · la API de una entidad por empresa toma la empresa de la sesión y limita cada consulta a ella (RNF-03)
 - [`test_java.py`](../generador/pruebas/test_java.py) · la contraseña del formulario es obligatoria al crear y opcional al editar, y solo se guarda su hash
 - [`test_java.py`](../generador/pruebas/test_java.py) · la respuesta solo lleva los atributos de la lista o del formulario: nunca el hash ni los datos internos
@@ -464,6 +478,8 @@ Pruebas que no cubren un criterio de una ficha, sino una pauta del docente (RP) 
 - [`test_java.py`](../generador/pruebas/test_java.py) · las validaciones del JSON pasan a Bean Validation con la clave de su mensaje
 - [`test_java.py`](../generador/pruebas/test_java.py) · lo generado de empresa no cambia al agregar la API por empresa: solo su header
 - [`test_java.py`](../generador/pruebas/test_java.py) · los rangos por defecto de una empresa nueva salen de valores_iniciales del JSON
+- [`test_java.py`](../generador/pruebas/test_java.py) · solo_lectura_si: en la edición en bloque, ese dato no cambia en las filas que cumplen la condición, con el mensaje del JSON o el general
+- [`test_java.py`](../generador/pruebas/test_java.py) · un decimal acepta como máximo los decimales de su escala, con el mensaje general en singular o en plural
 - [`test_java.py`](../generador/pruebas/test_java.py) · un efecto de la contraseña se programa a mano y la edición generada lo llama solo si llega una contraseña nueva, después de guardar su hash
 - [`test_java.py`](../generador/pruebas/test_java.py) · un efecto sin atributo se llama en cada operación de cuando, después de los cambios y antes de escribirlos en la base
 - [`test_java.py`](../generador/pruebas/test_java.py) · una contraseña de solo espacios se rechaza como si faltara: al crear con @NotBlank y al editar, si llega, con @NoEnBlanco
@@ -482,9 +498,11 @@ Pruebas que no cubren un criterio de una ficha, sino una pauta del docente (RP) 
 - [`test_validacion.py`](../generador/pruebas/test_validacion.py) · la validación detecta una ficha que no existe en specs/
 - [`test_validacion.py`](../generador/pruebas/test_validacion.py) · la validación detecta una referencia a una entidad que no existe
 - [`test_validacion.py`](../generador/pruebas/test_validacion.py) · la validación pide el nombre de crear_con, que es el campo de la solicitud
+- [`test_validacion.py`](../generador/pruebas/test_validacion.py) · la validación rechaza solo_lectura_si en una entidad sin edicion_en_bloque, en vez de ignorarlo
 - [`test_validacion.py`](../generador/pruebas/test_validacion.py) · la validación rechaza un mensaje con un marcador que no está en validaciones
 - [`test_validacion.py`](../generador/pruebas/test_validacion.py) · la validación revisa que el ejemplo de un atributo cumpla sus validaciones
 - [`test_validacion.py`](../generador/pruebas/test_validacion.py) · los JSON de specs/entidades pasan la validación
+- [`test_validacion.py`](../generador/pruebas/test_validacion.py) · un atributo con solo_lectura_si puede traer su mensaje; uno sin solo_lectura_si, no
 - [`test_validacion.py`](../generador/pruebas/test_validacion.py) · un atributo no puede usar el nombre de una columna implícita
 - [`test_validacion.py`](../generador/pruebas/test_validacion.py) · una entidad con CRUD necesita modulo y ruta
 
