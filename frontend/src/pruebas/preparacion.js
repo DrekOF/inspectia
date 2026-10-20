@@ -1,7 +1,8 @@
 /*
  * Nombre: preparacion.js
  * Descripción: Preparación de las pruebas unitarias y de componentes (Vitest con jsdom): comparaciones de
- *              jest-dom, la API simulada con MSW y lo que jsdom no trae, como matchMedia.
+ *              jest-dom, la API simulada con MSW, lo que jsdom no trae, como matchMedia, y cada prueba en
+ *              español y sin nada guardado en el navegador.
  * Fecha de creación: 20/10/2026
  * Actualización: 20/10/2026
  * Autor: Equipo InspectIA
@@ -10,6 +11,7 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup } from '@testing-library/react';
 import { afterAll, afterEach, beforeAll, vi } from 'vitest';
+import i18n from '../i18n/i18n.js';
 import { servidor } from './servidor.js';
 
 /*
@@ -48,9 +50,11 @@ Object.defineProperty(window, 'matchMedia', {
 
 beforeAll(() => servidor.listen({ onUnhandledRequest: 'error' }));
 
-afterEach(() => {
+afterEach(async () => {
   cleanup();
   servidor.resetHandlers();
+  // i18next es uno solo para todas las pruebas de un archivo: cada prueba empieza en español.
+  await i18n.changeLanguage('es');
   localStorage.clear();
   sessionStorage.clear();
   anchoActual = 1280;

@@ -1,7 +1,8 @@
 /*
  * Nombre: cliente.test.js
  * Descripción: Pruebas del cliente de la API: el token y el idioma en cada petición, los errores del backend
- *              con sus campos y qué pasa con un 401, con sesión y sin ella (RF-01, RF-18, RNF-04, D-28).
+ *              con sus campos, qué pasa con un 401, con sesión y sin ella o con un token que ya se cambió, y
+ *              las fallas sin conexión o sin mensaje (RF-01, RF-18, RNF-04, RNF-06, D-28).
  * Fecha de creación: 20/10/2026
  * Actualización: 20/10/2026
  * Autor: Equipo InspectIA
@@ -52,6 +53,8 @@ describe('cliente de la API', () => {
     expect(await pedir('GET', '/sesion')).toEqual({ vence: '2026-10-20T20:00:00Z' });
     expect(encabezados.get('Authorization')).toBe('Bearer token-de-prueba');
     expect(encabezados.get('Accept-Language')).toBe('en');
+    expect(encabezados.get('Accept')).toBe('application/json');
+    expect(encabezados.get('Content-Type')).toBeNull();
   });
 
   it('RF-01 · sin sesión no envía Authorization y envía los datos en JSON', async () => {
@@ -82,6 +85,8 @@ describe('cliente de la API', () => {
     expect(error.detalle).toBe('Revisa los datos marcados.');
     expect(error.errores).toEqual([{ campo: 'contrasenaActual', mensaje: 'La contraseña actual no es correcta.' }]);
     expect(error.ayuda).toBe('Si fallas 5 veces seguidas, la cuenta se bloquea 15 minutos.');
+    expect(error.bloqueadoHasta).toBeNull();
+    expect(error.reintentarEnSegundos).toBeNull();
   });
 
   it('RF-18 · C2 · el 429 del bloqueo trae la hora en que termina y los segundos que faltan', async () => {
@@ -117,7 +122,7 @@ describe('cliente de la API', () => {
     expect(alCerrarSesion).not.toHaveBeenCalled();
   });
 
-  it('RNF-06 · C3 · si el servidor no responde, el error dice que no hubo conexión, sin cerrar la sesión', async () => {
+  it('RNF-06 · C3 · si el servidor no responde, el error queda marcado como falta de conexión (estado 0) y no cierra la sesión', async () => {
     servidor.use(http.get('/api/v1/sesion', () => HttpResponse.error()));
     const { pedir, alCerrarSesion } = cliente();
 
@@ -125,6 +130,31 @@ describe('cliente de la API', () => {
 
     expect(error).toBeInstanceOf(ErrorDeApi);
     expect(error.estado).toBe(0);
+    expect(error.detalle).toBeNull();
+    expect(alCerrarSesion).not.toHaveBeenCalled();
+  });
+
+  it('RNF-06 · una respuesta de error que no es JSON, como la de un proxy caído, llega sin mensaje del backend', async () => {
+    servidor.use(http.get('/api/v1/sesion', () => new HttpResponse('<html>Bad Gateway</html>', { status: 502 })));
+
+    const error = await errorDe(cliente().pedir('GET', '/sesion'));
+
+    expect(error.estado).toBe(502);
+    expect(error.detalle).toBeNull();
+    expect(error.errores).toEqual([]);
+  });
+
+  it('RF-18 · un 401 de una petición hecha con un token que ya se cambió no cierra la sesión nueva', async () => {
+    let token = 'token-viejo';
+    const alCerrarSesion = vi.fn();
+    const pedir = crearCliente({ token: () => token, idioma: () => 'es', alCerrarSesion });
+    servidor.use(http.get('/api/v1/sesion', async () => {
+      token = 'token-nuevo';
+      return problema(401, 'Tu contraseña cambió: inicia sesión de nuevo.');
+    }));
+
+    await errorDe(pedir('GET', '/sesion'));
+
     expect(alCerrarSesion).not.toHaveBeenCalled();
   });
 });

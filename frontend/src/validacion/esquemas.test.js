@@ -1,7 +1,8 @@
 /*
  * Nombre: esquemas.test.js
  * Descripción: Pruebas de las reglas de los formularios de Iniciar sesión y Cambiar contraseña (Yup, RP-07):
- *              los mismos límites y mensajes que el backend (RF-01 y RF-18).
+ *              los mismos límites y mensajes que el backend (RF-01 y RF-18), la contraseña de Iniciar sesión
+ *              sin límites (RF-01 C8) y las reglas que se ven mientras se escribe la nueva.
  * Fecha de creación: 20/10/2026
  * Actualización: 20/10/2026
  * Autor: Equipo InspectIA
@@ -10,7 +11,7 @@
 import { describe, expect, it } from 'vitest';
 import i18n from '../i18n/i18n.js';
 import { esquemaCambioDeContrasena, esquemaInicioDeSesion } from './esquemas.js';
-import { bytesUtf8 } from './reglas.js';
+import { bytesUtf8, enBlanco, reglasDeContrasena } from './reglas.js';
 
 /**
  * El primer error de un campo, o null si cumple.
@@ -84,6 +85,31 @@ describe('iniciar sesión', () => {
 
     expect(await errorDe(esquemaInicioDeSesion(i18n.t), campo, datos)).toBe('Este dato es obligatorio.');
   });
+
+  it('RF-01 · C8 · la contraseña para iniciar sesión no tiene límite de largo ni de bytes: la que no sirve la rechaza el backend', async () => {
+    const datos = { correo: 'ana.perez@cacaosdelhuila.co', contrasena: `Clave-Segura-2026-${'ñ'.repeat(50)}` };
+
+    expect(await errorDe(esquemaInicioDeSesion(i18n.t), 'contrasena', datos)).toBeNull();
+  });
+});
+
+describe('reglas de la contraseña nueva', () => {
+  it.each([
+    ['vacía', '', { largo: false, bytes: true, espacios: false }],
+    ['8 letras', 'a'.repeat(8), { largo: true, bytes: true, espacios: true }],
+    ['8 espacios', ' '.repeat(8), { largo: true, bytes: true, espacios: false }],
+    ['64 caracteres con 9 eñes', 'ñ'.repeat(9) + 'a'.repeat(55), { largo: true, bytes: false, espacios: true }],
+    ['65 letras', 'a'.repeat(65), { largo: false, bytes: true, espacios: true }],
+  ])('RF-18 · las reglas que se ven mientras se escribe dicen cuáles se cumplen: %s', (_, contrasena, reglas) => {
+    expect(reglasDeContrasena(contrasena)).toEqual(reglas);
+  });
+
+  it.each([['', true], ['  \t\n', true], ['a', false], [' a ', false], ['\u00a0', false]])(
+    'RF-18 · un dato está en blanco con las mismas reglas de @NotBlank en el backend: «%s» → %s',
+    (texto, enBlancoEsperado) => {
+      expect(enBlanco(texto)).toBe(enBlancoEsperado);
+    },
+  );
 });
 
 describe('bytes en UTF-8', () => {

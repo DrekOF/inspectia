@@ -42,11 +42,12 @@ export async function tokenDe(api, persona) {
  *
  * @param {import('@playwright/test').APIRequestContext} api el cliente de la API de Playwright
  * @param {string} [rol] el rol: USUARIO_FINAL o ADMIN_EMPRESA
+ * @param {string} [contrasena] su contraseña; por defecto, CONTRASENA
  * @returns {Promise<{ id: string, nombre: string, correo: string, contrasena: string }>} el usuario
  */
-export async function crearUsuario(api, rol = 'USUARIO_FINAL') {
+export async function crearUsuario(api, rol = 'USUARIO_FINAL', contrasena = CONTRASENA) {
   const persona = { nombre: 'Luis Gómez', correo: `luis.${randomUUID().slice(0, 8)}@cacaosdelhuila.test`,
-    contrasena: CONTRASENA, rol };
+    contrasena, rol };
   const respuesta = await api.post('/api/v1/usuarios', {
     data: persona, headers: { Authorization: `Bearer ${await tokenDe(api, datos.adminEmpresa)}` },
   });

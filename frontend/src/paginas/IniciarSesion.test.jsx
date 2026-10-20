@@ -1,8 +1,9 @@
 /*
  * Nombre: IniciarSesion.test.jsx
  * Descripción: Pruebas de la pantalla Iniciar sesión (RF-01): entrar con cada rol, los mensajes del backend
- *              con datos errados o con una cuenta desactivada, los campos obligatorios, Acerca de sin sesión
- *              (RNF-08) y el idioma y el tema (RP-08, RP-11).
+ *              con datos errados o con una cuenta desactivada, la contraseña de más de 72 bytes, los campos
+ *              obligatorios, los errores sin conexión (RNF-06), Acerca de sin sesión (RNF-08) y el idioma y
+ *              el tema (RP-08, RP-11).
  * Fecha de creación: 20/10/2026
  * Actualización: 20/10/2026
  * Autor: Equipo InspectIA
@@ -99,6 +100,47 @@ describe('Iniciar sesión', () => {
 
   it('RF-01 · C4 · un usuario de una empresa desactivada no entra: ve el motivo que da el backend', async () => {
     await rechazadoPor('Tu empresa está desactivada: comunícate con el equipo de InspectIA.');
+  });
+
+  it('RF-01 · C8 · una contraseña de más de 64 caracteres y 72 bytes llega completa al backend y recibe la misma respuesta que cualquier fallo', async () => {
+    // 68 caracteres y 118 bytes: Iniciar sesión no revisa el largo ni los bytes, solo que no esté vacía.
+    const larga = `Clave-Segura-2026-${'ñ'.repeat(50)}`;
+    let enviada;
+    servidor.use(http.post('/api/v1/sesion', async ({ request }) => {
+      enviada = (await request.json()).contrasena;
+      return problema(401, 'Correo o contraseña incorrectos', { ayuda: AYUDA });
+    }));
+    const { usuario } = abrirApp('/iniciar-sesion');
+
+    await entrar(usuario, 'ana.perez@cacaosdelhuila.co', larga);
+
+    const aviso = await screen.findByRole('alert');
+    expect(aviso).toHaveTextContent('Correo o contraseña incorrectos');
+    expect(aviso).toHaveTextContent(AYUDA);
+    expect(enviada).toBe(larga);
+    expect(screen.getByLabelText('Contraseña')).not.toHaveAttribute('aria-invalid', 'true');
+    expect(leerSesion()).toBeNull();
+  });
+
+  it('RNF-06 · C3 · sin conexión con el servidor, Iniciar sesión dice qué pasó y qué hacer', async () => {
+    servidor.use(http.post('/api/v1/sesion', () => HttpResponse.error()));
+    const { usuario } = abrirApp('/iniciar-sesion');
+
+    await entrar(usuario, 'ana.perez@cacaosdelhuila.co');
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'No se pudo conectar con el servidor. Revisa tu conexión a internet e intenta de nuevo.');
+    expect(screen.getByRole('heading', { name: 'Iniciar sesión' })).toBeInTheDocument();
+    expect(leerSesion()).toBeNull();
+  });
+
+  it('RNF-06 · C3 · si el servidor falla sin dar un mensaje, Iniciar sesión dice qué pasó y qué hacer', async () => {
+    servidor.use(http.post('/api/v1/sesion', () => new HttpResponse('<html>Bad Gateway</html>', { status: 502 })));
+    const { usuario } = abrirApp('/iniciar-sesion');
+
+    await entrar(usuario, 'ana.perez@cacaosdelhuila.co');
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Ocurrió un error inesperado. Intenta de nuevo más tarde.');
   });
 
   it('RF-01 · sin datos no envía nada y marca los dos campos como obligatorios', async () => {

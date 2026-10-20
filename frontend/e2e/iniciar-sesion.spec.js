@@ -2,13 +2,15 @@
  * Nombre: iniciar-sesion.spec.js
  * Descripción: Pruebas de punta a punta de Iniciar sesión (RF-01, RNF-04) contra el backend real del entorno
  *              aislado, en PC y en celular: el menú de cada rol, los datos errados, las cuentas desactivadas,
- *              el bloqueo y el vencimiento de la sesión.
+ *              el bloqueo, el vencimiento de la sesión y la contraseña de más de 72 bytes.
  * Fecha de creación: 20/10/2026
  * Actualización: 20/10/2026
  * Autor: Equipo InspectIA
  * Versión: 1.0
  */
-import { abrirMenu, datos, desactivarUsuario, escribirYEntrar, expect, iniciarSesion, test } from './ayudas.js';
+import {
+  abrirMenu, crearUsuario, datos, desactivarUsuario, escribirYEntrar, expect, iniciarSesion, test,
+} from './ayudas.js';
 
 const INCORRECTOS = 'Correo o contraseña incorrectos';
 const AYUDA = 'Si fallas 5 veces seguidas, la cuenta se bloquea 15 minutos.';
@@ -94,7 +96,24 @@ test('RF-01 · C6 · la sesión vence a las 8 horas y la app pide iniciar sesió
   await expect(page.getByText('Tu sesión venció: inicia sesión de nuevo.')).toBeVisible();
 });
 
-test('RNF-04 · C1 · sin sesión, una pantalla interna lleva a Iniciar sesión', async ({ page }) => {
+test('RF-01 · C8 · una contraseña de más de 72 bytes no entra aunque sus primeros 72 coincidan con la guardada: ve lo mismo que con cualquier fallo', async ({ page, request }) => {
+  // 64 caracteres y 72 bytes, el máximo que se puede guardar; la que se escribe tiene 1 byte más.
+  const guardada = `${'ñ'.repeat(8)}${'a'.repeat(56)}`;
+  const persona = await crearUsuario(request, 'USUARIO_FINAL', guardada);
+  try {
+    await page.goto('/iniciar-sesion');
+    await escribirYEntrar(page, { correo: persona.correo, contrasena: `${guardada}x` });
+
+    const aviso = page.getByRole('alert');
+    await expect(aviso).toContainText(INCORRECTOS);
+    await expect(aviso).toContainText(AYUDA);
+    await expect(page).toHaveURL(/\/iniciar-sesion$/);
+  } finally {
+    await desactivarUsuario(request, persona.id);
+  }
+});
+
+test('RNF-04 · sin sesión, una pantalla interna lleva a Iniciar sesión', async ({ page }) => {
   await page.goto('/cambiar-contrasena');
 
   await expect(page.getByRole('heading', { name: 'Iniciar sesión' })).toBeVisible();

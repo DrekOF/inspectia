@@ -1,7 +1,7 @@
 /*
  * Nombre: almacen.test.js
  * Descripción: Pruebas de la sesión guardada en el navegador (D-28, D-31): sobrevive a recargar la página,
- *              no se usa vencida y cerrar sesión la borra (RF-01).
+ *              no se usa vencida, dañada ni incompleta, y cerrar sesión la borra (RF-01).
  * Fecha de creación: 20/10/2026
  * Actualización: 20/10/2026
  * Autor: Equipo InspectIA
@@ -37,6 +37,20 @@ describe('sesión guardada', () => {
 
     expect(leerSesion(AHORA)).toBeNull();
     expect(localStorage.getItem(CLAVE_SESION)).toBeNull();
+  });
+
+  it.each([
+    ['sin token', { vence: '2026-10-20T23:00:00Z', usuario: USUARIOS.ADMIN_EMPRESA }],
+    ['sin usuario', { token: 'token-de-prueba', vence: '2026-10-20T23:00:00Z' }],
+  ])('RF-01 · una sesión guardada incompleta no se usa y se borra: %s', (_, incompleta) => {
+    localStorage.setItem(CLAVE_SESION, JSON.stringify(incompleta));
+
+    expect(leerSesion(AHORA)).toBeNull();
+    expect(localStorage.getItem(CLAVE_SESION)).toBeNull();
+  });
+
+  it('RF-01 · sin sesión guardada no hay sesión', () => {
+    expect(leerSesion(AHORA)).toBeNull();
   });
 
   it('RF-01 · cerrar sesión borra el token del navegador (D-28)', () => {

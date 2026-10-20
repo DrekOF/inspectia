@@ -96,7 +96,9 @@ describe('Cambiar contraseña', () => {
     servidor.use(http.put('/api/v1/sesion/contrasena', () => problema(429,
       'Tu cuenta está bloqueada por intentos fallidos: podrás cambiar la contraseña cuando termine el bloqueo.',
       { bloqueadoHasta: hasta }, { 'Retry-After': '540' })));
-    const hora = new Intl.DateTimeFormat('es-CO', { hour: 'numeric', minute: '2-digit' }).format(new Date(hasta));
+    // Intl separa «p. m.» con espacios que no se cortan, y toHaveTextContent los cambia por espacios comunes.
+    const hora = new Intl.DateTimeFormat('es-CO', { hour: 'numeric', minute: '2-digit' }).format(new Date(hasta))
+      .replace(/\s/g, ' ');
     const { usuario } = abrirApp('/cambiar-contrasena');
 
     await guardar(usuario);

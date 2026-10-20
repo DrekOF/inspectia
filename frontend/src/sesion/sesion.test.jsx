@@ -37,7 +37,7 @@ afterEach(() => {
 });
 
 describe('sesión', () => {
-  it('RNF-04 · C1 · sin sesión, una pantalla interna lleva a Iniciar sesión', () => {
+  it('RNF-04 · sin sesión, una pantalla interna lleva a Iniciar sesión', () => {
     abrirApp('/cambiar-contrasena');
 
     expect(screen.getByRole('heading', { name: 'Iniciar sesión' })).toBeInTheDocument();
