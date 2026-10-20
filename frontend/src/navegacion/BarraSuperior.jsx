@@ -14,7 +14,6 @@ import Language from '@mui/icons-material/Language';
 import LightModeOutlined from '@mui/icons-material/LightModeOutlined';
 import MenuIcon from '@mui/icons-material/Menu';
 import AppBar from '@mui/material/AppBar';
-import Avatar from '@mui/material/Avatar';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
@@ -59,7 +58,8 @@ function BotonDeIdioma() {
         aria-label={t('idioma.boton', { idioma: actual.nombre })} aria-haspopup="menu"
         aria-expanded={ancla ? 'true' : undefined} aria-controls={ancla ? 'menu-idioma' : undefined}
         sx={{ minHeight: 44, px: 1.25, fontSize: 14 }}>
-        {actual.codigo.toUpperCase()}
+        {/* El nombre del idioma, no su código: lo que se ve está en el nombre del botón (WCAG 2.5.3). */}
+        {actual.nombre}
       </Button>
       <Menu id="menu-idioma" anchorEl={ancla} open={Boolean(ancla)} onClose={cerrar}>
         {IDIOMAS.map(({ codigo, nombre }) => (
@@ -114,14 +114,27 @@ function BotonDeCuenta({ esPc }) {
         aria-label={t('cuenta.boton', { nombre, detalle })} aria-haspopup="menu"
         aria-expanded={ancla ? 'true' : undefined} aria-controls={ancla ? 'menu-cuenta' : undefined}
         sx={{ minHeight: 48, borderRadius: 6, pl: 0.5, pr: 1, gap: 1.25, textAlign: 'left' }}>
-        <Avatar aria-hidden sx={(theme) => ({ width: 36, height: 36, fontSize: 14, fontWeight: 700,
-          bgcolor: theme.vars.palette.cacao.avatar.fondo, color: theme.vars.palette.cacao.avatar.texto })}>
-          {iniciales(nombre)}
-        </Avatar>
+        {/* Las iniciales son una imagen decorativa, como una foto de perfil: se dibujan con CSS para que no
+            cuenten como el texto visible del botón, cuyo nombre es «Mi cuenta: …» (WCAG 2.5.3). */}
+        <Box component="span" aria-hidden data-iniciales={iniciales(nombre)} sx={(theme) => ({
+          width: 36,
+          height: 36,
+          flex: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderRadius: '50%',
+          fontSize: 14,
+          fontWeight: 700,
+          bgcolor: theme.vars.palette.cacao.avatar.fondo,
+          color: theme.vars.palette.cacao.avatar.texto,
+          '&::before': { content: 'attr(data-iniciales)' },
+        })} />
         {esPc && (
           <>
             <Box component="span" sx={{ display: 'flex', flexDirection: 'column', lineHeight: 1.25 }}>
-              <Box component="span" sx={{ fontSize: 14, fontWeight: 500 }}>{nombre}</Box>
+              {/* El espacio entre el nombre y la empresa separa sus palabras para quien lee el texto del botón. */}
+              <Box component="span" sx={{ fontSize: 14, fontWeight: 500 }}>{nombre}</Box>{' '}
               <Box component="span" sx={(theme) => ({ fontSize: 12, fontWeight: 400,
                 color: theme.vars.palette.cacao.barra.subtitulo })}>
                 {detalle}

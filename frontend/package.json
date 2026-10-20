@@ -24,6 +24,7 @@
     "test:vigilar": "vitest",
     "test:cobertura": "vitest run --coverage",
     "test:mutacion": "stryker run",
+    "e2e:entorno": "node e2e/entorno/entorno.js",
     "e2e:playwright": "playwright test",
     "e2e:selenium": "vitest run --config vitest.selenium.config.js"
   },

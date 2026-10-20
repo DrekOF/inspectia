@@ -23,9 +23,12 @@ async function sinDesplazamientoLateral(page, pantalla) {
 
 test('RNF-05 · C1 · ninguna pantalla se desplaza a los lados desde 360 px de ancho', async ({ page }) => {
   await page.setViewportSize({ width: 360, height: 740 });
+  // Cada medida espera a que la app dibuje la pantalla: una página vacía nunca se desplaza.
   await page.goto('/iniciar-sesion');
+  await expect(page.getByRole('main')).toBeVisible();
   await sinDesplazamientoLateral(page, 'Iniciar sesión');
   await page.goto('/acerca-de');
+  await expect(page.getByRole('main')).toBeVisible();
   await sinDesplazamientoLateral(page, 'Acerca de, sin sesión');
   await iniciarSesion(page, datos.adminEmpresa);
   await sinDesplazamientoLateral(page, 'Inicio');

@@ -31,9 +31,12 @@ async function sinFallas(page, pantalla) {
  */
 async function revisarPantallas(page, esquema) {
   await page.emulateMedia({ colorScheme: esquema });
+  // Cada revisión espera a que la app dibuje la pantalla: sobre una página vacía, axe no encontraría nada.
   await page.goto('/iniciar-sesion');
+  await expect(page.getByRole('main')).toBeVisible();
   await sinFallas(page, 'Iniciar sesión');
   await page.goto('/acerca-de');
+  await expect(page.getByRole('main')).toBeVisible();
   await sinFallas(page, 'Acerca de, sin sesión');
   await iniciarSesion(page, datos.adminEmpresa);
   await sinFallas(page, 'Inicio');
@@ -55,6 +58,8 @@ test('RNF-06 · C4 · las pantallas de esta versión no tienen fallas de accesib
 test('RNF-06 · C4 · se inicia sesión solo con el teclado', async ({ page, isMobile }) => {
   test.skip(isMobile, 'En el celular no hay teclado físico');
   await page.goto('/iniciar-sesion');
+  // La app dibuja el formulario después de cargar la página: el Tab va cuando ya está.
+  await expect(page.getByRole('heading', { name: 'Iniciar sesión' })).toBeVisible();
 
   await page.keyboard.press('Tab');
   await expect(page.getByLabel('Correo', { exact: true })).toBeFocused();
