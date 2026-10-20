@@ -4,7 +4,7 @@
 # Fecha de creación: 13/10/2026
 # Actualización: 20/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.5
+# Versión: 1.6
 """Datos de las plantillas de Java.
 
 - De cada entidad con ``"crud": true`` sale su persistencia: entidad JPA, repositorio, un ``enum``
@@ -538,7 +538,11 @@ def campo_solicitud(e, a, campo_json, nombre=None, obligatorio=None):
             'normalizacion': None if normalizacion == nombre else normalizacion,
             'casos': casos, 'ejemplo': json_java(ejemplo(a)), 'recorta': bool(v.get('recortar')),
             'opcional_con_defecto': a.get('obligatorio', False) and 'por_defecto' in a,
-            'setter': 'set' + pascal(a['nombre'])}
+            'setter': 'set' + pascal(a['nombre']),
+            # Lo que el mapeador copia al registro: un decimal, con la escala de su columna, como lo guarda la
+            # base; así la respuesta de una edición lo dice igual que el listado (90.50 queda 90.5).
+            'desde_solicitud': (f"Decimales.conEscala(solicitud.{nombre}(), {a['escala']})" if a['tipo'] == 'decimal'
+                                else f'solicitud.{nombre}()')}
 
 
 def _con_un_decimal_de_mas(a):
@@ -865,6 +869,8 @@ def _importaciones_respuesta(entidades, e):
 
 def _importaciones_mapeador(m):
     importaciones = set()
+    if any(c['tipo_atributo'] == 'decimal' for c in m['campos']):
+        importaciones.add('co.edu.usco.inspectia.comun.numero.Decimales')
     if m['crear_con']:
         importaciones.add('java.util.UUID')
         if m['crear_con']['paquete'] != m['paquete']:
@@ -1117,7 +1123,8 @@ def archivos_api_en_bloque(entidades, e):
                             f'{m["singular"].capitalize()} en la respuesta de la API.',
                             importaciones=sorted(_importaciones_respuesta(entidades, e))))
     archivos.append(archivo(f'{clase}Mapeador', 'java/main/mapeador.java.j2',
-                            f'Conversión entre {m["entidad"]} y sus filas y respuesta.', importaciones=[]))
+                            f'Conversión entre {m["entidad"]} y sus filas y respuesta.',
+                            importaciones=sorted(_importaciones_mapeador(m))))
     archivos.append(archivo(f'{clase}Servicio', 'java/main/servicio_en_bloque.java.j2',
                             f'Operaciones de {m["entidad"]}, que se edita en bloque: validan, guardan y responden '
                             f'({m["fichas"][0]}).',

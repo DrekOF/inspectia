@@ -6,7 +6,7 @@
  * Fecha de creación: 19/10/2026
  * Actualización: 20/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 package co.edu.usco.inspectia.rango;
 
@@ -21,6 +21,7 @@ import co.edu.usco.inspectia.PruebaIntegracion;
 import co.edu.usco.inspectia.usuario.sesion.ApiSesion;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.util.ArrayList;
@@ -32,6 +33,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.AfterEach;
@@ -161,6 +164,21 @@ class RangosRecomendacionIT {
         assertThat(deLaRespuesta(resultado)).isEqualTo(OTROS);
         assertThat(deLaRespuesta(listar(tokenA))).isEqualTo(OTROS);
         assertThat(enLaBase(empresaA)).isEqualTo(OTROS);
+    }
+
+    @Test
+    @DisplayName("RF-13 · editar responde los límites como quedan guardados, igual que el listado: 100 como 100.0, 90.50 como 90.5 y 1E+1 como 10.0")
+    void respondeLosLimitesComoQuedanGuardados() {
+        List<Map<String, Object>> filas = filas(D10);
+        filas.get(0).put("limiteInferior", new BigDecimal("100"));
+        filas.get(1).put("limiteInferior", new BigDecimal("90.50"));
+        filas.get(2).put("limiteInferior", new BigDecimal("1E+1"));
+
+        MvcTestResult resultado = editar(tokenA, filas);
+
+        assertThat(resultado).hasStatus(HttpStatus.OK);
+        assertThat(limitesComoVienen(resultado)).containsExactly("100.0", "90.5", "10.0", "0.0")
+                .isEqualTo(limitesComoVienen(listar(tokenA)));
     }
 
     @Test
@@ -506,6 +524,20 @@ class RangosRecomendacionIT {
                 .map(fila -> new Rango((String) fila.get("categoria"),
                         new BigDecimal(String.valueOf(fila.get("limiteInferior"))), (String) fila.get("recomendacion")))
                 .toList();
+    }
+
+    /**
+     * Los límites de una respuesta tal como vienen escritos en el JSON, como 90.5 o 1E+1: al leerlos como
+     * números, 90.5 y 90.50 serían iguales.
+     */
+    private static List<String> limitesComoVienen(MvcTestResult resultado) {
+        String cuerpo = new String(resultado.getResponse().getContentAsByteArray(), StandardCharsets.UTF_8);
+        Matcher limite = Pattern.compile("\"limiteInferior\":([^,}]+)").matcher(cuerpo);
+        List<String> limites = new ArrayList<>();
+        while (limite.find()) {
+            limites.add(limite.group(1));
+        }
+        return limites;
     }
 
     /** Los rangos de una empresa en la base, en el orden de las categorías. */

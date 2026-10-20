@@ -1,11 +1,12 @@
 {#
   Nombre: mapeador.java.j2
   Descripción: Plantilla de la conversión entre una entidad y sus solicitudes y respuesta (RP-23). En la
-               edición en bloque, la solicitud que se aplica es la de una fila.
+               edición en bloque, la solicitud que se aplica es la de una fila. Los decimales se copian
+               con la escala de su columna, como los guarda la base.
   Fecha de creación: 13/10/2026
   Actualización: 20/10/2026
   Autor: Equipo InspectIA
-  Versión: 1.2
+  Versión: 1.3
 #}
 {% from 'java/_macros.j2' import encabezado %}
 {{ encabezado(header) }}
@@ -35,10 +36,10 @@ public final class {{ clase }}Mapeador {
 {% for c in campos if c.tipo_atributo != 'contrasena' %}
 {% if c.opcional_con_defecto %}
         if (solicitud.{{ c.nombre }}() != null) {
-            {{ var }}.{{ c.setter }}(solicitud.{{ c.nombre }}());
+            {{ var }}.{{ c.setter }}({{ c.desde_solicitud }});
         }
 {% else %}
-        {{ var }}.{{ c.setter }}(solicitud.{{ c.nombre }}());
+        {{ var }}.{{ c.setter }}({{ c.desde_solicitud }});
 {% endif %}
 {% endfor %}
         return {{ var }};
@@ -48,6 +49,9 @@ public final class {{ clase }}Mapeador {
 
     /**
      * Copia en el registro los datos de la solicitud.
+{% if campos | selectattr('tipo_atributo', 'equalto', 'decimal') | list %}
+     * Los decimales quedan con la escala de su columna, como los guarda la base.
+{% endif %}
      *
      * @param solicitud los datos validados
      * @param {{ var }} el registro que se edita
@@ -56,10 +60,10 @@ public final class {{ clase }}Mapeador {
 {% for c in campos if c.tipo_atributo != 'contrasena' %}
 {% if c.opcional_con_defecto %}
         if (solicitud.{{ c.nombre }}() != null) {
-            {{ var }}.{{ c.setter }}(solicitud.{{ c.nombre }}());
+            {{ var }}.{{ c.setter }}({{ c.desde_solicitud }});
         }
 {% else %}
-        {{ var }}.{{ c.setter }}(solicitud.{{ c.nombre }}());
+        {{ var }}.{{ c.setter }}({{ c.desde_solicitud }});
 {% endif %}
 {% endfor %}
     }

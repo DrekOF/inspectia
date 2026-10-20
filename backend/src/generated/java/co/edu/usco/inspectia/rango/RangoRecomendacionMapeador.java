@@ -11,6 +11,8 @@
  */
 package co.edu.usco.inspectia.rango;
 
+import co.edu.usco.inspectia.comun.numero.Decimales;
+
 /** Conversión entre {@link RangoRecomendacion} y sus solicitudes y respuesta. Solo copia datos. */
 public final class RangoRecomendacionMapeador {
 
@@ -19,12 +21,13 @@ public final class RangoRecomendacionMapeador {
 
     /**
      * Copia en el registro los datos de la solicitud.
+     * Los decimales quedan con la escala de su columna, como los guarda la base.
      *
      * @param solicitud los datos validados
      * @param rangoRecomendacion el registro que se edita
      */
     public static void aplicar(RangoRecomendacionFilaSolicitud solicitud, RangoRecomendacion rangoRecomendacion) {
-        rangoRecomendacion.setLimiteInferior(solicitud.limiteInferior());
+        rangoRecomendacion.setLimiteInferior(Decimales.conEscala(solicitud.limiteInferior(), 1));
         rangoRecomendacion.setRecomendacion(solicitud.recomendacion());
     }
 

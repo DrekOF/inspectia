@@ -1,9 +1,9 @@
 # Nombre: test_java.py
 # Descripción: Pruebas de la generación de Java (persistencia, API y pruebas) y de los textos es/en.
 # Fecha de creación: 13/10/2026
-# Actualización: 19/10/2026
+# Actualización: 20/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.5
+# Versión: 1.6
 """Pruebas de lo que genera el generador para el backend: la persistencia de cada CRUD, la API de las
 entidades del alcance, incluidas las de una entidad por empresa y las de edición en bloque, y los textos
 en español e inglés."""
@@ -359,6 +359,17 @@ def test_maximo_decimales(entidades):
     fila = generar(entidades, api=API_CON_RANGOS)[f'{JAVA}/rango/RangoRecomendacionFilaSolicitud.java']
 
     assert '@MaximoDecimales(value = 2, message = "{validacion.decimales}")' in anotaciones_de(fila, 'limiteInferior')
+
+
+@pytest.mark.caso('RP-23 · un decimal se guarda y se responde con la escala de su columna: el mapeador la ajusta al copiar la solicitud')
+def test_decimal_con_la_escala_de_su_columna(entidades):
+    archivos = generar(entidades, api=API_CON_RANGOS)
+
+    mapeador = archivos[f'{JAVA}/rango/RangoRecomendacionMapeador.java']
+    assert 'rangoRecomendacion.setLimiteInferior(Decimales.conEscala(solicitud.limiteInferior(), 1));' in mapeador
+    assert 'import co.edu.usco.inspectia.comun.numero.Decimales;' in mapeador
+    assert 'rangoRecomendacion.setRecomendacion(solicitud.recomendacion());' in mapeador, 'los demás datos, tal cual'
+    assert 'Decimales' not in archivos[f'{JAVA}/empresa/EmpresaMapeador.java'], 'empresa no tiene decimales'
 
 
 @pytest.mark.caso('RP-23 · el generador se detiene con una edición en bloque que no sabe generar: con crear, sin una lista que identifique cada fila o con restaurar_por_defecto sin valores_iniciales')

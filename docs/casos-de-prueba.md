@@ -22,7 +22,7 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 ## Resumen
 
 - **143 criterios de aceptación** en 26 fichas: 50 con prueba y 93 pendientes.
-- **276 pruebas:** 216 de Java (27 generadas) y 60 de Python. Una prueba parametrizada cuenta una vez.
+- **281 pruebas:** 220 de Java (27 generadas) y 61 de Python. Una prueba parametrizada cuenta una vez.
 
 | Ficha | Criterios | Con prueba | Pendientes |
 |---|---:|---:|---:|
@@ -257,8 +257,11 @@ Otras pruebas de RF-13, que no cubren un criterio:
 - [`RangoRecomendacionApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/rango/RangoRecomendacionApiGeneradaIT.java) · rango_recomendacion guarda sin espacios al inicio ni al final los textos que su JSON pide recortar (generada)
 - [`RangoRecomendacionApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/rango/RangoRecomendacionApiGeneradaIT.java) · rango_recomendacion se edita con una fila por cada categoría: con una de menos, una de más o una repetida responde 400 en filas y no guarda nada (parametrizada, generada)
 - [`RangoRecomendacionApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/rango/RangoRecomendacionApiGeneradaIT.java) · restaurar deja a la empresa una fila por cada categoría, con los valores por defecto del JSON (generada)
+- [`DecimalesTest`](../backend/src/test/java/co/edu/usco/inspectia/comun/numero/DecimalesTest.java) · no redondea: un número con más decimales de los de su escala es un error, porque la validación ya debió rechazarlo
+- [`DecimalesTest`](../backend/src/test/java/co/edu/usco/inspectia/comun/numero/DecimalesTest.java) · un número queda con la escala de su columna, como lo guarda la base: 90.50 como 90.5 y 100 como 100.0 (parametrizada)
 - [`MaximoDecimalesValidadorTest`](../backend/src/test/java/co/edu/usco/inspectia/comun/validacion/MaximoDecimalesValidadorTest.java) · @MaximoDecimales cuenta los decimales sin los ceros del final: 90,50 vale 90,5 (prueba de límite) (parametrizada)
 - [`MaximoDecimalesValidadorTest`](../backend/src/test/java/co/edu/usco/inspectia/comun/validacion/MaximoDecimalesValidadorTest.java) · @MaximoDecimales deja pasar un dato que no llegó: si es obligatorio, lo revisa @NotNull
+- [`RangosRecomendacionIT`](../backend/src/test/java/co/edu/usco/inspectia/rango/RangosRecomendacionIT.java) · editar responde los límites como quedan guardados, igual que el listado: 100 como 100.0, 90.50 como 90.5 y 1E+1 como 10.0
 - [`RangosRecomendacionIT`](../backend/src/test/java/co/edu/usco/inspectia/rango/RangosRecomendacionIT.java) · el administrador cambia los límites y los textos de las 4 categorías: se guardan sin espacios al inicio ni al final, que son los que leerá el análisis (RF-12)
 - [`RangosRecomendacionIT`](../backend/src/test/java/co/edu/usco/inspectia/rango/RangosRecomendacionIT.java) · el administrador ve los 4 rangos de su empresa, en el orden de las categorías, con los valores por defecto de una empresa nueva
 - [`RangosRecomendacionIT`](../backend/src/test/java/co/edu/usco/inspectia/rango/RangosRecomendacionIT.java) · el límite de Fuera de norma es fijo en 0 %: con 0 se acepta y con otro valor no se guarda nada (prueba de límite) (parametrizada)
@@ -478,6 +481,7 @@ Pruebas que no cubren un criterio de una ficha, sino una pauta del docente (RP) 
 
 ### RP-23 · Generación automatizada
 
+- [`DecimalesTest`](../backend/src/test/java/co/edu/usco/inspectia/comun/numero/DecimalesTest.java) · un dato que no llegó sigue sin valor
 - [`MaximoDecimalesValidadorTest`](../backend/src/test/java/co/edu/usco/inspectia/comun/validacion/MaximoDecimalesValidadorTest.java) · @MaximoDecimales responde en el campo con el mensaje general de los decimales
 - [`MaximoDecimalesValidadorTest`](../backend/src/test/java/co/edu/usco/inspectia/comun/validacion/MaximoDecimalesValidadorTest.java) · @MaximoDecimales usa el máximo de su anotación, que sale de la escala del JSON (parametrizada)
 - [`test_java.py`](../generador/pruebas/test_java.py) · cada CRUD tiene persistencia y solo las entidades del alcance tienen API
@@ -494,6 +498,7 @@ Pruebas que no cubren un criterio de una ficha, sino una pauta del docente (RP) 
 - [`test_java.py`](../generador/pruebas/test_java.py) · los rangos por defecto de una empresa nueva salen de valores_iniciales del JSON
 - [`test_java.py`](../generador/pruebas/test_java.py) · solo_lectura_si: en la edición en bloque, ese dato no cambia en las filas que cumplen la condición, con el mensaje del JSON o el general
 - [`test_java.py`](../generador/pruebas/test_java.py) · un decimal acepta como máximo los decimales de su escala, con el mensaje general en singular o en plural
+- [`test_java.py`](../generador/pruebas/test_java.py) · un decimal se guarda y se responde con la escala de su columna: el mapeador la ajusta al copiar la solicitud
 - [`test_java.py`](../generador/pruebas/test_java.py) · un efecto de la contraseña se programa a mano y la edición generada lo llama solo si llega una contraseña nueva, después de guardar su hash
 - [`test_java.py`](../generador/pruebas/test_java.py) · un efecto sin atributo se llama en cada operación de cuando, después de los cambios y antes de escribirlos en la base
 - [`test_java.py`](../generador/pruebas/test_java.py) · una contraseña de solo espacios se rechaza como si faltara: al crear con @NotBlank y al editar, si llega, con @NoEnBlanco
