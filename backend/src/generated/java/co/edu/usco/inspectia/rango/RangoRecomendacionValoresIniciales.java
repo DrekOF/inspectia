@@ -4,10 +4,10 @@
  *              Archivo generado por generador/ (RP-23): no se edita a mano; se cambia el JSON
  *              o la plantilla, y se regenera.
  * Fecha de creación: 13/10/2026
- * Actualización: 13/10/2026
- * Autor: Equipo InspectIA (generado por generador/ v1.5)
- * Versión: 1.5
- * Entidades: rango_recomendacion 1.1
+ * Actualización: 20/10/2026
+ * Autor: Equipo InspectIA (generado por generador/ v1.6)
+ * Versión: 1.6
+ * Entidades: rango_recomendacion 1.2
  */
 package co.edu.usco.inspectia.rango;
 

@@ -3,9 +3,9 @@
     "nombre": "rango_recomendacion.json",
     "descripcion": "Entidad rango_recomendacion: los rangos de cada empresa para pasar del porcentaje de granos sanos a una categoría probable y una recomendación. Entrada del generador (RP-23); formato en specs/entidades/README.md.",
     "fecha_creacion": "13/10/2026",
-    "actualizacion": "13/10/2026",
+    "actualizacion": "20/10/2026",
     "autor": "Equipo InspectIA",
-    "version": "1.1"
+    "version": "1.2"
   },
   "entidad": "rango_recomendacion",
   "clase": "RangoRecomendacion",
@@ -16,7 +16,7 @@
     "es": { "singular": "Rango de recomendación", "plural": "Rangos de recomendación" },
     "en": { "singular": "Recommendation range", "plural": "Recommendation ranges" }
   },
-  "fichas": ["RF-02", "RF-12", "RF-13", "D-10"],
+  "fichas": ["RF-13", "RF-02", "RF-12", "D-10"],
   "crud": true,
   "por_empresa": "si",
   "operaciones": {
@@ -49,6 +49,12 @@
       "obligatorio": true,
       "validaciones": { "min": 0, "max": 100 },
       "solo_lectura_si": { "atributo": "categoria", "igual_a": "FUERA_DE_NORMA" },
+      "mensajes": {
+        "solo_lectura_si": {
+          "es": "El límite de Fuera de norma es fijo: 0 %.",
+          "en": "The Off-grade limit is fixed: 0%."
+        }
+      },
       "en_lista": true,
       "en_formulario": true,
       "etiquetas": { "es": "Límite inferior (% de granos sanos)", "en": "Lower limit (% healthy beans)" },

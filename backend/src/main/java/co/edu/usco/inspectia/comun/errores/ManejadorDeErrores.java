@@ -3,9 +3,9 @@
  * Descripción: Convierte los errores de la API en respuestas application/problem+json (RFC 9457), con
  *              la lista «errores» y los mensajes en el idioma de la petición (RP-03, RP-11).
  * Fecha de creación: 13/10/2026
- * Actualización: 19/10/2026
+ * Actualización: 20/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.4
+ * Versión: 1.5
  */
 package co.edu.usco.inspectia.comun.errores;
 
@@ -14,9 +14,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.TreeMap;
-import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.TypeMismatchException;
 import org.springframework.context.MessageSource;
@@ -202,15 +200,22 @@ public class ManejadorDeErrores extends ResponseEntityExceptionHandler {
         return handleExceptionInternal(excepcion, problema, encabezados, estado, peticion);
     }
 
-    /** El campo, como {@code rol} o {@code administrador.correo}, cuyo valor no es de su tipo; o {@code null}. */
+    /**
+     * El campo cuyo valor no es de su tipo, como {@code rol}, {@code administrador.correo} o, dentro de una
+     * lista, {@code filas[2].categoria}, igual que en los errores de las validaciones; o {@code null}.
+     */
     private static String campoConValorInvalido(HttpMessageNotReadableException excepcion) {
         for (Throwable causa = excepcion; causa != null; causa = causa.getCause()) {
             if (causa instanceof InvalidFormatException formato) {
-                String campo = formato.getPath().stream()
-                        .map(JacksonException.Reference::getPropertyName)
-                        .filter(Objects::nonNull)
-                        .collect(Collectors.joining("."));
-                return campo.isEmpty() ? null : campo;
+                StringBuilder campo = new StringBuilder();
+                for (JacksonException.Reference parte : formato.getPath()) {
+                    if (parte.getPropertyName() != null) {
+                        campo.append(campo.isEmpty() ? "" : ".").append(parte.getPropertyName());
+                    } else if (parte.getIndex() >= 0) {
+                        campo.append('[').append(parte.getIndex()).append(']');
+                    }
+                }
+                return campo.isEmpty() ? null : campo.toString();
             }
         }
         return null;

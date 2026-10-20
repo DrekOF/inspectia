@@ -1,9 +1,9 @@
 # Nombre: test_validacion.py
 # Descripción: Pruebas de la validación de specs/entidades/*.json.
 # Fecha de creación: 13/10/2026
-# Actualización: 13/10/2026
+# Actualización: 19/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.1
+# Versión: 1.2
 """Pruebas de la validación de los JSON de entidades contra su formato y contra specs/."""
 
 import pytest
@@ -94,3 +94,24 @@ def test_marcador_de_mensaje_inexistente(entidades, codigos):
     errores = validar(entidades, codigos)
 
     assert any('{minimo}' in e for e in errores)
+
+
+@pytest.mark.caso('RP-23 · la validación rechaza solo_lectura_si en una entidad sin edicion_en_bloque, en vez de ignorarlo')
+def test_solo_lectura_si_solo_en_bloque(entidades, codigos):
+    atributo(entidades['usuario'], 'nombre')['solo_lectura_si'] = {'atributo': 'rol', 'igual_a': 'ADMIN_PLATAFORMA'}
+
+    errores = validar(entidades, codigos)
+
+    assert 'usuario.nombre: solo_lectura_si va solo en una entidad con edicion_en_bloque' in errores
+
+
+@pytest.mark.caso('RP-23 · un atributo con solo_lectura_si puede traer su mensaje; uno sin solo_lectura_si, no')
+def test_mensaje_de_solo_lectura(entidades, codigos):
+    mensaje = {'es': 'No cambia.', 'en': 'It does not change.'}
+    atributo(entidades['rango_recomendacion'], 'limite_inferior').setdefault('mensajes', {})['solo_lectura_si'] = mensaje
+    atributo(entidades['rango_recomendacion'], 'recomendacion')['mensajes'] = {'solo_lectura_si': mensaje}
+
+    errores = validar(entidades, codigos)
+
+    assert errores == ['rango_recomendacion.recomendacion: mensaje para algo que el atributo no tiene '
+                       '(solo_lectura_si)']

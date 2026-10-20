@@ -1,12 +1,12 @@
 /*
  * Nombre: UsuarioRespuesta.java
- * Descripción: Usuario como la responde la API.
+ * Descripción: Usuario en la respuesta de la API.
  *              Archivo generado por generador/ (RP-23): no se edita a mano; se cambia el JSON
  *              o la plantilla, y se regenera.
  * Fecha de creación: 13/10/2026
  * Actualización: 18/10/2026
- * Autor: Equipo InspectIA (generado por generador/ v1.5)
- * Versión: 1.5
+ * Autor: Equipo InspectIA (generado por generador/ v1.6)
+ * Versión: 1.6
  * Entidades: usuario 1.5
  */
 package co.edu.usco.inspectia.usuario;
@@ -32,7 +32,7 @@ public record UsuarioRespuesta(
         @Schema(description = "Nombre", example = "Ana Pérez") String nombre,
         @Schema(description = "Correo", example = "ana.perez@example.com") String correo,
         @Schema(description = "Rol", example = "USUARIO_FINAL") UsuarioRol rol,
-        @Schema(description = "Activo", example = "True") Boolean activo,
+        @Schema(description = "Activo", example = "true") Boolean activo,
         @Schema(description = "Fecha de creación del registro.") OffsetDateTime fechaCreacion,
         @Schema(description = "Fecha de la última actualización.") OffsetDateTime fechaActualizacion) {
 }

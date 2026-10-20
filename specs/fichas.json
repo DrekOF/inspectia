@@ -5,7 +5,7 @@
     "fecha_creacion": "12/10/2026",
     "actualizacion": "19/10/2026",
     "autor": "Equipo InspectIA",
-    "version": "1.14"
+    "version": "1.15"
   },
   "rf": [
     {
@@ -589,14 +589,14 @@
       "encabezado": "Configurar los rangos de la empresa",
       "titulo": "Configurar los rangos de recomendación de la empresa",
       "codigo": "RF-13",
-      "version": "1.0",
+      "version": "1.1",
       "fuente": "D-10: los rangos vienen por defecto y cada empresa los puede ajustar.",
       "descripcion": "El administrador de la empresa ajusta los límites de cada categoría y el texto de su recomendación, a partir de los valores por defecto.",
       "justificacion": "Cada comprador puede exigir distinto, así que la empresa adapta los rangos a sus clientes.",
       "precondiciones": "El administrador de empresa inició sesión (RF-01).",
       "restricciones": {
         "b": [
-          "Se mantienen las 4 categorías; solo cambian sus límites inferiores y sus textos.",
+          "Se mantienen las 4 categorías; solo cambian sus límites inferiores y sus textos. Los límites van de 0 a 100 %, con un decimal como máximo, y el de Fuera de norma es fijo en 0 %.",
           "Los límites deben bajar en orden: Premium > Estándar > Corriente > 0 %.",
           "Los cambios aplican solo a los análisis nuevos; los anteriores conservan su resultado."
         ]

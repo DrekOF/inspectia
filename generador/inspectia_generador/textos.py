@@ -2,20 +2,24 @@
 # Descripción: Textos en español e inglés de las entidades (etiquetas, valores y mensajes) y mensajes
 #              generales de las validaciones (RP-11).
 # Fecha de creación: 13/10/2026
-# Actualización: 18/10/2026
+# Actualización: 20/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.1
+# Versión: 1.2
 """Textos en español e inglés que van a ``i18n/generado.properties`` y ``generado_en.properties``.
 
 Las claves siguen la forma ``entidad.atributo.algo``. Los mensajes del JSON llevan ``{nombre}`` con
 un valor de ``validaciones`` o de ``parametros``, y se reemplaza aquí. Los mensajes generales
 conservan ``{max}``, ``{min}`` y ``{value}``, que reemplaza Bean Validation con el valor de cada
 anotación.
+
+Una entidad con ``edicion_en_bloque`` tiene además el mensaje de las filas incompletas, que se arma con
+la etiqueta y los valores de la lista que identifica cada fila: así cambia solo con el JSON.
 """
 
 import re
 
-from inspectia_generador.modelo import atributo
+from inspectia_generador.modelo import atributo, clave_en_bloque
+from inspectia_generador.nombres import en_frase
 
 #: Mensajes generales de las validaciones: clave, español e inglés.
 MENSAJES_GENERALES = (
@@ -28,13 +32,17 @@ MENSAJES_GENERALES = (
     ('validacion.correo', 'Escribe un correo válido.', 'Enter a valid email address.'),
     ('validacion.minimo', 'Debe ser mayor o igual a {value}.', 'It must be greater than or equal to {value}.'),
     ('validacion.maximo', 'Debe ser menor o igual a {value}.', 'It must be less than or equal to {value}.'),
+    ('validacion.decimales_uno', 'Usa como máximo 1 decimal.', 'Use at most 1 decimal place.'),
+    ('validacion.decimales', 'Usa como máximo {value} decimales.', 'Use at most {value} decimal places.'),
     ('validacion.unico', 'Ya existe un registro con este dato.', 'A record with this value already exists.'),
     ('validacion.valor_no_permitido', 'No puedes asignar este valor.', 'You cannot assign this value.'),
+    ('validacion.solo_lectura', 'Este dato no se puede cambiar.', 'This value cannot be changed.'),
 )
 
 _GENERALES = {clave: (es, en) for clave, es, en in MENSAJES_GENERALES}
 
-#: Mensaje general de cada validación del JSON y el parámetro de Bean Validation que usa.
+#: Mensaje general de cada validación del JSON y el parámetro de Bean Validation que usa. Los decimales
+#: salen de la escala del atributo: con 1, el mensaje va en singular.
 GENERAL_DE = {
     'obligatorio': ('validacion.obligatorio', None),
     'longitud_min': ('validacion.longitud_min', 'min'),
@@ -44,8 +52,11 @@ GENERAL_DE = {
     'formato': ('validacion.correo', None),
     'min': ('validacion.minimo', 'value'),
     'max': ('validacion.maximo', 'value'),
+    'decimales_uno': ('validacion.decimales_uno', None),
+    'decimales': ('validacion.decimales', 'value'),
     'unico': ('validacion.unico', None),
     'valores_en_formulario': ('validacion.valor_no_permitido', None),
+    'solo_lectura_si': ('validacion.solo_lectura', None),
 }
 
 
@@ -108,6 +119,27 @@ def mensaje_unico(entidad, columnas):
                 if '_'.join(u['atributos']) == nombre and 'mensaje' in u)
 
 
+def mensaje_filas_completas(entidad, idioma):
+    """Mensaje de una edición en bloque que no trae una fila por cada valor de su lista, en ``es`` o ``en``.
+
+    Por ejemplo: «Envía una fila por cada categoría, sin repetir: Premium o Especial, Estándar, Corriente y
+    Fuera de norma.».
+    """
+    clave = clave_en_bloque(entidad)
+    etiqueta = en_frase(clave['etiquetas'][idioma])
+    valores = [v['etiquetas'][idioma] for v in clave['valores']]
+    if idioma == 'es':
+        return f'Envía una fila por cada {etiqueta}, sin repetir: {_unir(valores, "y")}.'
+    return f'Send one row for each {etiqueta}, with no repeats: {_unir(valores, "and")}.'
+
+
+def _unir(valores, conjuncion):
+    """``[a, b, c]`` → ``a, b y c``."""
+    if len(valores) == 1:
+        return valores[0]
+    return f"{', '.join(valores[:-1])} {conjuncion} {valores[-1]}"
+
+
 def textos(entidades):
     """Todos los textos, por secciones: primero los mensajes generales y luego cada entidad.
 
@@ -141,6 +173,8 @@ def _textos_entidad(e):
     if 'crear_con' in e:
         cc = e['crear_con']
         filas.append((f"{n}.{cc['nombre']}.etiqueta", cc['etiquetas']['es'], cc['etiquetas']['en']))
+    if e.get('edicion_en_bloque') and clave_en_bloque(e) is not None:
+        filas.append((f'{n}.filas_completas', mensaje_filas_completas(e, 'es'), mensaje_filas_completas(e, 'en')))
     for r in e.get('reglas', []):
         if 'mensaje' in r:
             parametros = r.get('parametros', {})

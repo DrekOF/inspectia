@@ -2,9 +2,9 @@
 Nombre: bitacora.md
 Descripción: Registro paso a paso de cómo se construyó InspectIA, para la sustentación (RP-24).
 Fecha de creación: 12/10/2026
-Actualización: 19/10/2026
+Actualización: 20/10/2026
 Autor: Equipo InspectIA
-Versión: 1.13
+Versión: 1.14
 -->
 
 # Bitácora de construcción (RP-24)
@@ -307,6 +307,73 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
   - Corregir las tildes de los dos `.ps1` y dejar la consola como estaba.
   - Probar RF-18 y el script en su PC antes de la documentación.
 - Archivos o PR: la rama `feature/RF-18-cambiar-contrasena`; el PR lo abre Cristhian.
+
+## 20/10/2026 · RF-13: rangos de recomendación de la empresa, editados en bloque
+
+- Quién: Cristhian Sánchez (`DrekOF`), con Claude Code.
+- Qué se hizo:
+  - **En la rama `feature/RF-13-rangos`, tres pasos, cada uno revisado por Cristhian antes del siguiente:**
+    1. **Pruebas antes del código (19/10):**
+       - La restricción 1 de RF-13 (v1.1) dice ahora que los límites van de 0 a 100 %, con un decimal como máximo, y que el de Fuera de norma es fijo en 0 %. No es un criterio nuevo.
+       - `RangosRecomendacionIT`, con tokens reales y empresas creadas por la API de RF-02: C1, C3, C4 y C5.
+       - Pruebas de límite: 0 y 100; un decimal contado sin los ceros del final (90,50 sí, 90,55 no); Fuera de norma fijo; la recomendación vacía, de solo espacios, de 300 y de 301 caracteres; filas de menos, de más o repetidas.
+       - También RNF-03 (cada empresa ve y cambia solo sus rangos) y RNF-04 (sin sesión, 401; la plataforma, 403).
+       - Pruebas del generador para la edición en bloque, `solo_lectura_si`, `@MaximoDecimales` y lo que no sabe generar.
+       - Fallaban 32 de 33 con 404; ya pasaba la de sin sesión (401).
+       - C2 (un análisis hecho después del cambio usa los rangos nuevos) queda para RF-12, cuando exista el análisis.
+    2. **El generador 1.6 y la API de los rangos (20/10):**
+       - `GET /api/v1/rangos-recomendacion` lista las 4 filas de la empresa de la sesión.
+       - `PUT` las edita todas juntas.
+       - `POST …/restaurar-por-defecto` vuelve a `RangoRecomendacionValoresIniciales`, la misma fuente que usa RF-02 al crear la empresa.
+       - Al editar revisa, en orden: los datos de cada fila (error en `filas[i].campo`), que llegue una fila por categoría sin repetir, que no cambie el límite de Fuera de norma (`solo_lectura_si`) y la regla `limites_en_orden`, escrita a mano en `ReglasRangoRecomendacionImpl`. Si algo falla, responde 400 y no guarda nada.
+       - `@MaximoDecimales` cuenta los decimales sin los ceros del final: `@Digits` de Bean Validation rechazaría 90,50.
+       - `validar` rechaza `solo_lectura_si` en una entidad que no es en bloque, en vez de ignorarlo.
+       - Los ejemplos booleanos de OpenAPI salen como `true`, no `True` de Python. Una prueba revisa que no quede `True`, `False` ni `None` en lo generado. De paso, la descripción de las respuestas ya no dice «Usuario como la responde la API».
+       - `rango_recomendacion.json` 1.2 lleva RF-13 primero en `fichas`, para que lo citen las pruebas generadas, y el mensaje de Fuera de norma. `alcance.json` 1.2 agrega los rangos.
+       - V1 cambió solo en su header (generador 1.6), pero igual hubo que reiniciar la base local.
+    3. **Documentación (20/10):**
+       - La edición en bloque en `specs/entidades/README.md` y `specs/modelo-datos.md`.
+       - El README del generador.
+       - En `infra/README.md`, el reinicio de la base también por un cambio de header y cómo probar los rangos en Swagger UI.
+       - El README y esta bitácora.
+  - **Problemas encontrados:**
+    - **Dos cambios a la vez dejaban los límites fuera de orden.**
+      - Sin un bloqueo, una edición leía las filas antes de que otra guardara y solo escribía las que ella cambiaba. Podía quedar, por ejemplo, Premium 91 con Estándar 95.
+      - Ahora editar y restaurar bloquean las filas de la empresa (`SELECT … FOR UPDATE`), y la segunda espera a que la primera guarde.
+      - Una prueba lo reproduce: sin el bloqueo falla y con él pasa.
+    - **La respuesta de la edición repetía el número como llegaba.**
+      - Con 90.50, el PUT respondía 90.50 y el listado, 90.5.
+      - Ahora el mapeador generado copia cada decimal con la escala de su columna (`Decimales.conEscala`, sin redondear). Así el PUT responde 90.5, como lo guarda la base. Una prueba compara el JSON tal como llega en el PUT y en el GET.
+  - **Comportamiento que no piden las fichas:** editar también repone una fila que falte, con su valor por defecto, igual que restaurar. Solo pasaría si alguien la borra en la base. Cristhian lo aprobó: la ficha ya dice que se mantienen las 4 categorías, así que no cambia.
+  - **Resultado:**
+    - Backend: 469 pruebas (112 unitarias y 357 de integración, 131 de ellas generadas), todas en verde sobre el código final.
+    - Generador: 61 pruebas, todas en verde.
+    - Criterios: RF-13 tiene 4 de sus 5 criterios con prueba; C2 espera a RF-12. De los 143 de las fichas, 50 tienen prueba.
+    - El 20/10, Cristhian probó en su PC, con la base reiniciada:
+      - Creó una empresa, listó y editó los rangos: 90.50 respondió 90.5.
+      - Vio los errores de orden y de Fuera de norma.
+      - Restauró los valores por defecto.
+    - RF-13 sigue en «Aprobado»: faltan su pantalla y C2 (D-29).
+- Por qué: cada empresa puede ajustar los límites y los textos de sus categorías (RF-13) sin cambiar los análisis ya hechos (C3), y siempre puede volver a los de D-10. Que la edición en bloque salga del generador deja esta API lista para otra temática, cambiando solo los JSON (RP-23).
+- Cómo se pidió: Cristhian pidió primero el plan de RF-13, sin código. El plan debía responder seis preguntas:
+  - Las rutas, y qué pasa con filas incompletas, repetidas o con un límite para Fuera de norma.
+  - Qué aprende el generador y qué va a mano.
+  - De dónde salen los valores por defecto al restaurar: la misma fuente de RF-02.
+  - Cómo probar C2 y C3 sin el análisis.
+  - Las pruebas por criterio, con los límites y la separación por empresa.
+  - Si cambiaba V1.
+
+  Lo aprobó con las seis decisiones propuestas y tres ajustes:
+  - Agregar a las restricciones de RF-13 que los límites van de 0 a 100 con un decimal y que el de Fuera de norma es fijo en 0 %.
+  - Contar los decimales sin los ceros del final (90,50 vale 90,5) y probar una recomendación de solo espacios.
+  - Que `validar` rechace `solo_lectura_si` en una entidad que no es en bloque.
+
+  En el camino pidió:
+  - Corregir en el mismo paso los ejemplos booleanos de OpenAPI, para no tener otra versión del generador ni otro cambio de V1; revisar que no quedara ningún otro valor de Python y mencionarlo en el PR.
+  - Que editar reponga una fila que falte, y anotarlo aquí y en el PR.
+  - Que el PUT responda los límites como quedan guardados, igual que el GET.
+  - Probar en su PC antes de la documentación, y correr la suite completa sobre el código final antes del borrador del PR.
+- Archivos o PR: la rama `feature/RF-13-rangos`; el PR lo abre Cristhian.
 
 ## Plantilla para nuevas entradas
 

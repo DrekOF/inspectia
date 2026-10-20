@@ -1,9 +1,9 @@
 # Nombre: validacion.py
 # Descripción: Validación de los JSON de entidades contra su formato y contra specs/.
 # Fecha de creación: 13/10/2026
-# Actualización: 13/10/2026
+# Actualización: 20/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.1
+# Versión: 1.2
 """Validación de los JSON de entidades.
 
 Revisa el formato de ``specs/entidades/README.md`` y que cada ficha, decisión o requisito citado
@@ -161,8 +161,9 @@ class _Revision:
             if validacion not in VALIDACIONES:
                 self.error(donde, f'validación desconocida {validacion}')
         permitidos = set(a.get('validaciones', {})) | {'unico', 'valores'}
-        if 'valores_en_formulario' in a:
-            permitidos.add('valores_en_formulario')
+        for clave in ('valores_en_formulario', 'solo_lectura_si'):
+            if clave in a:
+                permitidos.add(clave)
         for clave, mensaje in a.get('mensajes', {}).items():
             if clave not in permitidos:
                 self.error(donde, f'mensaje para algo que el atributo no tiene ({clave})')
@@ -178,6 +179,9 @@ class _Revision:
             otro = atributo(e, condicion.get('atributo'))
             if otro is None or condicion.get('igual_a') not in valores_lista(self.entidades, otro):
                 self.error(donde, 'solo_lectura_si no apunta a un valor de una lista')
+            # Solo la edición en bloque sabe en qué filas no se edita el dato: en otra entidad se ignoraría.
+            if not e.get('edicion_en_bloque'):
+                self.error(donde, 'solo_lectura_si va solo en una entidad con edicion_en_bloque')
         self.fichas(donde, a.get('fichas'))
 
     def marcadores(self, donde, mensaje, valores):

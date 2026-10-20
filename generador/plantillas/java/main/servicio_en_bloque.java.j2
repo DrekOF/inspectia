@@ -1,0 +1,220 @@
+{#
+  Nombre: servicio_en_bloque.java.j2
+  Descripción: Plantilla del servicio de una entidad con edición en bloque (RP-23): lista las filas de la
+               empresa de la sesión, las edita todas juntas y restaura sus valores por defecto, en una sola
+               transacción y con las filas bloqueadas (RNF-03).
+  Fecha de creación: 20/10/2026
+  Actualización: 20/10/2026
+  Autor: Equipo InspectIA
+  Versión: 1.0
+#}
+{% from 'java/_macros.j2' import encabezado %}
+{% set c = clave %}
+{{ encabezado(header) }}
+package {{ paquete }};
+
+{% for i in importaciones %}
+import {{ i }};
+{% endfor %}
+
+/**
+ * Operaciones de {@code {{ entidad }}} ({{ fichas | join(', ') }}).
+ *
+ * <p>Se edita en bloque: cada empresa tiene una fila por cada {{ c.en_frase }}, y las filas se editan todas
+ * juntas. Al editar revisa, en este orden:
+ * <ol>
+ *   <li>Los datos de cada fila, con las validaciones del JSON (las revisa Spring antes de llamar al
+ *       servicio).</li>
+ *   <li>Que llegue una fila por cada {{ c.en_frase }}, sin repetir.</li>
+{% if solo_lectura %}
+ *   <li>Que no cambien los datos de solo lectura ({@code solo_lectura_si} del JSON).</li>
+{% endif %}
+{% if reglas %}
+ *   <li>Las reglas que se programan a mano, con todas las filas juntas.</li>
+{% endif %}
+ * </ol>
+ * Si algo no se cumple responde 400 y no guarda ninguna fila: lo de cada operación va en una sola
+ * transacción.
+ *
+ * <p>Cada operación recibe el usuario de la sesión y solo ve y modifica las filas de su empresa (RNF-03).
+ * Editar y restaurar bloquean esas filas hasta terminar: si dos personas las cambian a la vez, la segunda
+ * espera a que la primera guarde y trabaja sobre lo que quedó. Si a la empresa le falta una fila, editar
+ * y restaurar la crean con su valor por defecto: así siempre tiene una por cada {{ c.en_frase }}.
+ */
+@Service
+@Transactional(readOnly = true)
+public class {{ clase }}Servicio {
+
+{% for d in dependencias %}
+    private final {{ d.tipo }} {{ d.nombre }};
+{% endfor %}
+
+    /**
+     * Crea el servicio; Spring le pasa sus dependencias.
+     *
+{% for d in dependencias %}
+     * @param {{ d.nombre }} {{ d.descripcion }}
+{% endfor %}
+     */
+    public {{ clase }}Servicio(
+{% for d in dependencias %}
+            {{ d.tipo }} {{ d.nombre }}{{ ',' if not loop.last else ') {' }}
+{% endfor %}
+{% for d in dependencias %}
+        this.{{ d.nombre }} = {{ d.nombre }};
+{% endfor %}
+    }
+{% if 'listar' in operaciones %}
+
+    /**
+     * Las filas de la empresa de la sesión, una por cada {{ c.en_frase }}, en el orden de la lista.
+     *
+     * @param sesion el usuario de la sesión: solo se listan las de su empresa
+     * @return las filas
+     */
+    public List<{{ clase }}Respuesta> listar(UsuarioEnSesion sesion) {
+        return repositorio.findAllByEmpresaId(sesion.empresaId()).stream()
+                .sorted(Comparator.comparing({{ clase }}::{{ c.getter }}))
+                .map({{ clase }}Mapeador::respuesta)
+                .toList();
+    }
+{% endif %}
+
+    /**
+     * Edita todas las filas de la empresa a la vez.
+{% if reglas %}
+     * Los cambios se revisan en copias y solo se aplican si todo está bien.
+{% endif %}
+     *
+     * @param solicitud las filas, ya validadas con el JSON
+     * @param sesion el usuario de la sesión
+     * @return las filas guardadas, en el orden de la lista
+     * {{ ('@throws ReglaIncumplidaExcepcion si no llega una fila por cada ' ~ c.en_frase ~ (', si cambia un dato de solo lectura' if solo_lectura else '') ~ (' o si no se cumple una regla' if reglas else '') ~ ' (400)') | envolver('     *         ') }}
+     */
+    @Transactional
+    public List<{{ clase }}Respuesta> editar({{ clase }}EdicionSolicitud solicitud,
+            UsuarioEnSesion sesion) {
+        revisarFilasCompletas(solicitud);
+        Map<{{ c.tipo }}, {{ clase }}> filas = completas(sesion);
+{% if solo_lectura %}
+        revisarSoloLectura(solicitud, filas);
+{% endif %}
+{% if reglas %}
+        List<{{ clase }}> propuesta = new ArrayList<>();
+        for ({{ clase }}FilaSolicitud fila : solicitud.filas()) {
+            {{ clase }} copia = {{ clase }}Mapeador.copia(filas.get(fila.{{ c.nombre }}()));
+            {{ clase }}Mapeador.aplicar(fila, copia);
+            propuesta.add(copia);
+        }
+        propuesta.sort(Comparator.comparing({{ clase }}::{{ c.getter }}));
+        revisarReglasAlEditar(propuesta, sesion);
+{% endif %}
+        for ({{ clase }}FilaSolicitud fila : solicitud.filas()) {
+            {{ clase }}Mapeador.aplicar(fila, filas.get(fila.{{ c.nombre }}()));
+        }
+        repositorio.flush();
+        return respuestas(filas);
+    }
+{% if 'restaurar_por_defecto' in operaciones %}
+
+    /**
+     * Vuelve a los valores por defecto: los de {@link {{ clase }}ValoresIniciales}, los mismos que recibe
+     * cada empresa nueva.
+     *
+     * @param sesion el usuario de la sesión
+     * @return las filas guardadas, en el orden de la lista
+     */
+    @Transactional
+    public List<{{ clase }}Respuesta> restaurarPorDefecto(UsuarioEnSesion sesion) {
+        Map<{{ c.tipo }}, {{ clase }}> filas = completas(sesion);
+        for ({{ clase }} defecto : {{ clase }}ValoresIniciales.paraEmpresa(sesion.empresaId())) {
+            {{ clase }} fila = filas.get(defecto.{{ c.getter }}());
+{% for r in restaurables %}
+            fila.{{ r.setter }}(defecto.{{ r.getter }}());
+{% endfor %}
+        }
+        repositorio.flush();
+        return respuestas(filas);
+    }
+{% endif %}
+
+    /**
+     * Las filas de la empresa, bloqueadas hasta que termine la transacción, una por cada {{ c.en_frase }}: si
+     * falta alguna, la crea con su valor por defecto.
+     */
+    private Map<{{ c.tipo }}, {{ clase }}> completas(UsuarioEnSesion sesion) {
+        Map<{{ c.tipo }}, {{ clase }}> filas = new EnumMap<>({{ c.tipo }}.class);
+        for ({{ clase }} fila : repositorio.bloquearLasDeLaEmpresa(sesion.empresaId())) {
+            filas.put(fila.{{ c.getter }}(), fila);
+        }
+        for ({{ clase }} defecto : {{ clase }}ValoresIniciales.paraEmpresa(sesion.empresaId())) {
+            if (!filas.containsKey(defecto.{{ c.getter }}())) {
+                filas.put(defecto.{{ c.getter }}(), repositorio.save(defecto));
+            }
+        }
+        return filas;
+    }
+
+    /** Llega una fila por cada {{ c.en_frase }}, sin repetir: si no, responde 400 en {@code filas}. */
+    private static void revisarFilasCompletas({{ clase }}EdicionSolicitud solicitud) {
+        Set<{{ c.tipo }}> llegaron = EnumSet.noneOf({{ c.tipo }}.class);
+        solicitud.filas().forEach(fila -> llegaron.add(fila.{{ c.nombre }}()));
+        int esperadas = {{ c.tipo }}.values().length;
+        if (solicitud.filas().size() != esperadas || llegaron.size() != esperadas) {
+            throw new ReglaIncumplidaExcepcion(
+                    List.of(new CampoInvalido("filas", "{{ entidad }}.filas_completas")));
+        }
+    }
+{% if solo_lectura %}
+
+    /**
+     * Los datos de solo lectura no cambian: {% for s in solo_lectura %}{@code {{ s.campo }}} en la fila de {@code {{ s.codigo }}}{{ ', ' if not loop.last else '' }}{% endfor %}.
+     * Si cambia alguno, responde 400 en el campo de su fila.
+     */
+    private static void revisarSoloLectura({{ clase }}EdicionSolicitud solicitud,
+            Map<{{ c.tipo }}, {{ clase }}> filas) {
+        List<CampoInvalido> cambiados = new ArrayList<>();
+        for (int i = 0; i < solicitud.filas().size(); i++) {
+            {{ clase }}FilaSolicitud fila = solicitud.filas().get(i);
+            {{ clase }} guardada = filas.get(fila.{{ c.nombre }}());
+{% for s in solo_lectura %}
+            if (fila.{{ c.nombre }}() == {{ s.valor }}
+                    && {{ ('distintos(fila.' ~ s.campo ~ '(), guardada.' ~ s.getter ~ '())') if s.decimal else ('!Objects.equals(fila.' ~ s.campo ~ '(), guardada.' ~ s.getter ~ '())') }}) {
+                cambiados.add(new CampoInvalido("filas[" + i + "].{{ s.campo }}",
+                        "{{ s.clave }}"));
+            }
+{% endfor %}
+        }
+        if (!cambiados.isEmpty()) {
+            throw new ReglaIncumplidaExcepcion(cambiados);
+        }
+    }
+{% if solo_lectura | selectattr('decimal') | list %}
+
+    /** Si dos números son distintos, sin contar los ceros del final: 0 y 0.0 son el mismo. */
+    private static boolean distintos(BigDecimal uno, BigDecimal otro) {
+        return uno == null || otro == null ? uno != otro : uno.compareTo(otro) != 0;
+    }
+{% endif %}
+{% endif %}
+{% if reglas %}
+
+    private void revisarReglasAlEditar(List<{{ clase }}> filas, UsuarioEnSesion sesion) {
+        List<CampoInvalido> incumplidas = new ArrayList<>();
+{% for r in reglas %}
+        if (!reglas.{{ r.metodo }}(filas, sesion)) {
+            incumplidas.add(new CampoInvalido(null, "{{ r.clave }}"));
+        }
+{% endfor %}
+        if (!incumplidas.isEmpty()) {
+            throw new ReglaIncumplidaExcepcion(incumplidas);
+        }
+    }
+{% endif %}
+
+    /** Las respuestas de las filas, en el orden de la lista. */
+    private static List<{{ clase }}Respuesta> respuestas(
+            Map<{{ c.tipo }}, {{ clase }}> filas) {
+        return filas.values().stream().map({{ clase }}Mapeador::respuesta).toList();
+    }
+}

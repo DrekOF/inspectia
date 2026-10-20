@@ -2,9 +2,9 @@
 Nombre: README.md (infra)
 Descripción: Qué va en la carpeta infra/ de InspectIA, cómo reiniciar la base local, cómo crear el administrador de la plataforma y restablecer su contraseña, y cómo probar la sesión en local.
 Fecha de creación: 12/10/2026
-Actualización: 19/10/2026
+Actualización: 20/10/2026
 Autor: Equipo InspectIA
-Versión: 1.4
+Versión: 1.5
 -->
 
 # infra
@@ -32,7 +32,7 @@ La EC2 t4g es ARM (Graviton), así que toda imagen debe funcionar en amd64 y en 
 
 Desde la raíz del repositorio, la base se enciende con `docker compose -f infra/docker-compose.yml up -d` y se apaga con `docker compose -f infra/docker-compose.yml down`. Los demás comandos están en la sección Comandos de `CLAUDE.md`.
 
-Si cambia `V1__esquema_inicial.sql`, como cuando RF-03 agregó la columna `usuario.sesiones_desde`, quien ya tenga la base local debe reiniciarla: Flyway no arranca si una migración ya aplicada cambió (P-16). Esto borra los datos locales:
+Si cambia `V1__esquema_inicial.sql`, quien ya tenga la base local debe reiniciarla: Flyway no arranca si una migración ya aplicada cambió (P-16), aunque sea solo su header. Pasó cuando RF-03 agregó la columna `usuario.sesiones_desde`, y cuando RF-13 subió el generador a la 1.6, que solo cambió el header. Esto borra los datos locales:
 
 1. `docker compose -f infra/docker-compose.yml down -v`
 2. `docker compose -f infra/docker-compose.yml up -d`
@@ -105,5 +105,13 @@ Con el backend arrancado y el administrador creado:
 4. Abre `GET /api/v1/sesion`, pulsa «Try it out» y «Execute»: responde 200 con tu usuario. Con el mismo token también responde la API de empresas.
 
 Con datos incorrectos, el inicio de sesión responde 401 «Correo o contraseña incorrectos». Después de 5 fallos seguidos, la cuenta se bloquea 15 minutos, también para la contraseña correcta.
+
+Para los rangos de recomendación (RF-13), crea una empresa con `POST /api/v1/empresas`, que trae su administrador, e inicia sesión con él. Ahí:
+
+- `GET /api/v1/rangos-recomendacion` lista las 4 filas.
+- `PUT /api/v1/rangos-recomendacion` con `filas` las edita todas juntas.
+- `POST /api/v1/rangos-recomendacion/restaurar-por-defecto` vuelve a los valores de D-10.
+
+El administrador de la plataforma recibe 403 en esas rutas, porque no tiene empresa.
 
 Para cambiar tu propia contraseña (RF-18), abre `PUT /api/v1/sesion/contrasena` con `contrasenaActual` y `contrasenaNueva`. La respuesta 200 trae un token nuevo, que vence a la misma hora que el anterior: pégalo en «Authorize», porque el anterior y los de tus demás sesiones responden 401 «Tu contraseña cambió». Una contraseña actual errada responde 400 y cuenta para el bloqueo; desde el quinto fallo seguido responde 429 hasta que termine.

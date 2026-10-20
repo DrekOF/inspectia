@@ -1,17 +1,18 @@
 # Nombre: test_java.py
 # Descripción: Pruebas de la generación de Java (persistencia, API y pruebas) y de los textos es/en.
 # Fecha de creación: 13/10/2026
-# Actualización: 18/10/2026
+# Actualización: 20/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.4
+# Versión: 1.6
 """Pruebas de lo que genera el generador para el backend: la persistencia de cada CRUD, la API de las
-entidades del alcance, incluidas las de una entidad por empresa, y los textos en español e inglés."""
+entidades del alcance, incluidas las de una entidad por empresa y las de edición en bloque, y los textos
+en español e inglés."""
 
 import re
 
 import pytest
 
-from conftest import EJEMPLOS
+from conftest import EJEMPLOS, atributo
 from inspectia_generador.generacion import generar_archivos
 from inspectia_generador.sql import ErrorGeneracion
 
@@ -25,6 +26,8 @@ EMPRESA_GENERADA = EJEMPLOS / 'empresa_generada'
 # la llamada a super() y la JVM rechaza la clase (VerifyError). Ver CLAUDE.md.
 CONSTRUCTORES_LOMBOK = ('RequiredArgsConstructor', 'AllArgsConstructor', 'NoArgsConstructor', 'Builder', 'Data',
                         'Value')
+# Con rango_recomendacion, la entidad con edicion_en_bloque (RF-13).
+API_CON_RANGOS = ('empresa', 'usuario', 'rango_recomendacion')
 
 
 def generar(entidades, api=('empresa',)):
@@ -280,3 +283,105 @@ def test_constructores_sin_lombok(entidades):
     assert '        this.rangoRecomendacionRepositorio = rangoRecomendacionRepositorio;\n    }' in servicio
     controlador = archivos[f'{JAVA}/empresa/EmpresaControlador.java']
     assert '    public EmpresaControlador(EmpresaServicio servicio) {\n        this.servicio = servicio;' in controlador
+
+
+@pytest.mark.caso('RP-23 · edicion_en_bloque: lista las filas sin páginas, las edita todas juntas y restaura los valores por defecto, siempre en la empresa de la sesión (RF-13, RNF-03)')
+def test_api_en_bloque(entidades):
+    archivos = generar(entidades, api=API_CON_RANGOS)
+
+    controlador = archivos[f'{JAVA}/rango/RangoRecomendacionControlador.java']
+    assert '@RequestMapping("/api/v1/rangos-recomendacion")' in controlador
+    assert 'public List<RangoRecomendacionRespuesta> listar(' in controlador
+    assert '@Valid @RequestBody RangoRecomendacionEdicionSolicitud solicitud' in controlador
+    assert '@PostMapping("/restaurar-por-defecto")' in controlador
+    assert 'public List<RangoRecomendacionRespuesta> restaurarPorDefecto(' in controlador
+    assert '"/{id}' not in controlador, 'en bloque no hay rutas por fila'
+    acceso = archivos[f'{JAVA}/rango/RangoRecomendacionAcceso.java']
+    for metodo, ruta in (('GET', ''), ('PUT', ''), ('POST', '/restaurar-por-defecto')):
+        assert (f'.requestMatchers(HttpMethod.{metodo}, "/api/v1/rangos-recomendacion{ruta}")'
+                '.hasRole("ADMIN_EMPRESA")') in acceso
+    assert 'List<RangoRecomendacionFilaSolicitud> filas' in archivos[f'{JAVA}/rango/RangoRecomendacionEdicionSolicitud.java']
+    fila = archivos[f'{JAVA}/rango/RangoRecomendacionFilaSolicitud.java']
+    for campo in ('RangoRecomendacionCategoria categoria', 'BigDecimal limiteInferior', 'String recomendacion'):
+        assert campo in fila
+    for sobra in ('CrearSolicitud', 'EditarSolicitud'):
+        assert f'{JAVA}/rango/RangoRecomendacion{sobra}.java' not in archivos
+    servicio = archivos[f'{JAVA}/rango/RangoRecomendacionServicio.java']
+    assert 'repositorio.findAllByEmpresaId(sesion.empresaId())' in servicio
+    assert 'RangoRecomendacionValoresIniciales.paraEmpresa(sesion.empresaId())' in servicio, \
+        'restaurar usa la misma fuente que RF-02 al crear la empresa'
+    assert '"rango_recomendacion.filas_completas"' in servicio
+    assert 'findById(' not in servicio and 'findAll(' not in servicio, 'ninguna consulta sin la empresa'
+    repositorio = archivos[f'{JAVA}/rango/RangoRecomendacionRepositorio.java']
+    assert 'List<RangoRecomendacion> findAllByEmpresaId(UUID empresaId);' in repositorio
+    reglas = archivos[f'{JAVA}/rango/ReglasRangoRecomendacion.java']
+    assert 'boolean cumpleLimitesEnOrden(List<RangoRecomendacion> filas, UsuarioEnSesion sesion);' in reglas
+    assert ('rango_recomendacion.filas_completas=Envía una fila por cada categoría, sin repetir: Premium o Especial, '
+            'Estándar, Corriente y Fuera de norma.') in archivos[f'{TEXTOS}/generado.properties']
+    assert ('rango_recomendacion.filas_completas=Send one row for each category, with no repeats: Premium or '
+            'Specialty, Standard, Regular and Off-grade.') in archivos[f'{TEXTOS}/generado_en.properties']
+    prueba = archivos[f'{PRUEBAS}/rango/RangoRecomendacionApiGeneradaIT.java']
+    assert 'RF-13 · ' in prueba and 'RNF-03 · ' in prueba
+
+
+@pytest.mark.caso('RP-23 · solo_lectura_si: en la edición en bloque, ese dato no cambia en las filas que cumplen la condición, con el mensaje del JSON o el general')
+def test_solo_lectura_en_bloque(entidades):
+    archivos = generar(entidades, api=API_CON_RANGOS)
+
+    servicio = archivos[f'{JAVA}/rango/RangoRecomendacionServicio.java']
+    assert 'RangoRecomendacionCategoria.FUERA_DE_NORMA' in servicio
+    assert '"rango_recomendacion.limite_inferior.solo_lectura_si"' in servicio
+    assert ('rango_recomendacion.limite_inferior.solo_lectura_si=El límite de Fuera de norma es fijo: 0 %.'
+            in archivos[f'{TEXTOS}/generado.properties'])
+    assert ('rango_recomendacion.limite_inferior.solo_lectura_si=The Off-grade limit is fixed: 0%.'
+            in archivos[f'{TEXTOS}/generado_en.properties'])
+
+    del atributo(entidades['rango_recomendacion'], 'limite_inferior')['mensajes']['solo_lectura_si']
+    archivos = generar(entidades, api=API_CON_RANGOS)
+
+    assert '"validacion.solo_lectura"' in archivos[f'{JAVA}/rango/RangoRecomendacionServicio.java']
+    assert 'validacion.solo_lectura=Este dato no se puede cambiar.' in archivos[f'{TEXTOS}/generado.properties']
+
+
+@pytest.mark.caso('RP-23 · un decimal acepta como máximo los decimales de su escala, con el mensaje general en singular o en plural')
+def test_maximo_decimales(entidades):
+    archivos = generar(entidades, api=API_CON_RANGOS)
+
+    fila = archivos[f'{JAVA}/rango/RangoRecomendacionFilaSolicitud.java']
+    assert '@MaximoDecimales(value = 1, message = "{validacion.decimales_uno}")' in anotaciones_de(fila, 'limiteInferior')
+    assert 'import co.edu.usco.inspectia.comun.validacion.MaximoDecimales;' in fila
+    espanol = archivos[f'{TEXTOS}/generado.properties']
+    assert 'validacion.decimales_uno=Usa como máximo 1 decimal.' in espanol
+    assert 'validacion.decimales=Usa como máximo {value} decimales.' in espanol
+    assert 'validacion.decimales=Use at most {value} decimal places.' in archivos[f'{TEXTOS}/generado_en.properties']
+
+    atributo(entidades['rango_recomendacion'], 'limite_inferior')['escala'] = 2
+    fila = generar(entidades, api=API_CON_RANGOS)[f'{JAVA}/rango/RangoRecomendacionFilaSolicitud.java']
+
+    assert '@MaximoDecimales(value = 2, message = "{validacion.decimales}")' in anotaciones_de(fila, 'limiteInferior')
+
+
+@pytest.mark.caso('RP-23 · un decimal se guarda y se responde con la escala de su columna: el mapeador la ajusta al copiar la solicitud')
+def test_decimal_con_la_escala_de_su_columna(entidades):
+    archivos = generar(entidades, api=API_CON_RANGOS)
+
+    mapeador = archivos[f'{JAVA}/rango/RangoRecomendacionMapeador.java']
+    assert 'rangoRecomendacion.setLimiteInferior(Decimales.conEscala(solicitud.limiteInferior(), 1));' in mapeador
+    assert 'import co.edu.usco.inspectia.comun.numero.Decimales;' in mapeador
+    assert 'rangoRecomendacion.setRecomendacion(solicitud.recomendacion());' in mapeador, 'los demás datos, tal cual'
+    assert 'Decimales' not in archivos[f'{JAVA}/empresa/EmpresaMapeador.java'], 'empresa no tiene decimales'
+
+
+@pytest.mark.caso('RP-23 · el generador se detiene con una edición en bloque que no sabe generar: con crear, sin una lista que identifique cada fila o con restaurar_por_defecto sin valores_iniciales')
+def test_en_bloque_que_no_sabe_generar(entidades):
+    rango = entidades['rango_recomendacion']
+    rango['operaciones']['crear'] = ['ADMIN_EMPRESA']
+    rango['unicos'] = []
+    del rango['valores_iniciales']
+
+    with pytest.raises(ErrorGeneracion) as error:
+        generar(entidades, api=API_CON_RANGOS)
+
+    assert 'edicion_en_bloque con la operación crear' in str(error.value)
+    assert 'edicion_en_bloque sin una lista que, con la empresa, identifique cada fila' in str(error.value)
+    assert 'restaurar_por_defecto sin valores_iniciales' in str(error.value)
