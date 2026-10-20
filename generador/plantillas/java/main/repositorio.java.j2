@@ -1,10 +1,12 @@
 {#
   Nombre: repositorio.java.j2
-  Descripción: Plantilla del repositorio de Spring Data JPA de una tabla con CRUD (RP-23).
+  Descripción: Plantilla del repositorio de Spring Data JPA de una tabla con CRUD (RP-23). En una entidad
+               con edición en bloque, lee las filas de una empresa todas juntas y las bloquea para
+               editarlas.
   Fecha de creación: 13/10/2026
-  Actualización: 18/10/2026
+  Actualización: 20/10/2026
   Autor: Equipo InspectIA
-  Versión: 1.1
+  Versión: 1.2
 #}
 {% from 'java/_macros.j2' import encabezado %}
 {{ encabezado(header) }}
@@ -44,7 +46,32 @@ public interface {{ clase }}Repositorio extends JpaRepository<{{ clase }}, UUID>
     @Query("{{ c.jpql_en_otro }}")
     boolean {{ c.metodo_en_otro }}(@Param("valor") {{ c.tipo }} valor, @Param("id") UUID id);
 {% endfor %}
-{% if con_empresa %}
+{% if en_bloque %}
+
+    /**
+     * Las filas de una empresa, sin un orden fijo: la API nunca lista las de otra (RNF-03).
+     *
+     * @param empresaId la empresa de la sesión
+     * @return las filas
+     */
+    List<{{ clase }}> findAllByEmpresaId(UUID empresaId);
+
+    /**
+     * Las filas de una empresa, bloqueadas hasta que termine la transacción ({@code SELECT … FOR UPDATE}).
+     * Si otra transacción las está cambiando, espera a que termine y las lee como quedaron: así dos
+     * ediciones a la vez no mezclan sus filas.
+     *
+     * <p>Solo sirve dentro de la transacción que después guarda, así que exige una: fuera de ella, el
+     * bloqueo se soltaría al instante.
+     *
+     * @param empresaId la empresa de la sesión
+     * @return las filas
+     */
+    @Transactional(propagation = Propagation.MANDATORY)
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select e from {{ clase }} e where e.empresaId = :empresaId")
+    List<{{ clase }}> bloquearLasDeLaEmpresa(@Param("empresaId") UUID empresaId);
+{% elif con_empresa %}
 
     /**
      * Una página de los registros de una empresa: la API nunca lista los de otra (RNF-03).

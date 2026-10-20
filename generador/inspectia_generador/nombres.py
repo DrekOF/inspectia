@@ -1,11 +1,11 @@
 # Nombre: nombres.py
 # Descripción: Nombres de Java y literales de Java y de .properties a partir de los nombres de los JSON.
 # Fecha de creación: 13/10/2026
-# Actualización: 13/10/2026
+# Actualización: 20/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.0
-"""Conversión de nombres (snake_case de los JSON a camelCase y PascalCase de Java) y escritura de
-literales de Java y de archivos ``.properties``."""
+# Versión: 1.1
+"""Conversión de nombres (snake_case de los JSON a camelCase y PascalCase de Java), escritura de
+literales de Java y de archivos ``.properties``, y etiquetas dentro de una frase."""
 
 import textwrap
 
@@ -22,6 +22,11 @@ def camel(nombre):
 def pascal(nombre):
     """``rango_recomendacion`` → ``RangoRecomendacion``."""
     return ''.join(p.capitalize() for p in nombre.split('_'))
+
+
+def en_frase(etiqueta):
+    """La etiqueta dentro de una frase: en minúscula, salvo las siglas como NIT."""
+    return etiqueta if etiqueta.isupper() else etiqueta[0].lower() + etiqueta[1:]
 
 
 def texto_java(valor):

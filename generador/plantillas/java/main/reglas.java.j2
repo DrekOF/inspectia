@@ -2,11 +2,12 @@
   Nombre: reglas.java.j2
   Descripción: Plantilla de la interfaz de las reglas de una entidad que se programan a mano (RP-23):
                las validaciones y los efectos. Sus parámetros salen como constantes y, en una entidad por
-               empresa, cada regla recibe la sesión.
+               empresa, cada regla recibe la sesión. En la edición en bloque, cada regla recibe todas las
+               filas juntas.
   Fecha de creación: 13/10/2026
-  Actualización: 18/10/2026
+  Actualización: 20/10/2026
   Autor: Equipo InspectIA
-  Versión: 1.2
+  Versión: 1.3
 #}
 {% from 'java/_macros.j2' import encabezado %}
 {{ encabezado(header) }}
@@ -44,13 +45,17 @@ public interface Reglas{{ clase }} {
     /**
      * {{ (r.codigo ~ ': ' ~ r.descripcion ~ ' Se revisa ' ~ r.cuando_texto ~ (', solo si llega una contraseña nueva' if r.solo_con_contrasena else '') ~ ' (' ~ (r.fichas | join(', ')) ~ ').') | envolver('     * ') }}
      *
+{% if en_bloque %}
+     * @param filas las filas que se van a guardar, una por cada {{ clave.en_frase }}, en el orden de la lista
+{% else %}
      * @param {{ var }} el registro con los datos que se van a guardar
+{% endif %}
 {% if con_empresa %}
      * @param sesion el usuario de la sesión, con su empresa
 {% endif %}
      * @return {@code true} si se cumple; si no, la API responde 400{{ (' en el campo ' ~ r.campo) if r.campo else '' }} con el mensaje de la regla
      */
-    boolean {{ r.metodo }}({{ clase }} {{ var }}{{ ', UsuarioEnSesion sesion' if con_empresa else '' }});
+    boolean {{ r.metodo }}({{ ('List<' ~ clase ~ '> filas') if en_bloque else (clase ~ ' ' ~ var) }}{{ ', UsuarioEnSesion sesion' if con_empresa else '' }});
 {% endfor %}
 {% for f in efectos %}
 

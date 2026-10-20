@@ -1,14 +1,17 @@
 # Nombre: test_salida.py
 # Descripción: Pruebas de la escritura y la comprobación de los archivos generados.
 # Fecha de creación: 13/10/2026
-# Actualización: 13/10/2026
+# Actualización: 20/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.1
+# Versión: 1.2
 """Pruebas de cómo se escriben los archivos generados y de cómo se detecta que alguien los editó."""
+
+import re
 
 import pytest
 
-from conftest import RUTA_MIGRACION
+from conftest import GENERADOR, RUTA_MIGRACION
+from inspectia_generador.carga import cargar_alcance
 from inspectia_generador.generacion import generar_archivos
 from inspectia_generador.salida import comprobar, escribir
 
@@ -31,6 +34,13 @@ def test_header_de_los_archivos(entidades):
                       'Actualización:', 'Autor: Equipo InspectIA', 'Versión:'):
             assert campo in texto, f'{archivo.ruta}: falta «{campo}» en el header'
         assert 'no se edita a mano' in texto
+
+
+@pytest.mark.caso('RP-23 · lo generado no lleva valores de Python: un booleano sale como true o false, también en los ejemplos de OpenAPI, y nada sale como None')
+def test_sin_valores_de_python(entidades):
+    for archivo in generar_archivos(entidades, cargar_alcance(GENERADOR / 'alcance.json')):
+        encontrados = re.findall(r'\b(?:True|False|None)\b', archivo.contenido)
+        assert not encontrados, f'{archivo.ruta}: {encontrados}'
 
 
 @pytest.mark.caso('RP-23 · comprobar no encuentra diferencias justo después de generar')

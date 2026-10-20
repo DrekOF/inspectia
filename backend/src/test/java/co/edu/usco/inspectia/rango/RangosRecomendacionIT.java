@@ -4,9 +4,9 @@
  *              reales: edición de los 4 en bloque, límites, valores por defecto, permisos y separación por
  *              empresa (RF-13, RNF-03, RNF-04).
  * Fecha de creación: 19/10/2026
- * Actualización: 19/10/2026
+ * Actualización: 20/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.rango;
 
@@ -21,12 +21,19 @@ import co.edu.usco.inspectia.PruebaIntegracion;
 import co.edu.usco.inspectia.usuario.sesion.ApiSesion;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
+import javax.sql.DataSource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -56,6 +63,8 @@ import org.springframework.test.web.servlet.assertj.MvcTestResult;
  *   <li>{@code POST /api/v1/rangos-recomendacion/restaurar-por-defecto} vuelve a los valores de D-10 y responde
  *       las 4 filas.</li>
  *   <li>Solo las usa el administrador de empresa, y la empresa sale de la sesión (RNF-03, RNF-04).</li>
+ *   <li>Editar y restaurar bloquean las filas de la empresa hasta terminar: si dos administradores las
+ *       cambian a la vez, el segundo espera al primero.</li>
  * </ul>
  * Las empresas se crean por la API de RF-02, que les da sus rangos por defecto. C2 (un análisis hecho
  * después del cambio usa los rangos nuevos) se prueba con RF-12, cuando exista el análisis.
@@ -101,6 +110,9 @@ class RangosRecomendacionIT {
 
     @Autowired
     private JdbcTemplate jdbc;
+
+    @Autowired
+    private DataSource fuente;
 
     private ApiSesion api;
     private String tokenPlataforma;
@@ -296,6 +308,49 @@ class RangosRecomendacionIT {
                 Arguments.of("de 301 caracteres", "x".repeat(301), 400, LARGA));
     }
 
+    /**
+     * Mientras el cambio sale, la prueba hace de otro administrador: tiene tomadas las filas de la empresa
+     * ({@code SELECT … FOR UPDATE}), baja Premium a 91 y Estándar a 85 y guarda cuando el cambio ya espera
+     * en la base, sin depender de la suerte.
+     *
+     * <p>El cambio deja Premium en 96 y sube Estándar a 95. Sin el bloqueo, leería Premium 96 antes de que
+     * el otro guardara, no la volvería a escribir y quedaría Premium 91 con Estándar 95, fuera de orden.
+     * Con él, espera, lee lo que guardó el otro y deja sus 4 filas como las envió.
+     */
+    @Test
+    @DisplayName("RF-13 · si dos administradores cambian los rangos a la vez, el segundo espera a que el primero guarde y deja sus 4 filas como las envió: los límites no quedan fuera de orden")
+    void dosCambiosALaVez() throws Exception {
+        List<Rango> cambio = new ArrayList<>(D10);
+        cambio.set(1, new Rango("ESTANDAR", new BigDecimal("95.0"), D10.get(1).recomendacion()));
+        ExecutorService hilos = Executors.newSingleThreadExecutor();
+        try (Connection otro = fuente.getConnection()) {
+            otro.setAutoCommit(false);
+            try (PreparedStatement bloqueo = otro.prepareStatement(
+                    "SELECT id FROM rango_recomendacion WHERE empresa_id = ? FOR UPDATE")) {
+                bloqueo.setObject(1, empresaA);
+                bloqueo.executeQuery().close();
+            }
+            Future<MvcTestResult> peticion = hilos.submit(() -> editar(tokenA, filas(cambio)));
+            esperarABloquearse(peticion);
+            try (PreparedStatement guardar = otro.prepareStatement(
+                    "UPDATE rango_recomendacion SET limite_inferior = ? WHERE empresa_id = ? AND categoria = ?")) {
+                for (Map.Entry<String, BigDecimal> limite : Map.of("PREMIUM", new BigDecimal("91.0"),
+                        "ESTANDAR", new BigDecimal("85.0")).entrySet()) {
+                    guardar.setBigDecimal(1, limite.getValue());
+                    guardar.setObject(2, empresaA);
+                    guardar.setString(3, limite.getKey());
+                    guardar.executeUpdate();
+                }
+            }
+            otro.commit();
+            assertThat(peticion.get(30, TimeUnit.SECONDS)).hasStatus(HttpStatus.OK);
+        } finally {
+            hilos.shutdownNow();
+        }
+
+        assertThat(enLaBase(empresaA)).isEqualTo(cambio);
+    }
+
     @Test
     @DisplayName("RF-13 · C3 · los análisis anteriores no cambian: un lote ya analizado conserva su categoría y su recomendación al editar y al restaurar los rangos")
     void losAnalisisAnterioresNoCambian() {
@@ -480,6 +535,22 @@ class RangosRecomendacionIT {
                 VALUES (?, 'L-001', current_date, 'Finca La Esperanza', 'ANALIZADO', ?, 91.0, 'ESTANDAR', ?, false, false,
                         now())
                 RETURNING id""", UUID.class, empresaA, usuario, D10.get(1).recomendacion());
+    }
+
+    /** Espera, hasta 10 segundos, a que la petición haya terminado o esté esperando un bloqueo de la base. */
+    private void esperarABloquearse(Future<MvcTestResult> peticion) throws InterruptedException {
+        long limite = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+        while (!peticion.isDone() && esperandoUnBloqueo() == 0) {
+            assertThat(System.nanoTime()).as("la petición no llegó a la base").isLessThan(limite);
+            Thread.sleep(20);
+        }
+    }
+
+    /** Cuántas conexiones a la base esperan un bloqueo que tiene otra transacción. */
+    private int esperandoUnBloqueo() {
+        return jdbc.queryForObject("""
+                SELECT count(*) FROM pg_stat_activity
+                WHERE datname = current_database() AND wait_event_type = 'Lock'""", Integer.class);
     }
 
     private Map<String, Object> resultadoDelLote(UUID lote) {

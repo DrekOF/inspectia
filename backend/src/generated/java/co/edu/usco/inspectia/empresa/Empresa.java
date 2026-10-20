@@ -5,8 +5,8 @@
  *              o la plantilla, y se regenera.
  * Fecha de creación: 13/10/2026
  * Actualización: 13/10/2026
- * Autor: Equipo InspectIA (generado por generador/ v1.5)
- * Versión: 1.5
+ * Autor: Equipo InspectIA (generado por generador/ v1.6)
+ * Versión: 1.6
  * Entidades: empresa 1.2
  */
 package co.edu.usco.inspectia.empresa;

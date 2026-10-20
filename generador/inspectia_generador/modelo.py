@@ -1,9 +1,9 @@
 # Nombre: modelo.py
 # Descripción: Consultas sobre las entidades cargadas que comparten la validación y la generación.
 # Fecha de creación: 13/10/2026
-# Actualización: 13/10/2026
+# Actualización: 20/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.0
+# Versión: 1.1
 """Consultas sobre las entidades ya cargadas (los JSON como diccionarios).
 
 Las usan la validación y la generación, para que las dos lean el formato de la misma manera
@@ -34,6 +34,23 @@ def columnas(entidad):
 def atributo(entidad, nombre):
     """Devuelve el atributo ``nombre`` de la entidad, o ``None`` si no existe."""
     return next((a for a in entidad.get('atributos', []) if a.get('nombre') == nombre), None)
+
+
+def clave_en_bloque(entidad):
+    """La lista que identifica cada fila de una entidad con ``edicion_en_bloque``, o ``None``.
+
+    Es la que forma un único con ``empresa_id``: cada empresa tiene una fila por cada valor de la lista,
+    como un rango por cada categoría (RF-13). Debe traer sus ``valores``, porque de ellos salen las filas
+    y sus etiquetas.
+    """
+    for u in entidad.get('unicos', []):
+        columnas = u.get('atributos', [])
+        otras = [c for c in columnas if c != EMPRESA_ID]
+        if len(columnas) == 2 and len(otras) == 1:
+            atr = atributo(entidad, otras[0])
+            if atr is not None and atr.get('tipo') == 'lista' and 'valores' in atr:
+                return atr
+    return None
 
 
 def valores_lista(entidades, atr):

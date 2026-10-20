@@ -1,0 +1,99 @@
+{#
+  Nombre: controlador_en_bloque.java.j2
+  Descripción: Plantilla del controlador REST de una entidad con edición en bloque, con roles y OpenAPI
+               (RP-23): lista las filas de la empresa, las edita todas juntas y restaura sus valores por
+               defecto. La empresa sale de la sesión (RNF-03).
+  Fecha de creación: 20/10/2026
+  Actualización: 20/10/2026
+  Autor: Equipo InspectIA
+  Versión: 1.0
+#}
+{% from 'java/_macros.j2' import encabezado %}
+{% set sesion_param = '@Parameter(hidden = true) @AuthenticationPrincipal UsuarioEnSesion sesion' %}
+{{ encabezado(header) }}
+package {{ paquete }};
+
+{% for i in importaciones %}
+import {{ i }};
+{% endfor %}
+
+/**
+ * API REST de {@code {{ entidad }}} en {@code {{ ruta_api }}} ({{ fichas | join(', ') }}). Intercambia JSON.
+ *
+ * <p>Se edita en bloque: cada empresa tiene una fila por cada {{ clave.en_frase }}, y las filas se editan
+ * todas juntas. No se crean ni se borran filas sueltas.
+ *
+ * <p>Los roles de cada operación salen de {@code operaciones} del JSON: la cadena de seguridad los
+ * revisa por ruta ({@link {{ clase }}Acceso}) y {@code @PreAuthorize} es la segunda barrera (RNF-04).
+ *
+ * <p>La empresa sale de la sesión y nunca de la petición: cada operación solo ve y modifica las filas
+ * de la empresa del usuario (RNF-03).
+ */
+@RestController
+@RequestMapping("{{ ruta_api }}")
+@Tag(name = {{ (plural | capitalize) | java }}, description = {{ descripcion | java }})
+public class {{ clase }}Controlador {
+
+    private final {{ clase }}Servicio servicio;
+
+    /**
+     * Crea el controlador; Spring le pasa el servicio.
+     *
+     * @param servicio las operaciones de {@code {{ entidad }}}
+     */
+    public {{ clase }}Controlador({{ clase }}Servicio servicio) {
+        this.servicio = servicio;
+    }
+{% for r in rutas %}
+{% set roles = 'Roles: ' ~ (r.roles | join(', ')) ~ '.' %}
+{% if r.operacion == 'listar' %}
+
+    /**
+     * Las filas de la empresa, una por cada {{ clave.en_frase }}, en el orden de la lista.
+     *
+     * @param sesion el usuario de la sesión: solo ve las de su empresa
+     * @return las filas
+     */
+    @GetMapping
+    @PreAuthorize("{{ r.preautorizar }}")
+    @Operation(summary = "{{ r.verbo }} {{ plural }}", description = {{ ('Las filas de la empresa, una por cada ' ~ clave.en_frase ~ ', en el orden de la lista. ' ~ roles) | java }})
+    public List<{{ clase }}Respuesta> listar(
+            {{ sesion_param }}) {
+        return servicio.listar(sesion);
+    }
+{% elif r.operacion == 'editar' %}
+
+    /**
+     * Edita todas las filas de la empresa a la vez: llega una por cada {{ clave.en_frase }}, sin repetir.
+     * Si alguna no cumple, no guarda ninguna.
+     *
+     * @param solicitud las filas
+     * @param sesion el usuario de la sesión: solo cambia las de su empresa
+     * @return las filas guardadas
+     */
+    @PutMapping
+    @PreAuthorize("{{ r.preautorizar }}")
+    @Operation(summary = "{{ r.verbo }} {{ plural }}", description = {{ ('Llegan todas las filas juntas, una por cada ' ~ clave.en_frase ~ '; si alguna no cumple, no guarda ninguna. ' ~ roles) | java }})
+    public List<{{ clase }}Respuesta> editar(
+            @Valid @RequestBody {{ clase }}EdicionSolicitud solicitud,
+            {{ sesion_param }}) {
+        return servicio.editar(solicitud, sesion);
+    }
+{% elif r.operacion == 'restaurar_por_defecto' %}
+
+    /**
+     * Vuelve a los valores por defecto: los mismos que recibe cada empresa nueva.
+     *
+     * @param sesion el usuario de la sesión: solo cambia las de su empresa
+     * @return las filas guardadas
+     */
+    @PostMapping("{{ r.sufijo }}")
+    @PreAuthorize("{{ r.preautorizar }}")
+    @Operation(summary = "{{ r.verbo }} los valores por defecto de {{ plural }}", description = {{ ('Deja las filas con los valores que recibe cada empresa nueva. ' ~ roles) | java }})
+    public List<{{ clase }}Respuesta> restaurarPorDefecto(
+            {{ sesion_param }}) {
+        return servicio.restaurarPorDefecto(sesion);
+    }
+{% endif %}
+{% endfor %}
+}
