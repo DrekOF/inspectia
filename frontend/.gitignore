@@ -1,0 +1,20 @@
+# Nombre: .gitignore (frontend)
+# Descripción: Lo que el frontend genera al compilar y al probar, y que no va al repositorio.
+# Fecha de creación: 20/10/2026
+# Actualización: 20/10/2026
+# Autor: Equipo InspectIA
+# Versión: 1.0
+
+node_modules/
+dist/
+
+# Reportes de las pruebas: cobertura, Playwright y mutación (Stryker)
+coverage/
+test-results/
+playwright-report/
+blob-report/
+reports/
+.stryker-tmp/
+
+# Datos del entorno aislado de las pruebas de punta a punta: usuarios y contraseñas de cada corrida
+e2e/.entorno/
