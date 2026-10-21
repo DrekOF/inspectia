@@ -22,7 +22,7 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 ## Resumen
 
 - **143 criterios de aceptación** en 26 fichas: 55 con prueba y 88 pendientes.
-- **404 pruebas:** 220 de Java (27 generadas), 121 de JavaScript y 63 de Python. Una prueba parametrizada cuenta una vez.
+- **410 pruebas:** 220 de Java (27 generadas), 127 de JavaScript y 63 de Python. Una prueba parametrizada cuenta una vez.
 
 | Ficha | Criterios | Con prueba | Pendientes |
 |---|---:|---:|---:|
@@ -540,6 +540,15 @@ Pruebas que no cubren un criterio de una ficha, sino una pauta del docente (RP) 
 - [`test_casos.py`](../generador/pruebas/test_casos.py) · todas las pruebas del repositorio tienen una marca válida
 - [`test_casos.py`](../generador/pruebas/test_casos.py) · un criterio sin prueba sale como pendiente; uno eliminado no
 - [`test_casos.py`](../generador/pruebas/test_casos.py) · una marca que cita algo que no existe o un criterio eliminado es un error
+
+### RP-14 · Herramientas de prueba
+
+- [`espejo.test.js`](../frontend/herramientas/espejo.test.js) · la carpeta excluida de la copia no se toca al espejar: lo que se hace con ella lo decide quien llama
+- [`espejo.test.js`](../frontend/herramientas/espejo.test.js) · la primera vez copia todo, menos las carpetas excluidas, como target
+- [`espejo.test.js`](../frontend/herramientas/espejo.test.js) · un archivo borrado o renombrado en el original desaparece de la copia, y se informa
+- [`espejo.test.js`](../frontend/herramientas/espejo.test.js) · un archivo cambiado se copia con su contenido nuevo y su fecha, para que Maven compile solo lo cambiado
+- [`espejo.test.js`](../frontend/herramientas/espejo.test.js) · un archivo que pasó a ser carpeta se reemplaza en la copia
+- [`espejo.test.js`](../frontend/herramientas/espejo.test.js) · una carpeta borrada en el original desaparece entera de la copia
 
 ### RP-15 · Scripts de creación e inicialización de la base de datos
 

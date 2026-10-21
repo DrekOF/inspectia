@@ -17,11 +17,12 @@
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import {
-  closeSync, cpSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, rmSync, writeFileSync,
+  closeSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, rmSync, writeFileSync,
 } from 'node:fs';
 import { createServer } from 'node:net';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { espejar } from '../../herramientas/espejo.js';
 
 const FRONTEND = fileURLToPath(new URL('../../', import.meta.url));
 const RAIZ = fileURLToPath(new URL('../../../', import.meta.url));
@@ -148,13 +149,13 @@ function arrancar(programa, argumentos, registro, opciones) {
 }
 
 /**
- * El jar del backend: el de INSPECTIA_E2E_JAR o, si no se da, el que compila Maven en una copia del backend
- * dentro de e2e/.entorno. Nunca compila en backend/target, que puede estar usando el backend de desarrollo
- * (./mvnw spring-boot:run).
+ * El jar del backend: el de INSPECTIA_E2E_JAR o, si no se da, el que compila Maven en una copia en espejo del
+ * backend dentro de e2e/.entorno. Nunca compila en backend/target, que puede estar usando el backend de
+ * desarrollo (./mvnw spring-boot:run).
  *
  * @returns {Promise<string>} la ruta del jar
  */
-async function jarDelBackend() {
+export async function jarDelBackend() {
   if (process.env.INSPECTIA_E2E_JAR) {
     if (!existsSync(process.env.INSPECTIA_E2E_JAR)) {
       throw new Error(`INSPECTIA_E2E_JAR apunta a ${process.env.INSPECTIA_E2E_JAR}, que no existe.`);
@@ -162,16 +163,12 @@ async function jarDelBackend() {
     return process.env.INSPECTIA_E2E_JAR;
   }
   const copia = join(CARPETA, 'backend');
-  // El código se copia de nuevo en cada corrida, con sus fechas; target se conserva, así Maven solo vuelve a
-  // compilar lo que cambió.
-  for (const parte of ['src', '.mvn', 'pom.xml']) {
-    rmSync(join(copia, parte), { recursive: true, force: true });
+  // La copia queda igual a backend/, sin su target: lo nuevo y lo cambiado se copian con sus fechas, así Maven
+  // solo compila lo cambiado. Si algo se borró o se renombró, su target se borra entero, porque Maven no
+  // quita las clases ni los recursos que dejó, como una migración vieja de Flyway.
+  if (espejar(BACKEND, copia, { excluir: ['target'] }).length > 0) {
+    rmSync(join(copia, 'target'), { recursive: true, force: true });
   }
-  cpSync(BACKEND, copia, {
-    recursive: true,
-    preserveTimestamps: true,
-    filter: (origen) => origen !== join(BACKEND, 'target'),
-  });
   // Con la ruta («.\» o «./»): la consola de Windows no siempre busca programas en la carpeta actual.
   await ejecutar(WINDOWS ? '.\\mvnw.cmd -q -Dmaven.test.skip=true package' : './mvnw', WINDOWS ? [] :
     ['-q', '-Dmaven.test.skip=true', 'package'], { cwd: copia, shell: WINDOWS });
