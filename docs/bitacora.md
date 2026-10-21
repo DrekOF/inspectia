@@ -409,7 +409,7 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
       - Se usa Vitest 4.1.12, que se mantiene y acepta Vite 8 y jsdom 30; con ella, `volver.js` llega al 100 %.
       - **Pendiente:** volver a Vitest 5 cuando Stryker publique el arreglo.
     - **El Firefox de Playwright no abre en Windows 11 25H2.** Windows rechaza cargar su `mozglue.dll` («la configuración en paralelo no es correcta»), aunque se reinstaló. Playwright 1.64.1 es la última y no trae otro Firefox. Con `INSPECTIA_E2E_SIN_FIREFOX=1` se salta en los equipos donde no abre; en CI corre siempre.
-    - **axe marcó la barra superior (WCAG 2.5.3):** lo que se ve en un botón tiene que estar en su nombre accesible. El botón del idioma muestra ahora «Español» y no «ES», como el prototipo, y las iniciales del avatar se dibujan con CSS (D-32).
+    - **axe marcó la barra superior (WCAG 2.5.3):** lo que se ve en un botón tiene que estar en su nombre accesible. El botón del idioma muestra ahora «Español»: se aparta del prototipo, que mostraba «ES». Las iniciales del avatar se dibujan con CSS (D-32).
     - **Pruebas que podían pasar sin revisar nada.** axe y la medida del desplazamiento lateral corrían sobre una página que aún no se había dibujado. La prueba del teclado en WebKit pulsaba Tab antes de que apareciera el formulario y fallaba 2 de cada 5 veces. Ahora todas esperan la pantalla.
     - **La hora del bloqueo:** `Intl` escribe «3:45 p. m.» con espacios que no se cortan, y `toHaveTextContent` los cambia por espacios comunes. La prueba los normaliza.
     - **Node:** el equipo tenía la 24.13.0, y jsdom 30 y el plugin de JSDoc de ESLint piden la 24.15 o superior. Se instaló la 24.22.0 con fnm, y `frontend/.node-version` la fija.

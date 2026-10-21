@@ -27,7 +27,7 @@
           "La sesión vence a las 8 horas (RNF-04).",
           "Las contraseñas se guardan con hash (BCrypt), nunca en texto plano.",
           "Un usuario desactivado, o de una empresa desactivada (D-27), no puede entrar.",
-          "Si la sesión se cierra sin que la persona lo pida (un 401 o el vencimiento), al iniciar sesión de nuevo vuelve a la pantalla donde estaba solo si entra el mismo usuario y la ruta es interna (empieza por «/» y no por «//»); si no, va al inicio de su rol (D-31)."
+          "Si la sesión se cierra sin que la persona lo pida (un 401 o el vencimiento), al iniciar sesión de nuevo vuelve a la pantalla donde estaba solo si entra el mismo usuario y la ruta es interna (empieza por «/» y no por «//» ni por «/\\»); si no, va al inicio de su rol (D-31)."
         ]
       },
       "prioridad": "Alta",
