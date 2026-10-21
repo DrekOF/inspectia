@@ -16,5 +16,6 @@ blob-report/
 reports/
 .stryker-tmp/
 
-# Datos del entorno aislado de las pruebas de punta a punta: usuarios y contraseñas de cada corrida
+# Entorno aislado de las pruebas de punta a punta: usuarios y contraseñas de cada corrida (datos.json),
+# sus registros y la copia del backend que compila
 e2e/.entorno/

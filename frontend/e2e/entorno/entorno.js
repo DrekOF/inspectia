@@ -4,7 +4,7 @@
  *              proyecto de Docker Compose, el backend y la app compilada, cada uno en un puerto libre y con
  *              contraseñas y claves creadas en cada corrida. Crea el administrador de la plataforma con el
  *              script de infra/bd y los datos de prueba por la API, y al apagarse lo borra todo. No usa
- *              infra/.env ni la base de desarrollo.
+ *              infra/.env, la base de desarrollo ni backend/target: compila una copia del backend.
  * Fecha de creación: 20/10/2026
  * Actualización: 20/10/2026
  * Autor: Equipo InspectIA
@@ -16,7 +16,9 @@
  */
 import { spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { closeSync, mkdirSync, openSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  closeSync, cpSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, rmSync, writeFileSync,
+} from 'node:fs';
 import { createServer } from 'node:net';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -146,18 +148,38 @@ function arrancar(programa, argumentos, registro, opciones) {
 }
 
 /**
- * El jar del backend: el de INSPECTIA_E2E_JAR o, si no se da, el que compila Maven en backend/target.
+ * El jar del backend: el de INSPECTIA_E2E_JAR o, si no se da, el que compila Maven en una copia del backend
+ * dentro de e2e/.entorno. Nunca compila en backend/target, que puede estar usando el backend de desarrollo
+ * (./mvnw spring-boot:run).
  *
  * @returns {Promise<string>} la ruta del jar
  */
 async function jarDelBackend() {
   if (process.env.INSPECTIA_E2E_JAR) {
+    if (!existsSync(process.env.INSPECTIA_E2E_JAR)) {
+      throw new Error(`INSPECTIA_E2E_JAR apunta a ${process.env.INSPECTIA_E2E_JAR}, que no existe.`);
+    }
     return process.env.INSPECTIA_E2E_JAR;
   }
-  await ejecutar(WINDOWS ? 'mvnw.cmd -q -Dmaven.test.skip=true package' : './mvnw', WINDOWS ? [] :
-    ['-q', '-Dmaven.test.skip=true', 'package'], { cwd: BACKEND, shell: WINDOWS });
-  const target = join(BACKEND, 'target');
+  const copia = join(CARPETA, 'backend');
+  // El código se copia de nuevo en cada corrida, con sus fechas; target se conserva, así Maven solo vuelve a
+  // compilar lo que cambió.
+  for (const parte of ['src', '.mvn', 'pom.xml']) {
+    rmSync(join(copia, parte), { recursive: true, force: true });
+  }
+  cpSync(BACKEND, copia, {
+    recursive: true,
+    preserveTimestamps: true,
+    filter: (origen) => origen !== join(BACKEND, 'target'),
+  });
+  // Con la ruta («.\» o «./»): la consola de Windows no siempre busca programas en la carpeta actual.
+  await ejecutar(WINDOWS ? '.\\mvnw.cmd -q -Dmaven.test.skip=true package' : './mvnw', WINDOWS ? [] :
+    ['-q', '-Dmaven.test.skip=true', 'package'], { cwd: copia, shell: WINDOWS });
+  const target = join(copia, 'target');
   const jar = readdirSync(target).find((archivo) => archivo.endsWith('.jar'));
+  if (!jar) {
+    throw new Error(`Maven no dejó el jar del backend en ${target}.`);
+  }
   return join(target, jar);
 }
 

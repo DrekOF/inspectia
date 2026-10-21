@@ -8,16 +8,16 @@
  * Versión: 1.0
  */
 import { randomUUID } from 'node:crypto';
-import { readFileSync } from 'node:fs';
 import { Browser, Builder, By, until } from 'selenium-webdriver';
 import chrome from 'selenium-webdriver/chrome.js';
 import edge from 'selenium-webdriver/edge.js';
+import { datos } from '../e2e/entorno/datos.js';
 
 /** Dirección de la app compilada que sirve el entorno aislado (e2e/entorno). */
 export const APP = process.env.INSPECTIA_E2E_URL ?? 'http://localhost:4173';
 
-/** Datos del entorno aislado: los mismos de las pruebas de Playwright (e2e/.entorno/datos.json). */
-export const datos = JSON.parse(readFileSync(new URL('../e2e/.entorno/datos.json', import.meta.url), 'utf8'));
+/* Los datos del entorno aislado: los mismos de las pruebas de Playwright (e2e/entorno/datos.js). */
+export { datos };
 
 /** Contraseña de los usuarios que crean las pruebas. */
 export const CONTRASENA = 'Clave-Segura-2026';

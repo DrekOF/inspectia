@@ -7,24 +7,16 @@
  * Autor: Equipo InspectIA
  * Versión: 1.0
  */
-import { existsSync, readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { test as base, expect } from '@playwright/test';
+import { datos } from './entorno/datos.js';
 
-/**
- * El archivo que escribe e2e/entorno al encenderse. Sin entorno no existe, como al listar las pruebas con
- * «playwright test --list»: entonces los datos quedan vacíos, porque ninguna prueba corre.
- */
-const ARCHIVO_DE_DATOS = new URL('./.entorno/datos.json', import.meta.url);
-
-export { expect };
-
-/**
- * Datos del entorno aislado que arma e2e/entorno (backend, base y usuarios de cada corrida): el
+/*
+ * Los datos del entorno aislado que arma e2e/entorno (backend, base y usuarios de cada corrida): el
  * administrador de la plataforma, una empresa con su administrador y un usuario de una empresa
  * desactivada. Las contraseñas se crean en cada corrida y nunca quedan en el repositorio.
  */
-export const datos = existsSync(ARCHIVO_DE_DATOS) ? JSON.parse(readFileSync(ARCHIVO_DE_DATOS, 'utf8')) : {};
+export { datos, expect };
 
 /** Contraseña de los usuarios que crean las pruebas. */
 export const CONTRASENA = 'Clave-Segura-2026';
