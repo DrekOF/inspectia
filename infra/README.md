@@ -1,10 +1,10 @@
 <!--
 Nombre: README.md (infra)
-Descripción: Qué va en la carpeta infra/ de InspectIA, cómo reiniciar la base local, cómo crear el administrador de la plataforma y restablecer su contraseña, y cómo probar la sesión en local.
+Descripción: Qué va en la carpeta infra/ de InspectIA, cómo reiniciar la base local, cómo crear el administrador de la plataforma y restablecer su contraseña, cómo probar la sesión en local y cómo usan infra/ las pruebas de punta a punta.
 Fecha de creación: 12/10/2026
 Actualización: 20/10/2026
 Autor: Equipo InspectIA
-Versión: 1.5
+Versión: 1.6
 -->
 
 # infra
@@ -37,6 +37,10 @@ Si cambia `V1__esquema_inicial.sql`, quien ya tenga la base local debe reiniciar
 1. `docker compose -f infra/docker-compose.yml down -v`
 2. `docker compose -f infra/docker-compose.yml up -d`
 3. Arranca el backend (`./mvnw spring-boot:run` en `backend/`) y vuelve a crear el administrador con el script (ver «Primer administrador de la plataforma»).
+
+## Base de las pruebas de punta a punta
+
+Las pruebas de punta a punta del frontend (`npm run e2e:playwright` y `npm run e2e:selenium`) encienden su propia base con este `docker-compose.yml`, pero en otro proyecto (`inspectia-e2e`), con su propio volumen, un puerto libre y una contraseña nueva en cada corrida. No leen `infra/.env` ni tocan la base local. El administrador de la plataforma lo crea el mismo script de `infra/bd`, apuntado a ese proyecto con `COMPOSE_PROJECT_NAME` y `COMPOSE_ENV_FILES`; antes de correrlo, el entorno revisa que docker compose llegue a esa base y no a la local. Al terminar se borra con `down -v`, y si una corrida se interrumpe, la siguiente borra lo que haya quedado. Ver `frontend/README.md`.
 
 ## Clave de los tokens
 

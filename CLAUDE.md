@@ -2,9 +2,9 @@
 Nombre: CLAUDE.md
 Descripción: Instrucciones del proyecto InspectIA para Claude Code. Se lee al inicio de cada sesión.
 Fecha de creación: 12/10/2026
-Actualización: 19/10/2026
+Actualización: 20/10/2026
 Autor: Equipo InspectIA
-Versión: 1.10
+Versión: 1.11
 -->
 
 # InspectIA
@@ -96,4 +96,9 @@ Desde la raíz del repositorio. Las versiones y cómo instalarlas están en `REA
   - Comprobar que lo generado está al día y nadie lo editó: `generador/.venv/Scripts/python generador/generar.py comprobar`
   - Pruebas: `cd generador` y `.venv/Scripts/python -m pytest`
 - Casos de prueba (RP-13): `generador/.venv/Scripts/python generador/casos_de_prueba.py generar`, o `comprobar` para revisar que el documento esté al día. `comprobar` también falla si una ficha está «Implementado» y tiene criterios sin prueba (D-29).
-- Frontend y servicio de IA: se agregan aquí cuando se cree cada proyecto.
+- Frontend (desde `frontend/`, con Node 24.22.0, la de `frontend/.node-version`; la primera vez, `npm ci`; ver `frontend/README.md`):
+  - Arrancar: `npm run dev` abre http://localhost:5173 y pasa `/api` al backend de http://localhost:8080; si corre en otro puerto, define `INSPECTIA_API_URL`.
+  - Pruebas unitarias y de componentes: `npm test` (API simulada con MSW, sin backend). ESLint: `npm run lint`. Mutación: `npm run test:mutacion`.
+  - De punta a punta: `npm run e2e:playwright` y `npm run e2e:selenium`, con Docker Desktop abierto; la primera vez, `npx playwright install chromium firefox webkit`. Cada corrida enciende su entorno aislado (base en el proyecto `inspectia-e2e`, backend compilado en una copia y la página compilada, sin `infra/.env`) y lo borra al terminar. `npm run e2e:entorno` lo deja encendido; con `INSPECTIA_E2E_URL` y la dirección que muestra, las pruebas lo usan.
+  - En Windows 11 25H2 el Firefox de Playwright no abre: `INSPECTIA_E2E_SIN_FIREFOX=1` lo salta (en PowerShell, `$env:INSPECTIA_E2E_SIN_FIREFOX = '1'`).
+- Servicio de IA: se agrega aquí cuando se cree el proyecto.

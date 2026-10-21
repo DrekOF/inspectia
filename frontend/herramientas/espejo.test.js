@@ -52,6 +52,21 @@ describe('copia en espejo', () => {
     expect(existsSync(join(copia, 'target'))).toBe(false);
   });
 
+  it('RP-14 · sin carpetas excluidas, lo copia todo', () => {
+    espejar(origen, copia);
+
+    expect(existsSync(join(copia, 'target', 'A.class'))).toBe(true);
+  });
+
+  it('RP-14 · solo se excluyen las carpetas del primer nivel: una carpeta target más adentro se espeja como las demás', () => {
+    escribir(origen, join('src', 'target', 'D.java'));
+    espejar(origen, copia, { excluir: ['target'] });
+    rmSync(join(origen, 'src', 'target'), { recursive: true });
+
+    expect(espejar(origen, copia, { excluir: ['target'] })).toEqual([join('src', 'target')]);
+    expect(existsSync(join(copia, 'src', 'target'))).toBe(false);
+  });
+
   it('RP-14 · un archivo borrado o renombrado en el original desaparece de la copia, y se informa', () => {
     espejar(origen, copia, { excluir: ['target'] });
     rmSync(join(origen, 'pom.xml'));

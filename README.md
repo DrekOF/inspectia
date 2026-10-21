@@ -1,10 +1,10 @@
 <!--
 Nombre: README.md
-Descripción: Presentación del monorepo de InspectIA: estructura, versiones, requisitos del entorno de desarrollo, base de datos local y cita del dataset.
+Descripción: Presentación del monorepo de InspectIA: estructura, versiones, requisitos del entorno de desarrollo, base de datos local, frontend y cita del dataset.
 Fecha de creación: 12/10/2026
 Actualización: 20/10/2026
 Autor: Equipo InspectIA
-Versión: 1.5
+Versión: 1.6
 -->
 
 # InspectIA
@@ -27,7 +27,7 @@ Proyecto final de Inteligencia Artificial, Universidad Surcolombiana. Docente: J
 
 ## Versiones
 
-Fijadas el 12/10/2026. La versión exacta de cada librería queda en `backend/pom.xml` y `frontend/package.json` cuando se crea cada proyecto.
+Fijadas el 12/10/2026; las del frontend, el 20/10/2026. La versión exacta de cada librería queda en `backend/pom.xml` y `frontend/package.json`.
 
 | Pieza | Versión | Notas |
 |---|---|---|
@@ -36,9 +36,13 @@ Fijadas el 12/10/2026. La versión exacta de cada librería queda en `backend/po
 | Spring Security | 7.1.1 | La fija Spring Boot. Los tokens del inicio de sesión (D-28) usan Nimbus JOSE + JWT 10.9.1, que trae el iniciador del servidor de recursos de Spring: no hace falta otra librería. |
 | springdoc-openapi | 3.1.1 | La línea 3.1 está construida sobre Spring Boot 4.1. |
 | Maven | Wrapper `mvnw`, incluido en `backend/` | No hace falta instalar Maven. |
-| Node | 24 LTS | |
-| React | 19.x, con Vite | |
+| Node | 24 LTS (24.22.0) | La fija `frontend/.node-version`, que fnm lee solo. jsdom 30 y el plugin de JSDoc de ESLint piden la 24.15 o superior. |
+| React | 19.3.1, con Vite 8.3.4 | React Router 8.5.0 para las rutas. |
 | Material UI | 9.x (9.5.0) | Versión mayor estable actual. |
+| Formularios e idiomas | Formik 2.4.9 y Yup 1.7.1; i18next 26.5.3 y react-i18next 17.1.0 | Los textos que comparte con el backend salen de sus `.properties` (RP-11). |
+| Vitest | 4.1.12 | No la 5: Stryker 10.0.0, que hace las pruebas de mutación, no activa los mutantes con Vitest 5 (stryker-js #6210). Se vuelve a la 5 cuando Stryker publique el arreglo. Con Testing Library y MSW 3.0.3, que simula la API. |
+| Pruebas de punta a punta | Playwright 1.64.1 y Selenium WebDriver 4.51.0 | Playwright con los motores de Chrome, Firefox y Safari, en PC y celular; Selenium con Chrome y Edge. |
+| Calidad del frontend | ESLint 10.13.0 y Stryker 10.0.0 | |
 | Python | 3.13 | Para `ia-servicio/` y `generador/`. El generador usa Jinja2 3.1.6 y pytest 9.1.1 (`generador/requirements*.txt`). |
 | PostgreSQL | 18 | Corre en Docker; no hace falta instalarlo. |
 
@@ -79,14 +83,15 @@ Después de instalar, cierra y vuelve a abrir la terminal, y sigue con estos pas
 
    Abre otra terminal. Si `java -version` todavía muestra otra versión, sube la carpeta `bin` del JDK 25 en la variable `Path` del sistema o desinstala el JDK viejo.
 
-2. **Node.** Se instala con fnm para quedarse en la 24: `winget install OpenJS.NodeJS.LTS` pasará a instalar Node 26 cuando esa versión sea LTS (finales de octubre de 2026). Si ya tienes Node 24, este paso no hace falta.
+2. **Node.** Se instala con fnm para quedarse en la 24: `winget install OpenJS.NodeJS.LTS` pasará a instalar Node 26 cuando esa versión sea LTS (finales de octubre de 2026). La versión exacta está en `frontend/.node-version` (24.22.0); desde `frontend/`, `fnm install` la instala:
 
    ```powershell
-   fnm install 24
-   fnm default 24
+   cd frontend
+   fnm install
+   fnm default 24.22.0
    ```
 
-   Para que la terminal encuentre `node`, agrega esta línea a tu perfil de PowerShell (`notepad $PROFILE`):
+   Para que la terminal encuentre `node` y cambie sola a la versión de `frontend/.node-version` al entrar a la carpeta, agrega esta línea a tu perfil de PowerShell (`notepad $PROFILE`):
 
    ```powershell
    fnm env --use-on-cd --shell powershell | Out-String | Invoke-Expression
@@ -103,7 +108,7 @@ Para comprobar el entorno:
 ```bash
 git --version
 java -version            # 25.x
-node -v                  # v24.x
+node -v                  # v24.22.0, desde frontend/
 py -3.13 --version       # Python 3.13.x  (macOS o Linux: python3.13 --version)
 docker compose version
 ```
@@ -143,6 +148,15 @@ Los comandos están en la sección Comandos de `CLAUDE.md`. En resumen:
 - **Generador:** los CRUD (tablas, backend y, más adelante, pantallas) salen de `specs/entidades/*.json` y no se editan a mano (RP-23). Ver `generador/README.md`.
 - **Casos de prueba:** `docs/casos-de-prueba.md` lista cada criterio de aceptación con sus pruebas y los que aún no tienen ninguna (RP-13). Lo arma `generador/casos_de_prueba.py` desde las marcas de las pruebas.
 
+## Frontend
+
+Desde `frontend/`, la primera vez `npm ci`. Los detalles están en `frontend/README.md`.
+
+- **Arrancar:** `npm run dev` abre la página en http://localhost:5173. Vite pasa las peticiones de `/api` al backend de http://localhost:8080, así la página y la API comparten el origen y el backend no necesita CORS (D-31). Si tu backend corre en otro puerto, define `INSPECTIA_API_URL`.
+- **Pruebas unitarias y de componentes:** `npm test`, con la API simulada (MSW): no necesitan el backend. `npm run lint` corre ESLint y `npm run test:mutacion`, las pruebas de mutación con Stryker (RP-12).
+- **Pruebas de punta a punta (RP-14):** `npm run e2e:playwright` y `npm run e2e:selenium`, con Docker Desktop abierto. La primera vez, `npx playwright install chromium firefox webkit`. Cada corrida enciende su propio entorno: una base en otro proyecto de Docker Compose, el backend compilado en una copia y la página compilada, con contraseñas nuevas. No usa `infra/.env` ni tu base, y lo borra al terminar.
+- **Firefox en Windows 11 25H2:** el Firefox de Playwright 1.64.1 no abre (Windows rechaza cargar su `mozglue.dll`). En esos equipos, `INSPECTIA_E2E_SIN_FIREFOX=1` lo salta; en CI corre siempre.
+
 ## Dataset y licencia (RNF-08)
 
 Los modelos se entrenan con el dataset [*cacao-beans-for-classification*](https://www.kaggle.com/datasets/luiszhinin979/ecuadorian-cocoa-beans-for-classification) de Kaggle, con licencia [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0/): hay que citar a sus autores y no se puede usar con fines comerciales. Mientras InspectIA use modelos entrenados con este dataset, no se cobra. El dataset no se sube a este repositorio.
@@ -161,3 +175,4 @@ Artículo de los autores:
 - Formato de las entidades y de la API generada: `specs/entidades/README.md`.
 - Casos de prueba por criterio de aceptación (RP-13): `docs/casos-de-prueba.md`.
 - Bitácora de construcción: `docs/bitacora.md`.
+- Frontend: `frontend/README.md`.
