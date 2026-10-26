@@ -124,6 +124,31 @@ def test_bordes_aceptados(entidades):
         'el NIT tiene patrón: su ejemplo ya es su valor válido'
 
 
+@pytest.mark.caso('RP-23 · la prueba generada de la API rechaza el ejemplo de un patrón con algo pegado antes o después, como x900123456-8 y 900123456-8x: así revisa que el patrón vaya anclado con ^ y $')
+def test_patron_anclado(entidades):
+    prueba = generar(entidades)[f'{PRUEBAS}/empresa/EmpresaApiGeneradaIT.java']
+    mensaje = 'Escribe el NIT sin puntos y con el dígito de verificación, por ejemplo 900123456-8.'
+
+    for metodo in ('validacionesAlCrear', 'validacionesAlEditar'):
+        casos = casos_java(prueba, metodo)
+        assert ('nit', '"x900123456-8"', mensaje) in casos, metodo
+        assert ('nit', '"900123456-8x"', mensaje) in casos, metodo
+
+
+@pytest.mark.caso('RP-23 · lo que se pega al ejemplo de un patrón es algo que el patrón no acepta en ese lugar, y no se pega nada si no cabe en el largo, porque el valor fallaría también por largo')
+def test_patron_anclado_en_los_bordes(entidades):
+    nit = atributo(entidades['empresa'], 'nit')
+    nit['validaciones']['patron'] = '^[0-9x]{6,10}-[0-9x]$'
+
+    casos = casos_java(generar(entidades)[f'{PRUEBAS}/empresa/EmpresaApiGeneradaIT.java'], 'validacionesAlCrear')
+    assert [valor for campo, valor, _ in casos if campo == 'nit'] == ['null', '"?"', '"?900123456-8"', '"900123456-8x"'], \
+        'el patrón acepta una x al inicio: se pega ?'
+
+    nit['longitud'] = len(nit['ejemplo'])
+    casos = casos_java(generar(entidades)[f'{PRUEBAS}/empresa/EmpresaApiGeneradaIT.java'], 'validacionesAlCrear')
+    assert [valor for campo, valor, _ in casos if campo == 'nit'] == ['null', '"?"']
+
+
 @pytest.mark.caso('RP-23 · una entidad por empresa no puede dar operaciones al administrador de la plataforma, que no tiene empresa')
 def test_por_empresa_sin_administrador_de_la_plataforma(entidades):
     entidades['usuario']['operaciones']['listar'] = ['ADMIN_EMPRESA', 'ADMIN_PLATAFORMA']

@@ -172,8 +172,19 @@ def test_mismos_casos_de_limite_que_la_api(entidades):
                               ('bordesAlCrear', 'BORDES_AL_CREAR'), ('bordesAlEditar', 'BORDES_AL_EDITAR')):
         de_la_api = [c for c in como_en_javascript(casos_java(prueba_api, metodo)) if c[1] != "'sin-arroba'"]
         assert casos_js(prueba_yup, constante) == de_la_api, constante
-    assert len(casos_js(prueba_yup, 'CASOS_AL_CREAR')) == 15
+    assert len(casos_js(prueba_yup, 'CASOS_AL_CREAR')) == 17
     assert ('administrador.contrasena', "'ñ'.repeat(36)", None) in casos_js(prueba_yup, 'BORDES_AL_CREAR')
+
+
+@pytest.mark.caso('RP-23 · la prueba generada de Yup rechaza el ejemplo de un patrón con algo pegado antes o después, como la API: en JavaScript, un patrón sin ^ ni $ aceptaría x900123456-8')
+def test_patron_anclado_en_yup(entidades):
+    prueba = generar(entidades)[f'{FRONTEND}/empresa/empresaEsquemas.test.js']
+    mensaje = 'Escribe el NIT sin puntos y con el dígito de verificación, por ejemplo 900123456-8.'
+
+    for constante in ('CASOS_AL_CREAR', 'CASOS_AL_EDITAR'):
+        casos = casos_js(prueba, constante)
+        assert ('nit', "'x900123456-8'", mensaje) in casos, constante
+        assert ('nit', "'900123456-8x'", mensaje) in casos, constante
 
 
 @pytest.mark.caso('RP-11 · los textos de cada pantalla salen de pantalla.textos del JSON, en español y en inglés')

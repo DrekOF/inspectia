@@ -17,10 +17,15 @@ El formato del correo es la excepción: lo valida solo el backend, como el dígi
 campo del formulario al guardar.
 """
 
+import re
 from dataclasses import dataclass, field
 from decimal import Decimal
 
 from inspectia_generador.textos import GENERAL_DE, clave_mensaje, mensaje_esperado
+
+#: Lo que se pega al ejemplo de un patrón para revisar que vaya anclado, en orden: el primero que el patrón no
+#: acepte en ese lugar.
+PEGADOS = ('x', '?')
 
 
 @dataclass(frozen=True)
@@ -158,7 +163,11 @@ def del_atributo(e, a, obligatorio=None):
             campo.bordes.append(Valor('repetir', 'ñ', bytes_max // 2))
     if 'patron' in v:
         campo.validaciones.append(_validacion(e, a, 'patron', 'patron', v['patron']))
-        campo.casos.append(Caso(Valor('texto', '?'), mensaje_esperado(e, a, 'patron')))
+        mensaje = mensaje_esperado(e, a, 'patron')
+        campo.casos.append(Caso(Valor('texto', '?'), mensaje))
+        # El ejemplo con algo pegado antes o después solo pasa si el patrón no va anclado con ^ y $: JavaScript
+        # busca el patrón dentro del texto, mientras que @Pattern revisa el texto entero.
+        campo.casos += [Caso(Valor('texto', valor), mensaje) for valor in _sin_anclar(a, campo.minusculas)]
     if v.get('formato') == 'correo':
         campo.validaciones.append(Validacion('correo', None, clave_mensaje(e, a, 'formato'), solo_backend=True))
         campo.casos.append(Caso(Valor('texto', 'sin-arroba'), mensaje_esperado(e, a, 'formato'), solo_backend=True))
@@ -179,6 +188,40 @@ def del_atributo(e, a, obligatorio=None):
         campo.validaciones.append(_validacion(e, a, 'decimales', nombre, escala))
         campo.casos.append(Caso(Valor('numero', _con_un_decimal_de_mas(a)), mensaje_esperado(e, a, nombre, escala)))
     return campo
+
+
+def _sin_anclar(a, minusculas):
+    """El ejemplo de un patrón con algo pegado antes y con algo pegado después, como x900123456-8 y 900123456-8x:
+    valores que solo un patrón sin anclar aceptaría.
+
+    Se pega lo primero de ``PEGADOS`` que el patrón no acepte en ese lugar. No se pega nada si el valor no cabe en
+    el largo del atributo, porque fallaría también por largo y Yup diría ese error primero.
+
+    Args:
+        minusculas: si el campo pasa a minúsculas antes de validarse.
+
+    Returns:
+        list: los valores, de ninguno a dos.
+    """
+    ejemplo, patron, maximo = a.get('ejemplo'), a['validaciones']['patron'], _largo_maximo(a)
+    if not isinstance(ejemplo, str) or (maximo is not None and len(ejemplo) + 1 > maximo):
+        return []
+    valores = []
+    for antes in (True, False):
+        for pegado in PEGADOS:
+            valor = pegado + ejemplo if antes else ejemplo + pegado
+            if not re.fullmatch(patron, valor.lower() if minusculas else valor):
+                valores.append(valor)
+                break
+    return valores
+
+
+def _largo_maximo(a):
+    """El largo máximo de un atributo: el menor entre ``longitud``, si es texto, y ``longitud_max``; ``None`` si no
+    tiene."""
+    v = a.get('validaciones', {})
+    limites = ([a['longitud']] if a['tipo'] == 'texto' else []) + ([v['longitud_max']] if 'longitud_max' in v else [])
+    return min(limites, default=None)
 
 
 def _numero(valor):

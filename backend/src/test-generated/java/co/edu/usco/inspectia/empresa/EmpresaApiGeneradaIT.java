@@ -138,6 +138,8 @@ class EmpresaApiGeneradaIT {
                 Arguments.of("nombre", "x".repeat(121), "Puede tener como máximo 120 caracteres."),
                 Arguments.of("nit", null, "Este dato es obligatorio."),
                 Arguments.of("nit", "?", "Escribe el NIT sin puntos y con el dígito de verificación, por ejemplo 900123456-8."),
+                Arguments.of("nit", "x900123456-8", "Escribe el NIT sin puntos y con el dígito de verificación, por ejemplo 900123456-8."),
+                Arguments.of("nit", "900123456-8x", "Escribe el NIT sin puntos y con el dígito de verificación, por ejemplo 900123456-8."),
                 Arguments.of("ciudad", null, "Este dato es obligatorio."),
                 Arguments.of("ciudad", "x".repeat(81), "Puede tener como máximo 80 caracteres."),
                 Arguments.of("administrador.nombre", null, "Este dato es obligatorio."),
@@ -195,6 +197,8 @@ class EmpresaApiGeneradaIT {
                 Arguments.of("nombre", "x".repeat(121), "Puede tener como máximo 120 caracteres."),
                 Arguments.of("nit", null, "Este dato es obligatorio."),
                 Arguments.of("nit", "?", "Escribe el NIT sin puntos y con el dígito de verificación, por ejemplo 900123456-8."),
+                Arguments.of("nit", "x900123456-8", "Escribe el NIT sin puntos y con el dígito de verificación, por ejemplo 900123456-8."),
+                Arguments.of("nit", "900123456-8x", "Escribe el NIT sin puntos y con el dígito de verificación, por ejemplo 900123456-8."),
                 Arguments.of("ciudad", null, "Este dato es obligatorio."),
                 Arguments.of("ciudad", "x".repeat(81), "Puede tener como máximo 80 caracteres."));
     }

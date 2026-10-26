@@ -26,6 +26,8 @@ const CASOS_AL_CREAR = [
   ['nombre', 'x'.repeat(121), 'Puede tener como máximo 120 caracteres.'],
   ['nit', '', 'Este dato es obligatorio.'],
   ['nit', '?', 'Escribe el NIT sin puntos y con el dígito de verificación, por ejemplo 900123456-8.'],
+  ['nit', 'x900123456-8', 'Escribe el NIT sin puntos y con el dígito de verificación, por ejemplo 900123456-8.'],
+  ['nit', '900123456-8x', 'Escribe el NIT sin puntos y con el dígito de verificación, por ejemplo 900123456-8.'],
   ['ciudad', '', 'Este dato es obligatorio.'],
   ['ciudad', 'x'.repeat(81), 'Puede tener como máximo 80 caracteres.'],
   ['administrador.nombre', '', 'Este dato es obligatorio.'],
@@ -56,6 +58,8 @@ const CASOS_AL_EDITAR = [
   ['nombre', 'x'.repeat(121), 'Puede tener como máximo 120 caracteres.'],
   ['nit', '', 'Este dato es obligatorio.'],
   ['nit', '?', 'Escribe el NIT sin puntos y con el dígito de verificación, por ejemplo 900123456-8.'],
+  ['nit', 'x900123456-8', 'Escribe el NIT sin puntos y con el dígito de verificación, por ejemplo 900123456-8.'],
+  ['nit', '900123456-8x', 'Escribe el NIT sin puntos y con el dígito de verificación, por ejemplo 900123456-8.'],
   ['ciudad', '', 'Este dato es obligatorio.'],
   ['ciudad', 'x'.repeat(81), 'Puede tener como máximo 80 caracteres.'],
 ];
