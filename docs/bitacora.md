@@ -472,7 +472,18 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
   Yup escrito a mano (`frontend/src/validacion/esquemas.js`), en el orden mínimo, máximo y bytes. Con 65 eñes,
   el formulario dice el error del largo y la API, el de los bytes. En ese PR, la pantalla pasa a usar las
   constantes generadas y revisa en el orden en que la API escoge el error de un campo, como las pantallas
-  generadas (`campos.orden_de_la_api`, igual que `ManejadorDeErrores`).
+  generadas (`campos.orden_de_la_api`, igual que `ManejadorDeErrores`). Además, ninguna prueba revisa el borde
+  de 72 bytes exactos de su lista de reglas: en `reglasDeContrasena` (`frontend/src/validacion/reglas.js`),
+  cambiar `<=` por `<` no hace fallar ninguna prueba.
+- **Problema encontrado: el puntaje de mutación del frontend estaba inflado.**
+  - Stryker corría con 23 procesos en un equipo de 24 procesadores lógicos. Las pruebas de componentes se
+    volvían lentas, y Stryker cortaba por tiempo mutantes que no dejan un bucle infinito y los contaba como
+    detectados: 129 «por tiempo», con 96,47 %. Con la mitad de los procesadores y 15 s de margen quedan 11,
+    todos bucles de verdad, y el puntaje baja a 92,23 %.
+  - Los mutantes estáticos (valores que se calculan al cargar un módulo, como las rutas del menú) no se evalúan
+    bien con Vitest: su resultado depende de si el módulo ya estaba cargado, no de las pruebas. El de la ruta
+    de Inicio «sobrevivía», pero al cambiarla a mano la prueba del menú falla. Eran 103 estáticos: 81 muertos y
+    22 vivos. Cristhian decidió dejarlos fuera del puntaje (`ignoreStatic: true`).
 
 ## Plantilla para nuevas entradas
 

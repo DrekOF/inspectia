@@ -33,6 +33,10 @@ export default {
   // mitad de los procesadores y 15 s de margen, solo se cortan los bucles infinitos de verdad.
   concurrency: '50%',
   timeoutMS: 15000,
+  // Los mutantes estáticos (valores que se calculan al cargar un módulo, como las rutas del menú) no se evalúan
+  // bien con Vitest: el resultado depende de si el módulo ya estaba cargado, no de las pruebas. La ruta de Inicio
+  // «sobrevivía» aunque su prueba falla al cambiarla a mano. Se dejan fuera del puntaje.
+  ignoreStatic: true,
   reporters: ['clear-text', 'progress', 'html'],
   htmlReporter: { fileName: 'reports/mutacion/index.html' },
   thresholds: { high: 85, low: 70, break: null },
