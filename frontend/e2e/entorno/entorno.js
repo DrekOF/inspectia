@@ -3,7 +3,8 @@
  * Descripción: Entorno aislado de las pruebas de punta a punta (RP-14): una base PostgreSQL en su propio
  *              proyecto de Docker Compose, el backend y la app compilada, cada uno en un puerto libre y con
  *              contraseñas y claves creadas en cada corrida. Crea el administrador de la plataforma con el
- *              script de infra/bd y los datos de prueba por la API, y al apagarse lo borra todo. No usa
+ *              script de infra/bd y los datos de prueba por la API, entre ellos un usuario final fijo para las
+ *              pruebas que solo miran, como los permisos de una pantalla, y al apagarse lo borra todo. No usa
  *              infra/.env, la base de desarrollo ni backend/target: compila una copia del backend, que lleva
  *              al lado los scripts de infra/bd para que también pasen allí sus pruebas.
  * Fecha de creación: 20/10/2026
@@ -244,6 +245,7 @@ function personas() {
     plataforma: { nombre: 'Andrés Gómez', correo: 'andres.gomez@inspectia.test', contrasena: contrasena() },
     adminEmpresa: { nombre: 'Ana Pérez', correo: 'ana.perez@cacaosdelhuila.test', contrasena: contrasena() },
     adminDesactivada: { nombre: 'Marta Ruiz', correo: 'marta.ruiz@cacaodelsur.test', contrasena: contrasena() },
+    usuarioFinal: { nombre: 'Carlos Ramírez', correo: 'carlos.ramirez@cacaosdelhuila.test', contrasena: contrasena() },
   };
 }
 
@@ -290,7 +292,7 @@ export async function encenderEntorno() {
     const api = `http://127.0.0.1:${puertoBackend}/api/v1`;
     await esperarServicio(`${api}/sesion`, (respuesta) => respuesta.status === 401, ESPERA.backend, backend, registroBackend);
 
-    const { plataforma, adminEmpresa, adminDesactivada } = personas();
+    const { plataforma, adminEmpresa, adminDesactivada, usuarioFinal } = personas();
     await crearAdministradorDeLaPlataforma(archivoDeVariables, plataforma);
     const { token } = await pedir(api, 'POST', '/sesion', { correo: plataforma.correo, contrasena: plataforma.contrasena });
     const empresa = await pedir(api, 'POST', '/empresas',
@@ -298,6 +300,10 @@ export async function encenderEntorno() {
     const desactivada = await pedir(api, 'POST', '/empresas',
       { nombre: 'Cacao del Sur', nit: '900654321-0', ciudad: 'Pitalito', administrador: adminDesactivada }, token);
     await pedir(api, 'POST', `/empresas/${desactivada.id}/desactivar`, undefined, token);
+    // El usuario final fijo lo crea el administrador de la empresa, como en la app (RF-03).
+    const sesionDeLaEmpresa = await pedir(api, 'POST', '/sesion',
+      { correo: adminEmpresa.correo, contrasena: adminEmpresa.contrasena });
+    await pedir(api, 'POST', '/usuarios', { ...usuarioFinal, rol: 'USUARIO_FINAL' }, sesionDeLaEmpresa.token);
 
     const vite = join(FRONTEND, 'node_modules', 'vite', 'bin', 'vite.js');
     await ejecutar(process.execPath, [vite, 'build'], { cwd: FRONTEND });
@@ -315,6 +321,7 @@ export async function encenderEntorno() {
       plataforma,
       empresa: { id: empresa.id, nombre: empresa.nombre },
       adminEmpresa,
+      usuarioFinal,
       empresaDesactivada: { id: desactivada.id, nombre: desactivada.nombre, usuario: adminDesactivada },
     }, null, 2));
     return { app: direccion, apagar };
