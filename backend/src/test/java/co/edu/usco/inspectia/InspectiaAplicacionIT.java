@@ -65,7 +65,7 @@ class InspectiaAplicacionIT {
         List<Instant> conFraccion = new ArrayList<>();
         long siguiente = System.nanoTime();
         for (int lectura = 0; lectura < LECTURAS; lectura++) {
-            while (System.nanoTime() < siguiente) {
+            while (System.nanoTime() - siguiente < 0) {
                 Thread.onSpinWait();
             }
             Instant ahora = reloj.instant();

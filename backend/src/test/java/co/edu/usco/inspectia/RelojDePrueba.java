@@ -59,7 +59,10 @@ public final class RelojDePrueba extends Clock {
         return ZoneOffset.UTC;
     }
 
-    /** El reloj de la aplicación es UTC (Clock.systemUTC()): este no se usa en otra zona. */
+    /**
+     * El reloj de la aplicación es UTC, al microsegundo ({@code InspectiaAplicacion#reloj()}): este tampoco se
+     * usa en otra zona.
+     */
     @Override
     public Clock withZone(ZoneId zona) {
         if (ZoneOffset.UTC.equals(zona)) {

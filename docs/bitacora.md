@@ -4,7 +4,7 @@ Descripción: Registro paso a paso de cómo se construyó InspectIA, para la sus
 Fecha de creación: 12/10/2026
 Actualización: 26/10/2026
 Autor: Equipo InspectIA
-Versión: 1.16
+Versión: 1.17
 -->
 
 # Bitácora de construcción (RP-24)
@@ -553,6 +553,44 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
   - Que Selenium guarde su captura y la consola del navegador cuando una prueba falla.
   - Investigar en esta misma sesión la falla de RF-18 C5, y anotar el diagnóstico, la decisión del contador y su PR.
 - Archivos o PR: la rama `feature/RF-02-pantallas-empresas`; el PR lo abre Cristhian.
+
+## 26/10/2026 · RNF-04 y P-18: el contador de sesión
+
+- Quién: Cristhian Sánchez (`DrekOF`), con Claude Code.
+- Qué se hizo:
+  - **En la rama `feature/RNF-04-contador-de-sesion`, commit por commit, cada uno revisado por Cristhian antes del siguiente:**
+    1. **Las pruebas en rojo** (`b6cbdea`):
+       - El corte de sesiones con un reloj de prueba (`RelojDePrueba`). Si el reloj se atrasa entre un inicio de sesión y el cambio de contraseña, esa sesión deja de servir; si se atrasa después del cambio, un inicio de sesión nuevo sirve. Una sesión del mismo segundo, pero de antes del cambio, deja de servir en los tres caminos que cambian una contraseña.
+       - Cambios a la vez, con el orden de las dos transacciones fijo por `CountDownLatch`, sin esperas por tiempo: desactivar a un usuario mientras cambia su contraseña no lo reactiva, editar el nombre mientras se restablece la contraseña no la deshace, y dos restablecimientos a la vez suben el contador dos veces.
+       - El script del administrador corta la sesión aunque el reloj de la base vaya atrasado respecto al del backend. Con el de la base adelantado, un inicio de sesión hecho justo después del script sirve.
+       - Los tokens llevan `version_sesion`. En el generador, `solo_lo_cambian_las_reglas` y `@DynamicUpdate`.
+    2. **El contador** (`9a40413`):
+       - `usuario.version_sesion` reemplaza a `sesiones_desde`: un entero que empieza en 0 y sube en uno con cada cambio o restablecimiento de contraseña, con una sola sentencia (`UPDATE … RETURNING`). En cada petición, un token con otra versión responde 401 «Tu contraseña cambió».
+       - El generador 1.8: la clave `solo_lo_cambian_las_reglas`, para una columna que JPA lee pero no escribe, y `@DynamicUpdate` en las entidades generadas.
+       - El script `restablecer-admin-plataforma.sql` sube la versión en lugar de tomar la hora de la base.
+    3. **Dos ajustes de Cristhian** (`97eefd3` en rojo y `0f1bf83`):
+       - Un fallo que bloqueaba la cuenta mientras se restablecía la contraseña la dejaba bloqueada: con `@DynamicUpdate`, la entidad que se leyó sin bloqueo no escribía `bloqueado_hasta`. La misma sentencia que sube la versión deja ahora los intentos en 0 y quita el bloqueo, como el script.
+       - La versión de sesión del token tiene que ser un entero de 0 a 2147483647, el rango de la columna; antes servía cualquier número.
+    4. **El reloj al microsegundo** (`5c854aa` en rojo y el arreglo), por el problema que sigue.
+  - **Problemas encontrados:**
+    - **El quinto fallo seguido de RF-18 respondía, a veces, que faltaban 901 segundos de un bloqueo de 900.**
+      - Lo mostró la primera corrida de las pruebas en rojo: `CambioDeContrasenaIT.cincoFallosBloquean`, que este PR no tocaba, falló con un `Retry-After` de 901, y en la corrida siguiente, otra vez.
+      - La causa: en Windows, la hora de Java trae décimas de microsegundo, y PostgreSQL guarda la hora al microsegundo; el driver (42.7.8) redondea lo que sobra. El quinto fallo guarda `bloqueado_hasta`, la hora más 15 minutos, lo vuelve a leer y le resta la misma hora. Si el driver redondeó hacia arriba, sobran unos cientos de nanosegundos, y la cuenta de los segundos que faltan, que redondea hacia arriba, da 901.
+      - Mediciones en este equipo: la fracción bajo el microsegundo cambia más o menos una vez por milisegundo (unas 175 veces en 200 ms), y sus 10 valores, de 0 a 900 ns, salen con la misma frecuencia. El driver redondea hacia arriba los de 500 ns o más; por eso fallaba más o menos la mitad de las veces.
+      - El arreglo, como lo pidió Cristhian: el bean `reloj` de `InspectiaAplicacion` da la hora al microsegundo (`Clock.tick(Clock.systemUTC(), Duration.ofNanos(1_000))`), en lugar de truncarla en los servicios. Así queda cubierto también el código que venga.
+      - La prueba, en `InspectiaAplicacionIT`, lee el bean del contexto real 1.000 veces, una cada 50 µs, y ninguna lectura puede traer fracciones de microsegundo. La primera versión, con las lecturas sin pausa, pasó sin el arreglo: 1.000 lecturas seguidas duran unos 30 µs y caen casi siempre en una sola fracción, que una de cada 10 veces es 0. Espaciadas, cubren unos 50 ms, y sin el arreglo fallaron en tres corridas seguidas (926, 962 y 869 lecturas con fracción).
+      - Con el arreglo, `cincoFallosBloquean` pasó en las 10 corridas seguidas en que se repitió, cada una con su propio reporte, y en la suite completa.
+- Por qué: P-18. El corte de sesiones comparaba, en segundos enteros, la hora de emisión del token con la del cambio de contraseña, así que dependía del reloj: en este equipo, Windows atrasó la hora 2 segundos y RF-18 C5 falló (ver la entrada anterior). Con un contador, el corte no depende de la hora.
+- Cómo se pidió: Cristhian pidió primero el plan, sin código, y lo aprobó con cuatro decisiones:
+  1. El token se rechaza si su versión es distinta de la de la base.
+  2. Quitar `sesiones_desde`.
+  3. La clave del generador se llama `solo_lo_cambian_las_reglas` y va solo en `version_sesion`.
+  4. `@DynamicUpdate` en las entidades generadas, en este PR.
+
+  Sumó al plan el caso del reloj que se atrasa después del cambio, las dos pruebas de cambios a la vez con el orden fijo y sin esperas por tiempo, el generador 1.8 y las decisiones D-35 y D-36. En el camino pidió:
+  - Desbloquear la cuenta en la misma sentencia que sube la versión, con su prueba en rojo primero, y que la versión del token sea un entero de 0 a 2147483647.
+  - Arreglar el 901 en este PR, en commits aparte: el bean `reloj` al microsegundo, no truncar en los servicios; una prueba en rojo del bean con 1.000 lecturas, que quedaron espaciadas por la medición de arriba; comparar los `nanoTime` con una resta, por el desborde; corregir el JavaDoc de `RelojDePrueba`, anotar aquí la causa y el arreglo, y correr `cincoFallosBloquean` unas 10 veces.
+- Archivos o PR: la rama `feature/RNF-04-contador-de-sesion`; el PR lo abre Cristhian.
 
 ## Plantilla para nuevas entradas
 
