@@ -4,11 +4,12 @@
  *              proyecto de Docker Compose, el backend y la app compilada, cada uno en un puerto libre y con
  *              contraseñas y claves creadas en cada corrida. Crea el administrador de la plataforma con el
  *              script de infra/bd y los datos de prueba por la API, y al apagarse lo borra todo. No usa
- *              infra/.env, la base de desarrollo ni backend/target: compila una copia del backend.
+ *              infra/.env, la base de desarrollo ni backend/target: compila una copia del backend, que lleva
+ *              al lado los scripts de infra/bd para que también pasen allí sus pruebas.
  * Fecha de creación: 20/10/2026
- * Actualización: 20/10/2026
+ * Actualización: 26/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  *
  * Uso: lo encienden y lo apagan las pruebas (e2e/entorno/global.js). Para correr las pruebas varias veces
  * sobre el mismo entorno: «npm run e2e:entorno» en una terminal y, en otra, INSPECTIA_E2E_URL con la
@@ -22,11 +23,10 @@ import {
 import { createServer } from 'node:net';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { espejar } from '../../herramientas/espejo.js';
+import { espejarBackend } from '../../herramientas/espejo.js';
 
 const FRONTEND = fileURLToPath(new URL('../../', import.meta.url));
 const RAIZ = fileURLToPath(new URL('../../../', import.meta.url));
-const BACKEND = join(RAIZ, 'backend');
 
 /** Carpeta de cada corrida: datos, variables y registros. Está en .gitignore. */
 export const CARPETA = join(FRONTEND, 'e2e', '.entorno');
@@ -165,8 +165,9 @@ export async function jarDelBackend() {
   const copia = join(CARPETA, 'backend');
   // La copia queda igual a backend/, sin su target: lo nuevo y lo cambiado se copian con sus fechas, así Maven
   // solo compila lo cambiado. Si algo se borró o se renombró, su target se borra entero, porque Maven no
-  // quita las clases ni los recursos que dejó, como una migración vieja de Flyway.
-  if (espejar(BACKEND, copia, { excluir: ['target'] }).length > 0) {
+  // quita las clases ni los recursos que dejó, como una migración vieja de Flyway. Al lado queda infra/bd, sin
+  // infra/.env, para que las pruebas del backend también pasen en la copia.
+  if (espejarBackend(RAIZ, CARPETA).backend.length > 0) {
     rmSync(join(copia, 'target'), { recursive: true, force: true });
   }
   // Con la ruta («.\» o «./»): la consola de Windows no siempre busca programas en la carpeta actual.
