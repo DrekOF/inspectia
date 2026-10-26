@@ -4,7 +4,7 @@ Descripción: Casos de prueba de InspectIA por ficha y criterio de aceptación, 
              tienen prueba (RP-13). Archivo generado por generador/casos_de_prueba.py: no se edita a mano;
              sale de specs/fichas.json y de las marcas de las pruebas.
 Fecha de creación: 12/10/2026
-Actualización: 20/10/2026
+Actualización: 26/10/2026
 Autor: Equipo InspectIA (generado por generador/casos_de_prueba.py v1.2)
 Versión: 1.2
 -->
@@ -22,7 +22,7 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 ## Resumen
 
 - **143 criterios de aceptación** en 26 fichas: 55 con prueba y 88 pendientes.
-- **412 pruebas:** 220 de Java (27 generadas), 129 de JavaScript y 63 de Python. Una prueba parametrizada cuenta una vez.
+- **431 pruebas:** 220 de Java (27 generadas), 129 de JavaScript y 82 de Python. Una prueba parametrizada cuenta una vez.
 
 | Ficha | Criterios | Con prueba | Pendientes |
 |---|---:|---:|---:|
@@ -437,6 +437,7 @@ Otras pruebas de RNF-04, que no cubren un criterio:
 - [`iniciar-sesion.spec.js`](../frontend/e2e/iniciar-sesion.spec.js) · sin sesión, una pantalla interna lleva a Iniciar sesión
 - [`Marco.test.jsx`](../frontend/src/navegacion/Marco.test.jsx) · una pantalla de otro rol no se abre aunque se escriba su dirección: avisa que no tiene permiso
 - [`sesion.test.jsx`](../frontend/src/sesion/sesion.test.jsx) · sin sesión, una pantalla interna lleva a Iniciar sesión
+- [`test_frontend.py`](../generador/pruebas/test_frontend.py) · la ruta, la entrada del menú y los roles de cada pantalla salen del JSON: la abren los roles de listar
 - [`test_java.py`](../generador/pruebas/test_java.py) · las reglas de acceso por ruta y @PreAuthorize salen de operaciones del JSON
 
 ## RNF-05 · Funcionar en PC y en celular desde el navegador
@@ -510,7 +511,7 @@ Pruebas que no cubren un criterio de una ficha, sino una pauta del docente (RP) 
 
 ### RP-10 · Header en cada artefacto con nombre, descripción, fecha de creación, fecha de actualización, autor y versión
 
-- [`test_salida.py`](../generador/pruebas/test_salida.py) · cada archivo generado lleva su header y la marca de no editar a mano
+- [`test_salida.py`](../generador/pruebas/test_salida.py) · cada archivo generado lleva su header y la marca de no editar a mano, también los del frontend
 
 ### RP-11 · Internacionalización
 
@@ -527,6 +528,7 @@ Pruebas que no cubren un criterio de una ficha, sino una pauta del docente (RP) 
 - [`i18n.test.js`](../frontend/src/i18n/i18n.test.js) · los textos compartidos con el backend salen de sus archivos .properties: %s %s (parametrizada)
 - [`Marco.test.jsx`](../frontend/src/navegacion/Marco.test.jsx) · el idioma se cambia desde la barra y el menú queda en inglés
 - [`IniciarSesion.test.jsx`](../frontend/src/paginas/IniciarSesion.test.jsx) · Iniciar sesión cambia a inglés, y pide al backend los mensajes en inglés
+- [`test_frontend.py`](../generador/pruebas/test_frontend.py) · los textos de cada pantalla salen de pantalla.textos del JSON, en español y en inglés
 - [`test_java.py`](../generador/pruebas/test_java.py) · los textos de todas las entidades salen en español y en inglés
 
 ### RP-13 · Listado completo de casos de prueba, derivados de los criterios de aceptación de cada requerimiento, y verificación de su cumplimiento
@@ -540,6 +542,7 @@ Pruebas que no cubren un criterio de una ficha, sino una pauta del docente (RP) 
 - [`test_casos.py`](../generador/pruebas/test_casos.py) · todas las pruebas del repositorio tienen una marca válida
 - [`test_casos.py`](../generador/pruebas/test_casos.py) · un criterio sin prueba sale como pendiente; uno eliminado no
 - [`test_casos.py`](../generador/pruebas/test_casos.py) · una marca que cita algo que no existe o un criterio eliminado es un error
+- [`test_frontend.py`](../generador/pruebas/test_frontend.py) · las pruebas generadas del frontend llevan un título fijo con su marca: la ficha de la entidad o el RNF que cubren
 
 ### RP-14 · Herramientas de prueba
 
@@ -569,13 +572,25 @@ Pruebas que no cubren un criterio de una ficha, sino una pauta del docente (RP) 
 - [`DecimalesTest`](../backend/src/test/java/co/edu/usco/inspectia/comun/numero/DecimalesTest.java) · un dato que no llegó sigue sin valor
 - [`MaximoDecimalesValidadorTest`](../backend/src/test/java/co/edu/usco/inspectia/comun/validacion/MaximoDecimalesValidadorTest.java) · @MaximoDecimales responde en el campo con el mensaje general de los decimales
 - [`MaximoDecimalesValidadorTest`](../backend/src/test/java/co/edu/usco/inspectia/comun/validacion/MaximoDecimalesValidadorTest.java) · @MaximoDecimales usa el máximo de su anotación, que sale de la escala del JSON (parametrizada)
+- [`test_frontend.py`](../generador/pruebas/test_frontend.py) · alcance.json dice qué entidades tienen pantalla: empresa (RF-02) y solo entidades con API
+- [`test_frontend.py`](../generador/pruebas/test_frontend.py) · cada entidad de pantallas en alcance.json tiene su pantalla, su cliente de la API, sus esquemas de Yup y sus pruebas; las demás, no
+- [`test_frontend.py`](../generador/pruebas/test_frontend.py) · desactivar pide confirmación solo si pantalla.textos trae su texto (D-34): la empresa lo trae
+- [`test_frontend.py`](../generador/pruebas/test_frontend.py) · el cliente de la API de una pantalla usa la ruta y las operaciones del JSON, y el listado filtra por activo (D-33)
+- [`test_frontend.py`](../generador/pruebas/test_frontend.py) · el formato del correo se valida solo en el backend, como el dígito del NIT: Yup no lo revisa y su error llega al campo al guardar
+- [`test_frontend.py`](../generador/pruebas/test_frontend.py) · el generador se detiene con una pantalla que todavía no sabe generar o a la que le faltan textos, y dice qué falta
+- [`test_frontend.py`](../generador/pruebas/test_frontend.py) · la pantalla toma del JSON sus campos, sus columnas, los roles de cada acción y sus textos
+- [`test_frontend.py`](../generador/pruebas/test_frontend.py) · la prueba generada de Yup revisa los mismos casos de límite que la prueba generada de la API, con el mismo mensaje en español, salvo el formato del correo
+- [`test_frontend.py`](../generador/pruebas/test_frontend.py) · las validaciones del JSON pasan a Yup en el orden de Bean Validation y con la misma clave de mensaje: la propia del atributo o la general
+- [`test_frontend.py`](../generador/pruebas/test_frontend.py) · una pantalla necesita la API de su entidad: el alcance no acepta una pantalla sin API ni de una entidad que no existe
 - [`test_java.py`](../generador/pruebas/test_java.py) · cada CRUD tiene persistencia y solo las entidades del alcance tienen API
 - [`test_java.py`](../generador/pruebas/test_java.py) · edicion_en_bloque: lista las filas sin páginas, las edita todas juntas y restaura los valores por defecto, siempre en la empresa de la sesión (RF-13, RNF-03)
 - [`test_java.py`](../generador/pruebas/test_java.py) · el código generado escribe sus constructores, sin las anotaciones de Lombok que los crean
 - [`test_java.py`](../generador/pruebas/test_java.py) · el generador se detiene con un efecto que no sabe llamar: en listar o ver, o atado a un atributo que no es una contraseña
 - [`test_java.py`](../generador/pruebas/test_java.py) · el generador se detiene con una edición en bloque que no sabe generar: con crear, sin una lista que identifique cada fila o con restaurar_por_defecto sin valores_iniciales
+- [`test_java.py`](../generador/pruebas/test_java.py) · el listado de una entidad con atributo_activo filtra con ?activo=true o false, y sin el filtro trae todos (D-33)
 - [`test_java.py`](../generador/pruebas/test_java.py) · la API de una entidad por empresa toma la empresa de la sesión y limita cada consulta a ella (RNF-03)
 - [`test_java.py`](../generador/pruebas/test_java.py) · la contraseña del formulario es obligatoria al crear y opcional al editar, y solo se guarda su hash
+- [`test_java.py`](../generador/pruebas/test_java.py) · la prueba generada de la API revisa que cada validación del JSON acepte su valor del borde: el largo máximo, el mínimo y los 72 bytes
 - [`test_java.py`](../generador/pruebas/test_java.py) · la respuesta solo lleva los atributos de la lista o del formulario: nunca el hash ni los datos internos
 - [`test_java.py`](../generador/pruebas/test_java.py) · las reglas de una entidad por empresa reciben la sesión, y los parámetros de una regla salen como constantes
 - [`test_java.py`](../generador/pruebas/test_java.py) · las validaciones del JSON pasan a Bean Validation con la clave de su mensaje
@@ -591,24 +606,28 @@ Pruebas que no cubren un criterio de una ficha, sino una pauta del docente (RP) 
 - [`test_java.py`](../generador/pruebas/test_java.py) · valores_en_formulario se valida con @ValorPermitido, que responde 403 antes que los demás errores
 - [`test_otra_tematica.py`](../generador/pruebas/test_otra_tematica.py) · el JSON de producto de la pauta del docente pasa la validación
 - [`test_otra_tematica.py`](../generador/pruebas/test_otra_tematica.py) · el generador produce la API de producto, otra temática, con las mismas plantillas
+- [`test_otra_tematica.py`](../generador/pruebas/test_otra_tematica.py) · el generador produce la pantalla de producto, otra temática, con las mismas plantillas del frontend
 - [`test_otra_tematica.py`](../generador/pruebas/test_otra_tematica.py) · el generador produce los archivos de otra temática: producto de la pauta del docente
 - [`test_salida.py`](../generador/pruebas/test_salida.py) · comprobar detecta archivos que faltan o que sobran en las carpetas generadas
 - [`test_salida.py`](../generador/pruebas/test_salida.py) · comprobar detecta un archivo generado editado a mano
 - [`test_salida.py`](../generador/pruebas/test_salida.py) · comprobar ignora la diferencia entre LF y CRLF
 - [`test_salida.py`](../generador/pruebas/test_salida.py) · comprobar no encuentra diferencias justo después de generar
+- [`test_salida.py`](../generador/pruebas/test_salida.py) · el generador también es dueño de frontend/src/generated y frontend/e2e/generated: escribe ahí, comprobar detecta una edición a mano y generar borra lo que sobra, sin tocar lo escrito a mano
 - [`test_salida.py`](../generador/pruebas/test_salida.py) · generar borra de las carpetas generadas lo que ya no se genera
 - [`test_salida.py`](../generador/pruebas/test_salida.py) · la salida es determinista y usa finales de línea LF
-- [`test_salida.py`](../generador/pruebas/test_salida.py) · lo generado no lleva valores de Python: un booleano sale como true o false, también en los ejemplos de OpenAPI, y nada sale como None
+- [`test_salida.py`](../generador/pruebas/test_salida.py) · lo generado no lleva valores de Python: un booleano sale como true o false, también en los ejemplos de OpenAPI y en el frontend, y nada sale como None
 - [`test_validacion.py`](../generador/pruebas/test_validacion.py) · la validación detecta un CHECK con un valor que no está en ninguna lista
 - [`test_validacion.py`](../generador/pruebas/test_validacion.py) · la validación detecta una ficha que no existe en specs/
 - [`test_validacion.py`](../generador/pruebas/test_validacion.py) · la validación detecta una referencia a una entidad que no existe
 - [`test_validacion.py`](../generador/pruebas/test_validacion.py) · la validación pide el nombre de crear_con, que es el campo de la solicitud
 - [`test_validacion.py`](../generador/pruebas/test_validacion.py) · la validación rechaza solo_lectura_si en una entidad sin edicion_en_bloque, en vez de ignorarlo
 - [`test_validacion.py`](../generador/pruebas/test_validacion.py) · la validación rechaza un mensaje con un marcador que no está en validaciones
+- [`test_validacion.py`](../generador/pruebas/test_validacion.py) · la validación revisa la clave pantalla: claves conocidas, textos en español y en inglés, singular y plural donde se cuenta, y marcadores que existen
 - [`test_validacion.py`](../generador/pruebas/test_validacion.py) · la validación revisa que el ejemplo de un atributo cumpla sus validaciones
 - [`test_validacion.py`](../generador/pruebas/test_validacion.py) · los JSON de specs/entidades pasan la validación
 - [`test_validacion.py`](../generador/pruebas/test_validacion.py) · un atributo con solo_lectura_si puede traer su mensaje; uno sin solo_lectura_si, no
 - [`test_validacion.py`](../generador/pruebas/test_validacion.py) · un atributo no puede usar el nombre de una columna implícita
+- [`test_validacion.py`](../generador/pruebas/test_validacion.py) · un patron va anclado con ^ y $ y sin lo que Java, PostgreSQL y JavaScript leen distinto, así los tres validan igual
 - [`test_validacion.py`](../generador/pruebas/test_validacion.py) · una entidad con CRUD necesita modulo y ruta
 
 ### D-18 · Uso de los 5 modelos (RP-25)

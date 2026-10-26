@@ -1,9 +1,9 @@
 # Nombre: test_salida.py
 # Descripción: Pruebas de la escritura y la comprobación de los archivos generados.
 # Fecha de creación: 13/10/2026
-# Actualización: 20/10/2026
+# Actualización: 26/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.2
+# Versión: 1.3
 """Pruebas de cómo se escriben los archivos generados y de cómo se detecta que alguien los editó."""
 
 import re
@@ -25,9 +25,20 @@ def test_salida_determinista(entidades):
     assert all('\r' not in a.contenido for a in primera)
 
 
-@pytest.mark.caso('RP-10 · cada archivo generado lleva su header y la marca de no editar a mano')
+def generar_con_el_alcance(entidades):
+    """Lo que genera el generador con el alcance del repositorio: la API y las pantallas de alcance.json."""
+    from inspectia_generador.carga import cargar_pantallas
+
+    alcance = GENERADOR / 'alcance.json'
+    return generar_archivos(entidades, cargar_alcance(alcance), cargar_pantallas(alcance))
+
+
+@pytest.mark.caso('RP-10 · cada archivo generado lleva su header y la marca de no editar a mano, también los del frontend')
 def test_header_de_los_archivos(entidades):
-    for archivo in generar_archivos(entidades):
+    archivos = generar_con_el_alcance(entidades)
+
+    assert any(a.ruta.startswith('frontend/') for a in archivos)
+    for archivo in archivos:
         cabecera = archivo.contenido.split('\n', 12)[:12]
         texto = '\n'.join(cabecera)
         for campo in ('Nombre:', 'Descripción:', 'Fecha de creación: 13/10/2026',
@@ -36,9 +47,9 @@ def test_header_de_los_archivos(entidades):
         assert 'no se edita a mano' in texto
 
 
-@pytest.mark.caso('RP-23 · lo generado no lleva valores de Python: un booleano sale como true o false, también en los ejemplos de OpenAPI, y nada sale como None')
+@pytest.mark.caso('RP-23 · lo generado no lleva valores de Python: un booleano sale como true o false, también en los ejemplos de OpenAPI y en el frontend, y nada sale como None')
 def test_sin_valores_de_python(entidades):
-    for archivo in generar_archivos(entidades, cargar_alcance(GENERADOR / 'alcance.json')):
+    for archivo in generar_con_el_alcance(entidades):
         encontrados = re.findall(r'\b(?:True|False|None)\b', archivo.contenido)
         assert not encontrados, f'{archivo.ruta}: {encontrados}'
 
@@ -102,3 +113,27 @@ def test_generar_borra_lo_que_sobra(entidades, tmp_path):
     assert not viejo.exists()
     assert not viejo.parent.exists()
     assert a_mano.exists()
+
+
+@pytest.mark.caso('RP-23 · el generador también es dueño de frontend/src/generated y frontend/e2e/generated: escribe ahí, comprobar detecta una edición a mano y generar borra lo que sobra, sin tocar lo escrito a mano')
+def test_carpetas_del_frontend(entidades, tmp_path):
+    archivos = generar_archivos(entidades, ('empresa',), ('empresa',))
+    escribir(archivos, tmp_path)
+    pantalla = tmp_path / 'frontend/src/generated/empresa/EmpresaPantalla.jsx'
+    pantalla.write_text(pantalla.read_text(encoding='utf-8') + '// cambio a mano\n', encoding='utf-8')
+    sobrante = tmp_path / 'frontend/e2e/generated/viejo.spec.js'
+    sobrante.write_text('// ya no se genera\n', encoding='utf-8')
+    a_mano = tmp_path / 'frontend/src/crud/PantallaDeRegistros.jsx'
+    a_mano.parent.mkdir(parents=True)
+    a_mano.write_text('// escrito a mano\n', encoding='utf-8')
+
+    diferencias = comprobar(archivos, tmp_path)
+
+    assert diferencias.modificados == ['frontend/src/generated/empresa/EmpresaPantalla.jsx']
+    assert diferencias.sobrantes == ['frontend/e2e/generated/viejo.spec.js']
+
+    escribir(archivos, tmp_path)
+
+    assert not sobrante.exists()
+    assert a_mano.exists()
+    assert comprobar(archivos, tmp_path).vacia

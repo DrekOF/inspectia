@@ -1,9 +1,9 @@
 # Nombre: test_java.py
 # Descripción: Pruebas de la generación de Java (persistencia, API y pruebas) y de los textos es/en.
 # Fecha de creación: 13/10/2026
-# Actualización: 20/10/2026
+# Actualización: 26/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.6
+# Versión: 1.7
 """Pruebas de lo que genera el generador para el backend: la persistencia de cada CRUD, la API de las
 entidades del alcance, incluidas las de una entidad por empresa y las de edición en bloque, y los textos
 en español e inglés."""
@@ -12,7 +12,7 @@ import re
 
 import pytest
 
-from conftest import EJEMPLOS, atributo
+from conftest import EJEMPLOS, atributo, casos_java
 from inspectia_generador.generacion import generar_archivos
 from inspectia_generador.sql import ErrorGeneracion
 
@@ -75,7 +75,7 @@ def test_api_por_empresa(entidades):
     controlador = archivos[f'{JAVA}/usuario/UsuarioControlador.java']
     assert controlador.count('@AuthenticationPrincipal UsuarioEnSesion sesion') == 6
     servicio = archivos[f'{JAVA}/usuario/UsuarioServicio.java']
-    assert 'repositorio.findAllByEmpresaId(sesion.empresaId(), PageRequest.of(pagina, tamano, ORDEN))' in servicio
+    assert 'repositorio.findAllByEmpresaId(sesion.empresaId(), pedido)' in servicio
     assert 'repositorio.findByIdAndEmpresaId(id, sesion.empresaId())' in servicio
     assert 'usuario.setEmpresaId(sesion.empresaId());' in servicio
     assert 'findById(' not in servicio and 'findAll(' not in servicio, 'ninguna consulta sin la empresa'
@@ -85,6 +85,42 @@ def test_api_por_empresa(entidades):
     for solicitud in ('UsuarioCrearSolicitud', 'UsuarioEditarSolicitud'):
         assert 'empresaId' not in archivos[f'{JAVA}/usuario/{solicitud}.java'], 'la empresa nunca sale de la petición'
     assert 'RNF-03 · ' in archivos[f'{PRUEBAS}/usuario/UsuarioApiGeneradaIT.java']
+
+
+@pytest.mark.caso('RP-23 · el listado de una entidad con atributo_activo filtra con ?activo=true o false, y sin el filtro trae todos (D-33)')
+def test_listado_filtra_por_activo(entidades):
+    archivos = generar(entidades, api=('empresa', 'usuario'))
+
+    controlador = archivos[f'{JAVA}/empresa/EmpresaControlador.java']
+    assert '@RequestParam(name = "activo", required = false) Boolean activo' in controlador
+    assert 'return servicio.listar(pagina, tamano, activo);' in controlador
+    servicio = archivos[f'{JAVA}/empresa/EmpresaServicio.java']
+    assert 'repositorio.findAll(pedido)' in servicio
+    assert 'repositorio.findAllByActiva(activo, pedido)' in servicio
+    assert ('Page<Empresa> findAllByActiva(Boolean activa, Pageable pagina);'
+            in archivos[f'{JAVA}/empresa/EmpresaRepositorio.java'])
+    assert 'repositorio.findAllByEmpresaIdAndActivo(sesion.empresaId(), activo, pedido)' in archivos[
+        f'{JAVA}/usuario/UsuarioServicio.java'], 'en una entidad por empresa, el filtro también se limita a ella'
+    assert ('Page<Usuario> findAllByEmpresaIdAndActivo(UUID empresaId, Boolean activo, Pageable pagina);'
+            in archivos[f'{JAVA}/usuario/UsuarioRepositorio.java'])
+    assert ('@DisplayName("RF-02 · el listado de empresa filtra por activo: con true trae solo los activos y con false, '
+            'los desactivados")') in archivos[f'{PRUEBAS}/empresa/EmpresaApiGeneradaIT.java']
+
+
+@pytest.mark.caso('RP-23 · la prueba generada de la API revisa que cada validación del JSON acepte su valor del borde: el largo máximo, el mínimo y los 72 bytes')
+def test_bordes_aceptados(entidades):
+    prueba = generar(entidades)[f'{PRUEBAS}/empresa/EmpresaApiGeneradaIT.java']
+
+    assert '@DisplayName("RF-02 · cada validación del JSON de empresa acepta su valor del borde al crear")' in prueba
+    assert '@DisplayName("RF-02 · cada validación del JSON de empresa acepta su valor del borde al editar")' in prueba
+    assert casos_java(prueba, 'bordesAlCrear') == [
+        ('nombre', '"x".repeat(120)', None), ('ciudad', '"x".repeat(80)', None),
+        ('administrador.nombre', '"x".repeat(120)', None), ('administrador.correo', 'correoDeLargo(254)', None),
+        ('administrador.contrasena', '"x".repeat(64)', None), ('administrador.contrasena', '"x".repeat(8)', None),
+        ('administrador.contrasena', '"ñ".repeat(36)', None)]
+    assert casos_java(prueba, 'bordesAlEditar') == [
+        ('nombre', '"x".repeat(120)', None), ('ciudad', '"x".repeat(80)', None)], \
+        'el NIT tiene patrón: su ejemplo ya es su valor válido'
 
 
 @pytest.mark.caso('RP-23 · una entidad por empresa no puede dar operaciones al administrador de la plataforma, que no tiene empresa')

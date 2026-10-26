@@ -1,11 +1,11 @@
 {
   "_header": {
     "nombre": "producto.json",
-    "descripcion": "Entidad de ejemplo de la pauta del docente para el back-end (id, nombre, categoria, descripcion, estado). Solo la usan las pruebas del generador para demostrar que sirve para otra temática (RP-23); no entra a la app.",
+    "descripcion": "Entidad de ejemplo de la pauta del docente para el back-end (id, nombre, categoria, descripcion, estado), con su pantalla. Solo la usan las pruebas del generador para demostrar que sirve para otra temática (RP-23), en el backend y en el frontend; no entra a la app.",
     "fecha_creacion": "13/10/2026",
-    "actualizacion": "13/10/2026",
+    "actualizacion": "26/10/2026",
     "autor": "Equipo InspectIA",
-    "version": "1.0"
+    "version": "1.1"
   },
   "entidad": "producto",
   "clase": "Producto",
@@ -73,5 +73,21 @@
       "etiquetas": { "es": "Estado", "en": "Status" },
       "fichas": ["RP-01"]
     }
-  ]
+  ],
+  "pantalla": {
+    "icono": "productos",
+    "textos": {
+      "resumen": { "es": "{total}.", "en": "{total}." },
+      "resumen_total": {
+        "es": { "singular": "{cantidad} producto registrado", "plural": "{cantidad} productos registrados" },
+        "en": { "singular": "{cantidad} registered product", "plural": "{cantidad} registered products" }
+      },
+      "vacia": { "es": "Todavía no hay productos registrados.", "en": "There are no registered products yet." },
+      "nuevo": { "es": "Nuevo producto", "en": "New product" },
+      "crear": { "es": "Crear producto", "en": "Create product" },
+      "titulo_editar": { "es": "Editar producto", "en": "Edit product" },
+      "titulo_lista": { "es": "Productos registrados", "en": "Registered products" },
+      "editar_fila": { "es": "Editar {nombre}", "en": "Edit {nombre}" }
+    }
+  }
 }
