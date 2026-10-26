@@ -8,10 +8,14 @@
 # Versión: 1.0
 """Las validaciones de cada campo, en un solo modelo.
 
-De aquí salen las anotaciones de Bean Validation (``java.py``) y las validaciones de Yup (``frontend.py``), en el
-mismo orden y con la misma clave de mensaje: así el backend y el frontend validan igual. También salen los casos
-de límite que revisan las pruebas generadas de los dos lados. Son datos, y cada lenguaje los escribe a su manera:
-el dato que falta, por ejemplo, es ``null`` en la API y el campo vacío en el formulario.
+De aquí salen las anotaciones de Bean Validation (``java.py``) y las validaciones de Yup (``frontend.py``), con la
+misma clave de mensaje: así el backend y el frontend validan igual. Si un valor falla por más de una validación,
+la API responde un solo error por campo, el que escoge ``ManejadorDeErrores``: el del dato que falta y, si no, el
+de la restricción que va primero por su nombre (Pattern antes que Size). Yup revisa en ese mismo orden
+(``orden_de_la_api``), así el formulario dice el mismo error que la API.
+
+También salen los casos de límite que revisan las pruebas generadas de los dos lados. Son datos, y cada lenguaje
+los escribe a su manera: el dato que falta, por ejemplo, es ``null`` en la API y el campo vacío en el formulario.
 
 El formato del correo es la excepción: lo valida solo el backend, como el dígito del NIT, y su error llega al
 campo del formulario al guardar.
@@ -27,10 +31,20 @@ from inspectia_generador.textos import GENERAL_DE, clave_mensaje, mensaje_espera
 #: acepte en ese lugar.
 PEGADOS = ('x', '?')
 
+#: Las restricciones del dato que falta, como en ``ManejadorDeErrores``: su error va antes que los demás.
+FALTA_EL_DATO = ('NotNull', 'NotBlank', 'NotEmpty', 'NoEnBlanco')
+
+#: La restricción de Bean Validation de cada validación que no depende del tipo del atributo.
+RESTRICCION = {
+    'no_en_blanco': 'NoEnBlanco', 'valor_permitido': 'ValorPermitido', 'longitud_max': 'Size',
+    'longitud_min': 'Size', 'bytes_max': 'MaximoBytes', 'patron': 'Pattern', 'correo': 'Email',
+    'decimales': 'MaximoDecimales',
+}
+
 
 @dataclass(frozen=True)
 class Validacion:
-    """Una validación de un campo, en el orden en que se revisa.
+    """Una validación de un campo.
 
     Attributes:
         tipo: ``obligatorio``, ``no_en_blanco``, ``valor_permitido``, ``valores``, ``longitud_max``,
@@ -40,6 +54,9 @@ class Validacion:
         parametro: el marcador del mensaje general que lleva el límite (``max``, ``min`` o ``value``), o
             ``None`` si el mensaje ya lo trae escrito.
         solo_backend: si solo la revisa el backend, como el formato del correo.
+        restriccion: la restricción de Bean Validation que la revisa, como ``Size`` o ``Pattern``: es el código
+            de su error en la API. ``None`` si no hay una: un código que no existe en una lista lo rechaza
+            Jackson al leer la petición.
     """
 
     tipo: str
@@ -47,6 +64,15 @@ class Validacion:
     clave: str = None
     parametro: str = None
     solo_backend: bool = False
+    restriccion: str = None
+
+
+def orden_de_la_api(validacion):
+    """La llave para ordenar las validaciones de un campo como la API escoge su error: primero las del dato que
+    falta y después por el nombre de la restricción, como ``ManejadorDeErrores``. Una sin restricción va antes
+    que las demás, porque Jackson la rechaza antes de revisar el resto."""
+    restriccion = validacion.restriccion or ''
+    return restriccion not in FALTA_EL_DATO, restriccion
 
 
 @dataclass(frozen=True)
@@ -88,6 +114,16 @@ class Campo:
     minusculas: bool = False
 
 
+def _restriccion(tipo, a):
+    """La restricción de Bean Validation de una validación, que es el código de su error en la API."""
+    if tipo == 'obligatorio':
+        return 'NotBlank' if a['tipo'] in ('texto', 'contrasena') else 'NotNull'
+    if tipo in ('minimo', 'maximo'):
+        nombre = 'Min' if tipo == 'minimo' else 'Max'
+        return nombre if a['tipo'] == 'entero' else f'Decimal{nombre}'
+    return RESTRICCION.get(tipo)
+
+
 def _validacion(e, a, tipo, nombre, valor=None, propio=True):
     """Una validación con la clave de su mensaje y, si el mensaje es el general, el marcador de su límite.
 
@@ -97,7 +133,7 @@ def _validacion(e, a, tipo, nombre, valor=None, propio=True):
     """
     clave = clave_mensaje(e, a, nombre) if propio else GENERAL_DE[nombre][0]
     general, parametro = GENERAL_DE[nombre]
-    return Validacion(tipo, valor, clave, parametro if clave == general else None)
+    return Validacion(tipo, valor, clave, parametro if clave == general else None, restriccion=_restriccion(tipo, a))
 
 
 def del_atributo(e, a, obligatorio=None):
@@ -109,21 +145,24 @@ def del_atributo(e, a, obligatorio=None):
             que al editar es opcional.
 
     Returns:
-        Campo: sus validaciones, en el orden de Bean Validation, y sus casos de límite.
+        Campo: sus validaciones, en el orden de sus anotaciones de Bean Validation, y sus casos de límite.
     """
     v = a.get('validaciones', {})
     requerido = (a.get('obligatorio') and 'por_defecto' not in a) if obligatorio is None else obligatorio
     sin_formato = 'patron' not in v and 'formato' not in v
     campo = Campo(recortar=bool(v.get('recortar')), minusculas=bool(v.get('minusculas')))
+    # La validación del largo máximo y su mensaje, para los casos que fallan también por otra validación.
+    largo = None
 
     if requerido:
         campo.validaciones.append(Validacion('obligatorio', a['tipo'] in ('texto', 'contrasena'),
-                                             'validacion.obligatorio'))
+                                             'validacion.obligatorio', restriccion=_restriccion('obligatorio', a)))
         campo.casos.append(Caso(FALTA, mensaje_esperado(e, a, 'obligatorio')))
     elif a['tipo'] == 'contrasena':
         # Opcional, como al editar: si no llega, queda la que había; si llega en blanco, se rechaza con
         # el mismo mensaje que al crear, porque tampoco serviría para iniciar sesión.
-        campo.validaciones.append(Validacion('no_en_blanco', clave='validacion.obligatorio'))
+        campo.validaciones.append(Validacion('no_en_blanco', clave='validacion.obligatorio',
+                                             restriccion=_restriccion('no_en_blanco', a)))
     if a['tipo'] == 'contrasena':
         # Solo espacios y con el largo mínimo: falla solo por estar en blanco (prueba de límite).
         campo.casos.append(Caso(Valor('repetir', ' ', v.get('longitud_min', 1)), mensaje_esperado(e, a, 'obligatorio')))
@@ -138,8 +177,10 @@ def del_atributo(e, a, obligatorio=None):
         limites = ([(a['longitud'], False)] if a['tipo'] == 'texto' else []) + (
             [(v['longitud_max'], True)] if 'longitud_max' in v else [])
         maximo, propio = min(limites)
-        campo.validaciones.append(_validacion(e, a, 'longitud_max', 'longitud_max', maximo, propio))
+        validacion = _validacion(e, a, 'longitud_max', 'longitud_max', maximo, propio)
+        campo.validaciones.append(validacion)
         mensaje = mensaje_esperado(e, a if propio else {}, 'longitud_max', maximo)
+        largo = (validacion, mensaje)
         if sin_formato:
             campo.casos.append(Caso(Valor('repetir', 'x', maximo + 1), mensaje))
             campo.bordes.append(Valor('repetir', 'x', maximo))
@@ -154,22 +195,38 @@ def del_atributo(e, a, obligatorio=None):
             campo.bordes.append(Valor('repetir', 'x', minimo))
     if 'bytes_max' in v:
         bytes_max = v['bytes_max']
-        campo.validaciones.append(_validacion(e, a, 'bytes_max', 'bytes_max', bytes_max))
+        validacion = _validacion(e, a, 'bytes_max', 'bytes_max', bytes_max)
+        campo.validaciones.append(validacion)
+        mensaje = mensaje_esperado(e, a, 'bytes_max')
         # Cada eñe ocupa 2 bytes: con la mitad más una se pasa por poco, y con la mitad justa cabe.
         caracteres = bytes_max // 2 + 1
-        maximo = v.get('longitud_max', a.get('longitud', caracteres))
-        if sin_formato and v.get('longitud_min', 0) <= caracteres <= maximo:
-            campo.casos.append(Caso(Valor('repetir', 'ñ', caracteres), mensaje_esperado(e, a, 'bytes_max')))
+        hasta = v.get('longitud_max', a.get('longitud', caracteres))
+        if sin_formato and v.get('longitud_min', 0) <= caracteres <= hasta:
+            campo.casos.append(Caso(Valor('repetir', 'ñ', caracteres), mensaje))
             campo.bordes.append(Valor('repetir', 'ñ', bytes_max // 2))
+        if sin_formato and largo and (_largo_maximo(a) + 1) * 2 > bytes_max:
+            # Con una eñe más que el largo máximo falla también por bytes: la API responde un solo error, y Yup,
+            # el mismo.
+            campo.casos.append(Caso(Valor('repetir', 'ñ', _largo_maximo(a) + 1),
+                                    _el_que_responde_la_api(largo, (validacion, mensaje))))
     if 'patron' in v:
-        campo.validaciones.append(_validacion(e, a, 'patron', 'patron', v['patron']))
+        validacion = _validacion(e, a, 'patron', 'patron', v['patron'])
+        campo.validaciones.append(validacion)
         mensaje = mensaje_esperado(e, a, 'patron')
         campo.casos.append(Caso(Valor('texto', '?'), mensaje))
         # El ejemplo con algo pegado antes o después solo pasa si el patrón no va anclado con ^ y $: JavaScript
         # busca el patrón dentro del texto, mientras que @Pattern revisa el texto entero.
         campo.casos += [Caso(Valor('texto', valor), mensaje) for valor in _sin_anclar(a, campo.minusculas)]
+        if largo:
+            # Demasiado largo y mal escrito a la vez: la API responde un solo error, y Yup, el mismo.
+            demasiadas = _largo_maximo(a) + 1
+            pegado = next((p for p in PEGADOS if not _acepta(v['patron'], p * demasiadas, campo.minusculas)), None)
+            if pegado:
+                campo.casos.append(Caso(Valor('repetir', pegado, demasiadas),
+                                        _el_que_responde_la_api(largo, (validacion, mensaje))))
     if v.get('formato') == 'correo':
-        campo.validaciones.append(Validacion('correo', None, clave_mensaje(e, a, 'formato'), solo_backend=True))
+        campo.validaciones.append(Validacion('correo', None, clave_mensaje(e, a, 'formato'), solo_backend=True,
+                                             restriccion=_restriccion('correo', a)))
         campo.casos.append(Caso(Valor('texto', 'sin-arroba'), mensaje_esperado(e, a, 'formato'), solo_backend=True))
     for limite, tipo in (('min', 'minimo'), ('max', 'maximo')):
         if limite in v and a['tipo'] in ('entero', 'decimal'):
@@ -190,12 +247,27 @@ def del_atributo(e, a, obligatorio=None):
     return campo
 
 
+def _el_que_responde_la_api(*fallas):
+    """El mensaje que responde la API cuando un valor falla por varias validaciones: el de la que va primero en
+    ``orden_de_la_api``.
+
+    Args:
+        fallas: pares (validación, mensaje).
+    """
+    return min(fallas, key=lambda falla: orden_de_la_api(falla[0]))[1]
+
+
+def _acepta(patron, valor, minusculas):
+    """Si el patrón acepta el valor como lo revisa la API: entero y, si el campo las pasa, en minúsculas."""
+    return re.fullmatch(patron, valor.lower() if minusculas else valor) is not None
+
+
 def _sin_anclar(a, minusculas):
     """El ejemplo de un patrón con algo pegado antes y con algo pegado después, como x900123456-8 y 900123456-8x:
     valores que solo un patrón sin anclar aceptaría.
 
     Se pega lo primero de ``PEGADOS`` que el patrón no acepte en ese lugar. No se pega nada si el valor no cabe en
-    el largo del atributo, porque fallaría también por largo y Yup diría ese error primero.
+    el largo del atributo, porque fallaría también por largo.
 
     Args:
         minusculas: si el campo pasa a minúsculas antes de validarse.
@@ -210,7 +282,7 @@ def _sin_anclar(a, minusculas):
     for antes in (True, False):
         for pegado in PEGADOS:
             valor = pegado + ejemplo if antes else ejemplo + pegado
-            if not re.fullmatch(patron, valor.lower() if minusculas else valor):
+            if not _acepta(patron, valor, minusculas):
                 valores.append(valor)
                 break
     return valores

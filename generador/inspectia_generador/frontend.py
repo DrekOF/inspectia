@@ -178,7 +178,9 @@ def _mensaje_js(validacion):
 
 
 def lineas_yup(datos):
-    """Las validaciones de Yup de un campo, una por línea, en el orden de Bean Validation.
+    """Las validaciones de Yup de un campo, una por línea, en el orden en que la API escoge el error de un campo
+    (``campos.orden_de_la_api``): Yup dice el error de la primera que falla, así un valor que falla por dos da el
+    mismo mensaje en el formulario y en la API.
 
     Primero se normaliza el texto, como lo hace la solicitud de la API antes de validar. El formato del correo
     no va: lo valida solo el backend, y su error llega al campo al guardar.
@@ -191,7 +193,7 @@ def lineas_yup(datos):
         lineas.append('.transform(recortar)')
     if datos.minusculas:
         lineas.append('.transform(minusculas)')
-    for v in datos.validaciones:
+    for v in sorted(datos.validaciones, key=campos.orden_de_la_api):
         if v.solo_backend:
             continue
         mensaje = _mensaje_js(v)

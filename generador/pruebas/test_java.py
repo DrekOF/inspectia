@@ -12,13 +12,16 @@ import re
 
 import pytest
 
-from conftest import EJEMPLOS, atributo, casos_java
+from conftest import EJEMPLOS, RAIZ, atributo, casos_java
+from inspectia_generador import campos
 from inspectia_generador.generacion import generar_archivos
 from inspectia_generador.sql import ErrorGeneracion
 
 JAVA = 'backend/src/generated/java/co/edu/usco/inspectia'
 PRUEBAS = 'backend/src/test-generated/java/co/edu/usco/inspectia'
 TEXTOS = 'backend/src/generated/resources/i18n'
+# Donde la API escoge el error de un campo, que es el orden de las validaciones de Yup.
+MANEJADOR_DE_ERRORES = 'backend/src/main/java/co/edu/usco/inspectia/comun/errores/ManejadorDeErrores.java'
 # Lo que genera el generador para empresa: solo cambia a propósito, y entonces estas copias se actualizan en el
 # mismo commit; se comparan sin el header. Salieron de la 1.2, antes de la API por empresa (RF-03), y la 1.7 les
 # agregó el filtro activo del listado (D-33) y los valores del borde de la prueba generada.
@@ -141,12 +144,33 @@ def test_patron_anclado_en_los_bordes(entidades):
     nit['validaciones']['patron'] = '^[0-9x]{6,10}-[0-9x]$'
 
     casos = casos_java(generar(entidades)[f'{PRUEBAS}/empresa/EmpresaApiGeneradaIT.java'], 'validacionesAlCrear')
-    assert [valor for campo, valor, _ in casos if campo == 'nit'] == ['null', '"?"', '"?900123456-8"', '"900123456-8x"'], \
-        'el patrón acepta una x al inicio: se pega ?'
+    assert [valor for campo, valor, _ in casos if campo == 'nit'] == [
+        'null', '"?"', '"?900123456-8"', '"900123456-8x"', '"x".repeat(16)'], 'el patrón acepta una x al inicio: se pega ?'
 
     nit['longitud'] = len(nit['ejemplo'])
     casos = casos_java(generar(entidades)[f'{PRUEBAS}/empresa/EmpresaApiGeneradaIT.java'], 'validacionesAlCrear')
-    assert [valor for campo, valor, _ in casos if campo == 'nit'] == ['null', '"?"']
+    assert [valor for campo, valor, _ in casos if campo == 'nit'] == ['null', '"?"', '"x".repeat(12)']
+
+
+@pytest.mark.caso('RP-23 · la prueba generada de la API revisa un valor que falla por dos validaciones: el NIT largo y mal escrito responde el error del patrón, y la contraseña con demasiadas eñes, el de los bytes')
+def test_un_error_por_campo(entidades):
+    prueba = generar(entidades)[f'{PRUEBAS}/empresa/EmpresaApiGeneradaIT.java']
+    patron = 'Escribe el NIT sin puntos y con el dígito de verificación, por ejemplo 900123456-8.'
+
+    for metodo in ('validacionesAlCrear', 'validacionesAlEditar'):
+        assert ('nit', '"x".repeat(16)', patron) in casos_java(prueba, metodo), metodo
+    assert ('administrador.contrasena', '"ñ".repeat(65)',
+            'La contraseña es demasiado larga: usa menos caracteres o menos tildes y eñes') in casos_java(
+        prueba, 'validacionesAlCrear')
+
+
+@pytest.mark.caso('RP-23 · el generador escoge el error de un campo como ManejadorDeErrores: primero las mismas restricciones de «falta el dato» y después por el nombre de la restricción')
+def test_un_error_por_campo_como_manejador_de_errores():
+    manejador = (RAIZ / MANEJADOR_DE_ERRORES).read_text(encoding='utf-8')
+
+    lista = manejador.split('FALTA_EL_DATO = List.of(')[1].split(')')[0]
+    assert tuple(re.findall('"([A-Za-z]+)"', lista)) == campos.FALTA_EL_DATO
+    assert '.thenComparing(error -> String.valueOf(error.getCode()))' in manejador
 
 
 @pytest.mark.caso('RP-23 · una entidad por empresa no puede dar operaciones al administrador de la plataforma, que no tiene empresa')

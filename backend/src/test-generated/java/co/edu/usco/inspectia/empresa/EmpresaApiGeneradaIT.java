@@ -140,6 +140,7 @@ class EmpresaApiGeneradaIT {
                 Arguments.of("nit", "?", "Escribe el NIT sin puntos y con el dígito de verificación, por ejemplo 900123456-8."),
                 Arguments.of("nit", "x900123456-8", "Escribe el NIT sin puntos y con el dígito de verificación, por ejemplo 900123456-8."),
                 Arguments.of("nit", "900123456-8x", "Escribe el NIT sin puntos y con el dígito de verificación, por ejemplo 900123456-8."),
+                Arguments.of("nit", "x".repeat(16), "Escribe el NIT sin puntos y con el dígito de verificación, por ejemplo 900123456-8."),
                 Arguments.of("ciudad", null, "Este dato es obligatorio."),
                 Arguments.of("ciudad", "x".repeat(81), "Puede tener como máximo 80 caracteres."),
                 Arguments.of("administrador.nombre", null, "Este dato es obligatorio."),
@@ -151,7 +152,8 @@ class EmpresaApiGeneradaIT {
                 Arguments.of("administrador.contrasena", " ".repeat(8), "Este dato es obligatorio."),
                 Arguments.of("administrador.contrasena", "x".repeat(65), "La contraseña puede tener como máximo 64 caracteres."),
                 Arguments.of("administrador.contrasena", "x".repeat(7), "La contraseña debe tener al menos 8 caracteres."),
-                Arguments.of("administrador.contrasena", "ñ".repeat(37), "La contraseña es demasiado larga: usa menos caracteres o menos tildes y eñes"));
+                Arguments.of("administrador.contrasena", "ñ".repeat(37), "La contraseña es demasiado larga: usa menos caracteres o menos tildes y eñes"),
+                Arguments.of("administrador.contrasena", "ñ".repeat(65), "La contraseña es demasiado larga: usa menos caracteres o menos tildes y eñes"));
     }
 
     @ParameterizedTest(name = "[{index}] {0}")
@@ -199,6 +201,7 @@ class EmpresaApiGeneradaIT {
                 Arguments.of("nit", "?", "Escribe el NIT sin puntos y con el dígito de verificación, por ejemplo 900123456-8."),
                 Arguments.of("nit", "x900123456-8", "Escribe el NIT sin puntos y con el dígito de verificación, por ejemplo 900123456-8."),
                 Arguments.of("nit", "900123456-8x", "Escribe el NIT sin puntos y con el dígito de verificación, por ejemplo 900123456-8."),
+                Arguments.of("nit", "x".repeat(16), "Escribe el NIT sin puntos y con el dígito de verificación, por ejemplo 900123456-8."),
                 Arguments.of("ciudad", null, "Este dato es obligatorio."),
                 Arguments.of("ciudad", "x".repeat(81), "Puede tener como máximo 80 caracteres."));
     }

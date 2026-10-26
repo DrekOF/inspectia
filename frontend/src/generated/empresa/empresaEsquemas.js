@@ -29,8 +29,8 @@ export function esquemaParaCrear(t) {
     nit: string()
       .transform(recortar)
       .test('obligatorio', t('validacion.obligatorio'), lleno)
-      .max(15, t('validacion.longitud_max', { max: 15 }))
-      .matches(/^[0-9]{6,10}-[0-9]$/, t('empresa.nit.patron')),
+      .matches(/^[0-9]{6,10}-[0-9]$/, t('empresa.nit.patron'))
+      .max(15, t('validacion.longitud_max', { max: 15 })),
     ciudad: string()
       .transform(recortar)
       .test('obligatorio', t('validacion.obligatorio'), lleno)
@@ -47,9 +47,9 @@ export function esquemaParaCrear(t) {
         .max(254, t('validacion.longitud_max', { max: 254 })),
       contrasena: string()
         .test('obligatorio', t('validacion.obligatorio'), lleno)
+        .test('bytes_max', t('usuario.contrasena_hash.bytes_max'), cabeEnBytes(72))
         .max(64, t('usuario.contrasena_hash.longitud_max'))
-        .min(8, t('usuario.contrasena_hash.longitud_min'))
-        .test('bytes_max', t('usuario.contrasena_hash.bytes_max'), cabeEnBytes(72)),
+        .min(8, t('usuario.contrasena_hash.longitud_min')),
     }),
   });
 }
@@ -69,8 +69,8 @@ export function esquemaParaEditar(t) {
     nit: string()
       .transform(recortar)
       .test('obligatorio', t('validacion.obligatorio'), lleno)
-      .max(15, t('validacion.longitud_max', { max: 15 }))
-      .matches(/^[0-9]{6,10}-[0-9]$/, t('empresa.nit.patron')),
+      .matches(/^[0-9]{6,10}-[0-9]$/, t('empresa.nit.patron'))
+      .max(15, t('validacion.longitud_max', { max: 15 })),
     ciudad: string()
       .transform(recortar)
       .test('obligatorio', t('validacion.obligatorio'), lleno)

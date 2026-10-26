@@ -126,7 +126,7 @@ def test_cliente_de_la_api(entidades):
     assert "return pedir('PUT', `${RUTA}/${encodeURIComponent(id)}`, datos);" in api
 
 
-@pytest.mark.caso('RP-23 · las validaciones del JSON pasan a Yup en el orden de Bean Validation y con la misma clave de mensaje: la propia del atributo o la general')
+@pytest.mark.caso('RP-23 · las validaciones del JSON pasan a Yup con la misma clave de mensaje, la propia del atributo o la general, y en el orden en que la API escoge el error de un campo: primero el dato que falta y después por el nombre de la restricción')
 def test_validaciones_a_yup(entidades):
     esquemas = generar(entidades)[f'{FRONTEND}/empresa/empresaEsquemas.js']
     obligatorio = ".test('obligatorio', t('validacion.obligatorio'), lleno)"
@@ -134,15 +134,15 @@ def test_validaciones_a_yup(entidades):
     assert cadena_yup(esquemas, 'esquemaParaCrear', 'nombre') == [
         '.transform(recortar)', obligatorio, ".max(120, t('validacion.longitud_max', { max: 120 }))"]
     assert cadena_yup(esquemas, 'esquemaParaCrear', 'nit') == [
-        '.transform(recortar)', obligatorio, ".max(15, t('validacion.longitud_max', { max: 15 }))",
-        ".matches(/^[0-9]{6,10}-[0-9]$/, t('empresa.nit.patron'))"]
+        '.transform(recortar)', obligatorio, ".matches(/^[0-9]{6,10}-[0-9]$/, t('empresa.nit.patron'))",
+        ".max(15, t('validacion.longitud_max', { max: 15 }))"], 'Pattern va antes que Size'
     assert cadena_yup(esquemas, 'esquemaParaCrear', 'administrador.correo') == [
         '.transform(recortar)', '.transform(minusculas)', obligatorio,
         ".max(254, t('validacion.longitud_max', { max: 254 }))"]
     assert cadena_yup(esquemas, 'esquemaParaCrear', 'administrador.contrasena') == [
-        obligatorio, ".max(64, t('usuario.contrasena_hash.longitud_max'))",
-        ".min(8, t('usuario.contrasena_hash.longitud_min'))",
-        ".test('bytes_max', t('usuario.contrasena_hash.bytes_max'), cabeEnBytes(72))"]
+        obligatorio, ".test('bytes_max', t('usuario.contrasena_hash.bytes_max'), cabeEnBytes(72))",
+        ".max(64, t('usuario.contrasena_hash.longitud_max'))",
+        ".min(8, t('usuario.contrasena_hash.longitud_min'))"], 'MaximoBytes va antes que Size'
     assert cadena_yup(esquemas, 'esquemaParaEditar', 'nit') == cadena_yup(esquemas, 'esquemaParaCrear', 'nit')
     editar = esquemas[esquemas.index('export function esquemaParaEditar(t) {'):]
     assert 'administrador' not in editar, 'el primer administrador solo va al registrar la empresa'
@@ -172,8 +172,19 @@ def test_mismos_casos_de_limite_que_la_api(entidades):
                               ('bordesAlCrear', 'BORDES_AL_CREAR'), ('bordesAlEditar', 'BORDES_AL_EDITAR')):
         de_la_api = [c for c in como_en_javascript(casos_java(prueba_api, metodo)) if c[1] != "'sin-arroba'"]
         assert casos_js(prueba_yup, constante) == de_la_api, constante
-    assert len(casos_js(prueba_yup, 'CASOS_AL_CREAR')) == 17
+    assert len(casos_js(prueba_yup, 'CASOS_AL_CREAR')) == 19
     assert ('administrador.contrasena', "'ñ'.repeat(36)", None) in casos_js(prueba_yup, 'BORDES_AL_CREAR')
+
+
+@pytest.mark.caso('RP-23 · un valor que falla por dos validaciones da en Yup el mismo error que en la API: el NIT largo y mal escrito, el del patrón, y la contraseña con demasiadas eñes, el de los bytes')
+def test_un_error_por_campo_en_yup(entidades):
+    prueba = generar(entidades)[f'{FRONTEND}/empresa/empresaEsquemas.test.js']
+    patron = 'Escribe el NIT sin puntos y con el dígito de verificación, por ejemplo 900123456-8.'
+
+    for constante in ('CASOS_AL_CREAR', 'CASOS_AL_EDITAR'):
+        assert ('nit', "'x'.repeat(16)", patron) in casos_js(prueba, constante), constante
+    assert ('administrador.contrasena', "'ñ'.repeat(65)",
+            'La contraseña es demasiado larga: usa menos caracteres o menos tildes y eñes') in casos_js(prueba, 'CASOS_AL_CREAR')
 
 
 @pytest.mark.caso('RP-23 · la prueba generada de Yup rechaza el ejemplo de un patrón con algo pegado antes o después, como la API: en JavaScript, un patrón sin ^ ni $ aceptaría x900123456-8')

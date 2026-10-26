@@ -464,33 +464,27 @@ def _problemas_de_campo(a, donde, en_bloque=False):
 
 
 def anotacion(validacion, a):
-    """La anotación de Bean Validation de una validación de ``campos.del_atributo``, o ``None`` si Java no la
-    necesita: un código que no existe en una lista ya lo rechaza Jackson al leer la petición."""
+    """La anotación de Bean Validation de una validación de ``campos.del_atributo``, con la restricción que dice
+    el modelo, o ``None`` si Java no la necesita: un código que no existe en una lista ya lo rechaza Jackson al
+    leer la petición."""
     x = validacion
+    if x.restriccion is None:
+        return None
     mensaje = f'message = "{{{x.clave}}}"'
-    if x.tipo == 'obligatorio':
-        return f'@{"NotBlank" if x.valor else "NotNull"}({mensaje})'
-    if x.tipo == 'no_en_blanco':
-        return f'@NoEnBlanco({mensaje})'
+    if x.tipo in ('obligatorio', 'no_en_blanco', 'correo'):
+        return f'@{x.restriccion}({mensaje})'
     if x.tipo == 'valor_permitido':
         valores = ', '.join(f'"{codigo}"' for codigo in x.valor)
-        return f'@ValorPermitido(valores = {{{valores}}}, {mensaje})'
+        return f'@{x.restriccion}(valores = {{{valores}}}, {mensaje})'
     if x.tipo in ('longitud_max', 'longitud_min'):
-        return f"@Size({'max' if x.tipo == 'longitud_max' else 'min'} = {x.valor}, {mensaje})"
-    if x.tipo == 'bytes_max':
-        return f'@MaximoBytes(value = {x.valor}, {mensaje})'
+        return f"@{x.restriccion}({'max' if x.tipo == 'longitud_max' else 'min'} = {x.valor}, {mensaje})"
     if x.tipo == 'patron':
-        return f'@Pattern(regexp = {texto_java(x.valor)}, {mensaje})'
-    if x.tipo == 'correo':
-        return f'@Email({mensaje})'
+        return f'@{x.restriccion}(regexp = {texto_java(x.valor)}, {mensaje})'
+    if x.tipo in ('minimo', 'maximo') and a['tipo'] == 'entero':
+        return f'@{x.restriccion}(value = {int(x.valor)}, {mensaje})'
     if x.tipo in ('minimo', 'maximo'):
-        nombre = 'Min' if x.tipo == 'minimo' else 'Max'
-        if a['tipo'] == 'entero':
-            return f'@{nombre}(value = {int(x.valor)}, {mensaje})'
-        return f'@Decimal{nombre}(value = "{x.valor}", {mensaje})'
-    if x.tipo == 'decimales':
-        return f'@MaximoDecimales(value = {x.valor}, {mensaje})'
-    return None
+        return f'@{x.restriccion}(value = "{x.valor}", {mensaje})'
+    return f'@{x.restriccion}(value = {x.valor}, {mensaje})'
 
 
 def valor_java(valor):

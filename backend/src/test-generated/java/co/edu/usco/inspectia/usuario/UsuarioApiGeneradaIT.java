@@ -158,6 +158,7 @@ class UsuarioApiGeneradaIT {
                 Arguments.of("contrasena", "x".repeat(65), "La contraseña puede tener como máximo 64 caracteres."),
                 Arguments.of("contrasena", "x".repeat(7), "La contraseña debe tener al menos 8 caracteres."),
                 Arguments.of("contrasena", "ñ".repeat(37), "La contraseña es demasiado larga: usa menos caracteres o menos tildes y eñes"),
+                Arguments.of("contrasena", "ñ".repeat(65), "La contraseña es demasiado larga: usa menos caracteres o menos tildes y eñes"),
                 Arguments.of("rol", null, "Este dato es obligatorio."));
     }
 
@@ -207,6 +208,7 @@ class UsuarioApiGeneradaIT {
                 Arguments.of("contrasena", "x".repeat(65), "La contraseña puede tener como máximo 64 caracteres."),
                 Arguments.of("contrasena", "x".repeat(7), "La contraseña debe tener al menos 8 caracteres."),
                 Arguments.of("contrasena", "ñ".repeat(37), "La contraseña es demasiado larga: usa menos caracteres o menos tildes y eñes"),
+                Arguments.of("contrasena", "ñ".repeat(65), "La contraseña es demasiado larga: usa menos caracteres o menos tildes y eñes"),
                 Arguments.of("rol", null, "Este dato es obligatorio."));
     }
 

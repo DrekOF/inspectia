@@ -28,6 +28,7 @@ const CASOS_AL_CREAR = [
   ['nit', '?', 'Escribe el NIT sin puntos y con el dígito de verificación, por ejemplo 900123456-8.'],
   ['nit', 'x900123456-8', 'Escribe el NIT sin puntos y con el dígito de verificación, por ejemplo 900123456-8.'],
   ['nit', '900123456-8x', 'Escribe el NIT sin puntos y con el dígito de verificación, por ejemplo 900123456-8.'],
+  ['nit', 'x'.repeat(16), 'Escribe el NIT sin puntos y con el dígito de verificación, por ejemplo 900123456-8.'],
   ['ciudad', '', 'Este dato es obligatorio.'],
   ['ciudad', 'x'.repeat(81), 'Puede tener como máximo 80 caracteres.'],
   ['administrador.nombre', '', 'Este dato es obligatorio.'],
@@ -39,6 +40,7 @@ const CASOS_AL_CREAR = [
   ['administrador.contrasena', 'x'.repeat(65), 'La contraseña puede tener como máximo 64 caracteres.'],
   ['administrador.contrasena', 'x'.repeat(7), 'La contraseña debe tener al menos 8 caracteres.'],
   ['administrador.contrasena', 'ñ'.repeat(37), 'La contraseña es demasiado larga: usa menos caracteres o menos tildes y eñes'],
+  ['administrador.contrasena', 'ñ'.repeat(65), 'La contraseña es demasiado larga: usa menos caracteres o menos tildes y eñes'],
 ];
 
 /** Los valores del borde que acepta cada validación del JSON al registrar, como la API. */
@@ -60,6 +62,7 @@ const CASOS_AL_EDITAR = [
   ['nit', '?', 'Escribe el NIT sin puntos y con el dígito de verificación, por ejemplo 900123456-8.'],
   ['nit', 'x900123456-8', 'Escribe el NIT sin puntos y con el dígito de verificación, por ejemplo 900123456-8.'],
   ['nit', '900123456-8x', 'Escribe el NIT sin puntos y con el dígito de verificación, por ejemplo 900123456-8.'],
+  ['nit', 'x'.repeat(16), 'Escribe el NIT sin puntos y con el dígito de verificación, por ejemplo 900123456-8.'],
   ['ciudad', '', 'Este dato es obligatorio.'],
   ['ciudad', 'x'.repeat(81), 'Puede tener como máximo 80 caracteres.'],
 ];

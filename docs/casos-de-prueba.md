@@ -22,7 +22,7 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 ## Resumen
 
 - **143 criterios de aceptación** en 26 fichas: 55 con prueba y 88 pendientes.
-- **517 pruebas:** 226 de Java (33 generadas), 205 de JavaScript (23 generadas) y 86 de Python. Una prueba parametrizada cuenta una vez.
+- **520 pruebas:** 226 de Java (33 generadas), 205 de JavaScript (23 generadas) y 89 de Python. Una prueba parametrizada cuenta una vez.
 
 | Ficha | Criterios | Con prueba | Pendientes |
 |---|---:|---:|---:|
@@ -645,12 +645,14 @@ Pruebas que no cubren un criterio de una ficha, sino una pauta del docente (RP) 
 - [`test_frontend.py`](../generador/pruebas/test_frontend.py) · la pantalla toma del JSON sus campos, sus columnas, los roles de cada acción y sus textos
 - [`test_frontend.py`](../generador/pruebas/test_frontend.py) · la prueba generada de Yup rechaza el ejemplo de un patrón con algo pegado antes o después, como la API: en JavaScript, un patrón sin ^ ni $ aceptaría x900123456-8
 - [`test_frontend.py`](../generador/pruebas/test_frontend.py) · la prueba generada de Yup revisa los mismos casos de límite que la prueba generada de la API, con el mismo mensaje en español, salvo el formato del correo
-- [`test_frontend.py`](../generador/pruebas/test_frontend.py) · las validaciones del JSON pasan a Yup en el orden de Bean Validation y con la misma clave de mensaje: la propia del atributo o la general
+- [`test_frontend.py`](../generador/pruebas/test_frontend.py) · las validaciones del JSON pasan a Yup con la misma clave de mensaje, la propia del atributo o la general, y en el orden en que la API escoge el error de un campo: primero el dato que falta y después por el nombre de la restricción
 - [`test_frontend.py`](../generador/pruebas/test_frontend.py) · los mensajes de resultado salen de pantalla.textos con el valor de la fila, como «Se guardó {nombre}.», y la prueba generada los toma del JSON
+- [`test_frontend.py`](../generador/pruebas/test_frontend.py) · un valor que falla por dos validaciones da en Yup el mismo error que en la API: el NIT largo y mal escrito, el del patrón, y la contraseña con demasiadas eñes, el de los bytes
 - [`test_frontend.py`](../generador/pruebas/test_frontend.py) · una pantalla necesita la API de su entidad: el alcance no acepta una pantalla sin API ni de una entidad que no existe
 - [`test_java.py`](../generador/pruebas/test_java.py) · cada CRUD tiene persistencia y solo las entidades del alcance tienen API
 - [`test_java.py`](../generador/pruebas/test_java.py) · edicion_en_bloque: lista las filas sin páginas, las edita todas juntas y restaura los valores por defecto, siempre en la empresa de la sesión (RF-13, RNF-03)
 - [`test_java.py`](../generador/pruebas/test_java.py) · el código generado escribe sus constructores, sin las anotaciones de Lombok que los crean
+- [`test_java.py`](../generador/pruebas/test_java.py) · el generador escoge el error de un campo como ManejadorDeErrores: primero las mismas restricciones de «falta el dato» y después por el nombre de la restricción
 - [`test_java.py`](../generador/pruebas/test_java.py) · el generador se detiene con un efecto que no sabe llamar: en listar o ver, o atado a un atributo que no es una contraseña
 - [`test_java.py`](../generador/pruebas/test_java.py) · el generador se detiene con una edición en bloque que no sabe generar: con crear, sin una lista que identifique cada fila o con restaurar_por_defecto sin valores_iniciales
 - [`test_java.py`](../generador/pruebas/test_java.py) · el listado de una entidad con atributo_activo filtra con ?activo=true o false, y sin el filtro trae todos (D-33)
@@ -658,6 +660,7 @@ Pruebas que no cubren un criterio de una ficha, sino una pauta del docente (RP) 
 - [`test_java.py`](../generador/pruebas/test_java.py) · la contraseña del formulario es obligatoria al crear y opcional al editar, y solo se guarda su hash
 - [`test_java.py`](../generador/pruebas/test_java.py) · la prueba generada de la API rechaza el ejemplo de un patrón con algo pegado antes o después, como x900123456-8 y 900123456-8x: así revisa que el patrón vaya anclado con ^ y $
 - [`test_java.py`](../generador/pruebas/test_java.py) · la prueba generada de la API revisa que cada validación del JSON acepte su valor del borde: el largo máximo, el mínimo y los 72 bytes
+- [`test_java.py`](../generador/pruebas/test_java.py) · la prueba generada de la API revisa un valor que falla por dos validaciones: el NIT largo y mal escrito responde el error del patrón, y la contraseña con demasiadas eñes, el de los bytes
 - [`test_java.py`](../generador/pruebas/test_java.py) · la respuesta solo lleva los atributos de la lista o del formulario: nunca el hash ni los datos internos
 - [`test_java.py`](../generador/pruebas/test_java.py) · las reglas de una entidad por empresa reciben la sesión, y los parámetros de una regla salen como constantes
 - [`test_java.py`](../generador/pruebas/test_java.py) · las validaciones del JSON pasan a Bean Validation con la clave de su mensaje
