@@ -24,7 +24,7 @@ import { setIn } from 'formik';
  * @returns {boolean} si puede usarla
  */
 export function puede(operaciones, rol, operacion) {
-  return Boolean(operaciones?.[operacion]?.includes(rol));
+  return Boolean(operaciones[operacion]?.includes(rol));
 }
 
 /**

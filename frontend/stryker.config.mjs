@@ -28,6 +28,11 @@ export default {
   // Lo que no hace falta para las pruebas unitarias no se copia a su carpeta de trabajo (.stryker-tmp), como
   // el entorno de punta a punta, que guarda una copia compilada del backend.
   ignorePatterns: ['e2e/.entorno', 'test-results', 'playwright-report', 'dist'],
+  // Con un proceso por procesador, las pruebas de componentes se vuelven lentas y Stryker corta por tiempo
+  // mutantes que no dejan un bucle infinito: los cuenta como detectados y el puntaje sube sin razón. Con la
+  // mitad de los procesadores y 15 s de margen, solo se cortan los bucles infinitos de verdad.
+  concurrency: '50%',
+  timeoutMS: 15000,
   reporters: ['clear-text', 'progress', 'html'],
   htmlReporter: { fileName: 'reports/mutacion/index.html' },
   thresholds: { high: 85, low: 70, break: null },

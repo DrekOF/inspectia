@@ -22,7 +22,7 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 ## Resumen
 
 - **143 criterios de aceptación** en 26 fichas: 55 con prueba y 88 pendientes.
-- **520 pruebas:** 226 de Java (33 generadas), 205 de JavaScript (23 generadas) y 89 de Python. Una prueba parametrizada cuenta una vez.
+- **521 pruebas:** 226 de Java (33 generadas), 206 de JavaScript (23 generadas) y 89 de Python. Una prueba parametrizada cuenta una vez.
 
 | Ficha | Criterios | Con prueba | Pendientes |
 |---|---:|---:|---:|
@@ -543,6 +543,7 @@ Pruebas que no cubren un criterio de una ficha, sino una pauta del docente (RP) 
 ### RP-07 · Validación y seguridad de los formularios con Yup y Formik
 
 - [`reglas.test.js`](../frontend/src/validacion/reglas.test.js) · cabeEnBytes cuenta los bytes en UTF-8, como @MaximoBytes en la API: %s (parametrizada)
+- [`reglas.test.js`](../frontend/src/validacion/reglas.test.js) · cabeEnBytes deja pasar el dato que falta aunque el máximo sea pequeño: lo revisa obligatorio
 - [`reglas.test.js`](../frontend/src/validacion/reglas.test.js) · minusculas deja igual lo que no es un texto
 - [`reglas.test.js`](../frontend/src/validacion/reglas.test.js) · minusculas pasa un texto a minúsculas, también las letras con tilde y la eñe, como la API
 - [`reglas.test.js`](../frontend/src/validacion/reglas.test.js) · recortar deja igual lo que no es un texto

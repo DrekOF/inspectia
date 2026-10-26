@@ -68,4 +68,9 @@ describe('cabe en bytes', () => {
   ])('RP-07 · cabeEnBytes cuenta los bytes en UTF-8, como @MaximoBytes en la API: %s', (_, valor, cabe) => {
     expect(cabeEnBytes(72)(valor)).toBe(cabe);
   });
+
+  it('RP-07 · cabeEnBytes deja pasar el dato que falta aunque el máximo sea pequeño: lo revisa obligatorio', () => {
+    expect(cabeEnBytes(2)(undefined)).toBe(true);
+    expect(cabeEnBytes(2)(null)).toBe(true);
+  });
 });
