@@ -1,23 +1,30 @@
 /*
  * Nombre: ayudas.js (selenium)
  * Descripción: Ayudas de las pruebas con Selenium (RP-14): abrir Chrome o Edge en tamaño de PC o de celular,
- *              buscar campos por su etiqueta y botones por su texto, y crear usuarios propios por la API.
+ *              buscar campos por su etiqueta, también dentro de un grupo, y botones por su texto, crear
+ *              usuarios propios por la API y, si una prueba falla, guardar una captura de la pantalla y la
+ *              consola del navegador en reports/selenium, que no se sube al repositorio.
  * Fecha de creación: 20/10/2026
- * Actualización: 20/10/2026
+ * Actualización: 26/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 import { randomUUID } from 'node:crypto';
-import { Browser, Builder, By, until } from 'selenium-webdriver';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { EOL } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { Browser, Builder, By, logging, until } from 'selenium-webdriver';
 import chrome from 'selenium-webdriver/chrome.js';
 import edge from 'selenium-webdriver/edge.js';
-import { datos } from '../e2e/entorno/datos.js';
+import { datos, empresaNueva } from '../e2e/entorno/datos.js';
 
 /** Dirección de la app compilada que sirve el entorno aislado (e2e/entorno). */
 export const APP = process.env.INSPECTIA_E2E_URL ?? 'http://localhost:4173';
 
-/* Los datos del entorno aislado: los mismos de las pruebas de Playwright (e2e/entorno/datos.js). */
-export { datos };
+/* Los datos del entorno aislado y los de una empresa nueva: los mismos de las pruebas de Playwright
+ * (e2e/entorno/datos.js). */
+export { datos, empresaNueva };
 
 /** Contraseña de los usuarios que crean las pruebas. */
 export const CONTRASENA = 'Clave-Segura-2026';
@@ -38,6 +45,13 @@ export const CELULAR = { width: 390, height: 844, pixelRatio: 3, touch: true };
 export async function abrirNavegador(navegador, celular) {
   const opciones = navegador === Browser.EDGE ? new edge.Options() : new chrome.Options();
   opciones.addArguments('--lang=es-CO');
+  // La consola del navegador, para guardarla si una prueba falla. Edge la pide con su propio prefijo.
+  const consola = new logging.Preferences();
+  consola.setLevel(logging.Type.BROWSER, logging.Level.ALL);
+  opciones.setLoggingPrefs(consola);
+  if (navegador === Browser.EDGE) {
+    opciones.set('ms:loggingPrefs', consola.toJSON());
+  }
   if (!process.env.INSPECTIA_E2E_VER) {
     opciones.addArguments('--headless=new');
   }
@@ -72,6 +86,21 @@ export async function esperar(driver, selector) {
  */
 export async function campo(driver, etiqueta) {
   const label = await esperar(driver, By.xpath(`//label[normalize-space()='${etiqueta}']`));
+  return esperar(driver, By.id(await label.getAttribute('for')));
+}
+
+/**
+ * Un campo de un grupo del formulario por el texto de su etiqueta, como «Nombre» en «Primer administrador»,
+ * cuando hay otro campo con la misma etiqueta en otro grupo.
+ *
+ * @param {import('selenium-webdriver').WebDriver} driver el navegador
+ * @param {string} grupo el título del grupo (la leyenda de su fieldset)
+ * @param {string} etiqueta el texto de la etiqueta
+ * @returns {Promise<import('selenium-webdriver').WebElement>} el campo
+ */
+export async function campoDelGrupo(driver, grupo, etiqueta) {
+  const label = await esperar(driver,
+    By.xpath(`//fieldset[legend[normalize-space()='${grupo}']]//label[normalize-space()='${etiqueta}']`));
   return esperar(driver, By.id(await label.getAttribute('for')));
 }
 
@@ -160,6 +189,83 @@ export async function crearUsuario() {
  */
 export async function desactivarUsuario(id) {
   await pedir('POST', `/usuarios/${id}/desactivar`, null, await tokenDelAdministrador());
+}
+
+/**
+ * Dónde quedan las capturas y las consolas de las pruebas que fallan. Está en .gitignore, y no es test-results
+ * porque Playwright vacía esa carpeta al empezar cada corrida.
+ */
+export const CARPETA_DE_FALLAS = fileURLToPath(new URL('../reports/selenium/', import.meta.url));
+
+/**
+ * Descarta lo que ya tiene la consola del navegador, para que lo que se guarde de una prueba que falla sea solo
+ * de esa prueba.
+ *
+ * @param {import('selenium-webdriver').WebDriver|undefined} driver el navegador, si alcanzó a abrirse
+ */
+export async function descartarConsola(driver) {
+  try {
+    await driver?.manage().logs().get(logging.Type.BROWSER);
+  } catch {
+    // Si el navegador no entrega su consola, guardarFalla lo anota.
+  }
+}
+
+/**
+ * El nombre de los archivos de una prueba que falló: la hora, el navegador y la prueba, sin los caracteres que
+ * Windows no acepta en un nombre de archivo.
+ *
+ * @param {{ name: string, suite?: { name: string } }} prueba la prueba de Vitest
+ * @returns {string} el nombre, sin extensión
+ */
+function nombreDeLaFalla(prueba) {
+  const hora = new Date().toISOString().replace(/[:.]/g, '-');
+  const texto = `${prueba.suite?.name ?? ''} ${prueba.name}`.replace(/[^a-zA-Z0-9áéíóúüñÁÉÍÓÚÜÑ ·_-]/g, '-');
+  return `${hora} ${texto}`.slice(0, 110).trim();
+}
+
+/**
+ * Guarda una captura de la pantalla (.png) y la consola del navegador (.consola.log) de una prueba que falló, en
+ * CARPETA_DE_FALLAS: así una falla intermitente deja con qué explicarla. La consola empieza con la prueba, su
+ * error, la dirección en la que estaba el navegador y la hora.
+ *
+ * @param {import('selenium-webdriver').WebDriver|undefined} driver el navegador, si alcanzó a abrirse
+ * @param {{ name: string, suite?: { name: string }, result?: { errors?: Array<{ message: string }> } }} prueba la
+ *   prueba de Vitest que falló
+ * @returns {Promise<string[]>} los archivos guardados
+ */
+export async function guardarFalla(driver, prueba) {
+  if (!driver) {
+    return [];
+  }
+  mkdirSync(CARPETA_DE_FALLAS, { recursive: true });
+  const base = join(CARPETA_DE_FALLAS, nombreDeLaFalla(prueba));
+  const guardados = [];
+  const lineas = [
+    `Prueba: ${prueba.suite?.name ?? ''} › ${prueba.name}`,
+    `Error: ${prueba.result?.errors?.[0]?.message ?? 'sin mensaje'}`,
+    `Dirección: ${await driver.getCurrentUrl().catch((error) => `no se pudo leer (${error.message})`)}`,
+    `Hora: ${new Date().toISOString()}`,
+    '',
+    'Consola del navegador:',
+  ];
+  try {
+    writeFileSync(`${base}.png`, await driver.takeScreenshot(), 'base64');
+    guardados.push(`${base}.png`);
+  } catch (error) {
+    lineas.splice(4, 0, `Captura: no se pudo tomar (${error.message})`);
+  }
+  try {
+    const entradas = await driver.manage().logs().get(logging.Type.BROWSER);
+    lineas.push(...(entradas.length > 0
+      ? entradas.map((entrada) => `[${new Date(entrada.timestamp).toISOString()}] ${entrada.level.name} ${entrada.message}`)
+      : ['(vacía)']));
+  } catch (error) {
+    lineas.push(`(no se pudo leer: ${error.message})`);
+  }
+  writeFileSync(`${base}.consola.log`, lineas.join(EOL) + EOL);
+  guardados.push(`${base}.consola.log`);
+  return guardados;
 }
 
 export { Browser, By };

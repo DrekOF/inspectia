@@ -1,0 +1,29 @@
+{#
+  Nombre: textos.js.j2
+  Descripción: Plantilla de los textos de las pantallas generadas, en español y en inglés: salen de
+               pantalla.textos de cada JSON (RP-11, RP-23). i18n.js los junta con los demás textos de la app.
+  Fecha de creación: 26/10/2026
+  Actualización: 26/10/2026
+  Autor: Equipo InspectIA
+  Versión: 1.0
+#}
+{% from 'frontend/_macros.j2' import encabezado %}
+{{ encabezado(header) }}
+
+/**
+ * Los textos de las pantallas generadas, por idioma: salen de pantalla.textos de cada JSON (RP-11). Los que se
+ * cuentan van en singular y en plural. i18n.js los junta con los textos del backend y con los propios del
+ * frontend.
+ */
+export default {
+  es: {
+{% for clave, es, en in textos %}
+    {{ clave }}: {{ es }},
+{% endfor %}
+  },
+  en: {
+{% for clave, es, en in textos %}
+    {{ clave }}: {{ en }},
+{% endfor %}
+  },
+};

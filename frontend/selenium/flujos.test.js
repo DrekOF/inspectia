@@ -1,16 +1,17 @@
 /*
  * Nombre: flujos.test.js
  * Descripción: Pruebas con Selenium de los flujos principales (RP-14): entrar con el menú del rol, los datos
- *              errados y cambiar la contraseña, en Chrome y en Edge, en tamaño de PC y de celular (RNF-05).
+ *              errados, cambiar la contraseña y registrar una empresa, en Chrome y en Edge, en tamaño de PC y de
+ *              celular (RNF-05). Si una falla, guarda su captura y la consola del navegador en reports/selenium.
  * Fecha de creación: 20/10/2026
- * Actualización: 20/10/2026
+ * Actualización: 26/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
-  abrirNavegador, APP, boton, Browser, By, campo, CELULAR, crearUsuario, datos, desactivarUsuario, entrar, esperar,
-  esperarTexto,
+  abrirNavegador, APP, boton, Browser, By, campo, campoDelGrupo, CELULAR, CONTRASENA, crearUsuario, datos,
+  descartarConsola, desactivarUsuario, empresaNueva, entrar, esperar, esperarTexto, guardarFalla,
 } from './ayudas.js';
 
 const COMBINACIONES = [
@@ -29,6 +30,16 @@ describe.each(COMBINACIONES)('%s en %s', (_, navegador, __, celular) => {
 
   afterAll(async () => {
     await driver?.quit();
+  });
+
+  // Si la prueba falla, su captura y la consola del navegador quedan en reports/selenium, para explicar las
+  // fallas intermitentes.
+  beforeEach(async ({ onTestFailed }) => {
+    await descartarConsola(driver);
+    onTestFailed(async ({ task }) => {
+      const guardados = await guardarFalla(driver, task);
+      console.warn(`Falló «${task.name}». Captura y consola: ${guardados.join(' y ')}`);
+    });
   });
 
   /**
@@ -80,6 +91,27 @@ describe.each(COMBINACIONES)('%s en %s', (_, navegador, __, celular) => {
     } finally {
       await driver.executeScript('localStorage.clear()');
       await desactivarUsuario(luis.id);
+    }
+  });
+
+  it('RF-02 · C1 · el administrador de la plataforma registra una empresa y su primer administrador en la pantalla (Selenium)', async () => {
+    const empresa = empresaNueva(CONTRASENA);
+    try {
+      await entrar(driver, datos.plataforma);
+      await esperarTexto(driver, 'Hola, Andrés');
+      await driver.get(`${APP}/empresas`);
+      await (await boton(driver, 'Nueva empresa')).click();
+      await (await campoDelGrupo(driver, 'Empresa', 'Nombre')).sendKeys(empresa.nombre);
+      await (await campoDelGrupo(driver, 'Empresa', 'NIT')).sendKeys(empresa.nit);
+      await (await campoDelGrupo(driver, 'Empresa', 'Ciudad')).sendKeys(empresa.ciudad);
+      await (await campoDelGrupo(driver, 'Primer administrador', 'Nombre')).sendKeys(empresa.administrador.nombre);
+      await (await campoDelGrupo(driver, 'Primer administrador', 'Correo')).sendKeys(empresa.administrador.correo);
+      await (await campoDelGrupo(driver, 'Primer administrador', 'Contraseña inicial')).sendKeys(empresa.administrador.contrasena);
+      await (await boton(driver, 'Registrar empresa')).click();
+
+      await esperarTexto(driver, `Se guardó ${empresa.nombre}.`);
+    } finally {
+      await driver.executeScript('localStorage.clear()');
     }
   });
 });

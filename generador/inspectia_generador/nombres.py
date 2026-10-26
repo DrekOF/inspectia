@@ -1,12 +1,14 @@
 # Nombre: nombres.py
-# Descripción: Nombres de Java y literales de Java y de .properties a partir de los nombres de los JSON.
+# Descripción: Nombres de Java y literales de Java, de JavaScript y de .properties a partir de los nombres de
+#              los JSON.
 # Fecha de creación: 13/10/2026
-# Actualización: 20/10/2026
+# Actualización: 26/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.1
-"""Conversión de nombres (snake_case de los JSON a camelCase y PascalCase de Java), escritura de
-literales de Java y de archivos ``.properties``, y etiquetas dentro de una frase."""
+# Versión: 1.2
+"""Conversión de nombres (snake_case de los JSON a camelCase y PascalCase de Java y de JavaScript), escritura de
+literales de Java, de JavaScript y de archivos ``.properties``, y etiquetas dentro de una frase."""
 
+import re
 import textwrap
 
 #: Paquete base del backend (D-21).
@@ -34,6 +36,18 @@ def texto_java(valor):
     escapado = (str(valor).replace('\\', '\\\\').replace('"', '\\"')
                 .replace('\n', '\\n').replace('\r', '\\r').replace('\t', '\\t'))
     return f'"{escapado}"'
+
+
+def texto_js(valor):
+    """Literal de texto de JavaScript, entre comillas sencillas, con comillas, barras y saltos escapados."""
+    escapado = (str(valor).replace('\\', '\\\\').replace("'", "\\'")
+                .replace('\n', '\\n').replace('\r', '\\r').replace('\t', '\\t'))
+    return f"'{escapado}'"
+
+
+def patron_js(patron):
+    """Un patrón como expresión regular literal de JavaScript, ``/patrón/``, con sus barras escapadas."""
+    return '/' + re.sub(r'(?<!\\)/', r'\\/', patron) + '/'
 
 
 def valor_properties(valor):

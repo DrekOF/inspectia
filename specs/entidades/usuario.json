@@ -3,9 +3,9 @@
     "nombre": "usuario.json",
     "descripcion": "Entidad usuario: las personas que usan InspectIA y su rol. Entrada del generador (RP-23); formato en specs/entidades/README.md.",
     "fecha_creacion": "13/10/2026",
-    "actualizacion": "18/10/2026",
+    "actualizacion": "26/10/2026",
     "autor": "Equipo InspectIA",
-    "version": "1.5"
+    "version": "1.6"
   },
   "entidad": "usuario",
   "clase": "Usuario",
@@ -48,6 +48,10 @@
       "obligatorio": true,
       "validaciones": { "recortar": true, "minusculas": true, "formato": "correo" },
       "ejemplo": "ana.perez@example.com",
+      "ayuda": {
+        "es": "Con este correo inicia sesión. No puede repetirse en la plataforma.",
+        "en": "This is the email used to sign in. It cannot be repeated on the platform."
+      },
       "en_lista": true,
       "en_formulario": true,
       "etiquetas": { "es": "Correo", "en": "Email" },

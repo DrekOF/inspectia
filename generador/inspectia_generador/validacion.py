@@ -1,9 +1,9 @@
 # Nombre: validacion.py
 # Descripción: Validación de los JSON de entidades contra su formato y contra specs/.
 # Fecha de creación: 13/10/2026
-# Actualización: 20/10/2026
+# Actualización: 26/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.2
+# Versión: 1.3
 """Validación de los JSON de entidades.
 
 Revisa el formato de ``specs/entidades/README.md`` y que cada ficha, decisión o requisito citado
@@ -13,8 +13,8 @@ exista en ``specs/``. Devuelve todos los errores juntos, para corregirlos de una
 import json
 import re
 
-from inspectia_generador.modelo import (COLUMNAS_IMPLICITAS, EMPRESA_ID, atributo, columnas,
-                                        tiene_empresa, valores_lista)
+from inspectia_generador.modelo import (CLAVES_DE_PANTALLA, COLUMNAS_IMPLICITAS, EMPRESA_ID, FILA,
+                                        TEXTOS_DE_PANTALLA, atributo, columnas, tiene_empresa, valores_lista)
 
 TIPOS = {'texto', 'entero', 'decimal', 'booleano', 'fecha', 'fecha_hora', 'lista', 'referencia',
          'contrasena'}
@@ -34,6 +34,10 @@ CORREO = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
 CLASE = re.compile(r'^[A-Z][A-Za-z0-9]*$')
 CODIGO_LISTA = re.compile(r'^[A-Z][A-Z0-9_]*$')
 RUTA = re.compile(r'^[a-z][a-z0-9-]*$')
+ICONO = re.compile(r'^[a-z][a-zA-Z0-9]*$')
+#: Lo que Java, PostgreSQL y JavaScript leen distinto en un patrón: grupos especiales como (?i) o (?<=…),
+#: cuantificadores posesivos como ++ y escapes como \p o \b, que en PostgreSQL es otra cosa.
+DISTINTO_EN_CADA_LENGUAJE = re.compile(r'\(\?(?!:)|(?<!\\)[*+?}]\+|\\[pPAZzGQEhRXbB]')
 
 
 def validar(entidades, codigos):
@@ -107,6 +111,7 @@ class _Revision:
         self.reglas(nombre, e)
         self.crear_con(nombre, e)
         self.valores_iniciales(nombre, e)
+        self.pantalla(nombre, e)
 
     def modulo_y_ruta(self, nombre, e):
         if e['crud']:
@@ -169,6 +174,8 @@ class _Revision:
                 self.error(donde, f'mensaje para algo que el atributo no tiene ({clave})')
             self.textos(f'{donde}.mensajes.{clave}', mensaje)
             self.marcadores(f'{donde}.mensajes.{clave}', mensaje, a.get('validaciones', {}))
+        if 'patron' in a.get('validaciones', {}):
+            self.patron(donde, a['validaciones']['patron'])
         if 'ejemplo' in a:
             self.ejemplo(donde, a)
         self.textos(f'{donde}.etiquetas', a.get('etiquetas'))
@@ -192,6 +199,20 @@ class _Revision:
                 self.error(donde, f'el mensaje usa {{{marcador}}}, que no está en validaciones')
         if '$' in texto:
             self.error(donde, 'los mensajes no pueden llevar $')
+
+    def patron(self, donde, patron):
+        """El patrón lo revisan la base (CHECK con ~), el backend (@Pattern) y el formulario (Yup), así que va
+        anclado y sin lo que cada uno lee distinto: el CHECK busca el patrón dentro del texto y @Pattern revisa
+        el texto entero, pero anclado con ^ y $ los tres validan igual."""
+        try:
+            re.compile(patron)
+        except re.error:
+            self.error(donde, 'el patron no es una expresión regular válida')
+            return
+        if not patron.startswith('^') or not patron.endswith('$') or patron.endswith('\\$'):
+            self.error(donde, 'el patron va anclado: empieza con ^ y termina con $')
+        for distinto in dict.fromkeys(m[0] for m in DISTINTO_EN_CADA_LENGUAJE.finditer(patron)):
+            self.error(donde, f'el patron usa {distinto}, que Java, PostgreSQL y JavaScript no leen igual')
 
     def ejemplo(self, donde, a):
         """El ejemplo debe ser un valor válido del atributo: lo usan OpenAPI y las pruebas generadas."""
@@ -306,6 +327,43 @@ class _Revision:
             if a is None or (a.get('tipo') == 'lista' and valor not in valores_lista(self.entidades, a)):
                 self.error(f'{nombre}.crear_con', f'valor inválido {c}={valor}')
         self.fichas(f'{nombre}.crear_con', cc.get('fichas'))
+
+    def pantalla(self, nombre, e):
+        """La clave ``pantalla``: sus claves, el atributo que va debajo del nombre y sus textos, en español e
+        inglés, en singular y en plural los que se cuentan, y solo con los marcadores que existen en cada uno.
+        Cuáles textos son obligatorios depende de las operaciones: lo revisa la generación de la pantalla."""
+        if 'pantalla' not in e:
+            return
+        if not e['crud']:
+            self.error(nombre, 'pantalla va solo en entidades con CRUD')
+            return
+        pantalla, donde = e['pantalla'], f'{nombre}.pantalla'
+        for clave in pantalla:
+            if clave not in CLAVES_DE_PANTALLA:
+                self.error(donde, f'clave desconocida {clave}')
+        if 'icono' in pantalla and not ICONO.match(str(pantalla['icono'])):
+            self.error(donde, 'icono va en camelCase y sin tildes, como empresas')
+        de_la_lista = [a['nombre'] for a in e['atributos'] if a.get('en_lista')]
+        if 'debajo_del_nombre' in pantalla and pantalla['debajo_del_nombre'] not in de_la_lista:
+            self.error(donde, 'debajo_del_nombre debe ser un atributo de la lista')
+        for clave, texto in pantalla.get('textos', {}).items():
+            if clave not in TEXTOS_DE_PANTALLA:
+                self.error(f'{donde}.textos', f'texto desconocido {clave}')
+                continue
+            lugar = f'{donde}.textos.{clave}'
+            se_cuenta, marcadores = TEXTOS_DE_PANTALLA[clave]
+            if se_cuenta:
+                formas = isinstance(texto, dict) and set(texto) == {'es', 'en'} and all(
+                    isinstance(t, dict) and set(t) == {'singular', 'plural'} for t in texto.values())
+                if not formas:
+                    self.error(lugar, 'necesita singular y plural en es y en')
+                    continue
+            else:
+                self.textos(lugar, texto)
+            permitidos = de_la_lista if marcadores == FILA else marcadores
+            usados = re.findall(r'\{(\w+)\}', json.dumps(texto, ensure_ascii=False))
+            for marcador in dict.fromkeys(m for m in usados if m not in permitidos):
+                self.error(lugar, f'usa {{{marcador}}}, que no existe en este texto')
 
     def valores_iniciales(self, nombre, e):
         if 'valores_iniciales' not in e:

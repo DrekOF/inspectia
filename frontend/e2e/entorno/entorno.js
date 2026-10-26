@@ -3,12 +3,14 @@
  * Descripción: Entorno aislado de las pruebas de punta a punta (RP-14): una base PostgreSQL en su propio
  *              proyecto de Docker Compose, el backend y la app compilada, cada uno en un puerto libre y con
  *              contraseñas y claves creadas en cada corrida. Crea el administrador de la plataforma con el
- *              script de infra/bd y los datos de prueba por la API, y al apagarse lo borra todo. No usa
- *              infra/.env, la base de desarrollo ni backend/target: compila una copia del backend.
+ *              script de infra/bd y los datos de prueba por la API, entre ellos un usuario final fijo para las
+ *              pruebas que solo miran, como los permisos de una pantalla, y al apagarse lo borra todo. No usa
+ *              infra/.env, la base de desarrollo ni backend/target: compila una copia del backend, que lleva
+ *              al lado los scripts de infra/bd para que también pasen allí sus pruebas.
  * Fecha de creación: 20/10/2026
- * Actualización: 20/10/2026
+ * Actualización: 26/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  *
  * Uso: lo encienden y lo apagan las pruebas (e2e/entorno/global.js). Para correr las pruebas varias veces
  * sobre el mismo entorno: «npm run e2e:entorno» en una terminal y, en otra, INSPECTIA_E2E_URL con la
@@ -22,11 +24,10 @@ import {
 import { createServer } from 'node:net';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { espejar } from '../../herramientas/espejo.js';
+import { espejarBackend } from '../../herramientas/espejo.js';
 
 const FRONTEND = fileURLToPath(new URL('../../', import.meta.url));
 const RAIZ = fileURLToPath(new URL('../../../', import.meta.url));
-const BACKEND = join(RAIZ, 'backend');
 
 /** Carpeta de cada corrida: datos, variables y registros. Está en .gitignore. */
 export const CARPETA = join(FRONTEND, 'e2e', '.entorno');
@@ -165,8 +166,9 @@ export async function jarDelBackend() {
   const copia = join(CARPETA, 'backend');
   // La copia queda igual a backend/, sin su target: lo nuevo y lo cambiado se copian con sus fechas, así Maven
   // solo compila lo cambiado. Si algo se borró o se renombró, su target se borra entero, porque Maven no
-  // quita las clases ni los recursos que dejó, como una migración vieja de Flyway.
-  if (espejar(BACKEND, copia, { excluir: ['target'] }).length > 0) {
+  // quita las clases ni los recursos que dejó, como una migración vieja de Flyway. Al lado queda infra/bd, sin
+  // infra/.env, para que las pruebas del backend también pasen en la copia.
+  if (espejarBackend(RAIZ, CARPETA).backend.length > 0) {
     rmSync(join(copia, 'target'), { recursive: true, force: true });
   }
   // Con la ruta («.\» o «./»): la consola de Windows no siempre busca programas en la carpeta actual.
@@ -243,6 +245,7 @@ function personas() {
     plataforma: { nombre: 'Andrés Gómez', correo: 'andres.gomez@inspectia.test', contrasena: contrasena() },
     adminEmpresa: { nombre: 'Ana Pérez', correo: 'ana.perez@cacaosdelhuila.test', contrasena: contrasena() },
     adminDesactivada: { nombre: 'Marta Ruiz', correo: 'marta.ruiz@cacaodelsur.test', contrasena: contrasena() },
+    usuarioFinal: { nombre: 'Carlos Ramírez', correo: 'carlos.ramirez@cacaosdelhuila.test', contrasena: contrasena() },
   };
 }
 
@@ -289,7 +292,7 @@ export async function encenderEntorno() {
     const api = `http://127.0.0.1:${puertoBackend}/api/v1`;
     await esperarServicio(`${api}/sesion`, (respuesta) => respuesta.status === 401, ESPERA.backend, backend, registroBackend);
 
-    const { plataforma, adminEmpresa, adminDesactivada } = personas();
+    const { plataforma, adminEmpresa, adminDesactivada, usuarioFinal } = personas();
     await crearAdministradorDeLaPlataforma(archivoDeVariables, plataforma);
     const { token } = await pedir(api, 'POST', '/sesion', { correo: plataforma.correo, contrasena: plataforma.contrasena });
     const empresa = await pedir(api, 'POST', '/empresas',
@@ -297,6 +300,10 @@ export async function encenderEntorno() {
     const desactivada = await pedir(api, 'POST', '/empresas',
       { nombre: 'Cacao del Sur', nit: '900654321-0', ciudad: 'Pitalito', administrador: adminDesactivada }, token);
     await pedir(api, 'POST', `/empresas/${desactivada.id}/desactivar`, undefined, token);
+    // El usuario final fijo lo crea el administrador de la empresa, como en la app (RF-03).
+    const sesionDeLaEmpresa = await pedir(api, 'POST', '/sesion',
+      { correo: adminEmpresa.correo, contrasena: adminEmpresa.contrasena });
+    await pedir(api, 'POST', '/usuarios', { ...usuarioFinal, rol: 'USUARIO_FINAL' }, sesionDeLaEmpresa.token);
 
     const vite = join(FRONTEND, 'node_modules', 'vite', 'bin', 'vite.js');
     await ejecutar(process.execPath, [vite, 'build'], { cwd: FRONTEND });
@@ -314,6 +321,7 @@ export async function encenderEntorno() {
       plataforma,
       empresa: { id: empresa.id, nombre: empresa.nombre },
       adminEmpresa,
+      usuarioFinal,
       empresaDesactivada: { id: desactivada.id, nombre: desactivada.nombre, usuario: adminDesactivada },
     }, null, 2));
     return { app: direccion, apagar };

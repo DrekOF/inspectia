@@ -4,10 +4,10 @@
  *              Archivo generado por generador/ (RP-23): no se edita a mano; se cambia el JSON
  *              o la plantilla, y se regenera.
  * Fecha de creación: 13/10/2026
- * Actualización: 18/10/2026
- * Autor: Equipo InspectIA (generado por generador/ v1.6)
- * Versión: 1.6
- * Entidades: usuario 1.5
+ * Actualización: 26/10/2026
+ * Autor: Equipo InspectIA (generado por generador/ v1.7)
+ * Versión: 1.7
+ * Entidades: usuario 1.6
  */
 package co.edu.usco.inspectia.usuario;
 
@@ -64,6 +64,7 @@ public class UsuarioControlador {
      *
      * @param pagina número de la página, desde 0
      * @param tamano filas por página
+     * @param activo solo los activos ({@code true}) o solo los desactivados ({@code false}); sin él, todos
      * @param sesion el usuario de la sesión: solo ve los de su empresa
      * @return la página
      */
@@ -78,8 +79,10 @@ public class UsuarioControlador {
             @RequestParam(name = "tamano", defaultValue = "" + Pagina.TAMANO_POR_DEFECTO)
             @Min(value = 1, message = "{validacion.minimo}")
             @Max(value = Pagina.TAMANO_MAXIMO, message = "{validacion.maximo}") int tamano,
+            @Parameter(description = "Solo los activos (true) o solo los desactivados (false); sin él, todos.")
+            @RequestParam(name = "activo", required = false) Boolean activo,
             @Parameter(hidden = true) @AuthenticationPrincipal UsuarioEnSesion sesion) {
-        return servicio.listar(pagina, tamano, sesion);
+        return servicio.listar(pagina, tamano, activo, sesion);
     }
 
     /**

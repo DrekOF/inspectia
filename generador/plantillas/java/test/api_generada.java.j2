@@ -1,12 +1,13 @@
 {#
   Nombre: api_generada.java.j2
-  Descripción: Plantilla de la prueba generada de la API de una entidad: permisos, validaciones y
-               datos únicos del JSON (RP-13, RP-23). En una entidad por empresa, también que no se
-               mezclen las empresas (RNF-03).
+  Descripción: Plantilla de la prueba generada de la API de una entidad: permisos, validaciones, los
+               valores del borde que acepta cada una, datos únicos del JSON y el filtro activo del
+               listado (RP-13, RP-23, D-33). En una entidad por empresa, también que no se mezclen las
+               empresas (RNF-03).
   Fecha de creación: 13/10/2026
-  Actualización: 18/10/2026
+  Actualización: 26/10/2026
   Autor: Equipo InspectIA
-  Versión: 1.1
+  Versión: 1.2
 #}
 {% from 'java/_macros.j2' import encabezado %}
 {% set p = prueba_api %}
@@ -160,6 +161,27 @@ class {{ clase }}ApiGeneradaIT {
 {% endfor %}
     }
 {% endif %}
+{% if 'crear' in operaciones and p.bordes_crear %}
+
+    @ParameterizedTest(name = "[{index}] {0}")
+    @DisplayName("{{ p.ficha }} · cada validación del JSON de {{ entidad }} acepta su valor del borde al crear")
+    @MethodSource("bordesAlCrear")
+    void bordesAlCrear(String campo, Object valor) {
+        Map<String, Object> datos = datosParaCrear();
+        poner(datos, campo, valor);
+
+        MvcTestResult resultado = enviar(HttpMethod.POST, RUTA, datos, conPermiso("crear"));
+
+        assertThat(resultado).hasStatus(HttpStatus.CREATED);
+    }
+
+    static Stream<Arguments> bordesAlCrear() {
+        return Stream.of(
+{% for campo, valor in p.bordes_crear %}
+                Arguments.of("{{ campo }}", {{ valor }}){{ ',' if not loop.last else ');' }}
+{% endfor %}
+    }
+{% endif %}
 {% if 'crear' in operaciones and 'editar' in operaciones and p.validaciones_editar %}
 
     @ParameterizedTest(name = "{0}: {2}")
@@ -180,6 +202,28 @@ class {{ clase }}ApiGeneradaIT {
         return Stream.of(
 {% for campo, valor, mensaje in p.validaciones_editar %}
                 Arguments.of("{{ campo }}", {{ valor }}, {{ mensaje | java }}){{ ',' if not loop.last else ');' }}
+{% endfor %}
+    }
+{% endif %}
+{% if 'crear' in operaciones and 'editar' in operaciones and p.bordes_editar %}
+
+    @ParameterizedTest(name = "[{index}] {0}")
+    @DisplayName("{{ p.ficha }} · cada validación del JSON de {{ entidad }} acepta su valor del borde al editar")
+    @MethodSource("bordesAlEditar")
+    void bordesAlEditar(String campo, Object valor) {
+        UUID id = crear();
+        Map<String, Object> datos = datosParaEditar();
+        poner(datos, campo, valor);
+
+        MvcTestResult resultado = enviar(HttpMethod.PUT, RUTA + "/" + id, datos, conPermiso("editar"));
+
+        assertThat(resultado).hasStatus(HttpStatus.OK);
+    }
+
+    static Stream<Arguments> bordesAlEditar() {
+        return Stream.of(
+{% for campo, valor in p.bordes_editar %}
+                Arguments.of("{{ campo }}", {{ valor }}){{ ',' if not loop.last else ');' }}
 {% endfor %}
     }
 {% endif %}
@@ -289,6 +333,24 @@ class {{ clase }}ApiGeneradaIT {
 
         assertThat(identificadores(deLaEmpresa)).containsExactly(id.toString());
         assertThat(identificadores(deOtra)).isEmpty();
+    }
+{% endif %}
+{% if p.filtra_por_activo %}
+
+    @Test
+    @DisplayName("{{ p.ficha }} · el listado de {{ entidad }} filtra por activo: con true trae solo los activos y con false, los desactivados")
+    void listadoFiltraPorActivo() {
+        String id = crear().toString();
+
+        assertThat(identificadores(listarConActivo("true"))).containsExactly(id);
+        assertThat(identificadores(listarConActivo("false"))).isEmpty();
+
+        assertThat(enviar(HttpMethod.POST, RUTA + "/" + id + "/desactivar", null, conPermiso("desactivar")))
+                .hasStatus(HttpStatus.OK);
+
+        assertThat(identificadores(listarConActivo("true"))).isEmpty();
+        assertThat(identificadores(listarConActivo("false"))).containsExactly(id);
+        assertThat(identificadores(enviar(HttpMethod.GET, RUTA, null, conPermiso("listar")))).containsExactly(id);
     }
 {% endif %}
 {% if p.con_empresa and 'crear' in operaciones %}
@@ -444,12 +506,19 @@ class {{ clase }}ApiGeneradaIT {
     private static Map<String, Object> json(MvcTestResult resultado) {
         return JsonPath.read(new String(resultado.getResponse().getContentAsByteArray(), StandardCharsets.UTF_8), "$");
     }
-{% if p.con_empresa and 'listar' in operaciones %}
+{% if (p.con_empresa and 'listar' in operaciones) or p.filtra_por_activo %}
 
     /** Los identificadores de los registros de una página del listado. */
     private static List<String> identificadores(MvcTestResult resultado) {
         return JsonPath.read(new String(resultado.getResponse().getContentAsByteArray(), StandardCharsets.UTF_8),
                 "$.contenido[*].id");
+    }
+{% endif %}
+{% if p.filtra_por_activo %}
+
+    /** El listado con el filtro {@code ?activo=} (D-33). */
+    private MvcTestResult listarConActivo(String activo) {
+        return enviar(HttpMethod.GET, RUTA + "?activo=" + activo, null, conPermiso("listar"));
     }
 {% endif %}
 

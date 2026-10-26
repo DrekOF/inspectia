@@ -1,0 +1,198 @@
+{#
+  Nombre: pantalla.test.jsx.j2
+  Descripción: Plantilla de la prueba generada de la pantalla de una entidad, con la API simulada (MSW): la
+               lista y su resumen, registrar y editar, los errores de la API en su campo, desactivar y
+               reactivar, quién la abre, sin conexión y un dato con HTML (RP-12, RP-13, RP-23).
+  Fecha de creación: 26/10/2026
+  Actualización: 26/10/2026
+  Autor: Equipo InspectIA
+  Versión: 1.0
+#}
+{% from 'frontend/_macros.j2' import encabezado %}
+{% set p = prueba %}
+{% set registra = p.puede.crear and p.nuevo %}
+{% set prueba_errores = registra and (p.solo_backend or p.unicos) %}
+{% macro llenar_y_registrar() %}
+    await usuario.click(await screen.findByRole('button', { name: {{ p.nuevo | js }} }));
+{% for paso in p.pasos_al_crear %}
+    {{ paso }}
+{% endfor %}
+    await usuario.click(screen.getByRole('button', { name: {{ p.crear | js }} }));
+{% endmacro %}
+{{ encabezado(header) }}
+import { screen, within } from '@testing-library/react';
+import { http, HttpResponse } from 'msw';
+import { describe, expect, it } from 'vitest';
+import { abrirApp, conSesion, USUARIOS } from '../../pruebas/ayudas.jsx';
+import { apiSimulada } from '../../pruebas/crud.js';
+import { {{ 'problema, ' if prueba_errores else '' }}servidor } from '../../pruebas/servidor.js';
+
+/** La pantalla en la app y su ruta en la API. */
+const RUTA = '{{ ruta }}';
+const API = '/api/v1{{ ruta }}';
+
+/** Un registro como lo responde la API, con los ejemplos del JSON. */
+const REGISTRO = {{ p.registro }};
+
+/** Otro registro, con otros datos{{ ' y desactivado' if tiene_activo else '' }}. */
+const OTRO_REGISTRO = {{ p.otro_registro }};
+
+/** Lo que necesita saber la API simulada. */
+const OPCIONES = { atributoActivo: {{ atributo_activo }} };
+
+describe('pantalla de {{ entidad }} (generada)', () => {
+  it('{{ ficha }} · la pantalla de {{ entidad }} muestra sus registros{{ ' y su resumen' if p.resumen else '' }}', async () => {
+    conSesion(USUARIOS.{{ p.rol }});
+    apiSimulada(API, [REGISTRO, OTRO_REGISTRO], OPCIONES);
+    abrirApp(RUTA);
+
+    const tabla = await screen.findByRole('table', { name: {{ p.titulo_lista | js }} });
+    expect(within(tabla).getByText({{ p.nombre | js }})).toBeInTheDocument();
+{% if p.debajo %}
+    expect(within(tabla).getByText({{ p.debajo | js }})).toBeInTheDocument();
+{% endif %}
+{% if p.inactivo %}
+    expect(within(tabla).getByText({{ p.inactivo | js }})).toBeInTheDocument();
+{% endif %}
+{% if p.resumen %}
+    expect(await screen.findByText({{ p.resumen | js }})).toBeInTheDocument();
+{% endif %}
+  });
+
+  it('{{ ficha }} · sin registros, la pantalla de {{ entidad }} lo dice', async () => {
+    conSesion(USUARIOS.{{ p.rol }});
+    apiSimulada(API, [], OPCIONES);
+    abrirApp(RUTA);
+
+    expect(await screen.findByText({{ p.vacia | js }})).toBeInTheDocument();
+  });
+{% if registra %}
+
+  it('{{ ficha }} · la pantalla de {{ entidad }} registra con los datos del formulario', async () => {
+    conSesion(USUARIOS.{{ p.rol }});
+    const simulada = apiSimulada(API, [], OPCIONES);
+    const { usuario } = abrirApp(RUTA);
+
+{{ llenar_y_registrar() | trim('\n') }}
+
+    expect(await screen.findByText({{ p.al_guardar | js }})).toBeInTheDocument();
+    expect(simulada.peticiones).toContainEqual({ metodo: 'POST', ruta: API, cuerpo: {{ p.cuerpo_al_crear }} });
+  });
+{% endif %}
+{% if registra and p.solo_backend %}
+
+  it('{{ ficha }} · lo que solo revisa el backend de {{ entidad }} llega a su campo al guardar', async () => {
+    conSesion(USUARIOS.{{ p.rol }});
+    apiSimulada(API, [], OPCIONES);
+    servidor.use(http.post(API, () => problema(400, 'Hay datos que corregir.', {
+      errores: [
+{% for error in p.solo_backend %}
+        {{ error }},
+{% endfor %}
+      ],
+    })));
+    const { usuario } = abrirApp(RUTA);
+
+{{ llenar_y_registrar() | trim('\n') }}
+
+{% for mensaje in p.solo_backend_mensajes %}
+    expect(await screen.findByText({{ mensaje | js }})).toBeInTheDocument();
+{% endfor %}
+  });
+{% endif %}
+{% if registra and p.unicos %}
+
+  it('{{ ficha }} · un dato repetido de {{ entidad }} se marca en su campo (409)', async () => {
+    conSesion(USUARIOS.{{ p.rol }});
+    apiSimulada(API, [], OPCIONES);
+    servidor.use(http.post(API, () => problema(409, 'Ya existe un registro con estos datos.', {
+      errores: [
+{% for error in p.unicos %}
+        {{ error }},
+{% endfor %}
+      ],
+    })));
+    const { usuario } = abrirApp(RUTA);
+
+{{ llenar_y_registrar() | trim('\n') }}
+
+{% for mensaje in p.unicos_mensajes %}
+    expect(await screen.findByText({{ mensaje | js }})).toBeInTheDocument();
+{% endfor %}
+  });
+{% endif %}
+{% if p.puede.editar and p.editable %}
+
+  it('{{ ficha }} · la pantalla de {{ entidad }} edita con los datos del formulario', async () => {
+    conSesion(USUARIOS.{{ p.rol }});
+    const simulada = apiSimulada(API, [REGISTRO], OPCIONES);
+    const { usuario } = abrirApp(RUTA);
+
+    await usuario.click(await screen.findByRole('button', { name: {{ p.editar_fila | js }} }));
+    const campo = screen.getByLabelText({{ p.editable.etiqueta_es | js }});
+    await usuario.clear(campo);
+    await usuario.type(campo, {{ p.valor_editado | js }});
+    await usuario.click(screen.getByRole('button', { name: 'Guardar cambios' }));
+
+    expect(await screen.findByText({{ p.al_guardar_lo_editado | js }})).toBeInTheDocument();
+    expect(simulada.peticiones).toContainEqual({
+      metodo: 'PUT', ruta: `${API}/${REGISTRO.id}`, cuerpo: {{ p.cuerpo_al_editar }},
+    });
+  });
+{% endif %}
+{% if tiene_activo and p.puede.desactivar and p.puede.reactivar %}
+
+  it('{{ ficha }} · desactivar {{ entidad }} {{ 'pide confirmación' if p.confirmar_titulo else 'no pide confirmación' }}, y reactivarla no', async () => {
+    conSesion(USUARIOS.{{ p.rol }});
+    const simulada = apiSimulada(API, [REGISTRO, OTRO_REGISTRO], OPCIONES);
+    const { usuario } = abrirApp(RUTA);
+
+    await usuario.click(await screen.findByRole('button', { name: {{ p.desactivar_fila | js }} }));
+{% if p.confirmar_titulo %}
+    const dialogo = await screen.findByRole('dialog', { name: {{ p.confirmar_titulo | js }} });
+    expect(within(dialogo).getByText({{ p.confirmar_detalle | js }})).toBeInTheDocument();
+    await usuario.click(within(dialogo).getByRole('button', { name: 'Desactivar' }));
+{% endif %}
+    expect(await screen.findByText({{ p.al_desactivar | js }})).toBeInTheDocument();
+
+    await usuario.click(await screen.findByRole('button', { name: {{ p.reactivar_fila | js }} }));
+    expect(await screen.findByText({{ p.al_reactivar | js }})).toBeInTheDocument();
+    expect(simulada.peticiones.filter(({ metodo }) => metodo === 'POST').map(({ ruta }) => ruta)).toEqual([
+      `${API}/${REGISTRO.id}/desactivar`, `${API}/${OTRO_REGISTRO.id}/reactivar`,
+    ]);
+  });
+{% endif %}
+{% if p.roles_sin_permiso %}
+
+  it.each([{{ p.roles_sin_permiso | map('js') | join(', ') }}])(
+    'RNF-04 · la pantalla de {{ entidad }} solo la abren los roles de listar: %s ve que no tiene permiso', async (rol) => {
+      conSesion(USUARIOS[rol]);
+      abrirApp(RUTA);
+
+      expect(await screen.findByRole('heading', { name: 'Sin permiso' })).toBeInTheDocument();
+    });
+{% endif %}
+
+  it('RNF-06 · sin conexión, la pantalla de {{ entidad }} dice qué pasó y qué hacer, y se puede reintentar', async () => {
+    conSesion(USUARIOS.{{ p.rol }});
+    servidor.use(http.get(API, () => HttpResponse.error()));
+    const { usuario } = abrirApp(RUTA);
+
+    expect(await screen.findByText('No se pudo conectar con el servidor. Revisa tu conexión a internet e intenta de nuevo.'))
+      .toBeInTheDocument();
+    apiSimulada(API, [REGISTRO], OPCIONES);
+    await usuario.click(screen.getByRole('button', { name: 'Reintentar' }));
+
+    expect(await screen.findByRole('table', { name: {{ p.titulo_lista | js }} })).toBeInTheDocument();
+  });
+
+  it('{{ ficha }} · un dato con HTML se ve como texto en la pantalla de {{ entidad }}: no se interpreta', async () => {
+    conSesion(USUARIOS.{{ p.rol }});
+    apiSimulada(API, [{{ p.html }}], OPCIONES);
+    abrirApp(RUTA);
+
+    const tabla = await screen.findByRole('table', { name: {{ p.titulo_lista | js }} });
+    expect(within(tabla).getByText('<img src=x onerror=alert(1)>')).toBeInTheDocument();
+    expect(tabla.querySelector('img')).toBeNull();
+  });
+});

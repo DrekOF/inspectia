@@ -2,11 +2,11 @@
   Nombre: repositorio.java.j2
   Descripción: Plantilla del repositorio de Spring Data JPA de una tabla con CRUD (RP-23). En una entidad
                con edición en bloque, lee las filas de una empresa todas juntas y las bloquea para
-               editarlas.
+               editarlas. Si la entidad se desactiva, lista los activos o los desactivados (D-33).
   Fecha de creación: 13/10/2026
-  Actualización: 20/10/2026
+  Actualización: 26/10/2026
   Autor: Equipo InspectIA
-  Versión: 1.2
+  Versión: 1.3
 #}
 {% from 'java/_macros.j2' import encabezado %}
 {{ encabezado(header) }}
@@ -90,5 +90,20 @@ public interface {{ clase }}Repositorio extends JpaRepository<{{ clase }}, UUID>
      * @return el registro, si existe y es de esa empresa
      */
     Optional<{{ clase }}> findByIdAndEmpresaId(UUID id, UUID empresaId);
+{% endif %}
+{% if activo %}
+
+    /**
+     * El filtro {@code ?activo=} del listado (D-33): una página de los registros activos o de los
+     * desactivados{{ ' de una empresa' if con_empresa else '' }}.
+     *
+{% if con_empresa %}
+     * @param empresaId la empresa de la sesión
+{% endif %}
+     * @param {{ activo.campo }} {@code true} para los activos y {@code false} para los desactivados
+     * @param pagina la página que se pide
+     * @return la página
+     */
+    Page<{{ clase }}> {{ activo.consulta }}({{ 'UUID empresaId, ' if con_empresa else '' }}Boolean {{ activo.campo }}, Pageable pagina);
 {% endif %}
 }

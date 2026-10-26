@@ -3,9 +3,9 @@
     "nombre": "fichas.json",
     "descripcion": "Fichas de los requerimientos funcionales (formato largo) y no funcionales (formato corto) de InspectIA. Fuente única para las secciones 5 y 6 del documento de requerimientos y, más adelante, para el listado de casos de prueba (RP-13).",
     "fecha_creacion": "12/10/2026",
-    "actualizacion": "20/10/2026",
+    "actualizacion": "26/10/2026",
     "autor": "Equipo InspectIA",
-    "version": "1.16"
+    "version": "1.17"
   },
   "rf": [
     {
@@ -65,7 +65,7 @@
       "encabezado": "Registrar empresas y su primer administrador",
       "titulo": "Registrar empresas y su primer administrador",
       "codigo": "RF-02",
-      "version": "1.4",
+      "version": "1.5",
       "fuente": "D-13: el administrador de la plataforma registra las empresas.",
       "descripcion": "El administrador de la plataforma registra una empresa con sus datos básicos y crea el primer administrador de esa empresa. También puede editar los datos de una empresa, desactivarla y reactivarla (D-27).",
       "justificacion": "InspectIA atiende a varias empresas (multiempresa). Cada una necesita su propio espacio y un responsable que gestione sus usuarios.",
@@ -79,7 +79,8 @@
           "El administrador de la plataforma también puede restablecer la contraseña de un administrador de empresa.",
           "Restablecer la contraseña quita el bloqueo por intentos fallidos (RF-01).",
           "Al desactivar una empresa, sus usuarios no pueden iniciar sesión y no se borra ningún dato; al reactivarla, sus usuarios activos pueden volver a entrar (D-27).",
-          "Al editar una empresa (nombre, NIT y ciudad) se aplican las mismas validaciones del registro (D-27)."
+          "Al editar una empresa (nombre, NIT y ciudad) se aplican las mismas validaciones del registro (D-27).",
+          "Desactivar una empresa desde la pantalla pide confirmación: el diálogo dice que sus usuarios no podrán iniciar sesión hasta que la reactives y que no se borra ningún dato (D-34)."
         ]
       },
       "prioridad": "Alta",
@@ -114,8 +115,8 @@
         ]
       },
       "rnf": "RNF-02 (capacidad), RNF-03 (datos separados por empresa) y RNF-04 (autenticación y permisos).",
-      "estado": "Aprobado",
-      "observaciones": "CRUD generado desde el JSON de la entidad empresa (RP-23, D-21). Los campos exactos están en specs/modelo-datos.md. El criterio 12 (restablecer la contraseña de un administrador de empresa) se implementa con la API de usuario (RF-03)."
+      "estado": "Implementado",
+      "observaciones": "CRUD generado desde el JSON de la entidad empresa (RP-23, D-21), con su pantalla en el frontend. Los campos exactos están en specs/modelo-datos.md. El criterio 12 (restablecer la contraseña de un administrador de empresa) se implementa con la API de usuario (RF-03) y, en la pantalla, con el panel de administradores, escrito a mano como extensión de la pantalla generada (frontend/src/extensiones.js)."
     },
     {
       "encabezado": "Gestionar los usuarios de la empresa",

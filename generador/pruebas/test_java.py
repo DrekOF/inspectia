@@ -1,9 +1,9 @@
 # Nombre: test_java.py
 # Descripción: Pruebas de la generación de Java (persistencia, API y pruebas) y de los textos es/en.
 # Fecha de creación: 13/10/2026
-# Actualización: 20/10/2026
+# Actualización: 26/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.6
+# Versión: 1.7
 """Pruebas de lo que genera el generador para el backend: la persistencia de cada CRUD, la API de las
 entidades del alcance, incluidas las de una entidad por empresa y las de edición en bloque, y los textos
 en español e inglés."""
@@ -12,15 +12,19 @@ import re
 
 import pytest
 
-from conftest import EJEMPLOS, atributo
+from conftest import EJEMPLOS, RAIZ, atributo, casos_java
+from inspectia_generador import campos
 from inspectia_generador.generacion import generar_archivos
 from inspectia_generador.sql import ErrorGeneracion
 
 JAVA = 'backend/src/generated/java/co/edu/usco/inspectia'
 PRUEBAS = 'backend/src/test-generated/java/co/edu/usco/inspectia'
 TEXTOS = 'backend/src/generated/resources/i18n'
-# Lo que generaba el generador 1.2 para empresa, antes de la API por empresa (RF-03): debe seguir igual,
-# salvo el header. Si un cambio a propósito lo modifica, se actualizan estas copias en el mismo commit.
+# Donde la API escoge el error de un campo, que es el orden de las validaciones de Yup.
+MANEJADOR_DE_ERRORES = 'backend/src/main/java/co/edu/usco/inspectia/comun/errores/ManejadorDeErrores.java'
+# Lo que genera el generador para empresa: solo cambia a propósito, y entonces estas copias se actualizan en el
+# mismo commit; se comparan sin el header. Salieron de la 1.2, antes de la API por empresa (RF-03), y la 1.7 les
+# agregó el filtro activo del listado (D-33) y los valores del borde de la prueba generada.
 EMPRESA_GENERADA = EJEMPLOS / 'empresa_generada'
 # Con el JDK 25, al recompilar sin «clean», los constructores que crean estas anotaciones quedan sin
 # la llamada a super() y la JVM rechaza la clase (VerifyError). Ver CLAUDE.md.
@@ -75,7 +79,7 @@ def test_api_por_empresa(entidades):
     controlador = archivos[f'{JAVA}/usuario/UsuarioControlador.java']
     assert controlador.count('@AuthenticationPrincipal UsuarioEnSesion sesion') == 6
     servicio = archivos[f'{JAVA}/usuario/UsuarioServicio.java']
-    assert 'repositorio.findAllByEmpresaId(sesion.empresaId(), PageRequest.of(pagina, tamano, ORDEN))' in servicio
+    assert 'repositorio.findAllByEmpresaId(sesion.empresaId(), pedido)' in servicio
     assert 'repositorio.findByIdAndEmpresaId(id, sesion.empresaId())' in servicio
     assert 'usuario.setEmpresaId(sesion.empresaId());' in servicio
     assert 'findById(' not in servicio and 'findAll(' not in servicio, 'ninguna consulta sin la empresa'
@@ -85,6 +89,88 @@ def test_api_por_empresa(entidades):
     for solicitud in ('UsuarioCrearSolicitud', 'UsuarioEditarSolicitud'):
         assert 'empresaId' not in archivos[f'{JAVA}/usuario/{solicitud}.java'], 'la empresa nunca sale de la petición'
     assert 'RNF-03 · ' in archivos[f'{PRUEBAS}/usuario/UsuarioApiGeneradaIT.java']
+
+
+@pytest.mark.caso('RP-23 · el listado de una entidad con atributo_activo filtra con ?activo=true o false, y sin el filtro trae todos (D-33)')
+def test_listado_filtra_por_activo(entidades):
+    archivos = generar(entidades, api=('empresa', 'usuario'))
+
+    controlador = archivos[f'{JAVA}/empresa/EmpresaControlador.java']
+    assert '@RequestParam(name = "activo", required = false) Boolean activo' in controlador
+    assert 'return servicio.listar(pagina, tamano, activo);' in controlador
+    servicio = archivos[f'{JAVA}/empresa/EmpresaServicio.java']
+    assert 'repositorio.findAll(pedido)' in servicio
+    assert 'repositorio.findAllByActiva(activo, pedido)' in servicio
+    assert ('Page<Empresa> findAllByActiva(Boolean activa, Pageable pagina);'
+            in archivos[f'{JAVA}/empresa/EmpresaRepositorio.java'])
+    assert 'repositorio.findAllByEmpresaIdAndActivo(sesion.empresaId(), activo, pedido)' in archivos[
+        f'{JAVA}/usuario/UsuarioServicio.java'], 'en una entidad por empresa, el filtro también se limita a ella'
+    assert ('Page<Usuario> findAllByEmpresaIdAndActivo(UUID empresaId, Boolean activo, Pageable pagina);'
+            in archivos[f'{JAVA}/usuario/UsuarioRepositorio.java'])
+    assert ('@DisplayName("RF-02 · el listado de empresa filtra por activo: con true trae solo los activos y con false, '
+            'los desactivados")') in archivos[f'{PRUEBAS}/empresa/EmpresaApiGeneradaIT.java']
+
+
+@pytest.mark.caso('RP-23 · la prueba generada de la API revisa que cada validación del JSON acepte su valor del borde: el largo máximo, el mínimo y los 72 bytes')
+def test_bordes_aceptados(entidades):
+    prueba = generar(entidades)[f'{PRUEBAS}/empresa/EmpresaApiGeneradaIT.java']
+
+    assert '@DisplayName("RF-02 · cada validación del JSON de empresa acepta su valor del borde al crear")' in prueba
+    assert '@DisplayName("RF-02 · cada validación del JSON de empresa acepta su valor del borde al editar")' in prueba
+    assert casos_java(prueba, 'bordesAlCrear') == [
+        ('nombre', '"x".repeat(120)', None), ('ciudad', '"x".repeat(80)', None),
+        ('administrador.nombre', '"x".repeat(120)', None), ('administrador.correo', 'correoDeLargo(254)', None),
+        ('administrador.contrasena', '"x".repeat(64)', None), ('administrador.contrasena', '"x".repeat(8)', None),
+        ('administrador.contrasena', '"ñ".repeat(36)', None)]
+    assert casos_java(prueba, 'bordesAlEditar') == [
+        ('nombre', '"x".repeat(120)', None), ('ciudad', '"x".repeat(80)', None)], \
+        'el NIT tiene patrón: su ejemplo ya es su valor válido'
+
+
+@pytest.mark.caso('RP-23 · la prueba generada de la API rechaza el ejemplo de un patrón con algo pegado antes o después, como x900123456-8 y 900123456-8x: así revisa que el patrón vaya anclado con ^ y $')
+def test_patron_anclado(entidades):
+    prueba = generar(entidades)[f'{PRUEBAS}/empresa/EmpresaApiGeneradaIT.java']
+    mensaje = 'Escribe el NIT sin puntos y con el dígito de verificación, por ejemplo 900123456-8.'
+
+    for metodo in ('validacionesAlCrear', 'validacionesAlEditar'):
+        casos = casos_java(prueba, metodo)
+        assert ('nit', '"x900123456-8"', mensaje) in casos, metodo
+        assert ('nit', '"900123456-8x"', mensaje) in casos, metodo
+
+
+@pytest.mark.caso('RP-23 · lo que se pega al ejemplo de un patrón es algo que el patrón no acepta en ese lugar, y no se pega nada si no cabe en el largo, porque el valor fallaría también por largo')
+def test_patron_anclado_en_los_bordes(entidades):
+    nit = atributo(entidades['empresa'], 'nit')
+    nit['validaciones']['patron'] = '^[0-9x]{6,10}-[0-9x]$'
+
+    casos = casos_java(generar(entidades)[f'{PRUEBAS}/empresa/EmpresaApiGeneradaIT.java'], 'validacionesAlCrear')
+    assert [valor for campo, valor, _ in casos if campo == 'nit'] == [
+        'null', '"?"', '"?900123456-8"', '"900123456-8x"', '"x".repeat(16)'], 'el patrón acepta una x al inicio: se pega ?'
+
+    nit['longitud'] = len(nit['ejemplo'])
+    casos = casos_java(generar(entidades)[f'{PRUEBAS}/empresa/EmpresaApiGeneradaIT.java'], 'validacionesAlCrear')
+    assert [valor for campo, valor, _ in casos if campo == 'nit'] == ['null', '"?"', '"x".repeat(12)']
+
+
+@pytest.mark.caso('RP-23 · la prueba generada de la API revisa un valor que falla por dos validaciones: el NIT largo y mal escrito responde el error del patrón, y la contraseña con demasiadas eñes, el de los bytes')
+def test_un_error_por_campo(entidades):
+    prueba = generar(entidades)[f'{PRUEBAS}/empresa/EmpresaApiGeneradaIT.java']
+    patron = 'Escribe el NIT sin puntos y con el dígito de verificación, por ejemplo 900123456-8.'
+
+    for metodo in ('validacionesAlCrear', 'validacionesAlEditar'):
+        assert ('nit', '"x".repeat(16)', patron) in casos_java(prueba, metodo), metodo
+    assert ('administrador.contrasena', '"ñ".repeat(65)',
+            'La contraseña es demasiado larga: usa menos caracteres o menos tildes y eñes') in casos_java(
+        prueba, 'validacionesAlCrear')
+
+
+@pytest.mark.caso('RP-23 · el generador escoge el error de un campo como ManejadorDeErrores: primero las mismas restricciones de «falta el dato» y después por el nombre de la restricción')
+def test_un_error_por_campo_como_manejador_de_errores():
+    manejador = (RAIZ / MANEJADOR_DE_ERRORES).read_text(encoding='utf-8')
+
+    lista = manejador.split('FALTA_EL_DATO = List.of(')[1].split(')')[0]
+    assert tuple(re.findall('"([A-Za-z]+)"', lista)) == campos.FALTA_EL_DATO
+    assert '.thenComparing(error -> String.valueOf(error.getCode()))' in manejador
 
 
 @pytest.mark.caso('RP-23 · una entidad por empresa no puede dar operaciones al administrador de la plataforma, que no tiene empresa')
@@ -204,7 +290,7 @@ def test_reglas_con_sesion_y_parametros(entidades):
     assert 'boolean cumpleNitDigitoVerificacion(Empresa empresa);' in archivos[f'{JAVA}/empresa/ReglasEmpresa.java']
 
 
-@pytest.mark.caso('RP-23 · lo generado de empresa no cambia al agregar la API por empresa: solo su header')
+@pytest.mark.caso('RP-23 · lo generado de empresa solo cambia a propósito: es igual a su copia de referencia, salvo el header')
 def test_empresa_sigue_igual(entidades):
     archivos = generar(entidades)
 

@@ -2,17 +2,18 @@
  * Nombre: espejo.test.js
  * Descripción: Pruebas de la copia en espejo de una carpeta (RP-14), con la que el entorno aislado de las
  *              pruebas de punta a punta compila su propia copia del backend: copia lo nuevo y lo cambiado, y
- *              borra de la copia lo que se borró o se renombró en el original.
+ *              borra de la copia lo que se borró o se renombró en el original. La copia del backend lleva
+ *              también los scripts de infra/bd, nunca infra/.env.
  * Fecha de creación: 20/10/2026
- * Actualización: 20/10/2026
+ * Actualización: 26/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { espejar } from './espejo.js';
+import { espejar, espejarBackend } from './espejo.js';
 
 let base;
 let origen;
@@ -116,5 +117,52 @@ describe('copia en espejo', () => {
 
     expect(readFileSync(join(copia, 'src', 'A.java'), 'utf8')).toBe('cambiado');
     expect(statSync(join(copia, 'src', 'A.java')).mtime).toEqual(fecha);
+  });
+});
+
+describe('copia del backend', () => {
+  let raiz;
+  let destino;
+
+  beforeEach(() => {
+    raiz = join(base, 'repositorio');
+    destino = join(base, 'entorno');
+    for (const ruta of [join('backend', 'pom.xml'), join('backend', 'src', 'A.java'), join('backend', 'target', 'A.class'),
+      join('infra', '.env'), join('infra', 'docker-compose.yml'), join('infra', 'bd', 'crear-admin-plataforma.sql'),
+      join('infra', 'bd', 'restablecer-admin-plataforma.sql')]) {
+      escribir(raiz, ruta);
+    }
+  });
+
+  it('RP-14 · la copia del backend lleva también infra/bd, para que las pruebas que leen ../infra/bd pasen en la copia', () => {
+    espejarBackend(raiz, destino);
+
+    expect(existsSync(join(destino, 'backend', 'src', 'A.java'))).toBe(true);
+    expect(existsSync(join(destino, 'backend', 'target'))).toBe(false);
+    expect(existsSync(join(destino, 'infra', 'bd', 'crear-admin-plataforma.sql'))).toBe(true);
+    expect(existsSync(join(destino, 'infra', 'bd', 'restablecer-admin-plataforma.sql'))).toBe(true);
+  });
+
+  it('RP-14 · la copia del backend nunca lleva infra/.env, con las contraseñas locales, ni lo demás de infra', () => {
+    escribir(raiz, join('infra', 'bd', '.env'));
+    escribir(destino, join('infra', '.env'), 'quedó de antes');
+
+    espejarBackend(raiz, destino);
+
+    expect(existsSync(join(destino, 'infra', '.env'))).toBe(false);
+    expect(existsSync(join(destino, 'infra', 'bd', '.env'))).toBe(false);
+    expect(existsSync(join(destino, 'infra', 'docker-compose.yml'))).toBe(false);
+  });
+
+  it('RP-14 · lo que se borra del backend o de infra/bd desaparece de la copia, y se informa por separado', () => {
+    espejarBackend(raiz, destino);
+    rmSync(join(raiz, 'backend', 'src', 'A.java'));
+    rmSync(join(raiz, 'infra', 'bd', 'restablecer-admin-plataforma.sql'));
+
+    const borradas = espejarBackend(raiz, destino);
+
+    expect(borradas).toEqual({ backend: [join('src', 'A.java')], scripts: ['restablecer-admin-plataforma.sql'] });
+    expect(existsSync(join(destino, 'backend', 'src', 'A.java'))).toBe(false);
+    expect(existsSync(join(destino, 'infra', 'bd', 'restablecer-admin-plataforma.sql'))).toBe(false);
   });
 });

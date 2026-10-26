@@ -1,11 +1,12 @@
 /*
  * Nombre: MenuLateral.jsx
  * Descripción: El menú principal según el rol (RF-01 C1, RNF-04) y «Mi cuenta», como en el prototipo: la
- *              sección actual se marca con aria-current y cada entrada mide al menos 44 px (RNF-05).
+ *              sección actual se marca con aria-current y cada entrada mide al menos 44 px (RNF-05). Una
+ *              pantalla generada con un ícono que el menú no conoce sale con uno genérico (RP-23).
  * Fecha de creación: 20/10/2026
- * Actualización: 20/10/2026
+ * Actualización: 26/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 import AddCircleOutlineOutlined from '@mui/icons-material/AddCircleOutlineOutlined';
 import BusinessOutlined from '@mui/icons-material/BusinessOutlined';
@@ -18,6 +19,7 @@ import KeyOutlined from '@mui/icons-material/KeyOutlined';
 import Logout from '@mui/icons-material/Logout';
 import PsychologyOutlined from '@mui/icons-material/PsychologyOutlined';
 import TuneOutlined from '@mui/icons-material/TuneOutlined';
+import ViewListOutlined from '@mui/icons-material/ViewListOutlined';
 import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import List from '@mui/material/List';
@@ -46,6 +48,9 @@ export const ICONOS = {
   acercaDe: InfoOutlined,
   cerrarSesion: Logout,
 };
+
+/** El ícono de una pantalla generada que dice uno que el menú no conoce, como la de otra temática. */
+const ICONO_GENERICO = ViewListOutlined;
 
 /**
  * El estilo de cada entrada; la sección actual va resaltada, como en el prototipo.
@@ -77,7 +82,7 @@ const estiloDeEntrada = (theme) => ({
  */
 function Entrada({ entrada, alElegir }) {
   const { t } = useTranslation();
-  const Icono = ICONOS[entrada.icono];
+  const Icono = ICONOS[entrada.icono] ?? ICONO_GENERICO;
   return (
     <ListItem disablePadding>
       <ListItemButton component={NavLink} to={entrada.ruta} end onClick={alElegir} sx={estiloDeEntrada}>

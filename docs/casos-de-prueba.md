@@ -4,7 +4,7 @@ Descripción: Casos de prueba de InspectIA por ficha y criterio de aceptación, 
              tienen prueba (RP-13). Archivo generado por generador/casos_de_prueba.py: no se edita a mano;
              sale de specs/fichas.json y de las marcas de las pruebas.
 Fecha de creación: 12/10/2026
-Actualización: 20/10/2026
+Actualización: 26/10/2026
 Autor: Equipo InspectIA (generado por generador/casos_de_prueba.py v1.2)
 Versión: 1.2
 -->
@@ -22,7 +22,7 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 ## Resumen
 
 - **143 criterios de aceptación** en 26 fichas: 55 con prueba y 88 pendientes.
-- **412 pruebas:** 220 de Java (27 generadas), 129 de JavaScript y 63 de Python. Una prueba parametrizada cuenta una vez.
+- **526 pruebas:** 226 de Java (33 generadas), 211 de JavaScript (23 generadas) y 89 de Python. Una prueba parametrizada cuenta una vez.
 
 | Ficha | Criterios | Con prueba | Pendientes |
 |---|---:|---:|---:|
@@ -108,23 +108,26 @@ Otras pruebas de RF-01, que no cubren un criterio:
 
 | Criterio | Pruebas |
 |---|---|
-| C1. Con datos válidos, la empresa y su administrador quedan registrados. | [`RegistroEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/RegistroEmpresaIT.java) · con datos válidos, la empresa y su administrador quedan registrados |
-| C2. Si el NIT o el correo del administrador ya existen, el sistema no registra la empresa y lo avisa. | [`RegistroEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/RegistroEmpresaIT.java) · si el NIT ya existe, no registra la empresa y lo avisa<br>[`RegistroEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/RegistroEmpresaIT.java) · si el correo del administrador ya existe, aunque cambien las mayúsculas, no registra la empresa y lo avisa |
-| C3. Si faltan datos obligatorios, el formulario marca los campos que faltan. | [`RegistroEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/RegistroEmpresaIT.java) · si falta el administrador, lo marca y no guarda nada<br>[`RegistroEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/RegistroEmpresaIT.java) · si faltan datos obligatorios, responde un error por cada campo y no guarda nada |
-| C4. Si el dígito de verificación del NIT no corresponde, el formulario lo marca y no registra la empresa. | [`RegistroEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/RegistroEmpresaIT.java) · si el dígito de verificación del NIT no corresponde, lo marca y no registra la empresa<br>[`DigitoVerificacionNitTest`](../backend/src/test/java/co/edu/usco/inspectia/empresa/reglas/DigitoVerificacionNitTest.java) · acepta un NIT con su dígito de verificación correcto (parametrizada)<br>[`DigitoVerificacionNitTest`](../backend/src/test/java/co/edu/usco/inspectia/empresa/reglas/DigitoVerificacionNitTest.java) · calcula el dígito de verificación con el algoritmo de la DIAN (parametrizada)<br>[`DigitoVerificacionNitTest`](../backend/src/test/java/co/edu/usco/inspectia/empresa/reglas/DigitoVerificacionNitTest.java) · rechaza un NIT cuyo dígito de verificación no corresponde (parametrizada)<br>[`DigitoVerificacionNitTest`](../backend/src/test/java/co/edu/usco/inspectia/empresa/reglas/DigitoVerificacionNitTest.java) · rechaza un NIT sin dígito de verificación o con otro formato (parametrizada) |
-| C5. La contraseña inicial acepta de 8 a 64 caracteres: con 7 o con 65 se rechaza (prueba de límite). | [`RegistroEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/RegistroEmpresaIT.java) · la contraseña inicial acepta de 8 a 64 caracteres (prueba de límite) (parametrizada) |
-| C6. Una contraseña inicial de 64 caracteres con 8 eñes (72 bytes) se acepta; con 9 eñes (73 bytes) se rechaza con el mensaje «La contraseña es demasiado larga: usa menos caracteres o menos tildes y eñes» (prueba de límite). | [`RegistroEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/RegistroEmpresaIT.java) · la contraseña inicial ocupa como máximo 72 bytes: con 8 eñes se acepta y con 9 se rechaza con el mensaje de la ficha (prueba de límite) (parametrizada) |
+| C1. Con datos válidos, la empresa y su administrador quedan registrados. | [`RegistroEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/RegistroEmpresaIT.java) · con datos válidos, la empresa y su administrador quedan registrados<br>[`flujos.test.js`](../frontend/selenium/flujos.test.js) · el administrador de la plataforma registra una empresa y su primer administrador en la pantalla (Selenium)<br>[`RegistrarEmpresa.test.jsx`](../frontend/src/empresa/RegistrarEmpresa.test.jsx) · con datos válidos, la pantalla registra la empresa y su primer administrador, y la muestra en la lista |
+| C2. Si el NIT o el correo del administrador ya existen, el sistema no registra la empresa y lo avisa. | [`RegistroEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/RegistroEmpresaIT.java) · si el NIT ya existe, no registra la empresa y lo avisa<br>[`RegistroEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/RegistroEmpresaIT.java) · si el correo del administrador ya existe, aunque cambien las mayúsculas, no registra la empresa y lo avisa<br>[`RegistrarEmpresa.test.jsx`](../frontend/src/empresa/RegistrarEmpresa.test.jsx) · si el NIT o el correo del administrador ya existen, no la registra y lo avisa en cada campo |
+| C3. Si faltan datos obligatorios, el formulario marca los campos que faltan. | [`RegistroEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/RegistroEmpresaIT.java) · si falta el administrador, lo marca y no guarda nada<br>[`RegistroEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/RegistroEmpresaIT.java) · si faltan datos obligatorios, responde un error por cada campo y no guarda nada<br>[`RegistrarEmpresa.test.jsx`](../frontend/src/empresa/RegistrarEmpresa.test.jsx) · si faltan datos obligatorios, el formulario marca los campos que faltan y no envía nada |
+| C4. Si el dígito de verificación del NIT no corresponde, el formulario lo marca y no registra la empresa. | [`RegistroEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/RegistroEmpresaIT.java) · si el dígito de verificación del NIT no corresponde, lo marca y no registra la empresa<br>[`DigitoVerificacionNitTest`](../backend/src/test/java/co/edu/usco/inspectia/empresa/reglas/DigitoVerificacionNitTest.java) · acepta un NIT con su dígito de verificación correcto (parametrizada)<br>[`DigitoVerificacionNitTest`](../backend/src/test/java/co/edu/usco/inspectia/empresa/reglas/DigitoVerificacionNitTest.java) · calcula el dígito de verificación con el algoritmo de la DIAN (parametrizada)<br>[`DigitoVerificacionNitTest`](../backend/src/test/java/co/edu/usco/inspectia/empresa/reglas/DigitoVerificacionNitTest.java) · rechaza un NIT cuyo dígito de verificación no corresponde (parametrizada)<br>[`DigitoVerificacionNitTest`](../backend/src/test/java/co/edu/usco/inspectia/empresa/reglas/DigitoVerificacionNitTest.java) · rechaza un NIT sin dígito de verificación o con otro formato (parametrizada)<br>[`RegistrarEmpresa.test.jsx`](../frontend/src/empresa/RegistrarEmpresa.test.jsx) · si el dígito de verificación del NIT no corresponde, el formulario lo marca y no registra la empresa |
+| C5. La contraseña inicial acepta de 8 a 64 caracteres: con 7 o con 65 se rechaza (prueba de límite). | [`RegistroEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/RegistroEmpresaIT.java) · la contraseña inicial acepta de 8 a 64 caracteres (prueba de límite) (parametrizada)<br>[`RegistrarEmpresa.test.jsx`](../frontend/src/empresa/RegistrarEmpresa.test.jsx) · la contraseña inicial acepta de 8 a 64 caracteres: con 7 o con 65 se rechaza (prueba de límite): %s (parametrizada) |
+| C6. Una contraseña inicial de 64 caracteres con 8 eñes (72 bytes) se acepta; con 9 eñes (73 bytes) se rechaza con el mensaje «La contraseña es demasiado larga: usa menos caracteres o menos tildes y eñes» (prueba de límite). | [`RegistroEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/RegistroEmpresaIT.java) · la contraseña inicial ocupa como máximo 72 bytes: con 8 eñes se acepta y con 9 se rechaza con el mensaje de la ficha (prueba de límite) (parametrizada)<br>[`RegistrarEmpresa.test.jsx`](../frontend/src/empresa/RegistrarEmpresa.test.jsx) · una contraseña inicial de 64 caracteres con 8 eñes se acepta; con 9 eñes se rechaza con su mensaje (prueba de límite): %s (parametrizada) |
 | C7. La empresa nueva queda con los rangos por defecto de D-10. | [`RegistroEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/RegistroEmpresaIT.java) · la empresa nueva queda con los rangos por defecto de D-10 |
-| C8. El administrador creado puede iniciar sesión con la contraseña inicial. | [`RegistroEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/RegistroEmpresaIT.java) · el administrador queda activo, en una empresa activa y con la contraseña inicial (el inicio de sesión se prueba en RF-01)<br>[`InicioSesionIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/InicioSesionIT.java) · el administrador creado con la empresa inicia sesión con su contraseña inicial |
-| C9. Al desactivar una empresa, sus usuarios no pueden iniciar sesión y sus lotes y resultados se conservan (D-27). | [`EdicionEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/EdicionEmpresaIT.java) · al desactivar una empresa no se borra nada: sus usuarios, rangos y lotes se conservan<br>[`InicioSesionIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/InicioSesionIT.java) · al desactivar una empresa, sus usuarios no pueden iniciar sesión |
-| C10. Al reactivar una empresa, sus usuarios activos pueden volver a iniciar sesión (D-27). | [`EdicionEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/EdicionEmpresaIT.java) · al reactivar una empresa queda activa otra vez y cada usuario conserva su estado<br>[`InicioSesionIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/InicioSesionIT.java) · al reactivar una empresa, sus usuarios activos vuelven a iniciar sesión y los desactivados no |
-| C11. Al editar una empresa, el NIT pasa por las mismas validaciones del registro: único y con dígito de verificación válido (D-27). | [`EdicionEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/EdicionEmpresaIT.java) · al editar, la empresa puede conservar su propio NIT y guardar los demás cambios<br>[`EdicionEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/EdicionEmpresaIT.java) · al editar, un NIT con dígito de verificación inválido responde 400 y no cambia nada<br>[`EdicionEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/EdicionEmpresaIT.java) · al editar, un NIT de otra empresa responde 409 y no cambia nada |
-| C12. El administrador de la plataforma puede restablecer la contraseña de un administrador de empresa; la nueva contraseña pasa por las mismas validaciones de la contraseña inicial. | [`RestablecerContrasenaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/administradores/RestablecerContrasenaIT.java) · el administrador de la plataforma restablece la contraseña de un administrador de empresa: entra con la nueva y no con la anterior<br>[`RestablecerContrasenaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/administradores/RestablecerContrasenaIT.java) · la contraseña nueva pasa por las mismas validaciones de la inicial (prueba de límite) (parametrizada)<br>[`RestablecerContrasenaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/administradores/RestablecerContrasenaIT.java) · una contraseña nueva de solo espacios se rechaza como si faltara, igual que la inicial; con una letra se acepta (prueba de límite) (parametrizada) |
+| C8. El administrador creado puede iniciar sesión con la contraseña inicial. | [`RegistroEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/RegistroEmpresaIT.java) · el administrador queda activo, en una empresa activa y con la contraseña inicial (el inicio de sesión se prueba en RF-01)<br>[`InicioSesionIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/InicioSesionIT.java) · el administrador creado con la empresa inicia sesión con su contraseña inicial<br>[`empresas.spec.js`](../frontend/e2e/empresas.spec.js) · la empresa registrada en la pantalla queda con su administrador, que entra con la contraseña inicial (de punta a punta) |
+| C9. Al desactivar una empresa, sus usuarios no pueden iniciar sesión y sus lotes y resultados se conservan (D-27). | [`EdicionEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/EdicionEmpresaIT.java) · al desactivar una empresa no se borra nada: sus usuarios, rangos y lotes se conservan<br>[`InicioSesionIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/InicioSesionIT.java) · al desactivar una empresa, sus usuarios no pueden iniciar sesión<br>[`empresas.spec.js`](../frontend/e2e/empresas.spec.js) · al desactivar una empresa en la pantalla, después de confirmarlo, su administrador ya no puede iniciar sesión (de punta a punta) |
+| C10. Al reactivar una empresa, sus usuarios activos pueden volver a iniciar sesión (D-27). | [`EdicionEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/EdicionEmpresaIT.java) · al reactivar una empresa queda activa otra vez y cada usuario conserva su estado<br>[`InicioSesionIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/InicioSesionIT.java) · al reactivar una empresa, sus usuarios activos vuelven a iniciar sesión y los desactivados no<br>[`empresas.spec.js`](../frontend/e2e/empresas.spec.js) · al reactivar una empresa en la pantalla, su administrador vuelve a iniciar sesión (de punta a punta) |
+| C11. Al editar una empresa, el NIT pasa por las mismas validaciones del registro: único y con dígito de verificación válido (D-27). | [`EdicionEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/EdicionEmpresaIT.java) · al editar, la empresa puede conservar su propio NIT y guardar los demás cambios<br>[`EdicionEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/EdicionEmpresaIT.java) · al editar, un NIT con dígito de verificación inválido responde 400 y no cambia nada<br>[`EdicionEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/EdicionEmpresaIT.java) · al editar, un NIT de otra empresa responde 409 y no cambia nada<br>[`RegistrarEmpresa.test.jsx`](../frontend/src/empresa/RegistrarEmpresa.test.jsx) · al editar una empresa, el NIT pasa por las mismas validaciones del registro: su formato, su dígito y que no se repita |
+| C12. El administrador de la plataforma puede restablecer la contraseña de un administrador de empresa; la nueva contraseña pasa por las mismas validaciones de la contraseña inicial. | [`RestablecerContrasenaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/administradores/RestablecerContrasenaIT.java) · el administrador de la plataforma restablece la contraseña de un administrador de empresa: entra con la nueva y no con la anterior<br>[`RestablecerContrasenaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/administradores/RestablecerContrasenaIT.java) · la contraseña nueva pasa por las mismas validaciones de la inicial (prueba de límite) (parametrizada)<br>[`RestablecerContrasenaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/administradores/RestablecerContrasenaIT.java) · una contraseña nueva de solo espacios se rechaza como si faltara, igual que la inicial; con una letra se acepta (prueba de límite) (parametrizada)<br>[`empresas.spec.js`](../frontend/e2e/empresas.spec.js) · el administrador de la plataforma restablece en la pantalla la contraseña del administrador de una empresa: la nueva entra y la anterior ya no (de punta a punta)<br>[`PanelAdministradores.test.jsx`](../frontend/src/empresa/PanelAdministradores.test.jsx) · antes de restablecer, el panel dice que se cierran sus sesiones abiertas y se le quita el bloqueo (D-30)<br>[`PanelAdministradores.test.jsx`](../frontend/src/empresa/PanelAdministradores.test.jsx) · el administrador de la plataforma ve los administradores de una empresa y restablece la contraseña de uno<br>[`PanelAdministradores.test.jsx`](../frontend/src/empresa/PanelAdministradores.test.jsx) · la contraseña nueva pasa por las mismas validaciones de la contraseña inicial (prueba de límite): %s (parametrizada) |
 
 Otras pruebas de RF-02, que no cubren un criterio:
 
+- [`EmpresaApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/empresa/EmpresaApiGeneradaIT.java) · cada validación del JSON de empresa acepta su valor del borde al crear (parametrizada, generada)
+- [`EmpresaApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/empresa/EmpresaApiGeneradaIT.java) · cada validación del JSON de empresa acepta su valor del borde al editar (parametrizada, generada)
 - [`EmpresaApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/empresa/EmpresaApiGeneradaIT.java) · cada validación del JSON de empresa responde 400 con su mensaje al crear (parametrizada, generada)
 - [`EmpresaApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/empresa/EmpresaApiGeneradaIT.java) · cada validación del JSON de empresa responde 400 con su mensaje al editar (parametrizada, generada)
+- [`EmpresaApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/empresa/EmpresaApiGeneradaIT.java) · el listado de empresa filtra por activo: con true trae solo los activos y con false, los desactivados (generada)
 - [`EmpresaApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/empresa/EmpresaApiGeneradaIT.java) · empresa guarda sin espacios al inicio ni al final los textos que su JSON pide recortar (generada)
 - [`EmpresaApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/empresa/EmpresaApiGeneradaIT.java) · los datos únicos del JSON de empresa no se repiten: responde 409 (generada)
 - [`EdicionEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/EdicionEmpresaIT.java) · ver, editar, desactivar o reactivar una empresa que no existe responde 404 (parametrizada)
@@ -137,6 +140,24 @@ Otras pruebas de RF-02, que no cubren un criterio:
 - [`RestablecerContrasenaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/administradores/RestablecerContrasenaIT.java) · restablecer la contraseña de un administrador de empresa desbloquea su cuenta
 - [`RestablecerContrasenaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/administradores/RestablecerContrasenaIT.java) · si el usuario no es administrador de esa empresa, la API responde que no existe y no cambia nada
 - [`RestablecerContrasenaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/administradores/RestablecerContrasenaIT.java) · también restablece la contraseña de un administrador desactivado o de una empresa desactivada, sin reactivarlos
+- [`PanelAdministradores.test.jsx`](../frontend/src/empresa/PanelAdministradores.test.jsx) · un error de la API al restablecer se ve en el campo, o arriba del formulario si no es de un campo
+- [`PanelAdministradores.test.jsx`](../frontend/src/empresa/PanelAdministradores.test.jsx) · «Cerrar» cierra el panel de administradores y la lista de empresas sigue a la vista
+- [`EmpresaPantalla.test.jsx`](../frontend/src/generated/empresa/EmpresaPantalla.test.jsx) · desactivar empresa pide confirmación, y reactivarla no (generada)
+- [`EmpresaPantalla.test.jsx`](../frontend/src/generated/empresa/EmpresaPantalla.test.jsx) · la pantalla de empresa edita con los datos del formulario (generada)
+- [`EmpresaPantalla.test.jsx`](../frontend/src/generated/empresa/EmpresaPantalla.test.jsx) · la pantalla de empresa muestra sus registros y su resumen (generada)
+- [`EmpresaPantalla.test.jsx`](../frontend/src/generated/empresa/EmpresaPantalla.test.jsx) · la pantalla de empresa registra con los datos del formulario (generada)
+- [`EmpresaPantalla.test.jsx`](../frontend/src/generated/empresa/EmpresaPantalla.test.jsx) · lo que solo revisa el backend de empresa llega a su campo al guardar (generada)
+- [`EmpresaPantalla.test.jsx`](../frontend/src/generated/empresa/EmpresaPantalla.test.jsx) · sin registros, la pantalla de empresa lo dice (generada)
+- [`EmpresaPantalla.test.jsx`](../frontend/src/generated/empresa/EmpresaPantalla.test.jsx) · un dato con HTML se ve como texto en la pantalla de empresa: no se interpreta (generada)
+- [`EmpresaPantalla.test.jsx`](../frontend/src/generated/empresa/EmpresaPantalla.test.jsx) · un dato repetido de empresa se marca en su campo (409) (generada)
+- [`empresaApi.test.js`](../frontend/src/generated/empresa/empresaApi.test.js) · el cliente de la API de empresa usa la ruta y el método de cada operación del JSON (generada)
+- [`empresaApi.test.js`](../frontend/src/generated/empresa/empresaApi.test.js) · el listado de empresa pide la página, el tamaño y, si se pide, el filtro activo (D-33) (generada)
+- [`empresaEsquemas.test.js`](../frontend/src/generated/empresa/empresaEsquemas.test.js) · cada validación del JSON de empresa acepta al editar su valor del borde, como la API: %s (parametrizada, generada)
+- [`empresaEsquemas.test.js`](../frontend/src/generated/empresa/empresaEsquemas.test.js) · cada validación del JSON de empresa acepta al registrar su valor del borde, como la API: %s (parametrizada, generada)
+- [`empresaEsquemas.test.js`](../frontend/src/generated/empresa/empresaEsquemas.test.js) · cada validación del JSON de empresa rechaza al editar lo mismo que la API, con su mensaje: %s (parametrizada, generada)
+- [`empresaEsquemas.test.js`](../frontend/src/generated/empresa/empresaEsquemas.test.js) · cada validación del JSON de empresa rechaza al registrar lo mismo que la API, con su mensaje: %s (parametrizada, generada)
+- [`empresaEsquemas.test.js`](../frontend/src/generated/empresa/empresaEsquemas.test.js) · los ejemplos del JSON de empresa cumplen las validaciones del formulario (generada)
+- [`empresaEsquemas.test.js`](../frontend/src/generated/empresa/empresaEsquemas.test.js) · los mensajes de las validaciones de empresa salen en el idioma de la app (generada)
 
 ## RF-03 · Gestionar los usuarios de la empresa
 
@@ -156,8 +177,11 @@ Otras pruebas de RF-02, que no cubren un criterio:
 
 Otras pruebas de RF-03, que no cubren un criterio:
 
+- [`UsuarioApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/usuario/UsuarioApiGeneradaIT.java) · cada validación del JSON de usuario acepta su valor del borde al crear (parametrizada, generada)
+- [`UsuarioApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/usuario/UsuarioApiGeneradaIT.java) · cada validación del JSON de usuario acepta su valor del borde al editar (parametrizada, generada)
 - [`UsuarioApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/usuario/UsuarioApiGeneradaIT.java) · cada validación del JSON de usuario responde 400 con su mensaje al crear (parametrizada, generada)
 - [`UsuarioApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/usuario/UsuarioApiGeneradaIT.java) · cada validación del JSON de usuario responde 400 con su mensaje al editar (parametrizada, generada)
+- [`UsuarioApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/usuario/UsuarioApiGeneradaIT.java) · el listado de usuario filtra por activo: con true trae solo los activos y con false, los desactivados (generada)
 - [`UsuarioApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/usuario/UsuarioApiGeneradaIT.java) · los datos únicos del JSON de usuario no se repiten: responde 409 (generada)
 - [`UsuarioApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/usuario/UsuarioApiGeneradaIT.java) · usuario guarda sin espacios al inicio ni al final los textos que su JSON pide recortar (generada)
 - [`NoEnBlancoValidadorTest`](../backend/src/test/java/co/edu/usco/inspectia/comun/validacion/NoEnBlancoValidadorTest.java) · @NoEnBlanco deja no enviar el dato, pero si llega no puede estar vacío ni tener solo espacios (prueba de límite) (parametrizada)
@@ -434,21 +458,31 @@ Otras pruebas de RNF-04, que no cubren un criterio:
 - [`SesionAbiertaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/SesionAbiertaIT.java) · un token firmado con otra clave no sirve
 - [`SesionAbiertaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/SesionAbiertaIT.java) · un token sin firma (alg none) no sirve
 - [`SesionServicioTest`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/SesionServicioTest.java) · si la contraseña nunca cambió, cualquier token vigente del usuario sirve
+- [`empresa.spec.js`](../frontend/e2e/generated/empresa.spec.js) · la pantalla de empresa la abre ADMIN_PLATAFORMA, uno de los roles de listar (de punta a punta) (generada)
+- [`empresa.spec.js`](../frontend/e2e/generated/empresa.spec.js) · la pantalla de empresa no la abre ADMIN_EMPRESA, que no está en los roles de listar (de punta a punta) (generada)
+- [`empresa.spec.js`](../frontend/e2e/generated/empresa.spec.js) · la pantalla de empresa no la abre USUARIO_FINAL, que no está en los roles de listar (de punta a punta) (generada)
 - [`iniciar-sesion.spec.js`](../frontend/e2e/iniciar-sesion.spec.js) · sin sesión, una pantalla interna lleva a Iniciar sesión
+- [`PantallaDeRegistros.test.jsx`](../frontend/src/crud/PantallaDeRegistros.test.jsx) · si la API no deja hacer una acción, la pantalla dice por qué y la fila queda como estaba
+- [`registros.test.js`](../frontend/src/crud/registros.test.js) · cada acción de la pantalla aparece solo para los roles de su operación en el JSON: %s %s (parametrizada)
+- [`EmpresaPantalla.test.jsx`](../frontend/src/generated/empresa/EmpresaPantalla.test.jsx) · la pantalla de empresa solo la abren los roles de listar: %s ve que no tiene permiso (parametrizada, generada)
 - [`Marco.test.jsx`](../frontend/src/navegacion/Marco.test.jsx) · una pantalla de otro rol no se abre aunque se escriba su dirección: avisa que no tiene permiso
+- [`pantallasGeneradas.test.jsx`](../frontend/src/navegacion/pantallasGeneradas.test.jsx) · la ruta de una pantalla generada la abren los roles de listar de su JSON; los demás ven que no tienen permiso
+- [`pantallasGeneradas.test.jsx`](../frontend/src/navegacion/pantallasGeneradas.test.jsx) · un rol que no está en listar no abre la pantalla generada aunque escriba su dirección
 - [`sesion.test.jsx`](../frontend/src/sesion/sesion.test.jsx) · sin sesión, una pantalla interna lleva a Iniciar sesión
+- [`test_frontend.py`](../generador/pruebas/test_frontend.py) · la ruta, la entrada del menú y los roles de cada pantalla salen del JSON: la abren los roles de listar
 - [`test_java.py`](../generador/pruebas/test_java.py) · las reglas de acceso por ruta y @PreAuthorize salen de operaciones del JSON
 
 ## RNF-05 · Funcionar en PC y en celular desde el navegador
 
 | Criterio | Pruebas |
 |---|---|
-| C1. Todas las pantallas se usan sin desplazamiento horizontal desde 360 px de ancho. | [`responsive.spec.js`](../frontend/e2e/responsive.spec.js) · ninguna pantalla se desplaza a los lados desde 360 px de ancho |
+| C1. Todas las pantallas se usan sin desplazamiento horizontal desde 360 px de ancho. | [`empresa.spec.js`](../frontend/e2e/generated/empresa.spec.js) · la pantalla de empresa no se desplaza a los lados desde 360 px de ancho (generada)<br>[`responsive.spec.js`](../frontend/e2e/responsive.spec.js) · ninguna pantalla se desplaza a los lados desde 360 px de ancho |
 | C2. En el celular, la captura abre la cámara, tanto en Android con Chrome como en iPhone con Safari. | **Pendiente** |
 | C3. Las pruebas del front-end (RP-14) se ejecutan en tamaño de PC y de celular. | [`responsive.spec.js`](../frontend/e2e/responsive.spec.js) · las pruebas corren en tamaño de PC y de celular: en PC el menú está a la vista y en el celular, detrás del botón |
 
 Otras pruebas de RNF-05, que no cubren un criterio:
 
+- [`PantallaDeRegistros.test.jsx`](../frontend/src/crud/PantallaDeRegistros.test.jsx) · en el celular, la lista se ve en tarjetas, cada una con sus datos y sus acciones, sin tabla
 - [`Marco.test.jsx`](../frontend/src/navegacion/Marco.test.jsx) · en el celular el menú se esconde detrás del botón «Abrir el menú»
 
 ## RNF-06 · Ser sencilla de usar para el usuario final
@@ -457,12 +491,15 @@ Otras pruebas de RNF-05, que no cubren un criterio:
 |---|---|
 | C1. En una prueba con 3 personas que no conocen la app, cada una completa un análisis en menos de 5 minutos, sin ayuda. | **Pendiente** |
 | C2. Registrar un lote, subir las fotos y ver el resultado toma como máximo 3 pantallas. | **Pendiente** |
-| C3. Cada mensaje de error dice qué pasó y qué hacer. | [`accesibilidad.spec.js`](../frontend/e2e/accesibilidad.spec.js) · un error de un campo dice qué pasó y queda unido al campo para los lectores de pantalla<br>[`cliente.test.js`](../frontend/src/api/cliente.test.js) · si el servidor no responde, el error queda marcado como falta de conexión (estado 0) y no cierra la sesión<br>[`errores.test.js`](../frontend/src/api/errores.test.js) · el mensaje del backend se muestra tal cual, porque ya dice qué pasó y qué hacer<br>[`errores.test.js`](../frontend/src/api/errores.test.js) · sin conexión dice que no se pudo conectar con el servidor y que revise la conexión<br>[`errores.test.js`](../frontend/src/api/errores.test.js) · un error que no viene de la API también dice qué hacer<br>[`errores.test.js`](../frontend/src/api/errores.test.js) · una falla sin mensaje del backend dice que fue inesperada y que intente más tarde<br>[`IniciarSesion.test.jsx`](../frontend/src/paginas/IniciarSesion.test.jsx) · si el servidor falla sin dar un mensaje, Iniciar sesión dice qué pasó y qué hacer<br>[`IniciarSesion.test.jsx`](../frontend/src/paginas/IniciarSesion.test.jsx) · sin conexión con el servidor, Iniciar sesión dice qué pasó y qué hacer |
-| C4. Todas las funciones se pueden usar con el teclado y los textos tienen buen contraste. | [`accesibilidad.spec.js`](../frontend/e2e/accesibilidad.spec.js) · las pantallas de esta versión no tienen fallas de accesibilidad WCAG AA en el tema claro<br>[`accesibilidad.spec.js`](../frontend/e2e/accesibilidad.spec.js) · las pantallas de esta versión no tienen fallas de accesibilidad WCAG AA en el tema oscuro<br>[`accesibilidad.spec.js`](../frontend/e2e/accesibilidad.spec.js) · se inicia sesión solo con el teclado<br>[`Marco.test.jsx`](../frontend/src/navegacion/Marco.test.jsx) · cada pantalla con menú empieza con el enlace «Saltar al contenido», que lleva al contenido<br>[`tokens.test.js`](../frontend/src/tema/tokens.test.js) · los textos y bordes de los dos temas cumplen el contraste WCAG AA: %s (parametrizada) |
+| C3. Cada mensaje de error dice qué pasó y qué hacer. | [`accesibilidad.spec.js`](../frontend/e2e/accesibilidad.spec.js) · un error de un campo dice qué pasó y queda unido al campo para los lectores de pantalla<br>[`cliente.test.js`](../frontend/src/api/cliente.test.js) · si el servidor no responde, el error queda marcado como falta de conexión (estado 0) y no cierra la sesión<br>[`errores.test.js`](../frontend/src/api/errores.test.js) · el mensaje del backend se muestra tal cual, porque ya dice qué pasó y qué hacer<br>[`errores.test.js`](../frontend/src/api/errores.test.js) · sin conexión dice que no se pudo conectar con el servidor y que revise la conexión<br>[`errores.test.js`](../frontend/src/api/errores.test.js) · un error que no viene de la API también dice qué hacer<br>[`errores.test.js`](../frontend/src/api/errores.test.js) · una falla sin mensaje del backend dice que fue inesperada y que intente más tarde<br>[`CampoDeTexto.test.jsx`](../frontend/src/componentes/CampoDeTexto.test.jsx) · con un error, el campo dice qué pasó y conserva su ayuda: los dos quedan unidos al campo<br>[`CampoDeLista.test.jsx`](../frontend/src/crud/CampoDeLista.test.jsx) · con un error, el campo de lista dice qué pasó y queda unido al campo<br>[`PantallaDeRegistros.test.jsx`](../frontend/src/crud/PantallaDeRegistros.test.jsx) · al registrar con datos que faltan, el foco va al primer campo con error, también dentro del grupo del administrador<br>[`IniciarSesion.test.jsx`](../frontend/src/paginas/IniciarSesion.test.jsx) · si el servidor falla sin dar un mensaje, Iniciar sesión dice qué pasó y qué hacer<br>[`IniciarSesion.test.jsx`](../frontend/src/paginas/IniciarSesion.test.jsx) · sin conexión con el servidor, Iniciar sesión dice qué pasó y qué hacer |
+| C4. Todas las funciones se pueden usar con el teclado y los textos tienen buen contraste. | [`accesibilidad.spec.js`](../frontend/e2e/accesibilidad.spec.js) · las pantallas de esta versión no tienen fallas de accesibilidad WCAG AA en el tema claro<br>[`accesibilidad.spec.js`](../frontend/e2e/accesibilidad.spec.js) · las pantallas de esta versión no tienen fallas de accesibilidad WCAG AA en el tema oscuro<br>[`accesibilidad.spec.js`](../frontend/e2e/accesibilidad.spec.js) · se inicia sesión solo con el teclado<br>[`empresa.spec.js`](../frontend/e2e/generated/empresa.spec.js) · la pantalla de empresa no tiene fallas de accesibilidad WCAG AA, ni en el tema claro ni en el oscuro (generada)<br>[`PantallaDeRegistros.test.jsx`](../frontend/src/crud/PantallaDeRegistros.test.jsx) · al abrir el formulario desde una fila, el foco va a su título; al cancelar, vuelve al botón que lo abrió<br>[`PantallaDeRegistros.test.jsx`](../frontend/src/crud/PantallaDeRegistros.test.jsx) · después de confirmar que se desactiva, el foco vuelve a la fila, en su botón, que ahora reactiva<br>[`PantallaDeRegistros.test.jsx`](../frontend/src/crud/PantallaDeRegistros.test.jsx) · después de reactivar, el foco sigue en la fila, en su botón, que ahora desactiva<br>[`PantallaDeRegistros.test.jsx`](../frontend/src/crud/PantallaDeRegistros.test.jsx) · después de registrar, el foco vuelve a «Nueva empresa»<br>[`PanelAdministradores.test.jsx`](../frontend/src/empresa/PanelAdministradores.test.jsx) · al abrir el panel, el foco va a su título; al cerrarlo, vuelve al botón de la fila<br>[`PanelAdministradores.test.jsx`](../frontend/src/empresa/PanelAdministradores.test.jsx) · el formulario de la contraseña recibe el foco en su título; al cancelar o al restablecer, vuelve al botón del administrador<br>[`Marco.test.jsx`](../frontend/src/navegacion/Marco.test.jsx) · cada pantalla con menú empieza con el enlace «Saltar al contenido», que lleva al contenido<br>[`tokens.test.js`](../frontend/src/tema/tokens.test.js) · los textos y bordes de los dos temas cumplen el contraste WCAG AA: %s (parametrizada) |
 
 Otras pruebas de RNF-06, que no cubren un criterio:
 
 - [`cliente.test.js`](../frontend/src/api/cliente.test.js) · una respuesta de error que no es JSON, como la de un proxy caído, llega sin mensaje del backend
+- [`CampoDeTexto.test.jsx`](../frontend/src/componentes/CampoDeTexto.test.jsx) · la ayuda de un campo se ve debajo de él y queda unida al campo para los lectores de pantalla
+- [`CampoDeTexto.test.jsx`](../frontend/src/componentes/CampoDeTexto.test.jsx) · un campo sin ayuda no la anuncia
+- [`EmpresaPantalla.test.jsx`](../frontend/src/generated/empresa/EmpresaPantalla.test.jsx) · sin conexión, la pantalla de empresa dice qué pasó y qué hacer, y se puede reintentar (generada)
 
 ## RNF-07 · Alcanzar el F1-score mínimo del modelo de IA
 
@@ -503,6 +540,16 @@ Pruebas que no cubren un criterio de una ficha, sino una pauta del docente (RP) 
 
 - [`DocumentacionApiIT`](../backend/src/test/java/co/edu/usco/inspectia/comun/api/DocumentacionApiIT.java) · la documentación OpenAPI pide el token Bearer en toda la API, salvo para iniciar sesión
 
+### RP-07 · Validación y seguridad de los formularios con Yup y Formik
+
+- [`reglas.test.js`](../frontend/src/validacion/reglas.test.js) · cabeEnBytes cuenta los bytes en UTF-8, como @MaximoBytes en la API: %s (parametrizada)
+- [`reglas.test.js`](../frontend/src/validacion/reglas.test.js) · cabeEnBytes deja pasar el dato que falta aunque el máximo sea pequeño: lo revisa obligatorio
+- [`reglas.test.js`](../frontend/src/validacion/reglas.test.js) · minusculas deja igual lo que no es un texto
+- [`reglas.test.js`](../frontend/src/validacion/reglas.test.js) · minusculas pasa un texto a minúsculas, también las letras con tilde y la eñe, como la API
+- [`reglas.test.js`](../frontend/src/validacion/reglas.test.js) · recortar deja igual lo que no es un texto
+- [`reglas.test.js`](../frontend/src/validacion/reglas.test.js) · recortar quita los mismos espacios del inicio y del final que String.strip() en la API: %s (parametrizada)
+- [`reglas.test.js`](../frontend/src/validacion/reglas.test.js) · un dato está lleno con la misma regla de @NotBlank en la API: %s (parametrizada)
+
 ### RP-08 · Interfaz responsive y accesible, con tokens de colores y estilos, y temas
 
 - [`Marco.test.jsx`](../frontend/src/navegacion/Marco.test.jsx) · el tema se cambia desde la barra
@@ -510,7 +557,7 @@ Pruebas que no cubren un criterio de una ficha, sino una pauta del docente (RP) 
 
 ### RP-10 · Header en cada artefacto con nombre, descripción, fecha de creación, fecha de actualización, autor y versión
 
-- [`test_salida.py`](../generador/pruebas/test_salida.py) · cada archivo generado lleva su header y la marca de no editar a mano
+- [`test_salida.py`](../generador/pruebas/test_salida.py) · cada archivo generado lleva su header y la marca de no editar a mano, también los del frontend
 
 ### RP-11 · Internacionalización
 
@@ -525,8 +572,11 @@ Pruebas que no cubren un criterio de una ficha, sino una pauta del docente (RP) 
 - [`i18n.test.js`](../frontend/src/i18n/i18n.test.js) · la app está en español si la persona no eligió otro idioma
 - [`i18n.test.js`](../frontend/src/i18n/i18n.test.js) · los marcadores del backend, como {0} y {1}, se reemplazan igual que en el backend
 - [`i18n.test.js`](../frontend/src/i18n/i18n.test.js) · los textos compartidos con el backend salen de sus archivos .properties: %s %s (parametrizada)
+- [`i18n.test.js`](../frontend/src/i18n/i18n.test.js) · los textos de las pantallas generadas están en español y en inglés, y ninguno está vacío
+- [`i18n.test.js`](../frontend/src/i18n/i18n.test.js) · los textos de las pantallas generadas salen de pantalla.textos de su JSON: %s %s (parametrizada)
 - [`Marco.test.jsx`](../frontend/src/navegacion/Marco.test.jsx) · el idioma se cambia desde la barra y el menú queda en inglés
 - [`IniciarSesion.test.jsx`](../frontend/src/paginas/IniciarSesion.test.jsx) · Iniciar sesión cambia a inglés, y pide al backend los mensajes en inglés
+- [`test_frontend.py`](../generador/pruebas/test_frontend.py) · los textos de cada pantalla salen de pantalla.textos del JSON, en español y en inglés
 - [`test_java.py`](../generador/pruebas/test_java.py) · los textos de todas las entidades salen en español y en inglés
 
 ### RP-13 · Listado completo de casos de prueba, derivados de los criterios de aceptación de cada requerimiento, y verificación de su cumplimiento
@@ -540,11 +590,15 @@ Pruebas que no cubren un criterio de una ficha, sino una pauta del docente (RP) 
 - [`test_casos.py`](../generador/pruebas/test_casos.py) · todas las pruebas del repositorio tienen una marca válida
 - [`test_casos.py`](../generador/pruebas/test_casos.py) · un criterio sin prueba sale como pendiente; uno eliminado no
 - [`test_casos.py`](../generador/pruebas/test_casos.py) · una marca que cita algo que no existe o un criterio eliminado es un error
+- [`test_frontend.py`](../generador/pruebas/test_frontend.py) · las pruebas generadas del frontend llevan un título fijo con su marca: la ficha de la entidad o el RNF que cubren
 
 ### RP-14 · Herramientas de prueba
 
 - [`espejo.test.js`](../frontend/herramientas/espejo.test.js) · la carpeta excluida de la copia no se toca al espejar: lo que se hace con ella lo decide quien llama
+- [`espejo.test.js`](../frontend/herramientas/espejo.test.js) · la copia del backend lleva también infra/bd, para que las pruebas que leen ../infra/bd pasen en la copia
+- [`espejo.test.js`](../frontend/herramientas/espejo.test.js) · la copia del backend nunca lleva infra/.env, con las contraseñas locales, ni lo demás de infra
 - [`espejo.test.js`](../frontend/herramientas/espejo.test.js) · la primera vez copia todo, menos las carpetas excluidas, como target
+- [`espejo.test.js`](../frontend/herramientas/espejo.test.js) · lo que se borra del backend o de infra/bd desaparece de la copia, y se informa por separado
 - [`espejo.test.js`](../frontend/herramientas/espejo.test.js) · sin carpetas excluidas, lo copia todo
 - [`espejo.test.js`](../frontend/herramientas/espejo.test.js) · solo se excluyen las carpetas del primer nivel: una carpeta target más adentro se espeja como las demás
 - [`espejo.test.js`](../frontend/herramientas/espejo.test.js) · un archivo borrado o renombrado en el original desaparece de la copia, y se informa
@@ -569,17 +623,50 @@ Pruebas que no cubren un criterio de una ficha, sino una pauta del docente (RP) 
 - [`DecimalesTest`](../backend/src/test/java/co/edu/usco/inspectia/comun/numero/DecimalesTest.java) · un dato que no llegó sigue sin valor
 - [`MaximoDecimalesValidadorTest`](../backend/src/test/java/co/edu/usco/inspectia/comun/validacion/MaximoDecimalesValidadorTest.java) · @MaximoDecimales responde en el campo con el mensaje general de los decimales
 - [`MaximoDecimalesValidadorTest`](../backend/src/test/java/co/edu/usco/inspectia/comun/validacion/MaximoDecimalesValidadorTest.java) · @MaximoDecimales usa el máximo de su anotación, que sale de la escala del JSON (parametrizada)
+- [`CampoDeLista.test.jsx`](../frontend/src/crud/CampoDeLista.test.jsx) · el campo de lista muestra los valores de la lista del JSON con su etiqueta y guarda el código del elegido
+- [`PantallaDeRegistros.test.jsx`](../frontend/src/crud/PantallaDeRegistros.test.jsx) · con más de 20 registros, la lista va en páginas fijas de 20, pasa a la siguiente y la pide a la API
+- [`PantallaDeRegistros.test.jsx`](../frontend/src/crud/PantallaDeRegistros.test.jsx) · después de registrar, el formulario se cierra y la lista y su resumen se vuelven a pedir, con el registro nuevo
+- [`PantallaDeRegistros.test.jsx`](../frontend/src/crud/PantallaDeRegistros.test.jsx) · las notas del JSON se ven donde van: la del formulario solo al registrar, y la de la lista debajo de ella
+- [`PantallaDeRegistros.test.jsx`](../frontend/src/crud/PantallaDeRegistros.test.jsx) · un error de la API que no es de un campo, como el de una regla sin campo, se ve arriba del formulario, que sigue abierto
+- [`PantallaDeRegistros.test.jsx`](../frontend/src/crud/PantallaDeRegistros.test.jsx) · «Cancelar» cierra el formulario sin enviar nada a la API
+- [`registros.test.js`](../frontend/src/crud/registros.test.js) · el resumen cuenta en singular y en plural con los textos de pantalla.textos: %i registros, %i activos (parametrizada)
+- [`registros.test.js`](../frontend/src/crud/registros.test.js) · el resumen sale en el idioma de la app
+- [`registros.test.js`](../frontend/src/crud/registros.test.js) · los textos de una fila, como «Editar {nombre}», toman solo sus textos y sus números
+- [`registros.test.js`](../frontend/src/crud/registros.test.js) · si el JSON no trae los textos del resumen, la pantalla no muestra resumen
+- [`registros.test.js`](../frontend/src/crud/registros.test.js) · un error de un campo dentro de un grupo, como administrador.correo, queda en ese campo del formulario
+- [`registros.test.js`](../frontend/src/crud/registros.test.js) · un texto que se cuenta va en singular solo con uno
+- [`pantallasGeneradas.test.jsx`](../frontend/src/navegacion/pantallasGeneradas.test.jsx) · una pantalla generada con un ícono que el menú no conoce sale con uno genérico
+- [`pantallasGeneradas.test.jsx`](../frontend/src/navegacion/pantallasGeneradas.test.jsx) · una pantalla generada que menu.js no nombra entra al final del menú de los roles de su listar
+- [`test_frontend.py`](../generador/pruebas/test_frontend.py) · alcance.json dice qué entidades tienen pantalla: empresa (RF-02) y solo entidades con API
+- [`test_frontend.py`](../generador/pruebas/test_frontend.py) · cada entidad de pantallas en alcance.json tiene su pantalla, su cliente de la API, sus esquemas de Yup y sus pruebas; las demás, no
+- [`test_frontend.py`](../generador/pruebas/test_frontend.py) · desactivar pide confirmación solo si pantalla.textos trae su texto (D-34): la empresa lo trae
+- [`test_frontend.py`](../generador/pruebas/test_frontend.py) · el cliente de la API de una pantalla usa la ruta y las operaciones del JSON, y el listado filtra por activo (D-33)
+- [`test_frontend.py`](../generador/pruebas/test_frontend.py) · el formato del correo se valida solo en el backend, como el dígito del NIT: Yup no lo revisa y su error llega al campo al guardar
+- [`test_frontend.py`](../generador/pruebas/test_frontend.py) · el generador se detiene con una pantalla que todavía no sabe generar o a la que le faltan textos, y dice qué falta
+- [`test_frontend.py`](../generador/pruebas/test_frontend.py) · la pantalla toma del JSON sus campos, sus columnas, los roles de cada acción y sus textos
+- [`test_frontend.py`](../generador/pruebas/test_frontend.py) · la prueba generada de Yup rechaza el ejemplo de un patrón con algo pegado antes o después, como la API: en JavaScript, un patrón sin ^ ni $ aceptaría x900123456-8
+- [`test_frontend.py`](../generador/pruebas/test_frontend.py) · la prueba generada de Yup revisa los mismos casos de límite que la prueba generada de la API, con el mismo mensaje en español, salvo el formato del correo
+- [`test_frontend.py`](../generador/pruebas/test_frontend.py) · las validaciones del JSON pasan a Yup con la misma clave de mensaje, la propia del atributo o la general, y en el orden en que la API escoge el error de un campo: primero el dato que falta y después por el nombre de la restricción
+- [`test_frontend.py`](../generador/pruebas/test_frontend.py) · los mensajes de resultado salen de pantalla.textos con el valor de la fila, como «Se guardó {nombre}.», y la prueba generada los toma del JSON
+- [`test_frontend.py`](../generador/pruebas/test_frontend.py) · un valor que falla por dos validaciones da en Yup el mismo error que en la API: el NIT largo y mal escrito, el del patrón, y la contraseña con demasiadas eñes, el de los bytes
+- [`test_frontend.py`](../generador/pruebas/test_frontend.py) · una pantalla necesita la API de su entidad: el alcance no acepta una pantalla sin API ni de una entidad que no existe
 - [`test_java.py`](../generador/pruebas/test_java.py) · cada CRUD tiene persistencia y solo las entidades del alcance tienen API
 - [`test_java.py`](../generador/pruebas/test_java.py) · edicion_en_bloque: lista las filas sin páginas, las edita todas juntas y restaura los valores por defecto, siempre en la empresa de la sesión (RF-13, RNF-03)
 - [`test_java.py`](../generador/pruebas/test_java.py) · el código generado escribe sus constructores, sin las anotaciones de Lombok que los crean
+- [`test_java.py`](../generador/pruebas/test_java.py) · el generador escoge el error de un campo como ManejadorDeErrores: primero las mismas restricciones de «falta el dato» y después por el nombre de la restricción
 - [`test_java.py`](../generador/pruebas/test_java.py) · el generador se detiene con un efecto que no sabe llamar: en listar o ver, o atado a un atributo que no es una contraseña
 - [`test_java.py`](../generador/pruebas/test_java.py) · el generador se detiene con una edición en bloque que no sabe generar: con crear, sin una lista que identifique cada fila o con restaurar_por_defecto sin valores_iniciales
+- [`test_java.py`](../generador/pruebas/test_java.py) · el listado de una entidad con atributo_activo filtra con ?activo=true o false, y sin el filtro trae todos (D-33)
 - [`test_java.py`](../generador/pruebas/test_java.py) · la API de una entidad por empresa toma la empresa de la sesión y limita cada consulta a ella (RNF-03)
 - [`test_java.py`](../generador/pruebas/test_java.py) · la contraseña del formulario es obligatoria al crear y opcional al editar, y solo se guarda su hash
+- [`test_java.py`](../generador/pruebas/test_java.py) · la prueba generada de la API rechaza el ejemplo de un patrón con algo pegado antes o después, como x900123456-8 y 900123456-8x: así revisa que el patrón vaya anclado con ^ y $
+- [`test_java.py`](../generador/pruebas/test_java.py) · la prueba generada de la API revisa que cada validación del JSON acepte su valor del borde: el largo máximo, el mínimo y los 72 bytes
+- [`test_java.py`](../generador/pruebas/test_java.py) · la prueba generada de la API revisa un valor que falla por dos validaciones: el NIT largo y mal escrito responde el error del patrón, y la contraseña con demasiadas eñes, el de los bytes
 - [`test_java.py`](../generador/pruebas/test_java.py) · la respuesta solo lleva los atributos de la lista o del formulario: nunca el hash ni los datos internos
 - [`test_java.py`](../generador/pruebas/test_java.py) · las reglas de una entidad por empresa reciben la sesión, y los parámetros de una regla salen como constantes
 - [`test_java.py`](../generador/pruebas/test_java.py) · las validaciones del JSON pasan a Bean Validation con la clave de su mensaje
-- [`test_java.py`](../generador/pruebas/test_java.py) · lo generado de empresa no cambia al agregar la API por empresa: solo su header
+- [`test_java.py`](../generador/pruebas/test_java.py) · lo generado de empresa solo cambia a propósito: es igual a su copia de referencia, salvo el header
+- [`test_java.py`](../generador/pruebas/test_java.py) · lo que se pega al ejemplo de un patrón es algo que el patrón no acepta en ese lugar, y no se pega nada si no cabe en el largo, porque el valor fallaría también por largo
 - [`test_java.py`](../generador/pruebas/test_java.py) · los rangos por defecto de una empresa nueva salen de valores_iniciales del JSON
 - [`test_java.py`](../generador/pruebas/test_java.py) · solo_lectura_si: en la edición en bloque, ese dato no cambia en las filas que cumplen la condición, con el mensaje del JSON o el general
 - [`test_java.py`](../generador/pruebas/test_java.py) · un decimal acepta como máximo los decimales de su escala, con el mensaje general en singular o en plural
@@ -591,24 +678,28 @@ Pruebas que no cubren un criterio de una ficha, sino una pauta del docente (RP) 
 - [`test_java.py`](../generador/pruebas/test_java.py) · valores_en_formulario se valida con @ValorPermitido, que responde 403 antes que los demás errores
 - [`test_otra_tematica.py`](../generador/pruebas/test_otra_tematica.py) · el JSON de producto de la pauta del docente pasa la validación
 - [`test_otra_tematica.py`](../generador/pruebas/test_otra_tematica.py) · el generador produce la API de producto, otra temática, con las mismas plantillas
+- [`test_otra_tematica.py`](../generador/pruebas/test_otra_tematica.py) · el generador produce la pantalla de producto, otra temática, con las mismas plantillas del frontend
 - [`test_otra_tematica.py`](../generador/pruebas/test_otra_tematica.py) · el generador produce los archivos de otra temática: producto de la pauta del docente
 - [`test_salida.py`](../generador/pruebas/test_salida.py) · comprobar detecta archivos que faltan o que sobran en las carpetas generadas
 - [`test_salida.py`](../generador/pruebas/test_salida.py) · comprobar detecta un archivo generado editado a mano
 - [`test_salida.py`](../generador/pruebas/test_salida.py) · comprobar ignora la diferencia entre LF y CRLF
 - [`test_salida.py`](../generador/pruebas/test_salida.py) · comprobar no encuentra diferencias justo después de generar
+- [`test_salida.py`](../generador/pruebas/test_salida.py) · el generador también es dueño de frontend/src/generated y frontend/e2e/generated: escribe ahí, comprobar detecta una edición a mano y generar borra lo que sobra, sin tocar lo escrito a mano
 - [`test_salida.py`](../generador/pruebas/test_salida.py) · generar borra de las carpetas generadas lo que ya no se genera
 - [`test_salida.py`](../generador/pruebas/test_salida.py) · la salida es determinista y usa finales de línea LF
-- [`test_salida.py`](../generador/pruebas/test_salida.py) · lo generado no lleva valores de Python: un booleano sale como true o false, también en los ejemplos de OpenAPI, y nada sale como None
+- [`test_salida.py`](../generador/pruebas/test_salida.py) · lo generado no lleva valores de Python: un booleano sale como true o false, también en los ejemplos de OpenAPI y en el frontend, y nada sale como None
 - [`test_validacion.py`](../generador/pruebas/test_validacion.py) · la validación detecta un CHECK con un valor que no está en ninguna lista
 - [`test_validacion.py`](../generador/pruebas/test_validacion.py) · la validación detecta una ficha que no existe en specs/
 - [`test_validacion.py`](../generador/pruebas/test_validacion.py) · la validación detecta una referencia a una entidad que no existe
 - [`test_validacion.py`](../generador/pruebas/test_validacion.py) · la validación pide el nombre de crear_con, que es el campo de la solicitud
 - [`test_validacion.py`](../generador/pruebas/test_validacion.py) · la validación rechaza solo_lectura_si en una entidad sin edicion_en_bloque, en vez de ignorarlo
 - [`test_validacion.py`](../generador/pruebas/test_validacion.py) · la validación rechaza un mensaje con un marcador que no está en validaciones
+- [`test_validacion.py`](../generador/pruebas/test_validacion.py) · la validación revisa la clave pantalla: claves conocidas, textos en español y en inglés, singular y plural donde se cuenta, y marcadores que existen
 - [`test_validacion.py`](../generador/pruebas/test_validacion.py) · la validación revisa que el ejemplo de un atributo cumpla sus validaciones
 - [`test_validacion.py`](../generador/pruebas/test_validacion.py) · los JSON de specs/entidades pasan la validación
 - [`test_validacion.py`](../generador/pruebas/test_validacion.py) · un atributo con solo_lectura_si puede traer su mensaje; uno sin solo_lectura_si, no
 - [`test_validacion.py`](../generador/pruebas/test_validacion.py) · un atributo no puede usar el nombre de una columna implícita
+- [`test_validacion.py`](../generador/pruebas/test_validacion.py) · un patron va anclado con ^ y $ y sin lo que Java, PostgreSQL y JavaScript leen distinto, así los tres validan igual
 - [`test_validacion.py`](../generador/pruebas/test_validacion.py) · una entidad con CRUD necesita modulo y ruta
 
 ### D-18 · Uso de los 5 modelos (RP-25)

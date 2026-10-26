@@ -1,25 +1,44 @@
 /*
  * Nombre: ayudas.js (e2e)
- * Descripción: Ayudas de las pruebas de punta a punta con Playwright: los datos del entorno aislado, crear
- *              usuarios propios por la API para las pruebas que cambian datos, e iniciar sesión.
+ * Descripción: Ayudas de las pruebas de punta a punta con Playwright: los datos del entorno aislado, la persona
+ *              de cada rol, crear usuarios y empresas propios por la API para las pruebas que cambian datos,
+ *              iniciar y cerrar sesión, y buscar una fila en la lista de una pantalla generada.
  * Fecha de creación: 20/10/2026
- * Actualización: 20/10/2026
+ * Actualización: 26/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 import { randomUUID } from 'node:crypto';
 import { test as base, expect } from '@playwright/test';
-import { datos } from './entorno/datos.js';
+import { datos, empresaNueva } from './entorno/datos.js';
 
 /*
  * Los datos del entorno aislado que arma e2e/entorno (backend, base y usuarios de cada corrida): el
- * administrador de la plataforma, una empresa con su administrador y un usuario de una empresa
- * desactivada. Las contraseñas se crean en cada corrida y nunca quedan en el repositorio.
+ * administrador de la plataforma, una empresa con su administrador y su usuario final, y un usuario de una
+ * empresa desactivada. Las contraseñas se crean en cada corrida y nunca quedan en el repositorio. Con
+ * empresaNueva, cada prueba arma los datos de su propia empresa.
  */
-export { datos, expect };
+export { datos, empresaNueva, expect };
 
 /** Contraseña de los usuarios que crean las pruebas. */
 export const CONTRASENA = 'Clave-Segura-2026';
+
+/**
+ * La persona de prueba de un rol, para las pruebas que solo miran, como los permisos de una pantalla generada:
+ * el administrador de la plataforma, el de la empresa de prueba o su usuario final.
+ *
+ * @param {string} rol ADMIN_PLATAFORMA, ADMIN_EMPRESA o USUARIO_FINAL
+ * @returns {{ nombre: string, correo: string, contrasena: string }} la persona
+ */
+export function personaDelRol(rol) {
+  const persona = {
+    ADMIN_PLATAFORMA: datos.plataforma, ADMIN_EMPRESA: datos.adminEmpresa, USUARIO_FINAL: datos.usuarioFinal,
+  }[rol];
+  if (!persona) {
+    throw new Error(`El entorno aislado no tiene una persona con el rol ${rol}`);
+  }
+  return persona;
+}
 
 /**
  * El token de una persona, pedido directamente a la API.
@@ -62,6 +81,35 @@ export async function crearUsuario(api, rol = 'USUARIO_FINAL', contrasena = CONT
 export async function desactivarUsuario(api, id) {
   const respuesta = await api.post(`/api/v1/usuarios/${id}/desactivar`, {
     headers: { Authorization: `Bearer ${await tokenDe(api, datos.adminEmpresa)}` },
+  });
+  expect(respuesta.status()).toBe(200);
+}
+
+/**
+ * Registra una empresa nueva por la API, con el administrador de la plataforma: para las pruebas que la
+ * desactivan, la reactivan o restablecen la contraseña de su administrador.
+ *
+ * @param {import('@playwright/test').APIRequestContext} api el cliente de la API de Playwright
+ * @returns {Promise<object>} la empresa, con su id y su primer administrador
+ */
+export async function crearEmpresa(api) {
+  const empresa = empresaNueva(CONTRASENA);
+  const respuesta = await api.post('/api/v1/empresas', {
+    data: empresa, headers: { Authorization: `Bearer ${await tokenDe(api, datos.plataforma)}` },
+  });
+  expect(respuesta.status()).toBe(201);
+  return { ...empresa, id: (await respuesta.json()).id };
+}
+
+/**
+ * Desactiva una empresa por la API, con el administrador de la plataforma.
+ *
+ * @param {import('@playwright/test').APIRequestContext} api el cliente de la API de Playwright
+ * @param {string} id la empresa
+ */
+export async function desactivarEmpresa(api, id) {
+  const respuesta = await api.post(`/api/v1/empresas/${id}/desactivar`, {
+    headers: { Authorization: `Bearer ${await tokenDe(api, datos.plataforma)}` },
   });
   expect(respuesta.status()).toBe(200);
 }
@@ -116,4 +164,35 @@ export async function abrirMenu(page, esCelular) {
   const menu = page.getByRole('navigation', { name: 'Menú principal' });
   await expect(menu).toBeVisible();
   return menu;
+}
+
+/**
+ * Cierra la sesión desde «Mi cuenta» y espera Iniciar sesión, para entrar con otra persona.
+ *
+ * @param {import('@playwright/test').Page} page la página
+ */
+export async function cerrarSesion(page) {
+  await page.getByRole('button', { name: /^Mi cuenta:/ }).click();
+  await page.getByRole('menuitem', { name: 'Cerrar sesión' }).click();
+  await expect(page.getByRole('heading', { name: 'Iniciar sesión' })).toBeVisible();
+}
+
+/**
+ * Un botón de una fila de la lista de una pantalla generada, como «Desactivar Cacao Andino 1a2b3c4d». Las
+ * páginas son de 20 registros: si no está en la que se ve, pasa a la siguiente hasta encontrarlo.
+ *
+ * @param {import('@playwright/test').Page} page la página, con la lista ya cargada
+ * @param {string} nombre el nombre accesible del botón
+ * @returns {Promise<import('@playwright/test').Locator>} el botón
+ */
+export async function botonDeLaFila(page, nombre) {
+  const boton = page.getByRole('button', { name: nombre, exact: true });
+  const siguiente = page.getByRole('button', { name: 'Ir a la página siguiente' });
+  while (!(await boton.isVisible())) {
+    await expect(siguiente, `«${nombre}» no está en ninguna página de la lista`).toBeEnabled();
+    const rango = await page.getByText(/^\d+–\d+ de \d+$/).textContent();
+    await siguiente.click();
+    await expect(page.getByText(rango, { exact: true })).toHaveCount(0);
+  }
+  return boton;
 }

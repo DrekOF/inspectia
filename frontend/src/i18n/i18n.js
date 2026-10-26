@@ -1,16 +1,18 @@
 /*
  * Nombre: i18n.js
  * Descripción: Idiomas de la app con i18next (RP-11): español por defecto e inglés. Junta los textos del
- *              backend (sus .properties) con los propios del frontend, recuerda el idioma elegido y lo pone
- *              en <html lang> para los lectores de pantalla.
+ *              backend (sus .properties), los de las pantallas generadas (pantalla.textos de cada JSON) y los
+ *              propios del frontend, recuerda el idioma elegido y lo pone en <html lang> para los lectores de
+ *              pantalla.
  * Fecha de creación: 20/10/2026
- * Actualización: 20/10/2026
+ * Actualización: 26/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import textosDelBackend from 'virtual:textos-del-backend';
+import textosDePantallas from '../generated/textos.js';
 import en from './en.js';
 import es from './es.js';
 
@@ -53,8 +55,8 @@ export function idiomaDe(codigo) {
 // Los marcadores van entre llaves, como {0} o {max}: los mismos del backend.
 i18n.use(initReactI18next).init({
   resources: {
-    es: { translation: { ...textosDelBackend.es, ...es } },
-    en: { translation: { ...textosDelBackend.en, ...en } },
+    es: { translation: { ...textosDelBackend.es, ...textosDePantallas.es, ...es } },
+    en: { translation: { ...textosDelBackend.en, ...textosDePantallas.en, ...en } },
   },
   lng: idiomaGuardado() ?? 'es',
   fallbackLng: 'es',

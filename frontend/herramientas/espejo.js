@@ -2,11 +2,12 @@
  * Nombre: espejo.js
  * Descripción: Copia en espejo de una carpeta (RP-14): deja la copia igual al original, con lo nuevo y lo
  *              cambiado con sus fechas, y borra de la copia lo que ya no está en el original. El entorno
- *              aislado de las pruebas de punta a punta la usa para compilar su propia copia del backend.
+ *              aislado de las pruebas de punta a punta la usa para compilar su propia copia del backend, que
+ *              lleva también los scripts de infra/bd y nunca infra/.env.
  * Fecha de creación: 20/10/2026
- * Actualización: 20/10/2026
+ * Actualización: 26/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 import { cpSync, existsSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { join } from 'node:path';
@@ -57,4 +58,21 @@ export function espejar(origen, copia, { excluir = [] } = {}) {
     filter: (ruta) => !excluidas.includes(ruta),
   });
   return borradas;
+}
+
+/**
+ * Deja en una carpeta la copia en espejo del backend, sin su target, y la de infra/bd, con los scripts de la base
+ * que algunas pruebas del backend leen desde ../infra/bd. Nunca copia infra/.env, con las contraseñas locales,
+ * ni lo demás de infra; si quedó uno de antes en la carpeta, lo borra.
+ *
+ * @param {string} raiz la raíz del repositorio
+ * @param {string} carpeta dónde quedan las copias: carpeta/backend y carpeta/infra/bd
+ * @returns {{ backend: string[], scripts: string[] }} lo que se borró de cada copia, relativo a ella
+ */
+export function espejarBackend(raiz, carpeta) {
+  rmSync(join(carpeta, 'infra', '.env'), { force: true });
+  return {
+    backend: espejar(join(raiz, 'backend'), join(carpeta, 'backend'), { excluir: ['target'] }),
+    scripts: espejar(join(raiz, 'infra', 'bd'), join(carpeta, 'infra', 'bd'), { excluir: ['.env'] }),
+  };
 }

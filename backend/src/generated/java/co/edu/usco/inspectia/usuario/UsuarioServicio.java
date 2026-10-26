@@ -4,10 +4,10 @@
  *              Archivo generado por generador/ (RP-23): no se edita a mano; se cambia el JSON
  *              o la plantilla, y se regenera.
  * Fecha de creación: 13/10/2026
- * Actualización: 18/10/2026
- * Autor: Equipo InspectIA (generado por generador/ v1.6)
- * Versión: 1.6
- * Entidades: usuario 1.5
+ * Actualización: 26/10/2026
+ * Autor: Equipo InspectIA (generado por generador/ v1.7)
+ * Versión: 1.7
+ * Entidades: usuario 1.6
  */
 package co.edu.usco.inspectia.usuario;
 
@@ -20,6 +20,7 @@ import co.edu.usco.inspectia.comun.seguridad.UsuarioEnSesion;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -72,12 +73,16 @@ public class UsuarioServicio {
      *
      * @param pagina número de la página, desde 0
      * @param tamano filas por página
+     * @param activo solo los activos ({@code true}) o los desactivados ({@code false}); con {@code null}, todos
      * @param sesion el usuario de la sesión: solo se listan los de su empresa
      * @return la página
      */
-    public Pagina<UsuarioRespuesta> listar(int pagina, int tamano, UsuarioEnSesion sesion) {
-        return Pagina.de(repositorio.findAllByEmpresaId(sesion.empresaId(), PageRequest.of(pagina, tamano, ORDEN)),
-                UsuarioMapeador::respuesta);
+    public Pagina<UsuarioRespuesta> listar(int pagina, int tamano, Boolean activo, UsuarioEnSesion sesion) {
+        PageRequest pedido = PageRequest.of(pagina, tamano, ORDEN);
+        Page<Usuario> registros = activo == null
+                ? repositorio.findAllByEmpresaId(sesion.empresaId(), pedido)
+                : repositorio.findAllByEmpresaIdAndActivo(sesion.empresaId(), activo, pedido);
+        return Pagina.de(registros, UsuarioMapeador::respuesta);
     }
 
     /**

@@ -2,11 +2,12 @@
   Nombre: servicio.java.j2
   Descripción: Plantilla del servicio de la API de una entidad: valida, guarda y responde (RP-23). En
                una entidad por empresa, cada consulta se limita a la empresa de la sesión (RNF-03). Los
-               efectos de las reglas cambian el registro antes de escribirlo en la base.
+               efectos de las reglas cambian el registro antes de escribirlo en la base. Si la entidad
+               se desactiva, el listado se filtra por activo (D-33).
   Fecha de creación: 13/10/2026
-  Actualización: 18/10/2026
+  Actualización: 26/10/2026
   Autor: Equipo InspectIA
-  Versión: 1.3
+  Versión: 1.4
 #}
 {% from 'java/_macros.j2' import encabezado %}
 {% set con_unicos_al_crear = consultas or (crear_con and crear_con.consultas) %}
@@ -70,11 +71,29 @@ public class {{ clase }}Servicio {
      *
      * @param pagina número de la página, desde 0
      * @param tamano filas por página
+{% if activo %}
+     * @param activo solo los activos ({@code true}) o los desactivados ({@code false}); con {@code null}, todos
+{% endif %}
 {% if con_empresa %}
      * @param sesion el usuario de la sesión: solo se listan los de su empresa
 {% endif %}
      * @return la página
      */
+{% if activo %}
+    public Pagina<{{ clase }}Respuesta> listar(int pagina, int tamano, Boolean activo{{ sesion_param }}) {
+        PageRequest pedido = PageRequest.of(pagina, tamano, ORDEN);
+{% if con_empresa %}
+        Page<{{ clase }}> registros = activo == null
+                ? repositorio.findAllByEmpresaId(sesion.empresaId(), pedido)
+                : repositorio.{{ activo.consulta }}(sesion.empresaId(), activo, pedido);
+{% else %}
+        Page<{{ clase }}> registros = activo == null
+                ? repositorio.findAll(pedido)
+                : repositorio.{{ activo.consulta }}(activo, pedido);
+{% endif %}
+        return Pagina.de(registros, {{ clase }}Mapeador::respuesta);
+    }
+{% else %}
     public Pagina<{{ clase }}Respuesta> listar(int pagina, int tamano{{ sesion_param }}) {
 {% if con_empresa %}
         return Pagina.de(repositorio.findAllByEmpresaId(sesion.empresaId(), PageRequest.of(pagina, tamano, ORDEN)),
@@ -83,6 +102,7 @@ public class {{ clase }}Servicio {
         return Pagina.de(repositorio.findAll(PageRequest.of(pagina, tamano, ORDEN)), {{ clase }}Mapeador::respuesta);
 {% endif %}
     }
+{% endif %}
 {% endif %}
 {% if 'ver' in operaciones %}
 

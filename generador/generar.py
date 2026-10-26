@@ -1,9 +1,9 @@
 # Nombre: generar.py
 # Descripción: Línea de comandos del generador de InspectIA: validar, generar y comprobar (RP-23).
 # Fecha de creación: 13/10/2026
-# Actualización: 13/10/2026
+# Actualización: 26/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.1
+# Versión: 1.2
 """Línea de comandos del generador de InspectIA (RP-23).
 
 Uso, desde la raíz del repositorio (en Linux o macOS, ``generador/.venv/bin/python``)::
@@ -23,7 +23,8 @@ from pathlib import Path
 RAIZ = Path(__file__).resolve().parent.parent
 
 try:
-    from inspectia_generador.carga import cargar_alcance, cargar_codigos, cargar_entidades, revisar_alcance
+    from inspectia_generador.carga import (cargar_alcance, cargar_codigos, cargar_entidades, cargar_pantallas,
+                                           revisar_alcance)
     from inspectia_generador.generacion import generar_archivos
     from inspectia_generador.salida import comprobar, escribir
     from inspectia_generador.sql import ErrorGeneracion
@@ -41,25 +42,27 @@ def main(argumentos=None):
     parser.add_argument('--entidades', type=Path, nargs='+', default=[RAIZ / 'specs' / 'entidades'],
                         help='carpetas o archivos JSON de entidades (por defecto, specs/entidades)')
     parser.add_argument('--alcance', type=Path, default=RAIZ / 'generador' / 'alcance.json',
-                        help='entidades a las que se genera la API (por defecto, generador/alcance.json)')
+                        help='entidades con API y con pantalla (por defecto, generador/alcance.json)')
     parser.add_argument('--raiz', type=Path, default=RAIZ,
                         help='dónde se escribe o se comprueba lo generado (por defecto, el repositorio)')
     args = parser.parse_args(argumentos)
 
     entidades = cargar_entidades(*args.entidades)
     api = cargar_alcance(args.alcance)
-    errores = validar(entidades, cargar_codigos(RAIZ / 'specs')) + revisar_alcance(api, entidades)
+    pantallas = cargar_pantallas(args.alcance)
+    errores = validar(entidades, cargar_codigos(RAIZ / 'specs')) + revisar_alcance(api, entidades, pantallas)
     if errores:
         print(f'{len(errores)} errores en las entidades:')
         for error in errores:
             print(f'  - {error}')
         return 1
     if args.comando == 'validar':
-        print(f'{len(entidades)} entidades válidas: {", ".join(entidades)}. Con API: {", ".join(api) or "ninguna"}.')
+        print(f'{len(entidades)} entidades válidas: {", ".join(entidades)}. Con API: {", ".join(api) or "ninguna"}. '
+              f'Con pantalla: {", ".join(pantallas) or "ninguna"}.')
         return 0
 
     try:
-        archivos = generar_archivos(entidades, api)
+        archivos = generar_archivos(entidades, api, pantallas)
     except ErrorGeneracion as error:
         print(error)
         return 1

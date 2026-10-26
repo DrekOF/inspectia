@@ -1,0 +1,150 @@
+{#
+  Nombre: esquemas.test.js.j2
+  Descripción: Plantilla de la prueba generada de las validaciones de Yup de una entidad con pantalla: los
+               mismos casos de límite que la prueba generada de la API, con el mismo mensaje en español, y
+               los valores del borde que acepta (RP-12, RP-13, RP-23).
+  Fecha de creación: 26/10/2026
+  Actualización: 26/10/2026
+  Autor: Equipo InspectIA
+  Versión: 1.0
+#}
+{% from 'frontend/_macros.j2' import encabezado %}
+{% macro lista_de_casos(nombre, descripcion, casos) %}
+
+/** {{ descripcion }} */
+const {{ nombre }} = [
+{% for caso in casos %}
+  [{{ caso | join(', ') }}],
+{% endfor %}
+];
+{% endmacro %}
+{% set esquemas = (['esquemaParaCrear'] if crear else []) + (['esquemaParaEditar'] if editar else []) %}
+{{ encabezado(header) }}
+import { describe, expect, it } from 'vitest';
+import i18n from '../../i18n/i18n.js';
+import { {{ esquemas | join(', ') }} } from './{{ var }}Esquemas.js';
+{% if crear %}
+
+/** Datos válidos para registrar: los ejemplos del JSON, los mismos de la prueba generada de la API. */
+const DATOS_PARA_CREAR = {{ datos_al_crear }};
+{% endif %}
+{% if editar %}
+
+/** Datos válidos para editar: los ejemplos del JSON. */
+const DATOS_PARA_EDITAR = {{ datos_al_editar }};
+{% endif %}
+{% if casos_al_crear %}
+{{ lista_de_casos('CASOS_AL_CREAR', 'Lo que rechaza cada validación del JSON al registrar, con el mensaje en español de la API. El formato del correo no está: lo valida solo el backend.', casos_al_crear) -}}
+{% endif %}
+{% if bordes_al_crear %}
+{{ lista_de_casos('BORDES_AL_CREAR', 'Los valores del borde que acepta cada validación del JSON al registrar, como la API.', bordes_al_crear) -}}
+{% endif %}
+{% if casos_al_editar %}
+{{ lista_de_casos('CASOS_AL_EDITAR', 'Lo que rechaza cada validación del JSON al editar, con el mensaje en español de la API.', casos_al_editar) -}}
+{% endif %}
+{% if bordes_al_editar %}
+{{ lista_de_casos('BORDES_AL_EDITAR', 'Los valores del borde que acepta cada validación del JSON al editar, como la API.', bordes_al_editar) -}}
+{% endif %}
+{% if usa_correo_largo %}
+
+/**
+ * Un correo válido de un largo dado: 64 letras antes de la arroba y partes del dominio de hasta 63, como en la
+ * prueba generada de la API.
+ *
+ * @param {number} largo los caracteres del correo
+ * @returns {string} el correo
+ */
+function correoDeLargo(largo) {
+  const local = 'a'.repeat(64);
+  let dominio = 'co';
+  while (local.length + 1 + dominio.length < largo) {
+    const falta = largo - local.length - 1 - dominio.length - 1;
+    dominio = `${'b'.repeat(Math.max(1, Math.min(63, falta)))}.${dominio}`;
+  }
+  return `${local}@${dominio}`;
+}
+{% endif %}
+
+/**
+ * Los datos con un campo cambiado: administrador.correo cambia el correo dentro de administrador.
+ *
+ * @param {object} datos los datos del formulario
+ * @param {string} campo el campo, con los nombres de la API
+ * @param {string|number} valor el valor nuevo
+ * @returns {object} una copia de los datos con el campo cambiado
+ */
+function conValor(datos, campo, valor) {
+  const copia = structuredClone(datos);
+  const partes = campo.split('.');
+  const ultimo = partes.pop();
+  partes.reduce((objeto, parte) => objeto[parte], copia)[ultimo] = valor;
+  return copia;
+}
+
+/**
+ * El primer error de un campo, o null si cumple sus validaciones.
+ *
+ * @param {import('yup').ObjectSchema} esquema el esquema del formulario
+ * @param {string} campo el campo
+ * @param {object} datos todos los datos del formulario
+ * @returns {Promise<string|null>} el mensaje
+ */
+async function errorDe(esquema, campo, datos) {
+  try {
+    await esquema.validateAt(campo, datos);
+    return null;
+  } catch (error) {
+    return error.message;
+  }
+}
+
+describe('validaciones del formulario de {{ entidad }} (generadas)', () => {
+  it('{{ ficha }} · los ejemplos del JSON de {{ entidad }} cumplen las validaciones del formulario', async () => {
+{% if crear %}
+    expect(await esquemaParaCrear(i18n.t).isValid(DATOS_PARA_CREAR)).toBe(true);
+{% endif %}
+{% if editar %}
+    expect(await esquemaParaEditar(i18n.t).isValid(DATOS_PARA_EDITAR)).toBe(true);
+{% endif %}
+  });
+{% if casos_al_crear %}
+
+  it.each(CASOS_AL_CREAR)('{{ ficha }} · cada validación del JSON de {{ entidad }} rechaza al registrar lo mismo que la API, con su mensaje: %s',
+    async (campo, valor, mensaje) => {
+      expect(await errorDe(esquemaParaCrear(i18n.t), campo, conValor(DATOS_PARA_CREAR, campo, valor))).toBe(mensaje);
+    });
+{% endif %}
+{% if bordes_al_crear %}
+
+  it.each(BORDES_AL_CREAR)('{{ ficha }} · cada validación del JSON de {{ entidad }} acepta al registrar su valor del borde, como la API: %s',
+    async (campo, valor) => {
+      expect(await errorDe(esquemaParaCrear(i18n.t), campo, conValor(DATOS_PARA_CREAR, campo, valor))).toBeNull();
+    });
+{% endif %}
+{% if casos_al_editar %}
+
+  it.each(CASOS_AL_EDITAR)('{{ ficha }} · cada validación del JSON de {{ entidad }} rechaza al editar lo mismo que la API, con su mensaje: %s',
+    async (campo, valor, mensaje) => {
+      expect(await errorDe(esquemaParaEditar(i18n.t), campo, conValor(DATOS_PARA_EDITAR, campo, valor))).toBe(mensaje);
+    });
+{% endif %}
+{% if bordes_al_editar %}
+
+  it.each(BORDES_AL_EDITAR)('{{ ficha }} · cada validación del JSON de {{ entidad }} acepta al editar su valor del borde, como la API: %s',
+    async (campo, valor) => {
+      expect(await errorDe(esquemaParaEditar(i18n.t), campo, conValor(DATOS_PARA_EDITAR, campo, valor))).toBeNull();
+    });
+{% endif %}
+{% if prueba.obligatorio %}
+
+  it('{{ ficha }} · los mensajes de las validaciones de {{ entidad }} salen en el idioma de la app', async () => {
+    await i18n.changeLanguage('en');
+    try {
+      expect(await errorDe(esquemaParaCrear(i18n.t), '{{ prueba.obligatorio }}',
+        conValor(DATOS_PARA_CREAR, '{{ prueba.obligatorio }}', ''))).toBe('This field is required.');
+    } finally {
+      await i18n.changeLanguage('es');
+    }
+  });
+{% endif %}
+});

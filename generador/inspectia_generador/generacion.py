@@ -1,9 +1,9 @@
 # Nombre: generacion.py
 # Descripción: Arma la lista de archivos generados aplicando las plantillas a las entidades.
 # Fecha de creación: 13/10/2026
-# Actualización: 13/10/2026
+# Actualización: 26/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.1
+# Versión: 1.2
 """Generación: aplica las plantillas de ``generador/plantillas`` a las entidades.
 
 Genera:
@@ -12,6 +12,8 @@ Genera:
 - Los textos en español e inglés de todas las entidades (``i18n/generado*.properties``).
 - La persistencia de cada entidad con CRUD.
 - La API y sus pruebas, solo para las entidades del alcance (``alcance.json``).
+- Las pantallas del frontend y sus pruebas, solo para las entidades de ``pantallas`` en ``alcance.json``, y las
+  listas de pantallas y de sus textos, que la app lee siempre.
 
 No escribe nada: devuelve la lista de archivos, que luego se escriben o se comprueban
 (``salida.py``). La salida no depende de la fecha ni del equipo: las fechas de los headers salen
@@ -22,9 +24,9 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
-from inspectia_generador import VERSION, java
+from inspectia_generador import VERSION, frontend, java
 from inspectia_generador.encabezado import datos_header
-from inspectia_generador.nombres import envolver, texto_java, valor_properties
+from inspectia_generador.nombres import envolver, texto_java, texto_js, valor_properties
 from inspectia_generador.salida import Archivo
 from inspectia_generador.sql import construir_tablas
 from inspectia_generador.textos import textos
@@ -40,16 +42,18 @@ def _entorno():
                           autoescape=False)
     entorno.filters['envolver'] = envolver
     entorno.filters['java'] = texto_java
+    entorno.filters['js'] = texto_js
     entorno.filters['properties'] = valor_properties
     return entorno
 
 
-def generar_archivos(entidades, api=()):
+def generar_archivos(entidades, api=(), pantallas=()):
     """Genera los archivos de las entidades (ya validadas).
 
     Args:
         entidades: ``{nombre: JSON}``.
         api: entidades a las que se genera la API (``alcance.json``).
+        pantallas: entidades a las que se genera la pantalla del frontend (``alcance.json``); necesitan su API.
 
     Returns:
         list: ``Archivo`` en orden por ruta.
@@ -74,6 +78,7 @@ def generar_archivos(entidades, api=()):
             archivos += _aplicar(entorno, java.archivos_persistencia(entidades, entidad))
     for nombre in api:
         archivos += _aplicar(entorno, java.archivos_api(entidades, entidades[nombre]))
+    archivos += _aplicar(entorno, frontend.archivos_frontend(entidades, pantallas))
     return sorted(archivos, key=lambda a: a.ruta)
 
 

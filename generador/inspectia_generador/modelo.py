@@ -1,9 +1,9 @@
 # Nombre: modelo.py
 # Descripción: Consultas sobre las entidades cargadas que comparten la validación y la generación.
 # Fecha de creación: 13/10/2026
-# Actualización: 20/10/2026
+# Actualización: 26/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.1
+# Versión: 1.2
 """Consultas sobre las entidades ya cargadas (los JSON como diccionarios).
 
 Las usan la validación y la generación, para que las dos lean el formato de la misma manera
@@ -15,6 +15,43 @@ COLUMNAS_IMPLICITAS = ('id', 'fecha_creacion', 'fecha_actualizacion')
 
 #: Columna que agrega el generador a las tablas de cada empresa (RNF-03).
 EMPRESA_ID = 'empresa_id'
+
+#: Las claves de ``pantalla``: el ícono del menú, el atributo que va debajo del nombre en la lista y los textos.
+CLAVES_DE_PANTALLA = ('icono', 'debajo_del_nombre', 'textos')
+
+#: En un texto de una fila, cada ``{atributo}`` de la lista toma el valor de esa fila, como «Editar {nombre}».
+FILA = 'fila'
+
+#: Los textos de ``pantalla.textos``: si se cuentan, y entonces van en singular y en plural, y qué marcadores
+#: pueden usar. Cuáles son obligatorios lo dicen las operaciones de la entidad (``frontend.py``).
+TEXTOS_DE_PANTALLA = {
+    'descripcion': (False, ()),
+    'resumen': (False, ('total', 'activos', 'inactivos')),
+    'resumen_total': (True, ('cantidad',)),
+    'resumen_activos': (True, ('cantidad',)),
+    'resumen_inactivos': (True, ('cantidad',)),
+    'vacia': (False, ()),
+    'nuevo': (False, ()),
+    'crear': (False, ()),
+    'titulo_editar': (False, ()),
+    'nota_formulario': (False, ()),
+    'contrasena_al_crear': (False, ()),
+    'ayuda_contrasena_al_crear': (False, ()),
+    'titulo_lista': (False, ()),
+    'columna_nombre': (False, ()),
+    'debajo_del_nombre': (False, FILA),
+    'activo': (False, ()),
+    'inactivo': (False, ()),
+    'editar_fila': (False, FILA),
+    'desactivar_fila': (False, FILA),
+    'reactivar_fila': (False, FILA),
+    'confirmar_desactivar': (False, FILA),
+    'confirmar_desactivar_detalle': (False, FILA),
+    'al_guardar': (False, FILA),
+    'al_desactivar': (False, FILA),
+    'al_reactivar': (False, FILA),
+    'nota_lista': (False, ()),
+}
 
 
 def tiene_empresa(entidad):

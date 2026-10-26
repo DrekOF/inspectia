@@ -2,10 +2,10 @@
 -- Descripción: Crea las tablas de InspectIA desde specs/entidades (RP-15). Archivo generado por
 --              generador/ (RP-23): no se edita a mano; se cambia el JSON o la plantilla y se regenera.
 -- Fecha de creación: 13/10/2026
--- Actualización: 20/10/2026
--- Autor: Equipo InspectIA (generado por generador/ v1.6)
--- Versión: 1.6
--- Entidades: empresa 1.2, foto 1.0, grano 1.0, lote 1.0, modelo 1.0, muestra 1.0, rango_recomendacion 1.2, usuario 1.5
+-- Actualización: 26/10/2026
+-- Autor: Equipo InspectIA (generado por generador/ v1.7)
+-- Versión: 1.7
+-- Entidades: empresa 1.3, foto 1.0, grano 1.0, lote 1.0, modelo 1.0, muestra 1.0, rango_recomendacion 1.2, usuario 1.6
 
 -- Mantiene fecha_actualizacion en cada cambio, también cuando lo hace un script.
 CREATE FUNCTION actualizar_fecha_actualizacion() RETURNS trigger

@@ -1,9 +1,9 @@
 # Nombre: test_validacion.py
 # Descripción: Pruebas de la validación de specs/entidades/*.json.
 # Fecha de creación: 13/10/2026
-# Actualización: 19/10/2026
+# Actualización: 26/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.2
+# Versión: 1.3
 """Pruebas de la validación de los JSON de entidades contra su formato y contra specs/."""
 
 import pytest
@@ -115,3 +115,40 @@ def test_mensaje_de_solo_lectura(entidades, codigos):
 
     assert errores == ['rango_recomendacion.recomendacion: mensaje para algo que el atributo no tiene '
                        '(solo_lectura_si)']
+
+
+@pytest.mark.caso('RP-23 · la validación revisa la clave pantalla: claves conocidas, textos en español y en inglés, singular y plural donde se cuenta, y marcadores que existen')
+def test_valida_la_pantalla(entidades, codigos):
+    pantalla = entidades['empresa']['pantalla']
+    textos = pantalla['textos']
+    textos['nuevo'] = {'es': 'Nueva empresa'}
+    textos['titulo_raro'] = {'es': 'Raro', 'en': 'Odd'}
+    textos['editar_fila'] = {'es': 'Editar {nombr}', 'en': 'Edit {nombre}'}
+    textos['resumen'] = {'es': '{todas}.', 'en': '{total}.'}
+    textos['resumen_total'] = {'es': '{cantidad} empresas', 'en': '{cantidad} companies'}
+    pantalla['debajo_del_nombre'] = 'contrasena'
+    pantalla['color'] = 'rojo'
+    entidades['lote']['pantalla'] = {'textos': {}}
+
+    errores = validar(entidades, codigos)
+
+    for error in ('empresa.pantalla.textos.nuevo: necesita textos en es y en',
+                  'empresa.pantalla.textos: texto desconocido titulo_raro',
+                  'empresa.pantalla.textos.editar_fila: usa {nombr}, que no existe en este texto',
+                  'empresa.pantalla.textos.resumen: usa {todas}, que no existe en este texto',
+                  'empresa.pantalla.textos.resumen_total: necesita singular y plural en es y en',
+                  'empresa.pantalla: debajo_del_nombre debe ser un atributo de la lista',
+                  'empresa.pantalla: clave desconocida color',
+                  'lote: pantalla va solo en entidades con CRUD'):
+        assert error in errores
+
+
+@pytest.mark.caso('RP-23 · un patron va anclado con ^ y $ y sin lo que Java, PostgreSQL y JavaScript leen distinto, así los tres validan igual')
+def test_patron_que_todos_leen_igual(entidades, codigos):
+    atributo(entidades['empresa'], 'nit')['validaciones']['patron'] = '[0-9]{6,10}-[0-9]'
+    atributo(entidades['empresa'], 'ciudad')['validaciones']['patron'] = '^[A-Za-z]++$'
+
+    errores = validar(entidades, codigos)
+
+    assert 'empresa.nit: el patron va anclado: empieza con ^ y termina con $' in errores
+    assert 'empresa.ciudad: el patron usa ++, que Java, PostgreSQL y JavaScript no leen igual' in errores

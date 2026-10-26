@@ -2,9 +2,9 @@
 Nombre: CLAUDE.md
 Descripción: Instrucciones del proyecto InspectIA para Claude Code. Se lee al inicio de cada sesión.
 Fecha de creación: 12/10/2026
-Actualización: 20/10/2026
+Actualización: 26/10/2026
 Autor: Equipo InspectIA
-Versión: 1.11
+Versión: 1.12
 -->
 
 # InspectIA
@@ -49,6 +49,7 @@ App web multiempresa que estima el % de granos de cacao sanos de un lote a parti
 
 - Los CRUD (tablas, backend y pantallas) no se escriben a mano: salen de `generador/` a partir de `specs/entidades/*.json`.
 - Para cambiar un CRUD, cambia el JSON o la plantilla y vuelve a generar. Nunca edites a mano el código generado.
+- Lo que el JSON no puede declarar de una pantalla generada va a mano en `frontend/src/extensiones.js`, como el panel de administradores de una empresa. Lo generado no importa código escrito a mano.
 - La meta es poder cambiar de temática (otro producto en lugar de cacao) cambiando solo los JSON.
 
 ## Reglas del docente para todo el código
@@ -101,4 +102,5 @@ Desde la raíz del repositorio. Las versiones y cómo instalarlas están en `REA
   - Pruebas unitarias y de componentes: `npm test` (API simulada con MSW, sin backend). ESLint: `npm run lint`. Mutación: `npm run test:mutacion`.
   - De punta a punta: `npm run e2e:playwright` y `npm run e2e:selenium`, con Docker Desktop abierto; la primera vez, `npx playwright install chromium firefox webkit`. Cada corrida enciende su entorno aislado (base en el proyecto `inspectia-e2e`, backend compilado en una copia y la página compilada, sin `infra/.env`) y lo borra al terminar. `npm run e2e:entorno` lo deja encendido; con `INSPECTIA_E2E_URL` y la dirección que muestra, las pruebas lo usan.
   - En Windows 11 25H2 el Firefox de Playwright no abre: `INSPECTIA_E2E_SIN_FIREFOX=1` lo salta (en PowerShell, `$env:INSPECTIA_E2E_SIN_FIREFOX = '1'`).
+  - Si una prueba de Selenium falla, su captura y la consola del navegador quedan en `frontend/reports/selenium/`.
 - Servicio de IA: se agrega aquí cuando se cree el proyecto.
