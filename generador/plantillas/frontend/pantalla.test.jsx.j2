@@ -75,7 +75,7 @@ describe('pantalla de {{ entidad }} (generada)', () => {
 
 {{ llenar_y_registrar() | trim('\n') }}
 
-    expect(await screen.findByText({{ ('Se guardó ' ~ p.nombre ~ '.') | js }})).toBeInTheDocument();
+    expect(await screen.findByText({{ p.al_guardar | js }})).toBeInTheDocument();
     expect(simulada.peticiones).toContainEqual({ metodo: 'POST', ruta: API, cuerpo: {{ p.cuerpo_al_crear }} });
   });
 {% endif %}
@@ -134,7 +134,7 @@ describe('pantalla de {{ entidad }} (generada)', () => {
     await usuario.type(campo, {{ p.valor_editado | js }});
     await usuario.click(screen.getByRole('button', { name: 'Guardar cambios' }));
 
-    expect(await screen.findByText({{ ('Se guardó ' ~ p.nombre_al_editar ~ '.') | js }})).toBeInTheDocument();
+    expect(await screen.findByText({{ p.al_guardar_lo_editado | js }})).toBeInTheDocument();
     expect(simulada.peticiones).toContainEqual({
       metodo: 'PUT', ruta: `${API}/${REGISTRO.id}`, cuerpo: {{ p.cuerpo_al_editar }},
     });
@@ -153,10 +153,10 @@ describe('pantalla de {{ entidad }} (generada)', () => {
     expect(within(dialogo).getByText({{ p.confirmar_detalle | js }})).toBeInTheDocument();
     await usuario.click(within(dialogo).getByRole('button', { name: 'Desactivar' }));
 {% endif %}
-    expect(await screen.findByText({{ ('Se desactivó ' ~ p.nombre ~ '.') | js }})).toBeInTheDocument();
+    expect(await screen.findByText({{ p.al_desactivar | js }})).toBeInTheDocument();
 
     await usuario.click(await screen.findByRole('button', { name: {{ p.reactivar_fila | js }} }));
-    expect(await screen.findByText({{ ('Se reactivó ' ~ p.nombre_otro ~ '.') | js }})).toBeInTheDocument();
+    expect(await screen.findByText({{ p.al_reactivar | js }})).toBeInTheDocument();
     expect(simulada.peticiones.filter(({ metodo }) => metodo === 'POST').map(({ ruta }) => ruta)).toEqual([
       `${API}/${REGISTRO.id}/desactivar`, `${API}/${OTRO_REGISTRO.id}/reactivar`,
     ]);

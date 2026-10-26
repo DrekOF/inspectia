@@ -156,6 +156,9 @@
         "es": "Sus usuarios no podrán iniciar sesión hasta que la reactives. No se borra ningún dato.",
         "en": "Its users won't be able to sign in until you reactivate it. No data is deleted."
       },
+      "al_guardar": { "es": "Se guardó {nombre}.", "en": "{nombre} was saved." },
+      "al_desactivar": { "es": "Se desactivó {nombre}.", "en": "{nombre} was deactivated." },
+      "al_reactivar": { "es": "Se reactivó {nombre}.", "en": "{nombre} was reactivated." },
       "nota_lista": {
         "es": "Desactivar una empresa no borra nada: sus usuarios no pueden iniciar sesión hasta que la reactives, y sus lotes y resultados se conservan.",
         "en": "Deactivating a company deletes nothing: its users can't sign in until you reactivate it, and its lots and results are kept."

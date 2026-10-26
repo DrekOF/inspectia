@@ -42,6 +42,9 @@ export default {
     'empresa.pantalla.reactivar_fila': 'Reactivar {nombre}',
     'empresa.pantalla.confirmar_desactivar': '¿Desactivar {nombre}?',
     'empresa.pantalla.confirmar_desactivar_detalle': 'Sus usuarios no podrán iniciar sesión hasta que la reactives. No se borra ningún dato.',
+    'empresa.pantalla.al_guardar': 'Se guardó {nombre}.',
+    'empresa.pantalla.al_desactivar': 'Se desactivó {nombre}.',
+    'empresa.pantalla.al_reactivar': 'Se reactivó {nombre}.',
     'empresa.pantalla.nota_lista': 'Desactivar una empresa no borra nada: sus usuarios no pueden iniciar sesión hasta que la reactives, y sus lotes y resultados se conservan.',
   },
   en: {
@@ -69,6 +72,9 @@ export default {
     'empresa.pantalla.reactivar_fila': 'Reactivate {nombre}',
     'empresa.pantalla.confirmar_desactivar': 'Deactivate {nombre}?',
     'empresa.pantalla.confirmar_desactivar_detalle': 'Its users won\'t be able to sign in until you reactivate it. No data is deleted.',
+    'empresa.pantalla.al_guardar': '{nombre} was saved.',
+    'empresa.pantalla.al_desactivar': '{nombre} was deactivated.',
+    'empresa.pantalla.al_reactivar': '{nombre} was reactivated.',
     'empresa.pantalla.nota_lista': 'Deactivating a company deletes nothing: its users can\'t sign in until you reactivate it, and its lots and results are kept.',
   },
 };

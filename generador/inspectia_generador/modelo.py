@@ -47,6 +47,9 @@ TEXTOS_DE_PANTALLA = {
     'reactivar_fila': (False, FILA),
     'confirmar_desactivar': (False, FILA),
     'confirmar_desactivar_detalle': (False, FILA),
+    'al_guardar': (False, FILA),
+    'al_desactivar': (False, FILA),
+    'al_reactivar': (False, FILA),
     'nota_lista': (False, ()),
 }
 

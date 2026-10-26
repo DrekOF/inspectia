@@ -230,6 +230,25 @@ def test_confirmar_desactivar(entidades):
     assert 'confirmarDesactivar: null' in compacto(generar(entidades)[f'{FRONTEND}/empresa/EmpresaPantalla.jsx'])
 
 
+@pytest.mark.caso('RP-23 · los mensajes de resultado salen de pantalla.textos con el valor de la fila, como «Se guardó {nombre}.», y la prueba generada los toma del JSON')
+def test_mensajes_de_resultado(entidades):
+    archivos = generar(entidades)
+
+    pantalla = compacto(archivos[f'{FRONTEND}/empresa/EmpresaPantalla.jsx'])
+    for js, clave in (('alGuardar', 'al_guardar'), ('alDesactivar', 'al_desactivar'), ('alReactivar', 'al_reactivar')):
+        assert f"{js}: 'empresa.pantalla.{clave}'" in pantalla
+    espanol = archivos[f'{FRONTEND}/textos.js'].split('  en: {')[0]
+    assert "'empresa.pantalla.al_desactivar': 'Se desactivó {nombre}.'," in espanol
+    assert "screen.findByText('Se desactivó Cacaos del Huila.')" in archivos[f'{FRONTEND}/empresa/EmpresaPantalla.test.jsx']
+
+    # Como lo necesitará usuario: «Se desactivó Ana Pérez.» se leería como si ella misma se hubiera desactivado.
+    entidades['empresa']['pantalla']['textos']['al_desactivar'] = {'es': 'Se desactivó a {nombre}.',
+                                                                    'en': '{nombre} was deactivated.'}
+
+    prueba = generar(entidades)[f'{FRONTEND}/empresa/EmpresaPantalla.test.jsx']
+    assert "screen.findByText('Se desactivó a Cacaos del Huila.')" in prueba
+
+
 @pytest.mark.caso('RP-23 · el generador se detiene con una pantalla que todavía no sabe generar o a la que le faltan textos, y dice qué falta')
 def test_pantalla_que_no_sabe_generar(entidades):
     with pytest.raises(ErrorGeneracion) as error:
@@ -239,7 +258,7 @@ def test_pantalla_que_no_sabe_generar(entidades):
     assert 'edicion_en_bloque' in str(error.value)
 
     textos = entidades['empresa']['pantalla']['textos']
-    del textos['nuevo'], textos['activo']
+    del textos['nuevo'], textos['activo'], textos['al_guardar']
     entidades['empresa']['atributos'].append({
         'nombre': 'empleados', 'tipo': 'entero', 'obligatorio': False, 'en_lista': False, 'en_formulario': True,
         'etiquetas': {'es': 'Empleados', 'en': 'Employees'}, 'fichas': ['RF-02']})
@@ -247,7 +266,8 @@ def test_pantalla_que_no_sabe_generar(entidades):
     with pytest.raises(ErrorGeneracion) as error:
         generar(entidades)
 
-    for falta in ('pantalla.textos.nuevo', 'pantalla.textos.activo', 'empleados, de tipo entero, en el formulario'):
+    for falta in ('pantalla.textos.nuevo', 'pantalla.textos.activo', 'pantalla.textos.al_guardar',
+                  'empleados, de tipo entero, en el formulario'):
         assert falta in str(error.value)
 
 

@@ -87,7 +87,8 @@
       "crear": { "es": "Crear producto", "en": "Create product" },
       "titulo_editar": { "es": "Editar producto", "en": "Edit product" },
       "titulo_lista": { "es": "Productos registrados", "en": "Registered products" },
-      "editar_fila": { "es": "Editar {nombre}", "en": "Edit {nombre}" }
+      "editar_fila": { "es": "Editar {nombre}", "en": "Edit {nombre}" },
+      "al_guardar": { "es": "Se guardó {nombre}.", "en": "{nombre} was saved." }
     }
   }
 }

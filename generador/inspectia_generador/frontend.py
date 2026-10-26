@@ -42,7 +42,8 @@ TEXTOS_JS = (('descripcion', 'descripcion'), ('vacia', 'vacia'), ('nuevo', 'nuev
              ('tituloEditar', 'titulo_editar'), ('notaFormulario', 'nota_formulario'),
              ('tituloLista', 'titulo_lista'), ('activo', 'activo'), ('inactivo', 'inactivo'),
              ('editarFila', 'editar_fila'), ('desactivarFila', 'desactivar_fila'),
-             ('reactivarFila', 'reactivar_fila'), ('notaLista', 'nota_lista'))
+             ('reactivarFila', 'reactivar_fila'), ('alGuardar', 'al_guardar'), ('alDesactivar', 'al_desactivar'),
+             ('alReactivar', 'al_reactivar'), ('notaLista', 'nota_lista'))
 #: Identificadores de los dos registros de las pruebas generadas, como los UUID v7 de la API.
 IDS_DE_PRUEBA = ('0199e2a0-0000-7000-8000-0000000000a1', '0199e2a0-0000-7000-8000-0000000000a2')
 
@@ -117,10 +118,12 @@ def textos_obligatorios(e):
         pedidos += [('nuevo', 'crear'), ('crear', 'crear')]
     if 'editar' in operaciones:
         pedidos += [('titulo_editar', 'editar'), ('editar_fila', 'editar')]
+    if 'crear' in operaciones or 'editar' in operaciones:
+        pedidos.append(('al_guardar', 'crear o editar'))
     if 'desactivar' in operaciones:
-        pedidos.append(('desactivar_fila', 'desactivar'))
+        pedidos += [('desactivar_fila', 'desactivar'), ('al_desactivar', 'desactivar')]
     if 'reactivar' in operaciones:
-        pedidos.append(('reactivar_fila', 'reactivar'))
+        pedidos += [('reactivar_fila', 'reactivar'), ('al_reactivar', 'reactivar')]
     if 'atributo_activo' in e:
         pedidos += [('activo', 'atributo_activo'), ('inactivo', 'atributo_activo')]
     if any(clave.startswith('resumen') for clave in textos):
@@ -418,8 +421,11 @@ def modelo_pantalla(entidades, e):
         'rol': rol,
         'roles_sin_permiso': [r for r in roles if r not in operaciones['listar']],
         'pasos_al_crear': pasos_al_crear,
-        'nombre_al_editar': (otro[atributo_del_nombre] if editable and editable['clave'] == atributo_del_nombre
-                             else registro[atributo_del_nombre]),
+        'al_guardar': _con_valores(textos['al_guardar']['es'], registro) if 'al_guardar' in textos else None,
+        'al_guardar_lo_editado': (_con_valores(textos['al_guardar']['es'], dict(registro, **cuerpo_al_editar))
+                                  if 'al_guardar' in textos else None),
+        'al_desactivar': _con_valores(textos['al_desactivar']['es'], registro) if 'al_desactivar' in textos else None,
+        'al_reactivar': _con_valores(textos['al_reactivar']['es'], otro) if 'al_reactivar' in textos else None,
         'obligatorio': next((c['campo'] for c in crear if any(l.startswith(".test('obligatorio'") for l in c['yup'])),
                             None),
         'registro': literal_js(registro), 'otro_registro': literal_js(otro),
