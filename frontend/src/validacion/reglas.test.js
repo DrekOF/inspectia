@@ -19,6 +19,10 @@ describe('recortar', () => {
     ['espacios de adentro', ' San Vicente de Chucurí ', 'San Vicente de Chucurí'],
     ['espacio duro', '\u00a0Neiva\u00a0', '\u00a0Neiva\u00a0'],
     ['espacio duro angosto', '\u202fNeiva\u2007', '\u202fNeiva\u2007'],
+    ['retorno de carro y avance de página', '\rNeiva\u000c', 'Neiva'],
+    ['separadores de archivo y de unidad', '\u001cNeiva\u001f', 'Neiva'],
+    ['separadores de línea y de párrafo', '\u2028Neiva\u2029', 'Neiva'],
+    ['controles que no son espacios', '\u0008Neiva\u001b', '\u0008Neiva\u001b'],
   ])('RP-07 · recortar quita los mismos espacios del inicio y del final que String.strip() en la API: %s',
     (_, texto, recortado) => {
       expect(recortar(texto)).toBe(recortado);
@@ -49,6 +53,7 @@ describe('lleno', () => {
     ['nulo', null, false],
     ['con letras', 'Neiva', true],
     ['un espacio duro', '\u00a0', true],
+    ['un número, aunque sea cero', 0, true],
   ])('RP-07 · un dato está lleno con la misma regla de @NotBlank en la API: %s', (_, valor, estaLleno) => {
     expect(lleno(valor)).toBe(estaLleno);
   });

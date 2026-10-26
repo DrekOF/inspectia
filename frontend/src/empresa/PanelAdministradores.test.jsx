@@ -2,7 +2,9 @@
  * Nombre: PanelAdministradores.test.jsx
  * Descripción: Pruebas del panel de administradores de la pantalla de empresas (RF-02 C12), con la API simulada:
  *              el administrador de la plataforma ve los administradores de una empresa y restablece la
- *              contraseña de uno, con las mismas validaciones de la contraseña inicial y el aviso de D-30.
+ *              contraseña de uno, con las mismas validaciones de la contraseña inicial y el aviso de D-30. Al
+ *              abrir el panel y su formulario, el foco va a su título y, al cerrarlos, vuelve al botón que los
+ *              abrió (RNF-06 C4).
  * Fecha de creación: 26/10/2026
  * Actualización: 26/10/2026
  * Autor: Equipo InspectIA
@@ -147,5 +149,32 @@ describe('panel de administradores (RF-02 C12)', () => {
 
     expect(screen.queryByRole('region', { name: 'Administradores de Cacaos del Huila' })).not.toBeInTheDocument();
     expect(screen.getByRole('table', { name: 'Empresas registradas' })).toBeInTheDocument();
+  });
+
+  it('RNF-06 · C4 · al abrir el panel, el foco va a su título; al cerrarlo, vuelve al botón de la fila', async () => {
+    const { usuario } = abrirEmpresas();
+    const boton = await screen.findByRole('button', { name: 'Administradores de Cacaos del Huila' });
+
+    await usuario.click(boton);
+    const panel = await screen.findByRole('region', { name: 'Administradores de Cacaos del Huila' });
+    expect(within(panel).getByRole('heading', { name: 'Administradores de Cacaos del Huila' })).toHaveFocus();
+    await usuario.click(within(panel).getByRole('button', { name: 'Cerrar' }));
+
+    expect(boton).toHaveFocus();
+  });
+
+  it('RNF-06 · C4 · el formulario de la contraseña recibe el foco en su título; al cancelar o al restablecer, vuelve al botón del administrador', async () => {
+    const { usuario } = abrirEmpresas();
+
+    const panel = await abrirFormularioDeJorge(usuario);
+    const boton = within(panel).getByRole('button', { name: 'Restablecer la contraseña de Jorge Medina' });
+    expect(within(panel).getByRole('heading', { name: 'Contraseña nueva de Jorge Medina' })).toHaveFocus();
+    await usuario.click(within(panel).getByRole('button', { name: 'Cancelar' }));
+    expect(boton).toHaveFocus();
+    await usuario.click(boton);
+    await restablecer(usuario, panel, 'Clave-Nueva-2026');
+
+    expect(await within(panel).findByText('Se restableció la contraseña de Jorge Medina.')).toBeInTheDocument();
+    expect(boton).toHaveFocus();
   });
 });

@@ -1,9 +1,10 @@
 /*
  * Nombre: PantallaDeRegistros.test.jsx
- * Descripción: Pruebas de lo que las pantallas generadas tienen en común (RP-23), sobre la de empresas: pasar de
- *              página, las tarjetas en el celular (RNF-05), el foco en el primer error, los errores de la API
- *              que no son de un campo, cancelar, volver a pedir la lista después de registrar y las notas del
- *              JSON. Lo propio de cada entidad lo revisan sus pruebas generadas.
+ * Descripción: Pruebas de lo que las pantallas generadas tienen en común (RP-23), sobre la de empresas: las
+ *              páginas de 20, las tarjetas en el celular (RNF-05), el foco en el primer error, el foco al abrir y
+ *              cerrar el formulario y al desactivar o reactivar (RNF-06 C4), los errores de la API que no son de
+ *              un campo, cancelar, volver a pedir la lista después de registrar y las notas del JSON. Lo propio
+ *              de cada entidad lo revisan sus pruebas generadas.
  * Fecha de creación: 26/10/2026
  * Actualización: 26/10/2026
  * Autor: Equipo InspectIA
@@ -28,6 +29,16 @@ import { problema, servidor } from '../pruebas/servidor.js';
 const tablaDeEmpresas = () => screen.findByRole('table', { name: 'Empresas registradas' });
 
 /**
+ * Empresas numeradas, como «Empresa 01», para llenar más de una página.
+ *
+ * @param {number} cantidad cuántas
+ * @returns {object[]} las empresas, como las responde la API
+ */
+const empresasNumeradas = (cantidad) => Array.from({ length: cantidad }, (_, i) => ({
+  ...EMPRESA, id: `0199e2a0-0000-7000-8000-${String(i).padStart(12, '0')}`, nombre: `Empresa ${String(i + 1).padStart(2, '0')}`,
+}));
+
+/**
  * Abre la pantalla de empresas como administrador de la plataforma, con la API simulada.
  *
  * @param {object[]} registros las empresas que tiene la API
@@ -42,15 +53,13 @@ function abrirEmpresas(registros = [EMPRESA, EMPRESA_DESACTIVADA]) {
 }
 
 describe('pantalla de registros', () => {
-  it('RP-23 · con más registros que filas por página, la lista pasa de página y pide la siguiente a la API', async () => {
-    const muchas = Array.from({ length: 25 }, (_, i) => ({
-      ...EMPRESA, id: `0199e2a0-0000-7000-8000-${String(i).padStart(12, '0')}`, nombre: `Empresa ${String(i + 1).padStart(2, '0')}`,
-    }));
-    const { usuario, simulada } = abrirEmpresas(muchas);
+  it('RP-23 · con más de 20 registros, la lista va en páginas fijas de 20, pasa a la siguiente y la pide a la API', async () => {
+    const { usuario, simulada } = abrirEmpresas(empresasNumeradas(25));
 
     const tabla = await tablaDeEmpresas();
     expect(within(tabla).getAllByRole('row')).toHaveLength(21);
     expect(screen.getByText('1–20 de 25')).toBeInTheDocument();
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
     await usuario.click(screen.getByRole('button', { name: 'Ir a la página siguiente' }));
 
     expect(await screen.findByText('Empresa 21')).toBeInTheDocument();
@@ -137,5 +146,46 @@ describe('pantalla de registros', () => {
     await usuario.click(screen.getByRole('button', { name: 'Cancelar' }));
     await usuario.click(screen.getByRole('button', { name: 'Editar Cacaos del Huila' }));
     expect(screen.queryByText(notaDelFormulario)).not.toBeInTheDocument();
+  });
+
+  it('RNF-06 · C4 · al abrir el formulario desde una fila, el foco va a su título; al cancelar, vuelve al botón que lo abrió', async () => {
+    const { usuario } = abrirEmpresas();
+    const editar = await screen.findByRole('button', { name: 'Editar Cacaos del Huila' });
+
+    await usuario.click(editar);
+    expect(screen.getByRole('heading', { name: 'Editar empresa' })).toHaveFocus();
+    await usuario.click(screen.getByRole('button', { name: 'Cancelar' }));
+
+    expect(editar).toHaveFocus();
+  });
+
+  it('RNF-06 · C4 · después de registrar, el foco vuelve a «Nueva empresa»', async () => {
+    const { usuario } = abrirEmpresas();
+
+    await llenarEmpresa(usuario);
+    await usuario.click(screen.getByRole('button', { name: 'Registrar empresa' }));
+
+    expect(await screen.findByText('Se guardó Cacao Andino.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Nueva empresa' })).toHaveFocus();
+  });
+
+  it('RNF-06 · C4 · después de reactivar, el foco sigue en la fila, en su botón, que ahora desactiva', async () => {
+    const { usuario } = abrirEmpresas();
+
+    await usuario.click(await screen.findByRole('button', { name: 'Reactivar Comercializadora La Mazorca' }));
+
+    expect(await screen.findByText('Se reactivó Comercializadora La Mazorca.')).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Desactivar Comercializadora La Mazorca' })).toHaveFocus();
+  });
+
+  it('RNF-06 · C4 · después de confirmar que se desactiva, el foco vuelve a la fila, en su botón, que ahora reactiva', async () => {
+    const { usuario } = abrirEmpresas();
+
+    await usuario.click(await screen.findByRole('button', { name: 'Desactivar Cacaos del Huila' }));
+    await usuario.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Desactivar' }));
+
+    expect(await screen.findByText('Se desactivó Cacaos del Huila.')).toBeInTheDocument();
+    const reactivar = await screen.findByRole('button', { name: 'Reactivar Cacaos del Huila' });
+    await waitFor(() => expect(reactivar).toHaveFocus());
   });
 });

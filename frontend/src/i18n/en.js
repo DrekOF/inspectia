@@ -4,9 +4,9 @@
  *              comparte con el backend no van aquí: salen de sus archivos .properties
  *              (herramientas/textos-del-backend.js). Los marcadores van entre llaves, como en el backend.
  * Fecha de creación: 20/10/2026
- * Actualización: 20/10/2026
+ * Actualización: 26/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 
 /** Textos en inglés, por clave. Tiene las mismas claves que es.js (i18n.test.js lo revisa). */
@@ -86,6 +86,35 @@ export default {
   'sinPermiso.titulo': 'No permission',
   'noEncontrada.titulo': 'This page does not exist',
   'noEncontrada.texto': 'Check the address or go back to the home page.',
+
+  // Pantallas generadas: lo común a todas (RP-23); lo propio de cada una sale de pantalla.textos de su JSON
+  'crud.editar': 'Edit',
+  'crud.desactivar': 'Deactivate',
+  'crud.reactivar': 'Reactivate',
+  'crud.guardarCambios': 'Save changes',
+  'crud.estado': 'Status',
+  'crud.acciones': 'Actions',
+  'crud.cargando': 'Loading…',
+  'crud.reintentar': 'Try again',
+  'crud.cerrar': 'Close',
+  'crud.rango': '{desde}–{hasta} of {total}',
+  'crud.paginaSiguiente': 'Go to the next page',
+  'crud.paginaAnterior': 'Go to the previous page',
+
+  // Administradores de una empresa, en la pantalla de empresas (RF-02 C12, D-30)
+  'administradores.accion': 'Administrators',
+  'administradores.accionDe': 'Administrators of {nombre}',
+  'administradores.titulo': 'Administrators of {empresa}',
+  'administradores.elige': 'Choose whose password to reset.',
+  'administradores.activo': 'Active',
+  'administradores.inactivo': 'Deactivated',
+  'administradores.restablecer': 'Reset password',
+  'administradores.restablecerDe': 'Reset the password of {nombre}',
+  'administradores.contrasenaDe': 'New password for {nombre}',
+  'administradores.contrasenaNueva': 'New password',
+  'administradores.ayuda': '8 to 64 characters; each accented letter or ñ takes 2 of the 72 bytes.',
+  'administradores.aviso': 'When you reset it, their open sessions are closed and the lock for failed attempts is removed, if they had one. Share it with {nombre}: they can change it in “Change password”.',
+  'administradores.listo': 'The password of {nombre} was reset.',
 
   // Acerca de, con la cita del dataset (RNF-08 C1)
   'acercaDe.titulo': 'About InspectIA',

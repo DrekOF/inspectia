@@ -1,8 +1,9 @@
 /*
  * Nombre: registros.test.js
  * Descripción: Pruebas de lo que calcula la pantalla de registros generada: qué acciones ve cada rol según su
- *              JSON (RNF-04), el resumen de la lista en singular y en plural, y los errores de la API de un campo
- *              dentro de un grupo, como el correo del primer administrador (RP-23).
+ *              JSON (RNF-04), el resumen de la lista en singular y en plural, los valores de una fila para sus
+ *              textos y los errores de la API de un campo dentro de un grupo, como el correo del primer
+ *              administrador (RP-23).
  * Fecha de creación: 26/10/2026
  * Actualización: 26/10/2026
  * Autor: Equipo InspectIA
@@ -10,7 +11,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import i18n from '../i18n/i18n.js';
-import { erroresAnidados, puede, resumenDeRegistros, textoContado } from './registros.js';
+import { erroresAnidados, puede, resumenDeRegistros, textoContado, valoresDeFila } from './registros.js';
 
 /** Las claves del resumen de empresas, como las escribe su pantalla generada. */
 const RESUMEN = {
@@ -61,6 +62,16 @@ describe('resumen de la lista', () => {
 
   it('RP-23 · si el JSON no trae los textos del resumen, la pantalla no muestra resumen', () => {
     expect(resumenDeRegistros(i18n.t, null, { total: 2, activos: 1 })).toBeNull();
+  });
+});
+
+describe('valores de una fila', () => {
+  it('RP-23 · los textos de una fila, como «Editar {nombre}», toman solo sus textos y sus números', () => {
+    const fila = {
+      nombre: 'Cacaos del Huila', usuarios: 3, activa: true, ciudad: null, administrador: { nombre: 'Ana Pérez' },
+    };
+
+    expect(valoresDeFila(fila)).toEqual({ nombre: 'Cacaos del Huila', usuarios: 3 });
   });
 });
 

@@ -2,13 +2,19 @@
  * Nombre: Rutas.jsx
  * Descripción: Las rutas de la app (RNF-04): Iniciar sesión y Acerca de se abren sin sesión; las demás piden
  *              una sesión y van dentro del marco, y cada sección solo la abren los roles que la usan. Las
- *              secciones que todavía no existen muestran «Esta sección estará disponible pronto.».
+ *              pantallas generadas reciben aquí sus extensiones (RP-23). Las secciones que todavía no existen
+ *              muestran «Esta sección estará disponible pronto.».
  * Fecha de creación: 20/10/2026
- * Actualización: 20/10/2026
+ * Actualización: 26/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
+import Box from '@mui/material/Box';
+import CircularProgress from '@mui/material/CircularProgress';
+import { Suspense } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Navigate, Outlet, Route, Routes } from 'react-router';
+import { EXTENSIONES } from '../extensiones.js';
 import AcercaDe from '../paginas/AcercaDe.jsx';
 import CambiarContrasena from '../paginas/CambiarContrasena.jsx';
 import IniciarSesion from '../paginas/IniciarSesion.jsx';
@@ -45,6 +51,34 @@ function ConRol({ roles, children }) {
 }
 
 /**
+ * Lo que se ve mientras llega una pantalla generada, que se carga la primera vez que se abre.
+ *
+ * @returns {import('react').ReactElement} el indicador de carga
+ */
+function Cargando() {
+  const { t } = useTranslation();
+  return (
+    <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
+      <CircularProgress aria-label={t('crud.cargando')} />
+    </Box>
+  );
+}
+
+/**
+ * Una sección: su pantalla generada, con sus extensiones, o la página de lo que está pendiente.
+ *
+ * @param {{ seccion: import('./menu.js').Seccion }} props la sección
+ * @returns {import('react').ReactElement} la pantalla
+ */
+function PantallaDeSeccion({ seccion }) {
+  const { Pantalla, entidad, etiqueta } = seccion;
+  if (!Pantalla) {
+    return <Pendiente etiqueta={etiqueta} />;
+  }
+  return <Suspense fallback={<Cargando />}><Pantalla extensiones={EXTENSIONES[entidad]} /></Suspense>;
+}
+
+/**
  * Las rutas de la app.
  *
  * @returns {import('react').ReactElement} las rutas
@@ -57,8 +91,9 @@ export function Rutas() {
       <Route element={<ConSesion />}>
         <Route index element={<Inicio />} />
         <Route path="/cambiar-contrasena" element={<CambiarContrasena />} />
-        {SECCIONES.filter(({ ruta }) => ruta !== '/').map(({ ruta, roles, etiqueta }) => (
-          <Route key={ruta} path={ruta} element={<ConRol roles={roles}><Pendiente etiqueta={etiqueta} /></ConRol>} />
+        {SECCIONES.filter(({ ruta }) => ruta !== '/').map((seccion) => (
+          <Route key={seccion.ruta} path={seccion.ruta}
+            element={<ConRol roles={seccion.roles}><PantallaDeSeccion seccion={seccion} /></ConRol>} />
         ))}
         <Route path="*" element={<NoEncontrada />} />
       </Route>
