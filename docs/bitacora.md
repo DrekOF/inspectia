@@ -2,9 +2,9 @@
 Nombre: bitacora.md
 Descripción: Registro paso a paso de cómo se construyó InspectIA, para la sustentación (RP-24).
 Fecha de creación: 12/10/2026
-Actualización: 20/10/2026
+Actualización: 26/10/2026
 Autor: Equipo InspectIA
-Versión: 1.15
+Versión: 1.16
 -->
 
 # Bitácora de construcción (RP-24)
@@ -463,6 +463,16 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
     - Agregar `.node-version`.
     - Que las pruebas sin los datos del entorno fallen diciendo cómo encenderlo.
 - Archivos o PR: la rama `feature/frontend-base`; el PR lo abre Cristhian.
+
+## 26/10/2026 · RF-02 y RP-23: las pantallas generadas, empezando por la de empresas
+
+- Quién: Cristhian Sánchez (`DrekOF`), con Claude Code.
+- Estado: en curso, en la rama `feature/RF-02-pantallas-empresas`. La entrada se completa al terminar el PR.
+- **Pendiente para el PR de Usuarios (RF-03):** «Cambiar contraseña» (RF-18) revisa la contraseña nueva con
+  Yup escrito a mano (`frontend/src/validacion/esquemas.js`), en el orden mínimo, máximo y bytes. Con 65 eñes,
+  el formulario dice el error del largo y la API, el de los bytes. En ese PR, la pantalla pasa a usar las
+  constantes generadas y revisa en el orden en que la API escoge el error de un campo, como las pantallas
+  generadas (`campos.orden_de_la_api`, igual que `ManejadorDeErrores`).
 
 ## Plantilla para nuevas entradas
 
