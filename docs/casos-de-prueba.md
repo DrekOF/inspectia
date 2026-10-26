@@ -22,7 +22,7 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 ## Resumen
 
 - **143 criterios de aceptación** en 26 fichas: 55 con prueba y 88 pendientes.
-- **540 pruebas:** 236 de Java (33 generadas), 211 de JavaScript (23 generadas) y 93 de Python. Una prueba parametrizada cuenta una vez.
+- **541 pruebas:** 237 de Java (33 generadas), 211 de JavaScript (23 generadas) y 93 de Python. Una prueba parametrizada cuenta una vez.
 
 | Ficha | Criterios | Con prueba | Pendientes |
 |---|---:|---:|---:|
@@ -376,6 +376,7 @@ Otras pruebas de RF-13, que no cubren un criterio:
 
 Otras pruebas de RF-18, que no cubren un criterio:
 
+- [`InspectiaAplicacionIT`](../backend/src/test/java/co/edu/usco/inspectia/InspectiaAplicacionIT.java) · el reloj del servidor da la hora al microsegundo, la precisión de PostgreSQL, para que una hora guardada valga lo mismo al leerla: en 1.000 lecturas seguidas, una cada 50 µs, ninguna trae fracciones de microsegundo
 - [`CambioDeContrasenaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/CambioDeContrasenaIT.java) · cada usuario solo cambia la suya: un identificador en el cuerpo se ignora y la contraseña y las sesiones de los demás no cambian (prueba de seguridad)
 - [`CambioDeContrasenaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/CambioDeContrasenaIT.java) · la contraseña nueva puede ser igual a la actual: el cambio igual corta las demás sesiones
 - [`CambioDeContrasenaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/CambioDeContrasenaIT.java) · sin la contraseña actual ni la nueva responde 400 en los dos campos y no cuenta como intento
