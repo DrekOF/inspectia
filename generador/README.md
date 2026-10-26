@@ -2,14 +2,14 @@
 Nombre: README.md (generador)
 Descripción: Qué hace el generador de InspectIA (RP-23), cómo se usa y cómo se prueba.
 Fecha de creación: 12/10/2026
-Actualización: 20/10/2026
+Actualización: 26/10/2026
 Autor: Equipo InspectIA
-Versión: 1.6
+Versión: 1.7
 -->
 
 # generador
 
-Scripts de Python 3.13 que leen las entidades de `specs/entidades/*.json` (formato en su README) y generan las tablas y los CRUD (RP-23). El código generado **no se edita a mano**: para cambiar un CRUD se cambia el JSON o la plantilla y se vuelve a generar. La meta es poder cambiar de temática (otro producto en lugar de cacao) cambiando solo los JSON.
+Scripts de Python 3.13 que leen las entidades de `specs/entidades/*.json` (formato en su README) y generan las tablas y los CRUD, con sus pantallas (RP-23). El código generado **no se edita a mano**: para cambiar un CRUD se cambia el JSON o la plantilla y se vuelve a generar. La meta es poder cambiar de temática (otro producto en lugar de cacao) cambiando solo los JSON.
 
 ## Qué genera hoy
 
@@ -19,11 +19,18 @@ Scripts de Python 3.13 que leen las entidades de `specs/entidades/*.json` (forma
 | Todas las entidades | `backend/src/generated/resources/i18n/generado.properties` y `generado_en.properties` | Etiquetas, valores de las listas y mensajes en español y en inglés (RP-11) |
 | Las entidades con CRUD | `backend/src/generated/java/.../<modulo>/` | Entidad JPA, repositorio, un `enum` por lista y los valores iniciales |
 | Las entidades de `alcance.json` | `backend/src/generated/java/.../<modulo>/` | API REST: servicio, controlador, reglas de acceso por ruta, solicitudes, respuesta, mapeador y la interfaz de las reglas |
-| Las entidades de `alcance.json` | `backend/src/test-generated/java/.../<modulo>/<Clase>ApiGeneradaIT.java` | Prueba de integración: un caso por cada permiso y cada validación del JSON, más los datos únicos. En una edición en bloque, también las filas completas, los datos de solo lectura y los valores por defecto |
+| Las entidades de `alcance.json` | `backend/src/test-generated/java/.../<modulo>/<Clase>ApiGeneradaIT.java` | Prueba de integración: un caso por cada permiso y cada validación del JSON, más los datos únicos y el filtro `activo` del listado (D-33). En una edición en bloque, también las filas completas, los datos de solo lectura y los valores por defecto |
+| Las entidades de `pantallas` | `frontend/src/generated/<modulo>/` | La pantalla (`<Clase>Pantalla.jsx`), el cliente de su API (`<entidad>Api.js`) y sus validaciones de Yup (`<entidad>Esquemas.js`), cada uno con su prueba de Vitest |
+| Las entidades de `pantallas` | `frontend/e2e/generated/<entidad>.spec.js` | Prueba de Playwright: qué roles abren la pantalla, sus fallas de accesibilidad (axe, en los dos temas) y que no se desplace a los lados desde 360 px |
+| Siempre | `frontend/src/generated/pantallas.js` y `textos.js` | Las pantallas que leen el menú y las rutas, con carga diferida, y los textos de `pantalla.textos`, en español y en inglés |
 
-`alcance.json` dice qué entidades con CRUD tienen API. Hoy son las tres: `empresa` (RF-02), `usuario` (RF-03, una API por empresa) y `rango_recomendacion` (RF-13, una API de edición en bloque). Las pantallas del frontend llegan en otra tarea. Cómo responde la API generada y qué no soporta todavía está en `specs/entidades/README.md`.
+`alcance.json` dice qué entidades con CRUD tienen API (`api`) y cuáles tienen pantalla (`pantallas`). La API la tienen las tres: `empresa` (RF-02), `usuario` (RF-03, una API por empresa) y `rango_recomendacion` (RF-13, una API de edición en bloque). La pantalla la tiene `empresa`; las de usuario y rangos llegan en sus PR. Cómo responden la API y la pantalla generadas, y lo que no soportan todavía, está en `specs/entidades/README.md`.
 
-Las carpetas generadas son solo del generador: `generar` borra lo que ya no se genera. Lo escrito a mano, como las reglas de cada módulo (`<modulo>/reglas/`) y el módulo `comun`, va fuera de ellas.
+Las carpetas generadas son solo del generador: `generar` borra lo que ya no se genera. Lo escrito a mano, como las reglas de cada módulo (`<modulo>/reglas/`) y el módulo `comun`, va fuera de ellas. En el frontend, lo que el JSON no puede declarar de una pantalla, como el panel de administradores de una empresa, va en `frontend/src/extensiones.js`: lo generado no importa código escrito a mano.
+
+## Validaciones y casos de límite
+
+Las validaciones de cada campo salen de un solo modelo, `inspectia_generador/campos.py`. De él salen las anotaciones de Bean Validation, las validaciones de Yup y los casos de límite de las pruebas generadas de la API y de Yup, con el mismo mensaje en español; los casos están en `specs/entidades/README.md`. Cada validación lleva su restricción de Bean Validation, y Yup revisa en el orden en que la API escoge el error de un campo (`orden_de_la_api`, como `ManejadorDeErrores`): así un valor que falla por dos validaciones da el mismo mensaje en el formulario y en la API. Una prueba del generador lee `ManejadorDeErrores` y falla si esa regla cambia en el backend.
 
 ## Uso
 
@@ -65,9 +72,10 @@ Una ficha solo pasa a «Implementado» cuando funciona de punta a punta, todos s
 generador/
 ├── generar.py               línea de comandos del generador
 ├── casos_de_prueba.py       línea de comandos de la lista de casos de prueba (RP-13)
-├── alcance.json             entidades con API
-├── inspectia_generador/     carga, validación, modelo, SQL, Java, textos, headers, escritura y casos
-├── plantillas/              plantillas de Jinja2: sql/, java/main/, java/test/, i18n/ y docs/
+├── alcance.json             entidades con API y con pantalla
+├── inspectia_generador/     carga, validación, modelo, validaciones de cada campo, SQL, Java, frontend, textos,
+│                            headers, escritura y casos
+├── plantillas/              plantillas de Jinja2: sql/, java/main/, java/test/, frontend/, i18n/ y docs/
 └── pruebas/                 pruebas con pytest y ejemplos/producto.json
 ```
 
@@ -80,7 +88,7 @@ cd generador
 
 Cada prueba lleva `@pytest.mark.caso("…")` con la ficha o el requisito que cubre (por ejemplo, «RP-23 · …»); una prueba sin esa marca hace fallar la ejecución. Así la lista de casos de prueba (RP-13) se arma desde las pruebas.
 
-`pruebas/ejemplos/producto.json` es la entidad producto de la pauta del docente para el back-end (id, nombre, categoria, descripcion, estado). Las pruebas generan su tabla y su API junto con empresa y usuario, para demostrar que el generador sirve para otra temática. No entra a la app.
+`pruebas/ejemplos/producto.json` es la entidad producto de la pauta del docente para el back-end (id, nombre, categoria, descripcion, estado). Las pruebas generan su tabla, su API y su pantalla junto con empresa y usuario, para demostrar que el generador sirve para otra temática. No entra a la app.
 
 `pruebas/ejemplos/empresa_generada/` guarda lo que el generador escribe para la API de empresa. Una prueba revisa que un cambio al generador no lo mueva, salvo el header. Si cambias una plantilla a propósito y cambia lo de empresa, revisa la diferencia y copia ahí los archivos nuevos.
 

@@ -2,9 +2,9 @@
 Nombre: README.md (specs/entidades)
 Descripción: Qué hay en specs/entidades/ y formato de los JSON de entidades que lee el generador (RP-23).
 Fecha de creación: 12/10/2026
-Actualización: 20/10/2026
+Actualización: 26/10/2026
 Autor: Equipo InspectIA
-Versión: 1.9
+Versión: 1.10
 -->
 
 # specs/entidades
@@ -26,15 +26,16 @@ Un archivo JSON por cada tabla de la base de datos. Es la entrada de `generador/
 
 - **De todos los JSON:** el script SQL de creación de las tablas, con sus restricciones, índices y triggers (RP-15), y los textos en español e inglés (`i18n/generado.properties` y `generado_en.properties`): etiquetas de entidades, atributos y valores, y mensajes (RP-11).
 - **De los que tienen `"crud": true`:** la persistencia en el backend: entidad JPA, repositorio (con las consultas de los datos únicos), un `enum` por cada lista y, si hay `valores_iniciales`, la clase que los arma.
-- **De los que están en `generador/alcance.json`, además:** la API en `/api/v1/<ruta>`: servicio, controlador con OpenAPI, reglas de acceso por ruta, solicitudes con sus validaciones, respuesta, la interfaz de las `reglas` y una prueba de integración generada. Hoy todas las entidades con CRUD tienen API; una nueva la recibe cuando llega su ficha. Las de `edicion_en_bloque` tienen otra API (ver «Edición en bloque»). Las pantallas del frontend llegan en otra tarea.
-- El código generado no se edita a mano (RP-23). Las `reglas` se programan a mano, fuera de las carpetas generadas, y el código generado las llama.
+- **De los que están en `generador/alcance.json`, además:** la API en `/api/v1/<ruta>`: servicio, controlador con OpenAPI, reglas de acceso por ruta, solicitudes con sus validaciones, respuesta, la interfaz de las `reglas` y una prueba de integración generada. Hoy todas las entidades con CRUD tienen API; una nueva la recibe cuando llega su ficha. Las de `edicion_en_bloque` tienen otra API (ver «Edición en bloque»).
+- **De los que están en `pantallas` de `generador/alcance.json`:** la pantalla del frontend, con su lista, su formulario y sus acciones; el cliente de su API; sus validaciones de Yup; y sus pruebas, con Vitest y con Playwright. Hoy la tiene `empresa`; las de usuario y rangos llegan en sus PR. Ver «Pantalla generada».
+- El código generado no se edita a mano (RP-23). Las `reglas` se programan a mano, fuera de las carpetas generadas, y el código generado las llama. En el frontend, lo que el JSON no puede declarar de una pantalla, como el panel de administradores de una empresa, va a mano en `frontend/src/extensiones.js`: lo generado no importa código escrito a mano.
 
 ### Cómo responde la API generada
 
 - **Roles:** los de `operaciones`. La cadena de seguridad los revisa por ruta antes de leer la petición, así que un rol sin permiso recibe 403 aunque envíe datos inválidos; `@PreAuthorize` es la segunda barrera (RNF-04).
 - **Por empresa:** la empresa sale de la sesión y nunca de la petición. Cada consulta se limita a ella, y un registro de otra empresa responde 404, como si no existiera (RNF-03). Por eso ninguna operación de una entidad por empresa puede ser del administrador de la plataforma, que no tiene empresa.
 - **Orden de las revisiones:** primero las validaciones del JSON y las `reglas` (400); después los datos únicos (409). Un valor de `valores_en_formulario` que no se puede asignar responde 403 antes que todo lo demás. Lo que se guarda en una operación, incluido lo de `crear_con` y `valores_iniciales`, va en una sola transacción.
-- **Listado:** una página con `contenido`, `pagina` (desde 0), `tamano`, `totalElementos` y `totalPaginas`. Trae 20 filas por página si no se pide otro tamaño (máximo 100) y se ordena por `nombre`, sin distinguir mayúsculas, si la entidad tiene ese atributo; si no, por antigüedad. Se pide otra página con `?pagina=` y otro tamaño con `?tamano=`.
+- **Listado:** una página con `contenido`, `pagina` (desde 0), `tamano`, `totalElementos` y `totalPaginas`. Trae 20 filas por página si no se pide otro tamaño (máximo 100) y se ordena por `nombre`, sin distinguir mayúsculas, si la entidad tiene ese atributo; si no, por antigüedad. Se pide otra página con `?pagina=` y otro tamaño con `?tamano=`. Con `?activo=true` o `?activo=false` trae solo los activos o solo los desactivados (D-33).
 - **Respuesta:** los atributos de la lista o del formulario; los demás, como los intentos fallidos de un usuario, son internos. Una contraseña nunca sale: se guarda su hash BCrypt. Al editar, la contraseña es opcional si su `entrada` lo dice; si llega con solo espacios, se rechaza con el mismo mensaje que al crear, «Este dato es obligatorio.».
 - **Decimales:** un `decimal` acepta como máximo los decimales de su `escala`, contados sin los ceros del final: con escala 1, 90.50 sirve, porque vale 90.5, y 90.55 no. Se guarda y se responde con la escala de su columna, así que 90.50 sale como 90.5 y 100 como 100.0, igual al guardar que al listar.
 - **Reglas:** las de `validacion` se programan a mano y, en una entidad por empresa, reciben el usuario de la sesión. Sus `parametros` salen como constantes de la interfaz generada. Las de tipo `efecto` también se programan a mano: el código generado las llama en las operaciones de `cuando`, después de los cambios y antes de escribirlos en la base; si su `atributo` es una contraseña, solo cuando llega una nueva. Las de tipo `accion` son operaciones extra que se escriben a mano, fuera de lo generado.
@@ -67,6 +68,39 @@ Con `edicion_en_bloque: true`, cada empresa tiene una fila por cada valor de una
 ### Lo que la API generada todavía no soporta
 
 Si una entidad del alcance usa algo de esta lista, el generador se detiene y dice qué falta: `no_posterior_a_hoy`, atributos `referencia` en el formulario, un `efecto` en `listar` o `ver` o atado a un atributo que no es una contraseña, y `restaurar_por_defecto` fuera de una edición en bloque. Se agregan a las plantillas cuando una ficha los necesite. `solo_lectura_si` en una entidad sin `edicion_en_bloque` ya lo rechaza la validación de los JSON.
+
+### Pantalla generada
+
+La pantalla de una entidad de `pantallas` se arma con lo que dice su JSON:
+
+- **Lista:** páginas fijas de 20 registros, como en el prototipo. En el PC es una tabla, y en el celular, una tarjeta por registro (D-34). Muestra los atributos con `en_lista`, el de `debajo_del_nombre` bajo el nombre y, si la entidad tiene `atributo_activo`, su estado. Arriba va el resumen, como «7 empresas registradas: 6 activas y 1 desactivada.», que cuenta los activos con el filtro del listado (D-33).
+- **Acciones:** cada rol ve solo las de sus `operaciones`; la API lo revisa igual (RNF-04). Desactivar pide confirmación si `textos` trae `confirmar_desactivar`. Después de guardar, desactivar o reactivar, un mensaje dice qué pasó, con el nombre del registro, como «Se guardó Cacaos del Huila.».
+- **Formulario:** los atributos con `en_formulario` y, al registrar, los de `crear_con`, cada grupo con su título. Yup valida lo mismo que la API (ver «Validaciones»). Los errores que responde la API van a su campo, y los que no son de un campo, arriba del formulario.
+- **Teclado (RNF-06 C4):** al abrir un panel, el foco va a su título; al cerrarlo, vuelve al botón que lo abrió.
+- **Menú y rutas:** la sección sale con su `icono` y con los roles de `listar`. Un ícono que el menú no conoce, como el de otra temática, sale genérico.
+
+| Clave de `pantalla` | Qué es |
+|---|---|
+| `icono` | El ícono de la sección en el menú, por su nombre, como `empresas` |
+| `debajo_del_nombre` | El atributo que va bajo el nombre en la lista, como el NIT de una empresa |
+| `textos` | Los textos propios de la pantalla, en `es` y `en`. Los de una fila, como `editar_fila`, usan `{atributo}` con los valores de esa fila: «Editar {nombre}» |
+
+| Textos | Cuándo son obligatorios | En empresa |
+|---|---|---|
+| `titulo_lista`, `vacia` | Con `listar` | «Empresas registradas» |
+| `nuevo`, `crear` | Con `crear` | «Nueva empresa», «Registrar empresa» |
+| `titulo_editar`, `editar_fila` | Con `editar` | «Editar empresa», «Editar {nombre}» |
+| `al_guardar` | Con `crear` o `editar` | «Se guardó {nombre}.» |
+| `desactivar_fila`, `al_desactivar` | Con `desactivar` | «Desactivar {nombre}», «Se desactivó {nombre}.» |
+| `reactivar_fila`, `al_reactivar` | Con `reactivar` | «Reactivar {nombre}», «Se reactivó {nombre}.» |
+| `activo`, `inactivo` | Con `atributo_activo` | «Activa», «Desactivada» |
+| `resumen`, `resumen_total`, `resumen_activos`, `resumen_inactivos` | Si trae uno, todos; los de activos, solo con `atributo_activo`. Los que cuentan van en `singular` y `plural`, con `{cantidad}` | «{total}: {activos} y {inactivos}.» |
+| `confirmar_desactivar`, `confirmar_desactivar_detalle` | Si trae uno, los dos | «¿Desactivar {nombre}?» |
+| `descripcion`, `columna_nombre`, `debajo_del_nombre`, `nota_formulario`, `nota_lista`, `contrasena_al_crear`, `ayuda_contrasena_al_crear` | Opcionales | «NIT {nit}» bajo el nombre |
+
+### Lo que la pantalla generada todavía no soporta
+
+Si una entidad de `pantallas` usa algo de esta lista, el generador se detiene y dice qué falta: la edición en bloque (la pantalla de rangos llega con RF-13), una entidad sin `listar` o sin `pantalla`, un texto obligatorio que falte, un atributo del formulario que no sea texto, contraseña o lista, una contraseña propia de la entidad que al editar es opcional (la de usuario llega con RF-03) y una columna de la lista que no sea texto ni lista.
 
 ## Columnas implícitas
 
@@ -103,6 +137,7 @@ No se escriben en los JSON. El generador las agrega a todas las tablas, y se pue
 | `indices` | No | Índices adicionales. Cada referencia ya tiene el suyo |
 | `reglas` | No | Reglas que se programan a mano |
 | `valores_iniciales` | No | Filas por defecto |
+| `pantalla` | Con pantalla | Lo propio de su pantalla generada: `icono`, `debajo_del_nombre` y `textos` (ver «Pantalla generada») |
 
 ## Claves del atributo
 
@@ -120,12 +155,12 @@ No se escriben en los JSON. El generador las agrega a todas las tablas, y se pue
 | `unico` | `true` → `UNIQUE` de una sola columna, sin normalizar |
 | `por_defecto` | Valor por defecto |
 | `validaciones` | Ver la tabla de validaciones |
-| `mensajes` | Mensaje propio por validación (`es` y `en`), además de `unico`, `valores`, `valores_en_formulario` y `solo_lectura_si`. Si no hay, se usa el genérico |
+| `mensajes` | Mensaje propio por validación (`es` y `en`), además de `unico`, `valores` (todavía no se usa: ver «Valores permitidos en el CRUD»), `valores_en_formulario` y `solo_lectura_si`. Si no hay, se usa el genérico |
 | `entrada` | `contrasena`: campo del formulario (`nombre`, `etiquetas`, `obligatoria_al_crear`, `obligatoria_al_editar`) |
 | `solo_lectura_si` | `{ "atributo", "igual_a" }`: el campo no se edita en las filas que cumplen la condición, como el límite de Fuera de norma. Solo en una entidad con `edicion_en_bloque`, en un número del formulario y con la condición sobre la lista que identifica cada fila. Si cambia, la API responde 400 con `mensajes.solo_lectura_si` o el genérico, «Este dato no se puede cambiar.» |
 | `sugerencias` | `texto`: el formulario sugiere los valores que ya usó la empresa |
 | `ayuda` | Texto de ayuda bajo el campo (`es` y `en`) |
-| `ejemplo` | Un valor válido, que cumple todas las validaciones y `reglas` del atributo. Va en la documentación OpenAPI y en los datos de las pruebas generadas. Obligatorio si el atributo tiene `patron` y va en el formulario de una API, porque no se puede inventar (un NIT con su dígito de verificación, por ejemplo); en los demás, el generador arma uno |
+| `ejemplo` | Un valor válido, que cumple todas las validaciones y `reglas` del atributo. Va en la documentación OpenAPI, en los datos de las pruebas generadas y en los casos de límite de su `patron`. Obligatorio si el atributo tiene `patron` y va en el formulario de una API, porque no se puede inventar (un NIT con su dígito de verificación, por ejemplo); en los demás, el generador arma uno |
 | `en_lista`, `en_formulario` | Solo con CRUD: si el atributo sale en la lista y en el formulario |
 | `etiquetas` | `es` y `en` |
 | `fichas` | Trazabilidad del atributo |
@@ -153,19 +188,32 @@ No se escriben en los JSON. El generador las agrega a todas las tablas, y se pue
 | `longitud_min`, `longitud_max` (texto escrito) | — | `@Size` | `min`/`max` |
 | `bytes_max` | — | validador propio, contando bytes en UTF-8 | prueba propia |
 | `patron` | `CHECK (col ~ 'patron')` | `@Pattern` | `matches` |
-| `formato: "correo"` | — | `@Email` | `email` |
+| `formato: "correo"` | — | `@Email` | — (solo el backend) |
 | `no_posterior_a_hoy` | — | `@PastOrPresent`, con la hora de Colombia | `max(hoy)` |
 | `recortar` | — | quita los espacios del inicio y del final antes de guardar | igual |
 | `minusculas` | — | pasa a minúsculas antes de guardar | igual |
 
 La `longitud` de un `texto` también se valida en el backend y en el frontend.
 
+**Patrones.** El `patron` va anclado, con `^` al inicio y `$` al final, y sin lo que Java, PostgreSQL y JavaScript leen distinto, como los grupos `(?…)`, los cuantificadores posesivos (`++`) o `\b`: el `CHECK` y `matches` buscan el patrón dentro del texto y `@Pattern` revisa el texto entero, así que solo anclado validan igual los tres. Si no, la generación se detiene.
+
+**El correo.** Su formato lo valida solo el backend, como el dígito del NIT, para no tener dos algoritmos: su error llega al campo del formulario al guardar. Por eso un correo demasiado largo y sin arroba da el error del largo en el formulario y el del formato en la API.
+
+**Un error por campo.** Si un valor falla por más de una validación, la API responde un solo error por campo (`ManejadorDeErrores`): el del dato que falta y, si no, el de la restricción de Bean Validation que va primero por su nombre, como `@Pattern` antes que `@Size` y `@MaximoBytes` antes que `@Size`. Yup revisa en ese mismo orden, así el formulario dice el mismo error que la API, salvo en el caso del correo.
+
+**Casos de límite.** Las pruebas generadas de la API y de Yup revisan los mismos valores, con el mismo mensaje en español:
+
+- El dato que falta, y un carácter de más y uno de menos que el largo.
+- Con `bytes_max`, una eñe de más que la mitad de los bytes y, si también hay largo máximo, una eñe más que el largo, que falla por los dos.
+- Con `patron`: un valor que no lo cumple; el `ejemplo` con algo pegado antes y con algo pegado después, como x900123456-8 y 900123456-8x, que solo aceptaría un patrón sin anclar; y un valor demasiado largo que tampoco lo cumple.
+- Los valores del borde, que se aceptan.
+
 **Valores permitidos en el CRUD.** `valores_en_formulario` no solo limita el formulario: el backend también lo valida, sin depender de los CHECK de la base. Los CHECK son la última defensa, no la validación que ve el usuario. Si alguien envía a mano a la API un código para una `lista`:
 
 | Caso | Ejemplo con `usuario.rol` | Respuesta de la API | Mensaje |
 |---|---|---|---|
 | El código existe, pero no está en `valores_en_formulario` | ADMIN_PLATAFORMA enviado por un administrador de empresa | «prohibido» (403, RNF-04); no guarda nada | `mensajes.valores_en_formulario` |
-| El código no existe en `valores` | «JEFE» | «dato inválido» (400); no guarda nada | `mensajes.valores` o el genérico |
+| El código no existe en `valores` | «JEFE» | «dato inválido» (400); no guarda nada | El genérico, «El valor no es válido.»: el backend rechaza el código al leer la petición. `mensajes.valores` todavía no se usa: llega con RF-05, cuando `foto` tenga su API |
 
 ## Relaciones, únicos, checks e índices
 
@@ -199,4 +247,4 @@ En una entidad con `edicion_en_bloque`, una regla de `validacion` recibe todas l
 
 ## Cambiar de temática
 
-Para otro producto se cambian solo estos JSON: etiquetas, listas (categorías, clases y motivos), valores iniciales, mensajes y, si hace falta, atributos. Después se vuelve a generar. Si cambia el código de una lista, revisa los `checks` que lo usan.
+Para otro producto se cambian solo estos JSON: etiquetas, listas (categorías, clases y motivos), valores iniciales, mensajes, los textos de `pantalla` y, si hace falta, atributos. Después se vuelve a generar. Si cambia el código de una lista, revisa los `checks` que lo usan.

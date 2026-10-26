@@ -467,23 +467,92 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
 ## 26/10/2026 · RF-02 y RP-23: las pantallas generadas, empezando por la de empresas
 
 - Quién: Cristhian Sánchez (`DrekOF`), con Claude Code.
-- Estado: en curso, en la rama `feature/RF-02-pantallas-empresas`. La entrada se completa al terminar el PR.
-- **Pendiente para el PR de Usuarios (RF-03):** «Cambiar contraseña» (RF-18) revisa la contraseña nueva con
-  Yup escrito a mano (`frontend/src/validacion/esquemas.js`), en el orden mínimo, máximo y bytes. Con 65 eñes,
-  el formulario dice el error del largo y la API, el de los bytes. En ese PR, la pantalla pasa a usar las
-  constantes generadas y revisa en el orden en que la API escoge el error de un campo, como las pantallas
-  generadas (`campos.orden_de_la_api`, igual que `ManejadorDeErrores`). Además, ninguna prueba revisa el borde
-  de 72 bytes exactos de su lista de reglas: en `reglasDeContrasena` (`frontend/src/validacion/reglas.js`),
-  cambiar `<=` por `<` no hace fallar ninguna prueba.
-- **Problema encontrado: el puntaje de mutación del frontend estaba inflado.**
-  - Stryker corría con 23 procesos en un equipo de 24 procesadores lógicos. Las pruebas de componentes se
-    volvían lentas, y Stryker cortaba por tiempo mutantes que no dejan un bucle infinito y los contaba como
-    detectados: 129 «por tiempo», con 96,47 %. Con la mitad de los procesadores y 15 s de margen quedan 11,
-    todos bucles de verdad, y el puntaje baja a 92,23 %.
-  - Los mutantes estáticos (valores que se calculan al cargar un módulo, como las rutas del menú) no se evalúan
-    bien con Vitest: su resultado depende de si el módulo ya estaba cargado, no de las pruebas. El de la ruta
-    de Inicio «sobrevivía», pero al cambiarla a mano la prueba del menú falla. Eran 103 estáticos: 81 muertos y
-    22 vivos. Cristhian decidió dejarlos fuera del puntaje (`ignoreStatic: true`).
+- Qué se hizo:
+  - **En la rama `feature/RF-02-pantallas-empresas`, seis pasos, cada uno revisado por Cristhian antes del siguiente:**
+    1. **Las pruebas del generador, en rojo:** las pantallas de empresa y de producto (otra temática), sus textos, el filtro `activo` del listado (D-33) y los casos de límite que la prueba de Yup comparte con la de la API.
+    2. **El generador 1.7:**
+       - Un solo modelo de validaciones por campo (`campos.py`): de él salen Bean Validation, Yup y los casos de límite de las pruebas generadas de los dos lados.
+       - Para cada entidad de `pantallas` en `alcance.json`: la pantalla, el cliente de su API, sus esquemas de Yup y sus pruebas (Vitest y Playwright), más el registro de pantallas y los textos de `pantalla.textos`, en español y en inglés.
+       - El listado de la API generada filtra por `activo` (D-33). Su prueba generada lo revisa, junto con los valores del borde que acepta cada validación.
+       - El formato del correo se valida solo en el backend, como el dígito del NIT.
+       - Un patrón tiene que ir anclado con `^` y `$` y sin lo que Java, PostgreSQL y JavaScript leen distinto; si no, la generación se detiene.
+       - Con dos ajustes de Cristhian: los mensajes de resultado, que llevan `{nombre}`, van en `pantalla.textos` de cada entidad; y la copia del backend del entorno aislado lleva también `infra/bd`, así sus pruebas pasan allí sin pasos a mano.
+    3. **Las pruebas a mano del frontend, en rojo:** lo común de las pantallas (páginas, tarjetas en el celular, foco en el primer error, errores de la API y notas), Registrar empresa (RF-02 C1 a C6 y C11), el panel de administradores (C12) y el menú con una pantalla de otra temática.
+    4. **El código del frontend:**
+       - `PantallaDeRegistros` arma la pantalla de cada entidad con lo que dice su JSON: la lista en páginas fijas de 20 (tabla en el PC y tarjetas en el celular, D-34), su resumen, el formulario y la confirmación al desactivar.
+       - Lo escrito a mano entra como extensión (`src/extensiones.js`): el panel de administradores de una empresa, que restablece la contraseña de uno con el aviso de D-30.
+       - El menú y las rutas salen de `src/generated/pantallas.js`, con carga diferida. Una pantalla de otra temática recibe un ícono genérico.
+       - En la revisión, Cristhian pidió tres cambios:
+         - Quitar el selector «Filas por página»: las páginas van fijas de 20, como en el prototipo y en RF-14.
+         - Que los casos de límite de un patrón prueben su anclaje, con el ejemplo y algo pegado antes o después (x900123456-8 y 900123456-8x).
+         - Que Yup escoja el error de un campo como la API: primero el dato que falta y después por el nombre de la restricción, como `ManejadorDeErrores` (Pattern antes que Size), con un caso de límite que falla por el largo y por el patrón a la vez. Así el mismo dato da el mismo mensaje en los dos lados.
+    5. **Las pruebas de punta a punta:**
+       - Playwright, en PC y en celular: registrar una empresa y que su administrador entre (C8), desactivarla (C9), reactivarla (C10) y restablecer la contraseña de su administrador (C12). Cada prueba usa su propia empresa, con un NIT válido nuevo.
+       - La prueba generada de la pantalla (permisos de cada rol, axe en los dos temas y 360 px) entra con `personaDelRol`. Para eso, el entorno aislado crea un usuario final fijo, Carlos Ramírez.
+       - Selenium, en Chrome y Edge, de PC y de celular: registrar una empresa (C1).
+       - A pedido de Cristhian, si una prueba de Selenium falla, guarda su captura y la consola del navegador en `frontend/reports/selenium/`, por si vuelve la falla intermitente del PR #6. Se probó con una prueba que fallaba a propósito, en Chrome y en Edge.
+    6. **Documentación:**
+       - D-33, D-34 y P-18.
+       - RF-02 (v1.5) en «Implementado», con la confirmación de desactivar en sus restricciones.
+       - El README de las entidades: la pantalla generada, el correo solo en el backend, los patrones anclados, un error por campo, los casos de límite y `mensajes.valores`.
+       - Los README del generador, del frontend y el principal, `CLAUDE.md` y esta bitácora.
+  - **Problemas encontrados:**
+    - **El puntaje de mutación del frontend estaba inflado.**
+      - Stryker corría con 23 procesos en un equipo de 24 procesadores lógicos. Las pruebas de componentes se volvían lentas, y Stryker cortaba por tiempo mutantes que no dejan un bucle infinito y los contaba como detectados: 129 «por tiempo», con 96,47 %. Con la mitad de los procesadores y 15 s de margen quedan 11, todos bucles de verdad, y el puntaje baja a 92,23 %.
+      - Los mutantes estáticos (valores que se calculan al cargar un módulo, como las rutas del menú) no se evalúan bien con Vitest: su resultado depende de si el módulo ya estaba cargado, no de las pruebas. El de la ruta de Inicio «sobrevivía», pero al cambiarla a mano la prueba del menú falla. Eran 103 estáticos: 81 muertos y 22 vivos. Cristhian decidió dejarlos fuera del puntaje (`ignoreStatic: true`).
+    - **RF-18 C5 falló una vez: el reloj de Windows retrocedió 2 segundos.**
+      - En una corrida completa de Playwright, al recargar la otra pestaña después de cambiar la contraseña, la API respondió 200 en vez de 401: una sesión de antes del cambio siguió sirviendo (RNF-04 C6).
+      - La causa: a las 11:14:03, un componente de Windows atrasó el reloj del sistema 2,004 s, de 16:14:05,530 a 16:14:03,525 en UTC, según el registro de eventos. El inicio de sesión de la pestaña principal quedó en el segundo 05 y el cambio, después, en el 04.
+      - La regla compara en segundos enteros la emisión del token con la hora del cambio, y un token del mismo segundo sigue sirviendo (la ventana aceptada en el plan de RF-03). Por eso el token de la otra pestaña, del segundo 04, siguió sirviendo.
+      - Se descartaron la zona horaria de `sesiones_desde` (es `timestamptz`), el orden de la transacción, un token equivocado y una caché.
+      - En este equipo, el reloj retrocedió de 1 a 2 s seis veces en 14 días. Repetida 20 veces, la prueba pasó todas.
+      - **Decisión de Cristhian:** un contador de sesión en lugar de la hora del cambio, en su propio PR (RNF-04), después de este y antes del de Usuarios (P-18). Hasta ese PR, RF-18 C5 puede fallar en este equipo si Windows ajusta la hora en ese momento.
+  - **Mutantes equivalentes que quedan vivos**, con su explicación, como pidió Cristhian:
+    - Los nombres de las pruebas de Yup, como `'obligatorio'` y `'bytes_max'`: cambiarlos no cambia ningún mensaje.
+    - El mensaje del largo del NIT: todo NIT de más de 15 caracteres falla antes por el patrón, que va primero.
+    - En el resumen, `if (resumen.activos)`: sin textos de activos, la frase no los usa.
+  - **Comportamiento que no piden las fichas:**
+    - Al abrir un panel (el formulario o el de administradores), el foco va a su título y, al cerrarlo, vuelve al botón que lo abrió. Desactivar y reactivar son el mismo botón, así el foco sigue en la fila (RNF-06 C4). Cristhian lo aprobó.
+    - El caso de límite de la contraseña de 65 eñes, que falla por el largo y por los bytes: el nuevo orden de Yup cambiaba también ese mensaje, y sin el caso nada lo revisaba.
+    - En el panel de administradores, los nombres de los botones y los mensajes llevan el nombre de la persona, como «Restablecer la contraseña de Jorge Medina» y «Se restableció la contraseña de Jorge Medina.».
+    - `.gitattributes`: lo generado del frontend queda con LF, como lo del backend.
+  - **Pendientes:**
+    - **Para el PR de Usuarios (RF-03):** «Cambiar contraseña» (RF-18) revisa la contraseña nueva con
+      Yup escrito a mano (`frontend/src/validacion/esquemas.js`), en el orden mínimo, máximo y bytes. Con 65 eñes,
+      el formulario dice el error del largo y la API, el de los bytes. En ese PR, la pantalla pasa a usar las
+      constantes generadas y revisa en el orden en que la API escoge el error de un campo, como las pantallas
+      generadas (`campos.orden_de_la_api`, igual que `ManejadorDeErrores`). Además, ninguna prueba revisa el borde
+      de 72 bytes exactos de su lista de reglas: en `reglasDeContrasena` (`frontend/src/validacion/reglas.js`),
+      cambiar `<=` por `<` no hace fallar ninguna prueba.
+    - **P-18, el PR del contador de sesión (RNF-04), después de este y antes del de Usuarios:** incluye `infra/bd/restablecer-admin-plataforma.sql`, que hoy toma la hora de la base (`now()`) y no la del backend. Con el contador desaparece también el desfase entre relojes que explica `infra/README.md`.
+  - **Resultado:**
+    - Vitest: 344 pruebas en verde y 93,95 % de mutantes muertos (Stryker, sin los estáticos). ESLint, limpio.
+    - Playwright: 125 en verde y 2 omitidas (la del teclado en el celular), con 1 falla de RF-18 C5 por el reloj (arriba). Firefox se saltó en este equipo.
+    - Selenium: 16 en verde.
+    - Generador: 89 pruebas en verde, y lo generado, al día (49 archivos).
+    - Backend: la suite completa (378 pruebas) pasó en el paso 2. Después pasaron las pruebas generadas de las API de empresa (65) y de usuario (68) y las 112 unitarias, en la copia del entorno aislado.
+    - Criterios: RF-02 tiene sus 12 criterios con prueba y pasa a «Implementado» (D-29). De los 143 criterios de las fichas, 55 tienen prueba.
+- Por qué: RF-02 necesitaba su pantalla para funcionar de punta a punta (D-29), y las pantallas generadas son la base de las de usuarios y rangos (RP-23): cambiar de temática sigue siendo cambiar solo los JSON.
+- Cómo se pidió: Cristhian pidió primero el plan, y lo aprobó con siete decisiones:
+  1. Los textos propios de cada pantalla van en `pantalla.textos`, sin claves de género ni de persona.
+  2. Contar los activos con el filtro `?activo` del listado (D-33).
+  3. El formato del correo, solo en el backend.
+  4. Los cambios frente al prototipo de D-34.
+  5. Tres PR (empresas, usuarios y rangos), con la demostración de otra temática en el tercero.
+  6. RF-02 pasa a «Implementado» con este PR; RF-03 y RF-13 esperan a RF-14 y a RF-12.
+  7. En Usuarios, la nota de D-30 cuando el administrador escribe la contraseña de otro.
+
+  En el camino pidió:
+  - Corregir lo que dice el README de las entidades sobre `mensajes.valores`.
+  - Los mensajes de resultado en `pantalla.textos`, y que la copia del backend lleve `infra/bd`.
+  - Quitar el selector de filas por página.
+  - Probar el anclaje de los patrones y que Yup escoja el error como la API, con un caso que falle por dos validaciones.
+  - Dejar los mutantes equivalentes con su explicación, y poner `ignoreStatic: true` en Stryker, anotando por qué.
+  - Arreglar «Cambiar contraseña» en el PR de RF-03 y anotarlo aquí como pendiente, con el borde de 72 bytes.
+  - Escribir en el README que un correo demasiado largo y sin arroba da un error en el formulario y otro en la API.
+  - Que Selenium guarde su captura y la consola del navegador cuando una prueba falla.
+  - Investigar en esta misma sesión la falla de RF-18 C5, y anotar el diagnóstico, la decisión del contador y su PR.
+- Archivos o PR: la rama `feature/RF-02-pantallas-empresas`; el PR lo abre Cristhian.
 
 ## Plantilla para nuevas entradas
 
