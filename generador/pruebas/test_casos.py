@@ -1,20 +1,20 @@
 # Nombre: test_casos.py
 # Descripción: Pruebas de la lista de casos de prueba que arma casos_de_prueba.py (RP-13).
 # Fecha de creación: 13/10/2026
-# Actualización: 14/10/2026
+# Actualización: 20/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.1
-"""Pruebas de la lista de casos de prueba (RP-13): la lectura de las marcas de Java y de Python, el
-reparto por criterio, el documento del repositorio y las fichas «Implementado» sin todas sus pruebas
-(D-29)."""
+# Versión: 1.2
+"""Pruebas de la lista de casos de prueba (RP-13): la lectura de las marcas de Java, de Python y de
+JavaScript, el reparto por criterio, el documento del repositorio y las fichas «Implementado» sin todas
+sus pruebas (D-29)."""
 
 import pytest
 
 import casos_de_prueba
 from conftest import RAIZ
 from inspectia_generador.casos import (RUTA_DOCUMENTO, Criterio, Ficha, Prueba, Resultado, armar_documento,
-                                       documento, implementadas_incompletas, pruebas_java, pruebas_python,
-                                       revisar)
+                                       documento, implementadas_incompletas, pruebas_java, pruebas_javascript,
+                                       pruebas_python, revisar)
 
 JAVA = '''package co.edu.usco.inspectia.ejemplo;
 
@@ -69,6 +69,33 @@ def ayuda():
     pass
 """
 
+JAVASCRIPT = r"""/*
+ * Nombre: ejemplo.test.jsx
+ * test('RF-01 · C9 · en el header no cuenta', () => {});
+ */
+import { describe, expect, it, test } from 'vitest';
+
+// it('RF-01 · C9 · en un comentario no cuenta', () => {});
+describe('RF-01 · un describe agrupa: no es una prueba', () => {
+  it('RF-01 · C1 · con datos correctos muestra el menú del rol', async () => {
+    const texto = "it('RF-01 · C9 · dentro de un texto no cuenta', () => {})";
+    expect(/test\(/.test(texto)).toBe(true);
+  });
+
+  it.each([7, 65])('RF-18 · C3 · con %i caracteres se rechaza', (caracteres) => {
+    expect(caracteres).toBeGreaterThan(0);
+  });
+
+  test(`RNF-08 · C1 · Acerca de cita el dataset`, async ({ page }) => {
+    await test.step('abre la página', async () => {});
+  });
+
+  test('RF-18 · la marca puede llevar \'comillas\' escapadas', () => {});
+
+  it(`RF-01 · con ${'algo'} que cambia`, () => {});
+});
+"""
+
 FICHA = Ficha('RF-02', 'Registrar empresas', (Criterio(1, 'Uno.'), Criterio(2, 'Dos.'),
                                               Criterio(3, 'Eliminado (D-27): ya no aplica.')))
 HEADER = {'fecha_creacion': '13/10/2026', 'actualizacion': '13/10/2026'}
@@ -97,6 +124,27 @@ def test_marcas_de_python():
         ('test_dos', 'RF-02 · C4 · otra prueba', True),
         ('test_uno', 'RP-23 · una prueba del generador', False)]
     assert errores == ['generador/pruebas/test_ejemplo.py:15: test_sin_marca no tiene @pytest.mark.caso con su marca']
+
+
+@pytest.mark.caso('RP-13 · se leen las marcas de las pruebas de JavaScript: el título de test o it, en Vitest, Playwright y Selenium')
+def test_marcas_de_javascript():
+    pruebas, errores = pruebas_javascript(JAVASCRIPT, 'frontend/src/ejemplo.test.jsx')
+
+    assert [(p.linea, p.marca, p.parametrizada) for p in pruebas] == [
+        (9, 'RF-01 · C1 · con datos correctos muestra el menú del rol', False),
+        (14, 'RF-18 · C3 · con %i caracteres se rechaza', True),
+        (18, 'RNF-08 · C1 · Acerca de cita el dataset', False),
+        (22, "RF-18 · la marca puede llevar 'comillas' escapadas", False)]
+    assert {p.nombre for p in pruebas} == {'ejemplo.test.jsx'}
+    assert errores == ['frontend/src/ejemplo.test.jsx:24: la marca de una prueba es un texto fijo, sin ${…}']
+
+
+@pytest.mark.caso('RP-13 · las pruebas del frontend en generated/ cuentan como generadas')
+def test_javascript_generado():
+    pruebas, _ = pruebas_javascript("test('RF-03 · C1 · una prueba generada', () => {});\n",
+                                    'frontend/e2e/generated/usuario.spec.js')
+
+    assert [(p.marca, p.generada) for p in pruebas] == [('RF-03 · C1 · una prueba generada', True)]
 
 
 @pytest.mark.caso('RP-13 · un criterio sin prueba sale como pendiente; uno eliminado no')

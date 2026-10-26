@@ -3,9 +3,9 @@
   Descripción: Plantilla de docs/casos-de-prueba.md: los criterios de aceptación de cada ficha con sus
                pruebas y los que no tienen ninguna (RP-13).
   Fecha de creación: 13/10/2026
-  Actualización: 13/10/2026
+  Actualización: 20/10/2026
   Autor: Equipo InspectIA
-  Versión: 1.0
+  Versión: 1.1
 #}
 {% set r = resumen %}
 <!--
@@ -21,7 +21,7 @@ Versión: {{ version }}
 
 # Casos de prueba
 
-Cada criterio de aceptación de `specs/fichas.json` con las pruebas que lo cubren, y los que todavía no tienen ninguna (RP-13). Cada prueba dice qué cubre con su marca: `@DisplayName` en Java y `@pytest.mark.caso` en Python, con la forma «<código> · C<n> · …» si cubre un criterio o «<código> · …» si no (ver `CLAUDE.md`).
+Cada criterio de aceptación de `specs/fichas.json` con las pruebas que lo cubren, y los que todavía no tienen ninguna (RP-13). Cada prueba dice qué cubre con su marca: `@DisplayName` en Java, `@pytest.mark.caso` en Python y el título de `test` o `it` en JavaScript, con la forma «<código> · C<n> · …» si cubre un criterio o «<código> · …» si no (ver `CLAUDE.md`).
 
 Este documento no se edita a mano. Después de agregar o cambiar pruebas, o de cambiar las fichas, se vuelve a armar:
 
@@ -32,7 +32,7 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 ## Resumen
 
 - **{{ r.total }} criterios de aceptación** en {{ r.fichas }} fichas: {{ r.con_prueba }} con prueba y {{ r.pendientes }} pendientes{{ (' (' ~ r.eliminados ~ ' eliminados)') if r.eliminados else '' }}.
-- **{{ r.pruebas }} pruebas:** {{ r.java }} de Java ({{ r.generadas }} generadas) y {{ r.python }} de Python. Una prueba parametrizada cuenta una vez.
+- **{{ r.pruebas }} pruebas:** {{ r.java }} de Java ({{ r.generadas }} generadas), {{ r.javascript }} de JavaScript{{ (' (' ~ r.generadas_javascript ~ ' generadas)') if r.generadas_javascript else '' }} y {{ r.python }} de Python. Una prueba parametrizada cuenta una vez.
 
 | Ficha | Criterios | Con prueba | Pendientes |
 |---|---:|---:|---:|

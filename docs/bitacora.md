@@ -4,7 +4,7 @@ Descripción: Registro paso a paso de cómo se construyó InspectIA, para la sus
 Fecha de creación: 12/10/2026
 Actualización: 20/10/2026
 Autor: Equipo InspectIA
-Versión: 1.14
+Versión: 1.15
 -->
 
 # Bitácora de construcción (RP-24)
@@ -374,6 +374,95 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
   - Que el PUT responda los límites como quedan guardados, igual que el GET.
   - Probar en su PC antes de la documentación, y correr la suite completa sobre el código final antes del borrador del PR.
 - Archivos o PR: la rama `feature/RF-13-rangos`; el PR lo abre Cristhian.
+
+## 20/10/2026 · RF-01, RF-18 y RNF-08: el frontend base
+
+- Quién: Cristhian Sánchez (`DrekOF`), con Claude Code.
+- Qué se hizo:
+  - **En la rama `feature/frontend-base`, cuatro pasos, cada uno revisado por Cristhian antes del siguiente:**
+    1. **El proyecto y sus pruebas, antes del código:**
+       - `frontend/` con Vite, React, Material UI, React Router, Formik y Yup, e i18next, con las versiones exactas en `package.json`.
+       - ESLint pide JSDoc en lo exportado (RP-09) y rechaza un color escrito a mano fuera de `src/tema/tokens.js` (RP-08). Los tokens salen de la tabla de colores del prototipo (`02_Analisis_Diseno/Prototipo_Frontend`), y una prueba revisa el contraste WCAG AA de cada par en los dos temas.
+       - Las pruebas de las fichas, en rojo: unitarias y de componentes con Vitest y la API simulada (MSW); de punta a punta con Playwright (Chrome, Firefox y Safari, en PC y en celular) y con Selenium (Chrome y Edge).
+       - `casos_de_prueba.py` 1.2 lee las marcas de las pruebas de JavaScript.
+    2. **Las pantallas y la sesión:**
+       - El marco del prototipo: la barra superior, el menú según el rol, «Saltar al contenido», el idioma y el tema; en el celular, el menú va detrás del botón.
+       - Iniciar sesión; Cambiar contraseña, con sus reglas a la vista mientras se escribe; Acerca de, con la cita del dataset y la nota de que InspectIA no se cobra; el inicio de cada rol; y las secciones pendientes, que dicen «Esta sección estará disponible pronto.», sin códigos de requisitos.
+       - La sesión (D-31): se guarda en el navegador, vence a las 8 horas, un 401 la cierra, vuelve a la pantalla anterior si entra el mismo usuario, y las pestañas se siguen entre sí.
+       - Los textos que la página comparte con el backend salen de sus `.properties`, con un plugin de Vite; los propios, de `src/i18n/`.
+       - Iniciar sesión solo revisa que la contraseña no esté vacía: el largo y los bytes los revisa el backend (RF-01 C8). Lo revisan tres pruebas; la de punta a punta entra con un byte más que una contraseña guardada de 72 bytes.
+       - Sin conexión, el aviso dice «No se pudo conectar con el servidor. Revisa tu conexión a internet e intenta de nuevo.» (RNF-06 C3). Si el servidor responde un error sin mensaje, la página usa el `error.interno` del backend.
+       - Las pruebas de «sin sesión, una pantalla interna lleva a Iniciar sesión» quedan sin criterio: RNF-04 C1 es de la API.
+    3. **El entorno aislado de las pruebas de punta a punta:**
+       - Una base en otro proyecto de Docker Compose (`inspectia-e2e`), el backend y la página compilada, en puertos libres y con contraseñas y clave nuevas en cada corrida. No usa `infra/.env`, la base local ni `backend/target`: compila una copia en espejo del backend dentro de `e2e/.entorno`.
+       - El administrador de la plataforma sale del script de `infra/bd`, apuntado al proyecto aislado; antes de correrlo, el entorno revisa que docker compose llegue a esa base. Los datos de prueba se crean por la API.
+       - `npm run e2e:entorno` lo deja encendido para correr las pruebas varias veces. Sin sus datos, las pruebas fallan diciendo cómo encenderlo.
+       - La copia del backend es un espejo: lo borrado o renombrado en `backend/` desaparece de la copia, y entonces su `target` se compila de cero. Se probó con una clase temporal: al renombrarla y al borrarla, su `.java` y su `.class` desaparecieron de la copia.
+    4. **Documentación:**
+       - D-29 sin la frase del estado de las fichas, que ya está en `specs/fichas.json`.
+       - D-31, con la Content-Security-Policy de CloudFront como riesgo aceptado, y D-32.
+       - RF-01 (v1.6), con la restricción de volver a la pantalla anterior, y RF-18 (v1.5), en «Implementado».
+       - El README, el del frontend, el de `infra/`, `CLAUDE.md` y esta bitácora.
+  - **Problemas encontrados:**
+    - **Stryker no activaba los mutantes con Vitest 5.**
+      - Con Vitest 5, `volver.js` daba 5,6 % aunque sus pruebas cubren cada caso: los mutantes que se prueban con un filtro por nombre nunca se activaban. Es el fallo conocido de Stryker 10.0.0 con Vitest 5 (stryker-js #6210).
+      - Se usa Vitest 4.1.12, que se mantiene y acepta Vite 8 y jsdom 30; con ella, `volver.js` llega al 100 %.
+      - **Pendiente:** volver a Vitest 5 cuando Stryker publique el arreglo.
+    - **El Firefox de Playwright no abre en Windows 11 25H2.** Windows rechaza cargar su `mozglue.dll` («la configuración en paralelo no es correcta»), aunque se reinstaló. Playwright 1.64.1 es la última y no trae otro Firefox. Con `INSPECTIA_E2E_SIN_FIREFOX=1` se salta en los equipos donde no abre; en CI corre siempre.
+    - **axe marcó la barra superior (WCAG 2.5.3):** lo que se ve en un botón tiene que estar en su nombre accesible. El botón del idioma muestra ahora «Español»: se aparta del prototipo, que mostraba «ES». Las iniciales del avatar se dibujan con CSS (D-32).
+    - **Pruebas que podían pasar sin revisar nada.** axe y la medida del desplazamiento lateral corrían sobre una página que aún no se había dibujado. La prueba del teclado en WebKit pulsaba Tab antes de que apareciera el formulario y fallaba 2 de cada 5 veces. Ahora todas esperan la pantalla.
+    - **La hora del bloqueo:** `Intl` escribe «3:45 p. m.» con espacios que no se cortan, y `toHaveTextContent` los cambia por espacios comunes. La prueba los normaliza.
+    - **Node:** el equipo tenía la 24.13.0, y jsdom 30 y el plugin de JSDoc de ESLint piden la 24.15 o superior. Se instaló la 24.22.0 con fnm, y `frontend/.node-version` la fija.
+    - **En Windows, la consola no siempre busca programas en la carpeta actual** (`NoDefaultCurrentDirectoryInExePath`): el entorno llama a `.\mvnw.cmd`, con su ruta.
+    - **Un intento contra el backend local.** Al revisar Iniciar sesión en el navegador, el proxy de Vite llevó un intento fallido al backend local de Cristhian, que estaba encendido. Desde entonces, las revisiones usan la API simulada o el entorno aislado, y el backend local no se usa sin preguntar.
+    - **Una falla intermitente de Selenium** en la verificación final: 1 de 12, sin el detalle. No se repitió en las 8 corridas siguientes.
+  - **Comportamiento que no piden las fichas**, que Cristhian aprobó como detalles de RNF-05 y RNF-06:
+    - Al enviar un formulario con errores, el foco va al primer campo marcado.
+    - Cada pantalla pone su título en la pestaña del navegador, como «Cambiar contraseña · InspectIA».
+    - El aviso de por qué se cerró la sesión anterior es informativo (`role="status"`) y se quita al volver a enviar.
+    - En el celular, el idioma y el tema van en el menú, porque la barra del prototipo no los muestra.
+    - Volver a la pantalla anterior tras un 401 o al vencer la sesión, y que el 401 de un token ya reemplazado no cierre la sesión nueva, quedaron en D-31 y en las restricciones de RF-01.
+  - **Resultado:**
+    - Vitest: 204 pruebas en verde, con 98 % de cobertura de líneas y 95 % de mutantes muertos (Stryker). ESLint, limpio.
+    - Playwright: 90 pruebas en verde, en Chrome y Safari de PC y de celular; las 2 omitidas son la del teclado en el celular. Firefox se saltó en este equipo.
+    - Selenium: 12 pruebas en verde, en Chrome y Edge, de PC y de celular.
+    - Generador: 63 pruebas en verde.
+    - Criterios: RF-01 tiene sus 8 criterios con prueba y RF-18, sus 5; pasan a «Implementado» (D-29). De los 143 criterios de las fichas, 55 tienen prueba.
+    - Todavía no hay workflow de CI. Cuando se cree, debe usar `node-version-file: frontend/.node-version`.
+- Por qué: RF-01 y RF-18 necesitaban su pantalla para funcionar de punta a punta (D-29). El marco, los temas, los idiomas y las pruebas de punta a punta son la base de las pantallas que siguen, y el entorno aislado permite probar contra el backend real sin tocar la base de nadie.
+- Cómo se pidió: Cristhian pidió primero el plan, sin código. El plan debía responder siete preguntas:
+  - La estructura de `frontend/`.
+  - Cómo se guarda y se cierra la sesión.
+  - Las pantallas, el menú de cada rol y cómo se ven los errores de la API.
+  - Cómo generará el generador las pantallas CRUD.
+  - La paleta, con tonos de cacao.
+  - Las pruebas, y si RF-01 y RF-18 pasarían a «Implementado».
+  - Cómo se arranca junto con el backend y qué cambia en `CLAUDE.md` y los README.
+
+  Lo aprobó con siete ajustes:
+  - Seguir el prototipo como referencia visual.
+  - Agregar Acerca de, con la cita del dataset.
+  - Tras un 401, volver a la pantalla anterior solo si entra el mismo usuario y la ruta es interna.
+  - Las secciones pendientes, sin códigos de requisitos.
+  - Quitar de D-29 la frase del estado de las fichas.
+  - D-31, con el riesgo de XSS y sus mitigaciones.
+  - Usar los textos de los `.properties` del backend.
+
+  En el camino pidió:
+  - Marcar sin criterio las pruebas de RNF-04 C1, que es de la API.
+  - Que Iniciar sesión no revise el largo de la contraseña, con una prueba (RF-01 C8), y revisar en la pantalla el texto sin conexión.
+  - Usar Vitest 4.1.12 y anotar aquí la vuelta a Vitest 5.
+  - Anotar lo no pedido como dice arriba.
+  - Aplicar `npm audit fix` solo en el `package-lock.json`.
+  - No usar su backend local sin preguntar.
+  - Instalar Node 24.22.0 con fnm y saltar Firefox con una variable donde no abre.
+  - Antes de la documentación:
+    - La Content-Security-Policy de D-31 como riesgo aceptado.
+    - No compilar en `backend/target` y que la copia sea un espejo, probado renombrando y borrando un archivo.
+    - Registrar «ES» → «Español» como decisión.
+    - Agregar `.node-version`.
+    - Que las pruebas sin los datos del entorno fallen diciendo cómo encenderlo.
+- Archivos o PR: la rama `feature/frontend-base`; el PR lo abre Cristhian.
 
 ## Plantilla para nuevas entradas
 

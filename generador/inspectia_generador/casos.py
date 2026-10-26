@@ -2,9 +2,9 @@
 # Descripción: Lista de casos de prueba (RP-13): junta las marcas de las pruebas con los criterios de
 #              aceptación de specs/fichas.json y señala los criterios sin prueba.
 # Fecha de creación: 13/10/2026
-# Actualización: 14/10/2026
+# Actualización: 20/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.1
+# Versión: 1.2
 """Lista de casos de prueba (RP-13).
 
 Cada prueba dice qué cubre con una marca (ver CLAUDE.md):
@@ -13,10 +13,10 @@ Cada prueba dice qué cubre con una marca (ver CLAUDE.md):
 - ``«<código> · …»`` si no cubre un criterio: una ficha, una pauta del docente (RP), una decisión (D)
   o un pendiente (P).
 
-En Java la marca va en ``@DisplayName`` y en Python en ``@pytest.mark.caso``. Con las marcas y las
-fichas se arma ``docs/casos-de-prueba.md``: cada criterio con sus pruebas, y los que no tienen ninguna
-como pendientes. El documento no lleva números de línea, para que no cambie cada vez que se edita una
-prueba.
+En Java la marca va en ``@DisplayName``, en Python en ``@pytest.mark.caso`` y en JavaScript es el título
+de ``test`` o ``it`` (Vitest, Playwright y Selenium). Con las marcas y las fichas se arma
+``docs/casos-de-prueba.md``: cada criterio con sus pruebas, y los que no tienen ninguna como pendientes.
+El documento no lleva números de línea, para que no cambie cada vez que se edita una prueba.
 
 También señala las fichas en estado «Implementado» que todavía tienen criterios sin prueba (D-29).
 """
@@ -33,12 +33,17 @@ from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
 from inspectia_generador.carga import cargar_codigos
 
-VERSION = '1.1'
+VERSION = '1.2'
 RUTA_DOCUMENTO = 'docs/casos-de-prueba.md'
 IMPLEMENTADO = 'Implementado'
 #: Carpetas de pruebas de Java y si lo que tienen es generado.
 CARPETAS_JAVA = (('backend/src/test/java', False), ('backend/src/test-generated/java', True))
 CARPETA_PYTHON = 'generador/pruebas'
+#: Carpetas de pruebas de JavaScript del frontend, con los nombres de sus archivos de prueba.
+CARPETAS_JAVASCRIPT = (('frontend/src', ('*.test.js', '*.test.jsx')), ('frontend/herramientas', ('*.test.js',)),
+                       ('frontend/e2e', ('*.spec.js',)), ('frontend/selenium', ('*.test.js',)))
+#: Carpetas del frontend donde escribe el generador: sus pruebas cuentan como generadas.
+GENERADAS_JAVASCRIPT = ('frontend/src/generated/', 'frontend/e2e/generated/')
 PLANTILLAS = Path(__file__).resolve().parent.parent / 'plantillas'
 
 MARCA = re.compile(r'^(?P<codigo>(?:RF|RNF|RP|D|P)-\d{2})(?: · C(?P<criterio>\d+))? · (?P<texto>\S.*)$')
@@ -46,6 +51,8 @@ ELIMINADO = re.compile(r'^Eliminado \(D-\d{2}\):')
 ANOTACIONES_DE_PRUEBA = {'Test', 'ParameterizedTest', 'RepeatedTest', 'TestFactory', 'TestTemplate'}
 _ESCAPES = {'n': '\n', 't': '\t', 'r': '\r', '"': '"', "'": "'", '\\': '\\'}
 _ANOTACION = re.compile(r'@\s*([A-Za-z_][\w.]*)')
+#: Una llamada a ``test`` o ``it`` que no es un método de otro objeto, como ``/x/.test(…)``.
+_PRUEBA_JS = re.compile(r'(?<![\w.$])(?:test|it)\b')
 _TIPO = re.compile(r'\b(class|interface|enum|record)\b')
 _FECHA = re.compile(r'(Fecha de creación|Actualización):\s*(\d{2}/\d{2}/\d{4})')
 
@@ -292,8 +299,88 @@ def pruebas_python(fuente, archivo):
     return pruebas, errores
 
 
+# --- Pruebas de JavaScript ------------------------------------------------------------------------
+
+
+def _blanquear_javascript(fuente):
+    """El código de JavaScript sin comentarios ni el contenido de los textos (en su lugar quedan espacios,
+    así las posiciones no cambian), y cada texto según la posición de su comilla: su valor, o ``None`` si
+    es una plantilla con ``${…}``, que cambia al correr."""
+    codigo, textos = list(fuente), {}
+    i, n = 0, len(fuente)
+
+    def borrar(desde, hasta):
+        for k in range(desde, hasta):
+            if codigo[k] != '\n':
+                codigo[k] = ' '
+
+    while i < n:
+        if fuente.startswith('//', i):
+            fin = fuente.find('\n', i)
+            fin = n if fin < 0 else fin
+            borrar(i, fin)
+            i = fin
+        elif fuente.startswith('/*', i):
+            fin = fuente.find('*/', i + 2)
+            fin = n if fin < 0 else fin + 2
+            borrar(i, fin)
+            i = fin
+        elif fuente[i] in '"\'`':
+            comilla, j, valor, fijo = fuente[i], i + 1, [], True
+            while j < n and fuente[j] != comilla and (comilla == '`' or fuente[j] != '\n'):
+                if fuente[j] == '\\' and j + 1 < n:
+                    valor.append(_ESCAPES.get(fuente[j + 1], fuente[j + 1]))
+                    j += 2
+                elif comilla == '`' and fuente.startswith('${', j):
+                    fijo = False
+                    fin = fuente.find('}', j)
+                    j = n if fin < 0 else fin + 1
+                else:
+                    valor.append(fuente[j])
+                    j += 1
+            textos[i] = ''.join(valor) if fijo else None
+            borrar(i + 1, j)
+            i = j + 1
+        else:
+            i += 1
+    return ''.join(codigo), textos
+
+
+def pruebas_javascript(fuente, archivo):
+    """Pruebas de un archivo de JavaScript: cada llamada a ``test`` o ``it`` (también ``test.each(…)``) y
+    su título, que es la marca. Sirve para Vitest, Playwright y Selenium; ``describe`` solo agrupa.
+
+    Returns:
+        tuple: ``(pruebas, errores)``.
+    """
+    codigo, textos = _blanquear_javascript(fuente)
+    generada = archivo.startswith(GENERADAS_JAVASCRIPT)
+    pruebas, errores = [], []
+    for llamada in _PRUEBA_JS.finditer(codigo):
+        k = _saltar_espacios(codigo, llamada.end())
+        parametrizada = codigo.startswith('.each', k)
+        if parametrizada:
+            k = _saltar_espacios(codigo, k + len('.each'))
+            if k >= len(codigo) or codigo[k] != '(':
+                continue
+            k = _saltar_espacios(codigo, _cerrar(codigo, k) + 1)
+        if k >= len(codigo) or codigo[k] != '(':
+            continue
+        k = _saltar_espacios(codigo, k + 1)
+        linea = codigo.count('\n', 0, llamada.start()) + 1
+        if k not in textos:
+            errores.append(f'{archivo}:{linea}: la marca de una prueba es su título: un texto fijo')
+        elif textos[k] is None:
+            errores.append(f'{archivo}:{linea}: la marca de una prueba es un texto fijo, sin ${{…}}')
+        else:
+            pruebas.append(Prueba(archivo, linea, Path(archivo).name, textos[k], textos[k],
+                                  parametrizada=parametrizada, generada=generada))
+    return pruebas, errores
+
+
 def buscar_pruebas(raiz):
-    """Todas las pruebas del repositorio: las de Java del backend y las de Python del generador.
+    """Todas las pruebas del repositorio: las de Java del backend, las de Python del generador y las de
+    JavaScript del frontend.
 
     Returns:
         tuple: ``(pruebas, errores)``, en orden de archivo.
@@ -310,6 +397,14 @@ def buscar_pruebas(raiz):
         encontradas, malas = pruebas_python(ruta.read_text(encoding='utf-8'), ruta.relative_to(raiz).as_posix())
         pruebas += encontradas
         errores += malas
+    for carpeta, patrones in CARPETAS_JAVASCRIPT:
+        rutas = sorted({ruta for patron in patrones for ruta in (raiz / carpeta).rglob(patron)
+                        if 'node_modules' not in ruta.parts})
+        for ruta in rutas:
+            encontradas, malas = pruebas_javascript(ruta.read_text(encoding='utf-8'),
+                                                    ruta.relative_to(raiz).as_posix())
+            pruebas += encontradas
+            errores += malas
     return pruebas, errores
 
 
@@ -396,8 +491,11 @@ def documento(fichas, pruebas, revision, titulos, header):
               'pruebas': sorted(revision.sin_criterio[codigo], key=lambda e: (e[0].archivo, e[1]))}
              for codigo in sorted(revision.sin_criterio, key=_orden_otros) if codigo not in fichas_con_codigo]
     java = [p for p in pruebas if p.archivo.endswith('.java')]
+    javascript = [p for p in pruebas if p.archivo.endswith(('.js', '.jsx'))]
     resumen = dict(total, fichas=len(fichas), pruebas=len(pruebas), java=len(java),
-                   generadas=sum(1 for p in java if p.generada), python=len(pruebas) - len(java))
+                   generadas=sum(1 for p in java if p.generada), javascript=len(javascript),
+                   generadas_javascript=sum(1 for p in javascript if p.generada),
+                   python=len(pruebas) - len(java) - len(javascript))
 
     entorno = Environment(loader=FileSystemLoader(PLANTILLAS), undefined=StrictUndefined, trim_blocks=True,
                           lstrip_blocks=True, keep_trailing_newline=True, autoescape=False)

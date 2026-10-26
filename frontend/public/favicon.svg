@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#6B3F22" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <!--
+  Nombre: favicon.svg
+  Descripción: Ícono de la pestaña: el grano de cacao de la marca, en el color primario del tema claro
+               (src/tema/tokens.js).
+  Fecha de creación: 20/10/2026
+  Actualización: 20/10/2026
+  Autor: Equipo InspectIA
+  Versión: 1.0
+  -->
+  <ellipse cx="12" cy="12" rx="6.5" ry="9.5" transform="rotate(30 12 12)" />
+  <path d="M8.6 17.4c1.7-1.6 2.4-3.6 2.6-5.6.2-2 .9-3.9 2.9-5.4" />
+</svg>

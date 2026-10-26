@@ -1,0 +1,110 @@
+/*
+ * Nombre: es.js
+ * Descripción: Textos propios del frontend en español (RP-11). Las etiquetas de los datos y los mensajes que
+ *              comparte con el backend no van aquí: salen de sus archivos .properties
+ *              (herramientas/textos-del-backend.js). Los marcadores van entre llaves, como en el backend.
+ * Fecha de creación: 20/10/2026
+ * Actualización: 20/10/2026
+ * Autor: Equipo InspectIA
+ * Versión: 1.0
+ */
+
+/** Textos en español, por clave. en.js tiene las mismas claves (i18n.test.js lo revisa). */
+export default {
+  // Iniciar sesión (RF-01)
+  'iniciarSesion.titulo': 'Iniciar sesión',
+  'iniciarSesion.subtitulo': 'Entra con tu correo y la contraseña que te dio el administrador.',
+  'iniciarSesion.boton': 'Iniciar sesión',
+  'iniciarSesion.olvido': '¿Olvidaste tu contraseña? Pídele al administrador de tu empresa que la restablezca.',
+  'iniciarSesion.lema': 'Evalúa tus lotes de cacao con fotos de una muestra',
+  'iniciarSesion.descripcion': 'Fotografía entre 100 y 150 granos sobre papel blanco y recibe el porcentaje de granos sanos, la categoría probable y una recomendación.',
+  'iniciarSesion.universidad': 'Universidad Surcolombiana · Proyecto final de Inteligencia Artificial',
+  'iniciarSesion.acercaDe': 'Acerca de InspectIA',
+  'contrasena.mostrar': 'Mostrar la contraseña',
+  'contrasena.ocultar': 'Ocultar la contraseña',
+
+  // Cambiar contraseña (RF-18)
+  'cambiarContrasena.titulo': 'Cambiar contraseña',
+  'cambiarContrasena.subtitulo': 'Escribe tu contraseña actual y la nueva. Al guardar, tus otras sesiones se cierran; esta sigue abierta.',
+  'cambiarContrasena.actual': 'Contraseña actual',
+  'cambiarContrasena.nueva': 'Contraseña nueva',
+  'cambiarContrasena.repetida': 'Repite la contraseña nueva',
+  'cambiarContrasena.mostrarActual': 'Mostrar la contraseña actual',
+  'cambiarContrasena.ocultarActual': 'Ocultar la contraseña actual',
+  'cambiarContrasena.mostrarNueva': 'Mostrar la contraseña nueva',
+  'cambiarContrasena.ocultarNueva': 'Ocultar la contraseña nueva',
+  'cambiarContrasena.mostrarRepetida': 'Mostrar la contraseña repetida',
+  'cambiarContrasena.ocultarRepetida': 'Ocultar la contraseña repetida',
+  'cambiarContrasena.reglas': 'La contraseña nueva debe tener:',
+  'cambiarContrasena.reglaLargo': 'De 8 a 64 caracteres.',
+  'cambiarContrasena.reglaBytes': 'Como máximo 72 bytes: cada letra con tilde y cada eñe ocupan 2.',
+  'cambiarContrasena.reglaEspacios': 'Algo más que espacios.',
+  'cambiarContrasena.cumple': 'Cumple',
+  'cambiarContrasena.noCumple': 'No cumple',
+  'cambiarContrasena.noCoincide': 'No coincide con la contraseña nueva.',
+  'cambiarContrasena.listo': 'Tu contraseña cambió. Tus otras sesiones se cerraron; esta sigue abierta.',
+  'cambiarContrasena.bloqueoHasta': 'Podrás intentarlo a las {hora}.',
+
+  // Acciones y errores comunes (RNF-06 C3)
+  'accion.guardar': 'Guardar',
+  'accion.cancelar': 'Cancelar',
+  'accion.irAlInicio': 'Ir al inicio',
+  'conexion.sinConexion': 'No se pudo conectar con el servidor. Revisa tu conexión a internet e intenta de nuevo.',
+
+  // Marco: barra, menú y «Mi cuenta» (RF-01 C1, RNF-05, RNF-06 C4)
+  'marco.saltar': 'Saltar al contenido',
+  'menu.principal': 'Menú principal',
+  'menu.abrir': 'Abrir el menú',
+  'menu.inicio': 'Inicio',
+  'menu.nuevoLote': 'Nuevo lote',
+  'menu.historial': 'Historial',
+  'menu.estadisticas': 'Estadísticas',
+  'cuenta.titulo': 'Mi cuenta',
+  'cuenta.boton': 'Mi cuenta: {nombre}, {detalle}',
+  'cuenta.cambiarContrasena': 'Cambiar contraseña',
+  'cuenta.acercaDe': 'Acerca de',
+  'cuenta.cerrarSesion': 'Cerrar sesión',
+
+  // Idioma y tema (RP-08, RP-11)
+  'idioma.titulo': 'Idioma',
+  'idioma.boton': 'Idioma: {idioma}',
+  'tema.titulo': 'Tema',
+  'tema.claro': 'Claro',
+  'tema.oscuro': 'Oscuro',
+  'tema.sistema': 'Sistema',
+  'tema.aOscuro': 'Cambiar a tema oscuro',
+  'tema.aClaro': 'Cambiar a tema claro',
+
+  // Inicio de cada rol
+  'inicio.saludo': 'Hola, {nombre}',
+  'inicio.USUARIO_FINAL': '{empresa} · Elige qué quieres hacer.',
+  'inicio.ADMIN_EMPRESA': 'Administras {empresa}.',
+  'inicio.ADMIN_PLATAFORMA': 'Administras las empresas que usan InspectIA.',
+
+  // Secciones pendientes, sin permiso y direcciones que no existen
+  'pendiente.texto': 'Esta sección estará disponible pronto.',
+  'sinPermiso.titulo': 'Sin permiso',
+  'noEncontrada.titulo': 'Esta página no existe',
+  'noEncontrada.texto': 'Revisa la dirección o vuelve al inicio.',
+
+  // Acerca de, con la cita del dataset (RNF-08 C1)
+  'acercaDe.titulo': 'Acerca de InspectIA',
+  'acercaDe.descripcion': 'InspectIA evalúa lotes de granos de cacao a partir de fotos de una muestra: separa cada grano, lo clasifica como sano o no sano con un modelo de reconocimiento de imágenes y calcula el porcentaje de granos sanos del lote.',
+  'acercaDe.modeloTitulo': 'Lo que mide el modelo',
+  'acercaDe.modeloTexto': 'El modelo mira cada grano por fuera: no mide la fermentación interna. Por eso la categoría que da la app es probable; la oficial se confirma con la prueba de corte (NTC 1252:2021).',
+  'acercaDe.datosTitulo': 'Datos con los que se entrenó',
+  'acercaDe.dataset': 'Dataset',
+  'acercaDe.datasetValor': 'Ecuadorian cacao beans for classification (cacao-beans-for-classification), versión 1, publicada el 29/07/2022.',
+  'acercaDe.autor': 'Autor',
+  'acercaDe.autorValor': 'Luis Fernando Zhinin Vera, en Kaggle.',
+  'acercaDe.articulo': 'Artículo',
+  'acercaDe.articuloValor': 'Zhinin-Vera, L. et al. (2023). IWANN 2023, LNCS 14135.',
+  'acercaDe.licencia': 'Licencia',
+  'acercaDe.licenciaValor': 'CC BY-NC 4.0: permite el uso citando a los autores, pero no el uso comercial.',
+  'acercaDe.kaggle': 'Ver el dataset en Kaggle',
+  'acercaDe.nota': 'Por esa licencia, InspectIA no se cobra mientras use modelos entrenados con estos datos.',
+  'acercaDe.proyectoTitulo': 'El proyecto',
+  'acercaDe.proyectoTexto': 'Proyecto final del curso de Inteligencia Artificial, Programa de Ingeniería de Software, Universidad Surcolombiana. Equipo: Cristhian Eduardo Sánchez Mosquera, Julián Andrés Silvas Morales y Jhon Jairo Perdomo Perdomo. Docente: Juan Antonio Castro Silva.',
+  'acercaDe.version': 'Versión {version}',
+  'acercaDe.volver': 'Volver a Iniciar sesión',
+};
