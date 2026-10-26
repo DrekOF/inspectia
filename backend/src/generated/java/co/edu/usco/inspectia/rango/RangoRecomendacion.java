@@ -5,8 +5,8 @@
  *              o la plantilla, y se regenera.
  * Fecha de creación: 13/10/2026
  * Actualización: 20/10/2026
- * Autor: Equipo InspectIA (generado por generador/ v1.7)
- * Versión: 1.7
+ * Autor: Equipo InspectIA (generado por generador/ v1.8)
+ * Versión: 1.8
  * Entidades: rango_recomendacion 1.2
  */
 package co.edu.usco.inspectia.rango;
@@ -22,6 +22,7 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.annotations.Generated;
 import org.hibernate.annotations.UuidGenerator;
 import org.hibernate.generator.EventType;
@@ -32,10 +33,12 @@ import org.hibernate.generator.EventType;
  * (RF-13).
  *
  * <p>Tabla {@code rango_recomendacion} (RF-13, RF-02, RF-12, D-10). Las fechas las pone la base: la de creación al
- * insertar y la de actualización con un trigger en cada cambio.
+ * insertar y la de actualización con un trigger en cada cambio. Cada UPDATE escribe solo las columnas que
+ * cambiaron ({@code @DynamicUpdate}): así dos cambios a la vez sobre columnas distintas no se pisan.
  */
 @Entity
 @Table(name = "rango_recomendacion")
+@DynamicUpdate
 @Getter
 @Setter
 public class RangoRecomendacion {

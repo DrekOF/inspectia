@@ -42,7 +42,7 @@ class EmisorDeTokensTest {
                 Clock.fixed(ahora, ZoneOffset.UTC));
         UUID usuario = UUID.fromString("0199e2a0-0000-7000-8000-000000000001");
 
-        EmisorDeTokens.TokenEmitido emitido = emisor.emitir(usuario);
+        EmisorDeTokens.TokenEmitido emitido = emisor.emitir(usuario, 3);
 
         Jwt token = leer(emitido.token());
         assertThat(token.getHeaders()).containsEntry("alg", "HS256");
@@ -51,6 +51,7 @@ class EmisorDeTokensTest {
         assertThat(token.getSubject()).isEqualTo(usuario.toString());
         assertThat(token.getIssuedAt()).isEqualTo(Instant.parse("2026-10-14T15:20:30Z"));
         assertThat(token.getExpiresAt()).isEqualTo(Instant.parse("2026-10-14T23:20:30Z"));
+        assertThat(token.<Number>getClaim("version_sesion").intValue()).isEqualTo(3);
         assertThat(emitido.vence()).isEqualTo(token.getExpiresAt());
     }
 
@@ -62,7 +63,7 @@ class EmisorDeTokensTest {
                 Clock.fixed(Instant.parse("2026-10-14T18:00:00Z"), ZoneOffset.UTC));
         UUID usuario = UUID.fromString("0199e2a0-0000-7000-8000-000000000001");
 
-        EmisorDeTokens.TokenEmitido emitido = emisor.emitir(usuario, Instant.parse("2026-10-14T17:30:05.400Z"),
+        EmisorDeTokens.TokenEmitido emitido = emisor.emitir(usuario, 4, Instant.parse("2026-10-14T17:30:05.400Z"),
                 Instant.parse("2026-10-14T23:20:30Z"));
 
         Jwt token = leer(emitido.token());
@@ -70,6 +71,7 @@ class EmisorDeTokensTest {
         assertThat(token.getSubject()).isEqualTo(usuario.toString());
         assertThat(token.getIssuedAt()).isEqualTo(Instant.parse("2026-10-14T17:30:05Z"));
         assertThat(token.getExpiresAt()).isEqualTo(Instant.parse("2026-10-14T23:20:30Z"));
+        assertThat(token.<Number>getClaim("version_sesion").intValue()).isEqualTo(4);
         assertThat(emitido.vence()).isEqualTo(token.getExpiresAt());
     }
 

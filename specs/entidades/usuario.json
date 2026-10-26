@@ -5,7 +5,7 @@
     "fecha_creacion": "13/10/2026",
     "actualizacion": "26/10/2026",
     "autor": "Equipo InspectIA",
-    "version": "1.6"
+    "version": "1.7"
   },
   "entidad": "usuario",
   "clase": "Usuario",
@@ -140,12 +140,15 @@
       "fichas": ["RF-01", "RNF-04"]
     },
     {
-      "nombre": "sesiones_desde",
-      "tipo": "fecha_hora",
-      "obligatorio": false,
+      "nombre": "version_sesion",
+      "tipo": "entero",
+      "obligatorio": true,
+      "por_defecto": 0,
+      "validaciones": { "min": 0 },
+      "solo_lo_cambian_las_reglas": true,
       "en_lista": false,
       "en_formulario": false,
-      "etiquetas": { "es": "Sesiones válidas desde", "en": "Sessions valid since" },
+      "etiquetas": { "es": "Versión de sesión", "en": "Session version" },
       "fichas": ["RNF-04", "D-30"]
     }
   ],
@@ -221,7 +224,7 @@
       "tipo": "efecto",
       "cuando": ["editar"],
       "atributo": "contrasena_hash",
-      "descripcion": "Al restablecer o cambiar una contraseña, las sesiones abiertas antes del cambio dejan de servir y la cuenta se desbloquea: sesiones_desde toma la hora del cambio, en segundos enteros como el iat del token, y los intentos fallidos vuelven a cero. Lo aplican la edición de usuarios, el restablecimiento de RF-02 C12 y, después, RF-18.",
+      "descripcion": "Al restablecer o cambiar una contraseña, las sesiones abiertas antes del cambio dejan de servir y la cuenta se desbloquea: version_sesion sube en uno, con una sola sentencia en la base, y un token con otra versión ya no sirve, sin depender de la hora; los intentos fallidos vuelven a cero. Lo aplican la edición de usuarios, el restablecimiento de RF-02 C12 y el cambio de la propia contraseña (RF-18).",
       "fichas": ["RNF-04", "RF-02", "RF-03", "RF-18", "D-30"]
     },
     {

@@ -2,9 +2,9 @@
   Nombre: entidad.java.j2
   Descripción: Plantilla de la entidad JPA de una tabla con CRUD (RP-23).
   Fecha de creación: 13/10/2026
-  Actualización: 13/10/2026
+  Actualización: 26/10/2026
   Autor: Equipo InspectIA
-  Versión: 1.0
+  Versión: 1.1
 #}
 {% from 'java/_macros.j2' import encabezado %}
 {{ encabezado(header) }}
@@ -18,10 +18,12 @@ import {{ i }};
  * {{ descripcion | envolver(' * ') }}
  *
  * <p>Tabla {@code {{ tabla }}} ({{ fichas | join(', ') }}). Las fechas las pone la base: la de creación al
- * insertar y la de actualización con un trigger en cada cambio.
+ * insertar y la de actualización con un trigger en cada cambio. Cada UPDATE escribe solo las columnas que
+ * cambiaron ({@code @DynamicUpdate}): así dos cambios a la vez sobre columnas distintas no se pisan.
  */
 @Entity
 @Table(name = "{{ tabla }}")
+@DynamicUpdate
 @Getter
 @Setter
 public class {{ clase }} {

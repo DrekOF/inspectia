@@ -3,9 +3,9 @@
  * Descripción: Cambio de la propia contraseña: revisa la actual con el bloqueo de RF-01, guarda la nueva,
  *              corta las demás sesiones y entrega el token con el que sigue la sesión (RF-18, D-30).
  * Fecha de creación: 19/10/2026
- * Actualización: 19/10/2026
+ * Actualización: 26/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.usuario.sesion;
 
@@ -42,8 +42,8 @@ import org.springframework.transaction.support.TransactionTemplate;
  *
  * <p>Si todo está bien, guarda la nueva y aplica la regla {@code cortar_sesiones_al_cambiar_contrasena},
  * la misma del restablecimiento: las sesiones abiertas dejan de servir y la cuenta queda sin intentos
- * fallidos (D-30). La sesión desde la que se cambió sigue con un token nuevo, emitido en el segundo del
- * cambio y que vence cuando vencía el anterior (RF-18 C5).
+ * fallidos (D-30). La sesión desde la que se cambió sigue con un token nuevo, de la versión de sesión que
+ * dejó la regla y que vence cuando vencía el anterior (RF-18 C5).
  *
  * <p>No es transaccional en conjunto: un intento fallido se guarda en su propia transacción, para que
  * cuente aunque la respuesta sea un error, y el cambio se guarda en otra.
@@ -108,22 +108,22 @@ public class CambioDeContrasenaServicio {
                     SesionServicio.BLOQUEO.toMinutes());
         }
         String hash = codificador.encode(nueva);
-        Instant cambio = transacciones.execute(estado -> guardar(sesion, hash));
-        EmisorDeTokens.TokenEmitido token = emisor.emitir(sesion.id(), cambio, sesion.vence());
+        int versionSesion = transacciones.execute(estado -> guardar(sesion, hash));
+        EmisorDeTokens.TokenEmitido token = emisor.emitir(sesion.id(), versionSesion, ahora, sesion.vence());
         return SesionRespuesta.de(token, sesion);
     }
 
     /**
      * Guarda el hash nuevo y aplica la regla que corta las sesiones abiertas y quita el bloqueo (D-30).
      *
-     * @return la hora del cambio, que la regla guardó en {@code sesiones_desde}
+     * @return la versión de sesión nueva, que la regla subió en la base
      */
-    private Instant guardar(UsuarioEnSesion sesion, String hash) {
+    private int guardar(UsuarioEnSesion sesion, String hash) {
         Usuario usuario = repositorio.findById(sesion.id())
                 .orElseThrow(() -> new SesionNoValidaExcepcion("error.sesion_invalida"));
         usuario.setContrasenaHash(hash);
         reglas.cortarSesionesAlCambiarContrasena(usuario, sesion);
-        return usuario.getSesionesDesde().toInstant();
+        return usuario.getVersionSesion();
     }
 
     /**

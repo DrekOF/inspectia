@@ -4,7 +4,7 @@
 # Fecha de creación: 13/10/2026
 # Actualización: 26/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.7
+# Versión: 1.8
 """Datos de las plantillas de Java.
 
 - De cada entidad con ``"crud": true`` sale su persistencia: entidad JPA, repositorio, un ``enum``
@@ -201,9 +201,14 @@ def campos_entidad(entidades, e):
         elif a['tipo'] == 'lista':
             anotaciones.append('@Enumerated(EnumType.STRING)')
             columna.append('length = 30')
+        javadoc = f"{a['etiquetas']['es']} ({', '.join(a['fichas'])})."
+        if a.get('solo_lo_cambian_las_reglas'):
+            # Al crear, el valor lo pone la base; después, solo una regla, con SQL.
+            columna += ['insertable = false', 'updatable = false']
+            javadoc += ' Solo lo cambian las reglas: JPA no lo escribe.'
         anotaciones.append(f'@Column({", ".join(columna)})')
         inicial = literal(entidades, e, a, a['por_defecto']) if 'por_defecto' in a else None
-        campos.append({'javadoc': f"{a['etiquetas']['es']} ({', '.join(a['fichas'])}).",
+        campos.append({'javadoc': javadoc,
                        'anotaciones': anotaciones, 'tipo': tipo_java(entidades, e, a),
                        'nombre': camel(a['nombre']), 'inicial': inicial})
     return campos
@@ -283,8 +288,9 @@ def archivos_persistencia(entidades, e):
     campos = campos_entidad(entidades, e)
     importaciones = {'jakarta.persistence.Column', 'jakarta.persistence.Entity', 'jakarta.persistence.Id',
                      'jakarta.persistence.Table', 'java.time.OffsetDateTime', 'java.util.UUID',
-                     'lombok.Getter', 'lombok.Setter', 'org.hibernate.annotations.Generated',
-                     'org.hibernate.annotations.UuidGenerator', 'org.hibernate.generator.EventType'}
+                     'lombok.Getter', 'lombok.Setter', 'org.hibernate.annotations.DynamicUpdate',
+                     'org.hibernate.annotations.Generated', 'org.hibernate.annotations.UuidGenerator',
+                     'org.hibernate.generator.EventType'}
     for a in e['atributos']:
         importaciones |= importaciones_tipo(entidades, e, a, p)
         if a['tipo'] == 'lista':

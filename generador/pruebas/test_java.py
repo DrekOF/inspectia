@@ -23,8 +23,9 @@ TEXTOS = 'backend/src/generated/resources/i18n'
 # Donde la API escoge el error de un campo, que es el orden de las validaciones de Yup.
 MANEJADOR_DE_ERRORES = 'backend/src/main/java/co/edu/usco/inspectia/comun/errores/ManejadorDeErrores.java'
 # Lo que genera el generador para empresa: solo cambia a propósito, y entonces estas copias se actualizan en el
-# mismo commit; se comparan sin el header. Salieron de la 1.2, antes de la API por empresa (RF-03), y la 1.7 les
-# agregó el filtro activo del listado (D-33) y los valores del borde de la prueba generada.
+# mismo commit; se comparan sin el header. Salieron de la 1.2, antes de la API por empresa (RF-03); la 1.7 les
+# agregó el filtro activo del listado (D-33) y los valores del borde de la prueba generada, y la 1.8, @DynamicUpdate
+# en la entidad.
 EMPRESA_GENERADA = EJEMPLOS / 'empresa_generada'
 # Con el JDK 25, al recompilar sin «clean», los constructores que crean estas anotaciones quedan sin
 # la llamada a super() y la JVM rechaza la clase (VerifyError). Ver CLAUDE.md.

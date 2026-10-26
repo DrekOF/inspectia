@@ -1,11 +1,11 @@
 /*
  * Nombre: ValidadorDeVigencia.java
- * Descripción: Revisa que un token traiga sus fechas y no haya vencido, sin tolerancia: la sesión dura
- *              8 horas exactas (RF-01, RNF-04, D-28).
+ * Descripción: Revisa que un token traiga sus fechas y su versión de sesión, y que no haya vencido, sin
+ *              tolerancia: la sesión dura 8 horas exactas (RF-01, RNF-04, D-28).
  * Fecha de creación: 14/10/2026
- * Actualización: 18/10/2026
+ * Actualización: 26/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 package co.edu.usco.inspectia.comun.seguridad;
 
@@ -25,8 +25,9 @@ import org.springframework.security.oauth2.jwt.Jwt;
  * <p>Un token vencido se marca con el código {@value #SESION_VENCIDA}, para responder «Tu sesión
  * venció» y no «La sesión no es válida».
  *
- * <p>También exige la fecha de emisión ({@code iat}): con ella se sabe si el token es de una sesión
- * abierta antes de cambiar la contraseña (RNF-04 C6). Los tokens del servidor siempre la traen.
+ * <p>También exige la fecha de emisión ({@code iat}), que los tokens del servidor siempre traen (D-28), y la
+ * versión de sesión ({@value EmisorDeTokens#VERSION_SESION}): con ella se sabe si el token es de una sesión
+ * abierta antes de cambiar la contraseña (RNF-04 C6).
  */
 public class ValidadorDeVigencia implements OAuth2TokenValidator<Jwt> {
 
@@ -54,6 +55,10 @@ public class ValidadorDeVigencia implements OAuth2TokenValidator<Jwt> {
         if (token.getIssuedAt() == null) {
             return OAuth2TokenValidatorResult.failure(
                     new OAuth2Error(OAuth2ErrorCodes.INVALID_TOKEN, "El token no trae su fecha de emisión", null));
+        }
+        if (!(token.getClaims().get(EmisorDeTokens.VERSION_SESION) instanceof Number)) {
+            return OAuth2TokenValidatorResult.failure(
+                    new OAuth2Error(OAuth2ErrorCodes.INVALID_TOKEN, "El token no trae su versión de sesión", null));
         }
         if (!reloj.instant().isBefore(vence)) {
             return OAuth2TokenValidatorResult.failure(new OAuth2Error(SESION_VENCIDA, "La sesión venció en " + vence, null));

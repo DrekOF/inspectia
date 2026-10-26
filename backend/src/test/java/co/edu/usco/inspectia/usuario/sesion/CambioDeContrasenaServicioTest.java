@@ -3,9 +3,9 @@
  * Descripción: Pruebas unitarias del cambio de la propia contraseña con Mockito: orden de las
  *              revisiones, bloqueo, contraseñas de más de 72 bytes y token de la sesión que sigue (RF-18).
  * Fecha de creación: 19/10/2026
- * Actualización: 19/10/2026
+ * Actualización: 26/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.usuario.sesion;
 
@@ -145,22 +145,22 @@ class CambioDeContrasenaServicioTest {
     }
 
     @Test
-    @DisplayName("RF-18 · C5 · al cambiarla guarda el hash nuevo, aplica la regla que corta las sesiones y entrega un token del segundo del cambio que vence cuando vencía el anterior")
+    @DisplayName("RF-18 · C5 · al cambiarla guarda el hash nuevo, aplica la regla que corta las sesiones y entrega un token con la versión de sesión que dejó la regla, que vence cuando vencía el anterior")
     void alCambiarlaSigueLaSesion() {
-        Instant cambio = Instant.parse("2026-10-19T15:00:00Z");
         Usuario guardado = new Usuario();
         guardado.setId(ID);
         guardado.setContrasenaHash(HASH);
+        guardado.setVersionSesion(2);
         when(repositorio.buscarPorId(ID)).thenReturn(Optional.of(usuario(null)));
         when(codificador.matches(ACTUAL, HASH)).thenReturn(true);
         when(codificador.encode(NUEVA)).thenReturn("hash-nuevo");
         when(repositorio.findById(ID)).thenReturn(Optional.of(guardado));
         UsuarioEnSesion sesion = sesion();
         doAnswer(invocacion -> {
-            guardado.setSesionesDesde(cambio.atOffset(ZoneOffset.UTC));
+            guardado.setVersionSesion(3);
             return null;
         }).when(reglas).cortarSesionesAlCambiarContrasena(guardado, sesion);
-        when(emisor.emitir(ID, cambio, VENCE)).thenReturn(new EmisorDeTokens.TokenEmitido("token-nuevo", VENCE));
+        when(emisor.emitir(ID, 3, AHORA, VENCE)).thenReturn(new EmisorDeTokens.TokenEmitido("token-nuevo", VENCE));
 
         SesionRespuesta respuesta = servicio.cambiar(sesion, ACTUAL, NUEVA);
 
@@ -171,7 +171,7 @@ class CambioDeContrasenaServicioTest {
         InOrder orden = inOrder(codificador, reglas, emisor);
         orden.verify(codificador).matches(ACTUAL, HASH);
         orden.verify(reglas).cortarSesionesAlCambiarContrasena(guardado, sesion);
-        orden.verify(emisor).emitir(ID, cambio, VENCE);
+        orden.verify(emisor).emitir(ID, 3, AHORA, VENCE);
         verify(repositorio, never()).registrarFallo(any(), anyInt(), any(), any());
     }
 
@@ -184,7 +184,7 @@ class CambioDeContrasenaServicioTest {
     /** Ana, activa y con su empresa activa, bloqueada hasta {@code bloqueadoHasta} o sin bloqueo. */
     private static DatosDeSesion usuario(Instant bloqueadoHasta) {
         return new DatosDeSesion(ID, "Ana Pérez", "ana@cacaos.test", HASH, UsuarioRol.ADMIN_EMPRESA, true,
-                bloqueadoHasta == null ? null : enUtc(bloqueadoHasta), null, EMPRESA, "Cacaos del Huila", true);
+                bloqueadoHasta == null ? null : enUtc(bloqueadoHasta), 2, EMPRESA, "Cacaos del Huila", true);
     }
 
     private static OffsetDateTime enUtc(Instant instante) {

@@ -2,11 +2,12 @@
  * Nombre: SesionServicioTest.java
  * Descripción: Pruebas unitarias del inicio de sesión con Mockito: una sola comparación BCrypt en cada
  *              intento, bloqueo, contraseñas de más de 72 bytes y entrega del token (RF-01, D-28), y
- *              el corte de las sesiones abiertas antes de cambiar la contraseña (RNF-04, D-30).
+ *              el corte de las sesiones abiertas antes de cambiar la contraseña, por la versión de sesión
+ *              (RNF-04, D-30).
  * Fecha de creación: 14/10/2026
- * Actualización: 18/10/2026
+ * Actualización: 26/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 package co.edu.usco.inspectia.usuario.sesion;
 
@@ -56,6 +57,8 @@ class SesionServicioTest {
     private static final String CONTRASENA = "Clave-Segura-2026";
     private static final String HASH = "hash-guardado";
     private static final String FICTICIO = "hash-ficticio";
+    /** La versión de sesión de Ana en la base: cambió su contraseña tres veces. */
+    private static final int VERSION = 3;
 
     @Mock
     private SesionRepositorio repositorio;
@@ -75,12 +78,12 @@ class SesionServicioTest {
     }
 
     @Test
-    @DisplayName("RF-01 · C1 · con la contraseña correcta, los intentos vuelven a cero y entrega el token con el usuario, su rol y su empresa")
+    @DisplayName("RF-01 · C1 · con la contraseña correcta, los intentos vuelven a cero y entrega el token, con la versión de sesión de la base, y el usuario con su rol y su empresa")
     void conLaContrasenaCorrectaEntra() {
         when(repositorio.buscarPorCorreo(CORREO)).thenReturn(Optional.of(usuario(null)));
         when(codificador.matches(CONTRASENA, HASH)).thenReturn(true);
         Instant vence = AHORA.plus(Duration.ofHours(8));
-        when(emisor.emitir(ID)).thenReturn(new EmisorDeTokens.TokenEmitido("token-firmado", vence));
+        when(emisor.emitir(ID, VERSION)).thenReturn(new EmisorDeTokens.TokenEmitido("token-firmado", vence));
 
         SesionRespuesta sesion = servicio.iniciar(CORREO, CONTRASENA);
 
@@ -114,7 +117,7 @@ class SesionServicioTest {
 
         verify(codificador).matches("Otra-Clave-2026", HASH);
         verify(repositorio).registrarFallo(ID, 5, enUtc(AHORA), enUtc(AHORA.plus(Duration.ofMinutes(15))));
-        verify(emisor, never()).emitir(any());
+        verify(emisor, never()).emitir(any(), anyInt());
     }
 
     @Test
@@ -129,7 +132,7 @@ class SesionServicioTest {
         verify(codificador).matches(CONTRASENA, HASH);
         verify(repositorio, never()).registrarFallo(any(), anyInt(), any(), any());
         verify(repositorio, never()).reiniciarIntentos(any());
-        verify(emisor, never()).emitir(any());
+        verify(emisor, never()).emitir(any(), anyInt());
     }
 
     @ParameterizedTest(name = "bloqueada hasta {0} segundos después de ahora: ¿entra? {1}")
@@ -139,7 +142,7 @@ class SesionServicioTest {
         when(repositorio.buscarPorCorreo(CORREO)).thenReturn(Optional.of(usuario(AHORA.plusSeconds(segundos))));
         when(codificador.matches(CONTRASENA, HASH)).thenReturn(true);
         if (entra) {
-            when(emisor.emitir(ID)).thenReturn(new EmisorDeTokens.TokenEmitido("token-firmado", AHORA));
+            when(emisor.emitir(ID, VERSION)).thenReturn(new EmisorDeTokens.TokenEmitido("token-firmado", AHORA));
             assertThat(servicio.iniciar(CORREO, CONTRASENA).token()).isEqualTo("token-firmado");
         } else {
             assertThatThrownBy(() -> servicio.iniciar(CORREO, CONTRASENA))
@@ -159,46 +162,35 @@ class SesionServicioTest {
 
         verify(codificador).matches(larga, HASH);
         verify(repositorio).registrarFallo(ID, 5, enUtc(AHORA), enUtc(AHORA.plus(Duration.ofMinutes(15))));
-        verify(emisor, never()).emitir(any());
+        verify(emisor, never()).emitir(any(), anyInt());
     }
 
-    @ParameterizedTest(name = "emitido {0} segundos antes del cambio: ¿sirve? {1}")
-    @CsvSource({"1, false", "0, true"})
-    @DisplayName("RNF-04 · C6 · un token emitido antes del segundo en que cambió la contraseña ya no sirve; uno de ese mismo segundo, sí (prueba de límite)")
-    void laSesionSirveDesdeElCambio(long segundosAntes, boolean sirve) {
-        Instant cambio = AHORA.minusSeconds(60);
-        when(repositorio.buscarPorId(ID)).thenReturn(Optional.of(usuario(null, cambio)));
-        Instant emitido = cambio.minusSeconds(segundosAntes);
-        Instant vence = emitido.plus(Duration.ofHours(8));
+    @ParameterizedTest(name = "versión {0} en el token y {1} en la base: ¿sirve? {2}")
+    @CsvSource({"2, 3, false", "3, 3, true", "4, 3, false"})
+    @DisplayName("RNF-04 · C6 · un token con otra versión de sesión que la de la base ya no sirve, sea menor o mayor; con la misma, sí (prueba de límite)")
+    void soloSirveLaVersionDeLaBase(int delToken, int enLaBase, boolean sirve) {
+        when(repositorio.buscarPorId(ID)).thenReturn(Optional.of(usuario(null, enLaBase)));
+        Instant vence = AHORA.plus(Duration.ofHours(1));
 
         if (sirve) {
-            assertThat(servicio.cargar(ID, emitido, vence).id()).isEqualTo(ID);
+            assertThat(servicio.cargar(ID, delToken, vence).id()).isEqualTo(ID);
         } else {
-            assertThatThrownBy(() -> servicio.cargar(ID, emitido, vence))
+            assertThatThrownBy(() -> servicio.cargar(ID, delToken, vence))
                     .isInstanceOfSatisfying(SesionNoValidaExcepcion.class,
                             excepcion -> assertThat(excepcion.getClave()).isEqualTo("error.contrasena_cambiada"));
         }
     }
 
-    @Test
-    @DisplayName("RNF-04 · si la contraseña nunca cambió, cualquier token vigente del usuario sirve")
-    void sinCambioDeContrasenaSirve() {
-        when(repositorio.buscarPorId(ID)).thenReturn(Optional.of(usuario(null)));
-
-        assertThat(servicio.cargar(ID, AHORA.minus(Duration.ofHours(7)), AHORA.plus(Duration.ofHours(1))).id())
-                .isEqualTo(ID);
-    }
-
-    /** Un administrador de empresa activo, con la empresa activa y sin cambios de contraseña. */
+    /** Un administrador de empresa activo, con la empresa activa y la versión de sesión {@link #VERSION}. */
     private static DatosDeSesion usuario(Instant bloqueadoHasta) {
-        return usuario(bloqueadoHasta, null);
+        return usuario(bloqueadoHasta, VERSION);
     }
 
-    /** Un administrador de empresa activo, con la empresa activa, que cambió su contraseña en {@code sesionesDesde}. */
-    private static DatosDeSesion usuario(Instant bloqueadoHasta, Instant sesionesDesde) {
+    /** Un administrador de empresa activo, con la empresa activa y la versión de sesión dada. */
+    private static DatosDeSesion usuario(Instant bloqueadoHasta, int versionSesion) {
         return new DatosDeSesion(ID, "Ana Pérez", CORREO, HASH, UsuarioRol.ADMIN_EMPRESA, true,
-                bloqueadoHasta == null ? null : enUtc(bloqueadoHasta),
-                sesionesDesde == null ? null : enUtc(sesionesDesde), EMPRESA, "Cacaos del Huila", true);
+                bloqueadoHasta == null ? null : enUtc(bloqueadoHasta), versionSesion, EMPRESA, "Cacaos del Huila",
+                true);
     }
 
     private static OffsetDateTime enUtc(Instant instante) {
