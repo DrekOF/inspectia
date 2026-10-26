@@ -29,7 +29,7 @@ public class ReglasUsuarioImpl implements ReglasUsuario {
      * Crea las reglas; Spring les pasa el conteo de activos y la versión de sesión.
      *
      * @param activos cuenta los usuarios activos de una empresa
-     * @param versiones sube la versión de sesión de un usuario
+     * @param versiones sube la versión de sesión de un usuario y quita su bloqueo
      */
     public ReglasUsuarioImpl(UsuariosActivosRepositorio activos, VersionDeSesionRepositorio versiones) {
         this.activos = activos;
@@ -80,15 +80,18 @@ public class ReglasUsuarioImpl implements ReglasUsuario {
 
     /**
      * Al restablecer o cambiar una contraseña, las sesiones abiertas antes del cambio dejan de servir y la
-     * cuenta se desbloquea (RNF-04 C6, D-30). La versión de sesión del usuario sube en uno, en la base y con
-     * una sola sentencia: en cada petición, un token con otra versión responde 401 «Tu contraseña cambió».
-     * No depende de la hora, así que tampoco de que el reloj del servidor se atrase ni del segundo en que se
-     * cambia. El usuario queda con la versión que devolvió la base, que es la del token con el que sigue la
-     * sesión en RF-18; JPA no la escribe.
+     * cuenta se desbloquea (RNF-04 C6, D-30). Una sola sentencia sube en uno la versión de sesión del
+     * usuario y quita su bloqueo: en cada petición, un token con otra versión responde 401 «Tu contraseña
+     * cambió». No depende de la hora, así que tampoco de que el reloj del servidor se atrase ni del segundo
+     * en que se cambia. Y un fallo que bloquea la cuenta mientras tanto no queda (ver
+     * {@link VersionDeSesionRepositorio#subirYDesbloquear}).
+     *
+     * <p>La entidad queda igual a la base: con la versión que devolvió la base, que es la del token con el
+     * que sigue la sesión en RF-18, y sin intentos fallidos ni bloqueo.
      */
     @Override
     public void cortarSesionesAlCambiarContrasena(Usuario usuario, UsuarioEnSesion sesion) {
-        usuario.setVersionSesion(versiones.subir(usuario.getId()));
+        usuario.setVersionSesion(versiones.subirYDesbloquear(usuario.getId()));
         usuario.setIntentosFallidos(0);
         usuario.setBloqueadoHasta(null);
     }

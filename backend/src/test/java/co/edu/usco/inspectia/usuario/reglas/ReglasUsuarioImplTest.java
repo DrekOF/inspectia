@@ -111,18 +111,18 @@ class ReglasUsuarioImplTest {
     }
 
     @Test
-    @DisplayName("RNF-04 · C6 · al cambiar una contraseña, la versión de sesión sube en la base y el usuario queda con la que devolvió la base, no con la que había leído; la cuenta se desbloquea")
+    @DisplayName("RNF-04 · C6 · al cambiar una contraseña, la versión de sesión sube y la cuenta se desbloquea en una sola sentencia de la base, y el usuario queda igual a la base: con la versión que devolvió, no con la que había leído")
     void cortaLasSesionesYDesbloquea() {
         Usuario luis = usuario(LUIS, UsuarioRol.USUARIO_FINAL);
         luis.setVersionSesion(2);
         luis.setIntentosFallidos(3);
         luis.setBloqueadoHasta(OffsetDateTime.parse("2026-10-18T15:10:07Z"));
         // Mientras tanto, otro cambio de contraseña ya la había subido a 3.
-        when(versiones.subir(LUIS)).thenReturn(4);
+        when(versiones.subirYDesbloquear(LUIS)).thenReturn(4);
 
         reglas.cortarSesionesAlCambiarContrasena(luis, sesion());
 
-        verify(versiones).subir(LUIS);
+        verify(versiones).subirYDesbloquear(LUIS);
         assertThat(luis.getVersionSesion()).isEqualTo(4);
         assertThat(luis.getIntentosFallidos()).isZero();
         assertThat(luis.getBloqueadoHasta()).isNull();

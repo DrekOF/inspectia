@@ -118,11 +118,9 @@ public class SeguridadConfiguracion {
         }
     }
 
-    /** La versión de sesión que trae el token: {@link ValidadorDeVigencia} ya revisó que venga. */
+    /** La versión de sesión que trae el token: {@link ValidadorDeVigencia} ya revisó que sea válida. */
     private static int versionDe(Jwt token) {
-        if (token.getClaims().get(EmisorDeTokens.VERSION_SESION) instanceof Number version) {
-            return version.intValue();
-        }
-        throw new SesionNoValidaExcepcion("error.sesion_invalida");
+        return ValidadorDeVigencia.versionDeSesion(token)
+                .orElseThrow(() -> new SesionNoValidaExcepcion("error.sesion_invalida"));
     }
 }
