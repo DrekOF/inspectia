@@ -5,8 +5,8 @@
  *              o la plantilla, y se regenera.
  * Fecha de creación: 13/10/2026
  * Actualización: 26/10/2026
- * Autor: Equipo InspectIA (generado por generador/ v1.6)
- * Versión: 1.6
+ * Autor: Equipo InspectIA (generado por generador/ v1.7)
+ * Versión: 1.7
  * Entidades: empresa 1.3, usuario 1.6, rango_recomendacion 1.2
  */
 package co.edu.usco.inspectia.empresa;
@@ -152,6 +152,29 @@ class EmpresaApiGeneradaIT {
                 Arguments.of("administrador.contrasena", "ñ".repeat(37), "La contraseña es demasiado larga: usa menos caracteres o menos tildes y eñes"));
     }
 
+    @ParameterizedTest(name = "[{index}] {0}")
+    @DisplayName("RF-02 · cada validación del JSON de empresa acepta su valor del borde al crear")
+    @MethodSource("bordesAlCrear")
+    void bordesAlCrear(String campo, Object valor) {
+        Map<String, Object> datos = datosParaCrear();
+        poner(datos, campo, valor);
+
+        MvcTestResult resultado = enviar(HttpMethod.POST, RUTA, datos, conPermiso("crear"));
+
+        assertThat(resultado).hasStatus(HttpStatus.CREATED);
+    }
+
+    static Stream<Arguments> bordesAlCrear() {
+        return Stream.of(
+                Arguments.of("nombre", "x".repeat(120)),
+                Arguments.of("ciudad", "x".repeat(80)),
+                Arguments.of("administrador.nombre", "x".repeat(120)),
+                Arguments.of("administrador.correo", correoDeLargo(254)),
+                Arguments.of("administrador.contrasena", "x".repeat(64)),
+                Arguments.of("administrador.contrasena", "x".repeat(8)),
+                Arguments.of("administrador.contrasena", "ñ".repeat(36)));
+    }
+
     @ParameterizedTest(name = "{0}: {2}")
     @DisplayName("RF-02 · cada validación del JSON de empresa responde 400 con su mensaje al editar")
     @MethodSource("validacionesAlEditar")
@@ -174,6 +197,25 @@ class EmpresaApiGeneradaIT {
                 Arguments.of("nit", "?", "Escribe el NIT sin puntos y con el dígito de verificación, por ejemplo 900123456-8."),
                 Arguments.of("ciudad", null, "Este dato es obligatorio."),
                 Arguments.of("ciudad", "x".repeat(81), "Puede tener como máximo 80 caracteres."));
+    }
+
+    @ParameterizedTest(name = "[{index}] {0}")
+    @DisplayName("RF-02 · cada validación del JSON de empresa acepta su valor del borde al editar")
+    @MethodSource("bordesAlEditar")
+    void bordesAlEditar(String campo, Object valor) {
+        UUID id = crear();
+        Map<String, Object> datos = datosParaEditar();
+        poner(datos, campo, valor);
+
+        MvcTestResult resultado = enviar(HttpMethod.PUT, RUTA + "/" + id, datos, conPermiso("editar"));
+
+        assertThat(resultado).hasStatus(HttpStatus.OK);
+    }
+
+    static Stream<Arguments> bordesAlEditar() {
+        return Stream.of(
+                Arguments.of("nombre", "x".repeat(120)),
+                Arguments.of("ciudad", "x".repeat(80)));
     }
 
     @Test
@@ -204,6 +246,22 @@ class EmpresaApiGeneradaIT {
         assertThat(json(resultado)).containsEntry("nombre", "Cacaos del Huila");
         assertThat(json(resultado)).containsEntry("nit", "900123456-8");
         assertThat(json(resultado)).containsEntry("ciudad", "Neiva");
+    }
+
+    @Test
+    @DisplayName("RF-02 · el listado de empresa filtra por activo: con true trae solo los activos y con false, los desactivados")
+    void listadoFiltraPorActivo() {
+        String id = crear().toString();
+
+        assertThat(identificadores(listarConActivo("true"))).containsExactly(id);
+        assertThat(identificadores(listarConActivo("false"))).isEmpty();
+
+        assertThat(enviar(HttpMethod.POST, RUTA + "/" + id + "/desactivar", null, conPermiso("desactivar")))
+                .hasStatus(HttpStatus.OK);
+
+        assertThat(identificadores(listarConActivo("true"))).isEmpty();
+        assertThat(identificadores(listarConActivo("false"))).containsExactly(id);
+        assertThat(identificadores(enviar(HttpMethod.GET, RUTA, null, conPermiso("listar")))).containsExactly(id);
     }
 
     private void vaciar() {
@@ -289,6 +347,17 @@ class EmpresaApiGeneradaIT {
 
     private static Map<String, Object> json(MvcTestResult resultado) {
         return JsonPath.read(new String(resultado.getResponse().getContentAsByteArray(), StandardCharsets.UTF_8), "$");
+    }
+
+    /** Los identificadores de los registros de una página del listado. */
+    private static List<String> identificadores(MvcTestResult resultado) {
+        return JsonPath.read(new String(resultado.getResponse().getContentAsByteArray(), StandardCharsets.UTF_8),
+                "$.contenido[*].id");
+    }
+
+    /** El listado con el filtro {@code ?activo=} (D-33). */
+    private MvcTestResult listarConActivo(String activo) {
+        return enviar(HttpMethod.GET, RUTA + "?activo=" + activo, null, conPermiso("listar"));
     }
 
     @SuppressWarnings("unchecked")

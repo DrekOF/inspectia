@@ -22,7 +22,7 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 ## Resumen
 
 - **143 criterios de aceptación** en 26 fichas: 55 con prueba y 88 pendientes.
-- **431 pruebas:** 220 de Java (27 generadas), 129 de JavaScript y 82 de Python. Una prueba parametrizada cuenta una vez.
+- **460 pruebas:** 226 de Java (33 generadas), 152 de JavaScript (23 generadas) y 82 de Python. Una prueba parametrizada cuenta una vez.
 
 | Ficha | Criterios | Con prueba | Pendientes |
 |---|---:|---:|---:|
@@ -123,8 +123,11 @@ Otras pruebas de RF-01, que no cubren un criterio:
 
 Otras pruebas de RF-02, que no cubren un criterio:
 
+- [`EmpresaApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/empresa/EmpresaApiGeneradaIT.java) · cada validación del JSON de empresa acepta su valor del borde al crear (parametrizada, generada)
+- [`EmpresaApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/empresa/EmpresaApiGeneradaIT.java) · cada validación del JSON de empresa acepta su valor del borde al editar (parametrizada, generada)
 - [`EmpresaApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/empresa/EmpresaApiGeneradaIT.java) · cada validación del JSON de empresa responde 400 con su mensaje al crear (parametrizada, generada)
 - [`EmpresaApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/empresa/EmpresaApiGeneradaIT.java) · cada validación del JSON de empresa responde 400 con su mensaje al editar (parametrizada, generada)
+- [`EmpresaApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/empresa/EmpresaApiGeneradaIT.java) · el listado de empresa filtra por activo: con true trae solo los activos y con false, los desactivados (generada)
 - [`EmpresaApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/empresa/EmpresaApiGeneradaIT.java) · empresa guarda sin espacios al inicio ni al final los textos que su JSON pide recortar (generada)
 - [`EmpresaApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/empresa/EmpresaApiGeneradaIT.java) · los datos únicos del JSON de empresa no se repiten: responde 409 (generada)
 - [`EdicionEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/EdicionEmpresaIT.java) · ver, editar, desactivar o reactivar una empresa que no existe responde 404 (parametrizada)
@@ -137,6 +140,22 @@ Otras pruebas de RF-02, que no cubren un criterio:
 - [`RestablecerContrasenaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/administradores/RestablecerContrasenaIT.java) · restablecer la contraseña de un administrador de empresa desbloquea su cuenta
 - [`RestablecerContrasenaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/administradores/RestablecerContrasenaIT.java) · si el usuario no es administrador de esa empresa, la API responde que no existe y no cambia nada
 - [`RestablecerContrasenaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/administradores/RestablecerContrasenaIT.java) · también restablece la contraseña de un administrador desactivado o de una empresa desactivada, sin reactivarlos
+- [`EmpresaPantalla.test.jsx`](../frontend/src/generated/empresa/EmpresaPantalla.test.jsx) · desactivar empresa pide confirmación, y reactivarla no (generada)
+- [`EmpresaPantalla.test.jsx`](../frontend/src/generated/empresa/EmpresaPantalla.test.jsx) · la pantalla de empresa edita con los datos del formulario (generada)
+- [`EmpresaPantalla.test.jsx`](../frontend/src/generated/empresa/EmpresaPantalla.test.jsx) · la pantalla de empresa muestra sus registros y su resumen (generada)
+- [`EmpresaPantalla.test.jsx`](../frontend/src/generated/empresa/EmpresaPantalla.test.jsx) · la pantalla de empresa registra con los datos del formulario (generada)
+- [`EmpresaPantalla.test.jsx`](../frontend/src/generated/empresa/EmpresaPantalla.test.jsx) · lo que solo revisa el backend de empresa llega a su campo al guardar (generada)
+- [`EmpresaPantalla.test.jsx`](../frontend/src/generated/empresa/EmpresaPantalla.test.jsx) · sin registros, la pantalla de empresa lo dice (generada)
+- [`EmpresaPantalla.test.jsx`](../frontend/src/generated/empresa/EmpresaPantalla.test.jsx) · un dato con HTML se ve como texto en la pantalla de empresa: no se interpreta (generada)
+- [`EmpresaPantalla.test.jsx`](../frontend/src/generated/empresa/EmpresaPantalla.test.jsx) · un dato repetido de empresa se marca en su campo (409) (generada)
+- [`empresaApi.test.js`](../frontend/src/generated/empresa/empresaApi.test.js) · el cliente de la API de empresa usa la ruta y el método de cada operación del JSON (generada)
+- [`empresaApi.test.js`](../frontend/src/generated/empresa/empresaApi.test.js) · el listado de empresa pide la página, el tamaño y, si se pide, el filtro activo (D-33) (generada)
+- [`empresaEsquemas.test.js`](../frontend/src/generated/empresa/empresaEsquemas.test.js) · cada validación del JSON de empresa acepta al editar su valor del borde, como la API: %s (parametrizada, generada)
+- [`empresaEsquemas.test.js`](../frontend/src/generated/empresa/empresaEsquemas.test.js) · cada validación del JSON de empresa acepta al registrar su valor del borde, como la API: %s (parametrizada, generada)
+- [`empresaEsquemas.test.js`](../frontend/src/generated/empresa/empresaEsquemas.test.js) · cada validación del JSON de empresa rechaza al editar lo mismo que la API, con su mensaje: %s (parametrizada, generada)
+- [`empresaEsquemas.test.js`](../frontend/src/generated/empresa/empresaEsquemas.test.js) · cada validación del JSON de empresa rechaza al registrar lo mismo que la API, con su mensaje: %s (parametrizada, generada)
+- [`empresaEsquemas.test.js`](../frontend/src/generated/empresa/empresaEsquemas.test.js) · los ejemplos del JSON de empresa cumplen las validaciones del formulario (generada)
+- [`empresaEsquemas.test.js`](../frontend/src/generated/empresa/empresaEsquemas.test.js) · los mensajes de las validaciones de empresa salen en el idioma de la app (generada)
 
 ## RF-03 · Gestionar los usuarios de la empresa
 
@@ -156,8 +175,11 @@ Otras pruebas de RF-02, que no cubren un criterio:
 
 Otras pruebas de RF-03, que no cubren un criterio:
 
+- [`UsuarioApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/usuario/UsuarioApiGeneradaIT.java) · cada validación del JSON de usuario acepta su valor del borde al crear (parametrizada, generada)
+- [`UsuarioApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/usuario/UsuarioApiGeneradaIT.java) · cada validación del JSON de usuario acepta su valor del borde al editar (parametrizada, generada)
 - [`UsuarioApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/usuario/UsuarioApiGeneradaIT.java) · cada validación del JSON de usuario responde 400 con su mensaje al crear (parametrizada, generada)
 - [`UsuarioApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/usuario/UsuarioApiGeneradaIT.java) · cada validación del JSON de usuario responde 400 con su mensaje al editar (parametrizada, generada)
+- [`UsuarioApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/usuario/UsuarioApiGeneradaIT.java) · el listado de usuario filtra por activo: con true trae solo los activos y con false, los desactivados (generada)
 - [`UsuarioApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/usuario/UsuarioApiGeneradaIT.java) · los datos únicos del JSON de usuario no se repiten: responde 409 (generada)
 - [`UsuarioApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/usuario/UsuarioApiGeneradaIT.java) · usuario guarda sin espacios al inicio ni al final los textos que su JSON pide recortar (generada)
 - [`NoEnBlancoValidadorTest`](../backend/src/test/java/co/edu/usco/inspectia/comun/validacion/NoEnBlancoValidadorTest.java) · @NoEnBlanco deja no enviar el dato, pero si llega no puede estar vacío ni tener solo espacios (prueba de límite) (parametrizada)
@@ -434,7 +456,11 @@ Otras pruebas de RNF-04, que no cubren un criterio:
 - [`SesionAbiertaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/SesionAbiertaIT.java) · un token firmado con otra clave no sirve
 - [`SesionAbiertaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/SesionAbiertaIT.java) · un token sin firma (alg none) no sirve
 - [`SesionServicioTest`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/SesionServicioTest.java) · si la contraseña nunca cambió, cualquier token vigente del usuario sirve
+- [`empresa.spec.js`](../frontend/e2e/generated/empresa.spec.js) · la pantalla de empresa la abre ADMIN_PLATAFORMA, uno de los roles de listar (de punta a punta) (generada)
+- [`empresa.spec.js`](../frontend/e2e/generated/empresa.spec.js) · la pantalla de empresa no la abre ADMIN_EMPRESA, que no está en los roles de listar (de punta a punta) (generada)
+- [`empresa.spec.js`](../frontend/e2e/generated/empresa.spec.js) · la pantalla de empresa no la abre USUARIO_FINAL, que no está en los roles de listar (de punta a punta) (generada)
 - [`iniciar-sesion.spec.js`](../frontend/e2e/iniciar-sesion.spec.js) · sin sesión, una pantalla interna lleva a Iniciar sesión
+- [`EmpresaPantalla.test.jsx`](../frontend/src/generated/empresa/EmpresaPantalla.test.jsx) · la pantalla de empresa solo la abren los roles de listar: %s ve que no tiene permiso (parametrizada, generada)
 - [`Marco.test.jsx`](../frontend/src/navegacion/Marco.test.jsx) · una pantalla de otro rol no se abre aunque se escriba su dirección: avisa que no tiene permiso
 - [`sesion.test.jsx`](../frontend/src/sesion/sesion.test.jsx) · sin sesión, una pantalla interna lleva a Iniciar sesión
 - [`test_frontend.py`](../generador/pruebas/test_frontend.py) · la ruta, la entrada del menú y los roles de cada pantalla salen del JSON: la abren los roles de listar
@@ -444,7 +470,7 @@ Otras pruebas de RNF-04, que no cubren un criterio:
 
 | Criterio | Pruebas |
 |---|---|
-| C1. Todas las pantallas se usan sin desplazamiento horizontal desde 360 px de ancho. | [`responsive.spec.js`](../frontend/e2e/responsive.spec.js) · ninguna pantalla se desplaza a los lados desde 360 px de ancho |
+| C1. Todas las pantallas se usan sin desplazamiento horizontal desde 360 px de ancho. | [`empresa.spec.js`](../frontend/e2e/generated/empresa.spec.js) · la pantalla de empresa no se desplaza a los lados desde 360 px de ancho (generada)<br>[`responsive.spec.js`](../frontend/e2e/responsive.spec.js) · ninguna pantalla se desplaza a los lados desde 360 px de ancho |
 | C2. En el celular, la captura abre la cámara, tanto en Android con Chrome como en iPhone con Safari. | **Pendiente** |
 | C3. Las pruebas del front-end (RP-14) se ejecutan en tamaño de PC y de celular. | [`responsive.spec.js`](../frontend/e2e/responsive.spec.js) · las pruebas corren en tamaño de PC y de celular: en PC el menú está a la vista y en el celular, detrás del botón |
 
@@ -459,11 +485,12 @@ Otras pruebas de RNF-05, que no cubren un criterio:
 | C1. En una prueba con 3 personas que no conocen la app, cada una completa un análisis en menos de 5 minutos, sin ayuda. | **Pendiente** |
 | C2. Registrar un lote, subir las fotos y ver el resultado toma como máximo 3 pantallas. | **Pendiente** |
 | C3. Cada mensaje de error dice qué pasó y qué hacer. | [`accesibilidad.spec.js`](../frontend/e2e/accesibilidad.spec.js) · un error de un campo dice qué pasó y queda unido al campo para los lectores de pantalla<br>[`cliente.test.js`](../frontend/src/api/cliente.test.js) · si el servidor no responde, el error queda marcado como falta de conexión (estado 0) y no cierra la sesión<br>[`errores.test.js`](../frontend/src/api/errores.test.js) · el mensaje del backend se muestra tal cual, porque ya dice qué pasó y qué hacer<br>[`errores.test.js`](../frontend/src/api/errores.test.js) · sin conexión dice que no se pudo conectar con el servidor y que revise la conexión<br>[`errores.test.js`](../frontend/src/api/errores.test.js) · un error que no viene de la API también dice qué hacer<br>[`errores.test.js`](../frontend/src/api/errores.test.js) · una falla sin mensaje del backend dice que fue inesperada y que intente más tarde<br>[`IniciarSesion.test.jsx`](../frontend/src/paginas/IniciarSesion.test.jsx) · si el servidor falla sin dar un mensaje, Iniciar sesión dice qué pasó y qué hacer<br>[`IniciarSesion.test.jsx`](../frontend/src/paginas/IniciarSesion.test.jsx) · sin conexión con el servidor, Iniciar sesión dice qué pasó y qué hacer |
-| C4. Todas las funciones se pueden usar con el teclado y los textos tienen buen contraste. | [`accesibilidad.spec.js`](../frontend/e2e/accesibilidad.spec.js) · las pantallas de esta versión no tienen fallas de accesibilidad WCAG AA en el tema claro<br>[`accesibilidad.spec.js`](../frontend/e2e/accesibilidad.spec.js) · las pantallas de esta versión no tienen fallas de accesibilidad WCAG AA en el tema oscuro<br>[`accesibilidad.spec.js`](../frontend/e2e/accesibilidad.spec.js) · se inicia sesión solo con el teclado<br>[`Marco.test.jsx`](../frontend/src/navegacion/Marco.test.jsx) · cada pantalla con menú empieza con el enlace «Saltar al contenido», que lleva al contenido<br>[`tokens.test.js`](../frontend/src/tema/tokens.test.js) · los textos y bordes de los dos temas cumplen el contraste WCAG AA: %s (parametrizada) |
+| C4. Todas las funciones se pueden usar con el teclado y los textos tienen buen contraste. | [`accesibilidad.spec.js`](../frontend/e2e/accesibilidad.spec.js) · las pantallas de esta versión no tienen fallas de accesibilidad WCAG AA en el tema claro<br>[`accesibilidad.spec.js`](../frontend/e2e/accesibilidad.spec.js) · las pantallas de esta versión no tienen fallas de accesibilidad WCAG AA en el tema oscuro<br>[`accesibilidad.spec.js`](../frontend/e2e/accesibilidad.spec.js) · se inicia sesión solo con el teclado<br>[`empresa.spec.js`](../frontend/e2e/generated/empresa.spec.js) · la pantalla de empresa no tiene fallas de accesibilidad WCAG AA, ni en el tema claro ni en el oscuro (generada)<br>[`Marco.test.jsx`](../frontend/src/navegacion/Marco.test.jsx) · cada pantalla con menú empieza con el enlace «Saltar al contenido», que lleva al contenido<br>[`tokens.test.js`](../frontend/src/tema/tokens.test.js) · los textos y bordes de los dos temas cumplen el contraste WCAG AA: %s (parametrizada) |
 
 Otras pruebas de RNF-06, que no cubren un criterio:
 
 - [`cliente.test.js`](../frontend/src/api/cliente.test.js) · una respuesta de error que no es JSON, como la de un proxy caído, llega sin mensaje del backend
+- [`EmpresaPantalla.test.jsx`](../frontend/src/generated/empresa/EmpresaPantalla.test.jsx) · sin conexión, la pantalla de empresa dice qué pasó y qué hacer, y se puede reintentar (generada)
 
 ## RNF-07 · Alcanzar el F1-score mínimo del modelo de IA
 
@@ -594,7 +621,7 @@ Pruebas que no cubren un criterio de una ficha, sino una pauta del docente (RP) 
 - [`test_java.py`](../generador/pruebas/test_java.py) · la respuesta solo lleva los atributos de la lista o del formulario: nunca el hash ni los datos internos
 - [`test_java.py`](../generador/pruebas/test_java.py) · las reglas de una entidad por empresa reciben la sesión, y los parámetros de una regla salen como constantes
 - [`test_java.py`](../generador/pruebas/test_java.py) · las validaciones del JSON pasan a Bean Validation con la clave de su mensaje
-- [`test_java.py`](../generador/pruebas/test_java.py) · lo generado de empresa no cambia al agregar la API por empresa: solo su header
+- [`test_java.py`](../generador/pruebas/test_java.py) · lo generado de empresa solo cambia a propósito: es igual a su copia de referencia, salvo el header
 - [`test_java.py`](../generador/pruebas/test_java.py) · los rangos por defecto de una empresa nueva salen de valores_iniciales del JSON
 - [`test_java.py`](../generador/pruebas/test_java.py) · solo_lectura_si: en la edición en bloque, ese dato no cambia en las filas que cumplen la condición, con el mensaje del JSON o el general
 - [`test_java.py`](../generador/pruebas/test_java.py) · un decimal acepta como máximo los decimales de su escala, con el mensaje general en singular o en plural

@@ -1,20 +1,21 @@
 # Nombre: salida.py
 # Descripción: Escribe los archivos generados y comprueba que nadie los editó a mano.
 # Fecha de creación: 13/10/2026
-# Actualización: 13/10/2026
+# Actualización: 26/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.0
+# Versión: 1.1
 """Escritura y comprobación de los archivos generados.
 
-El generador solo escribe dentro de ``CARPETAS_GENERADAS``. Esas carpetas son suyas: lo que hay en
-ellas y no sale de la generación actual sobra, y ``escribir`` lo borra.
+El generador solo escribe dentro de ``CARPETAS_GENERADAS``, las del backend y las del frontend. Esas carpetas
+son suyas: lo que hay en ellas y no sale de la generación actual sobra, y ``escribir`` lo borra.
 """
 
 from dataclasses import dataclass, field
 from pathlib import Path
 
 #: Carpetas que solo escribe el generador (rutas relativas a la raíz del repositorio).
-CARPETAS_GENERADAS = ('backend/src/generated', 'backend/src/test-generated')
+CARPETAS_GENERADAS = ('backend/src/generated', 'backend/src/test-generated', 'frontend/src/generated',
+                      'frontend/e2e/generated')
 
 
 @dataclass(frozen=True)

@@ -4,10 +4,10 @@
  *              Archivo generado por generador/ (RP-23): no se edita a mano; se cambia el JSON
  *              o la plantilla, y se regenera.
  * Fecha de creación: 13/10/2026
- * Actualización: 13/10/2026
- * Autor: Equipo InspectIA (generado por generador/ v1.2)
- * Versión: 1.2
- * Entidades: empresa 1.2, usuario 1.3, rango_recomendacion 1.1
+ * Actualización: 26/10/2026
+ * Autor: Equipo InspectIA (generado por generador/ v1.7)
+ * Versión: 1.7
+ * Entidades: empresa 1.3, usuario 1.6, rango_recomendacion 1.2
  */
 package co.edu.usco.inspectia.empresa;
 
@@ -22,6 +22,7 @@ import co.edu.usco.inspectia.usuario.UsuarioRepositorio;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -77,10 +78,15 @@ public class EmpresaServicio {
      *
      * @param pagina número de la página, desde 0
      * @param tamano filas por página
+     * @param activo solo los activos ({@code true}) o los desactivados ({@code false}); con {@code null}, todos
      * @return la página
      */
-    public Pagina<EmpresaRespuesta> listar(int pagina, int tamano) {
-        return Pagina.de(repositorio.findAll(PageRequest.of(pagina, tamano, ORDEN)), EmpresaMapeador::respuesta);
+    public Pagina<EmpresaRespuesta> listar(int pagina, int tamano, Boolean activo) {
+        PageRequest pedido = PageRequest.of(pagina, tamano, ORDEN);
+        Page<Empresa> registros = activo == null
+                ? repositorio.findAll(pedido)
+                : repositorio.findAllByActiva(activo, pedido);
+        return Pagina.de(registros, EmpresaMapeador::respuesta);
     }
 
     /**

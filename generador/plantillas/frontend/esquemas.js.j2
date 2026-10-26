@@ -1,0 +1,58 @@
+{#
+  Nombre: esquemas.js.j2
+  Descripción: Plantilla de las validaciones de Yup del formulario de una entidad con pantalla: las del JSON,
+               del mismo modelo que Bean Validation, en su orden y con las mismas claves de mensaje (RP-07,
+               RP-23). El formato del correo no va: lo valida solo el backend.
+  Fecha de creación: 26/10/2026
+  Actualización: 26/10/2026
+  Autor: Equipo InspectIA
+  Versión: 1.0
+#}
+{% from 'frontend/_macros.j2' import encabezado %}
+{% macro campos_yup(lista, sangria) %}
+{% for c in lista %}
+{{ sangria }}{{ c.clave }}: string(){{ '' if c.yup else ',' }}
+{% for linea in c.yup %}
+{{ sangria }}  {{ linea }}{{ ',' if loop.last else '' }}
+{% endfor %}
+{% endfor %}
+{% endmacro %}
+{{ encabezado(header) }}
+import { object, string } from 'yup';
+{% if usa %}
+import { {{ usa | join(', ') }} } from '../../validacion/reglas.js';
+{% endif %}
+{% if crear %}
+
+/**
+ * Las validaciones del formulario para registrar {{ singular }}: las de la API, con sus mensajes ({{ ficha }}).
+ * Antes de validar, los textos se normalizan como en la API.
+ *
+ * @param {(clave: string, valores?: object) => string} t la función de traducción de i18next
+ * @returns {import('yup').ObjectSchema} el esquema
+ */
+export function esquemaParaCrear(t) {
+  return object({
+{{ campos_yup(crear | rejectattr('grupo') | list, '    ') | trim('\n') }}
+{% if grupo %}
+    {{ grupo.nombre }}: object({
+{{ campos_yup(crear | selectattr('grupo') | list, '      ') | trim('\n') }}
+    }),
+{% endif %}
+  });
+}
+{% endif %}
+{% if editar %}
+
+/**
+ * Las validaciones del formulario para editar {{ singular }}: las de la API, con sus mensajes ({{ ficha }}).
+ *
+ * @param {(clave: string, valores?: object) => string} t la función de traducción de i18next
+ * @returns {import('yup').ObjectSchema} el esquema
+ */
+export function esquemaParaEditar(t) {
+  return object({
+{{ campos_yup(editar, '    ') | trim('\n') }}
+  });
+}
+{% endif %}

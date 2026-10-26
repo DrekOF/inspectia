@@ -5,8 +5,8 @@
  *              o la plantilla, y se regenera.
  * Fecha de creación: 13/10/2026
  * Actualización: 26/10/2026
- * Autor: Equipo InspectIA (generado por generador/ v1.6)
- * Versión: 1.6
+ * Autor: Equipo InspectIA (generado por generador/ v1.7)
+ * Versión: 1.7
  * Entidades: usuario 1.6
  */
 package co.edu.usco.inspectia.usuario;
@@ -63,4 +63,15 @@ public interface UsuarioRepositorio extends JpaRepository<Usuario, UUID> {
      * @return el registro, si existe y es de esa empresa
      */
     Optional<Usuario> findByIdAndEmpresaId(UUID id, UUID empresaId);
+
+    /**
+     * El filtro {@code ?activo=} del listado (D-33): una página de los registros activos o de los
+     * desactivados de una empresa.
+     *
+     * @param empresaId la empresa de la sesión
+     * @param activo {@code true} para los activos y {@code false} para los desactivados
+     * @param pagina la página que se pide
+     * @return la página
+     */
+    Page<Usuario> findAllByEmpresaIdAndActivo(UUID empresaId, Boolean activo, Pageable pagina);
 }

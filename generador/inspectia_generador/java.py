@@ -2,15 +2,17 @@
 # Descripción: Arma los datos de las plantillas de Java: la persistencia de cada CRUD y, para las
 #              entidades de alcance.json, su API y sus pruebas (RP-23).
 # Fecha de creación: 13/10/2026
-# Actualización: 20/10/2026
+# Actualización: 26/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.6
+# Versión: 1.7
 """Datos de las plantillas de Java.
 
 - De cada entidad con ``"crud": true`` sale su persistencia: entidad JPA, repositorio, un ``enum``
   por lista y, si tiene ``valores_iniciales``, la clase que los arma.
 - De las entidades de ``alcance.json`` sale además la API: reglas, servicio, controlador, reglas de
-  acceso por ruta, solicitudes, respuesta, mapeador y una prueba de integración.
+  acceso por ruta, solicitudes, respuesta, mapeador y una prueba de integración. Las validaciones de
+  las solicitudes y sus casos de límite salen de ``campos.py``, el mismo modelo de Yup en el frontend.
+- Si la entidad se desactiva, su listado se filtra con ``?activo=true`` o ``false`` (D-33).
 - En una entidad por empresa, la empresa sale de la sesión y cada consulta se limita a ella (RNF-03).
 - Una entidad con ``edicion_en_bloque`` tiene una fila por cada valor de una lista en cada empresa, como
   un rango por cada categoría (RF-13): su API lista las filas, las edita todas juntas y restaura sus
@@ -23,6 +25,7 @@ ejemplo, una referencia en el formulario), la generación se detiene y dice qué
 import re
 from decimal import Decimal
 
+from inspectia_generador import campos
 from inspectia_generador.encabezado import datos_header
 from inspectia_generador.modelo import atributo, clave_en_bloque, tiene_empresa, valores_lista
 from inspectia_generador.nombres import PAQUETE_BASE, camel, en_frase, pascal, texto_java
@@ -206,6 +209,20 @@ def campos_entidad(entidades, e):
     return campos
 
 
+def filtro_por_activo(e):
+    """El filtro ``?activo=`` del listado de una entidad que se desactiva (D-33), o ``None`` si no lo tiene.
+
+    Returns:
+        dict: ``campo``, el atributo activo en Java, y ``consulta``, el método del repositorio que lista los
+        activos o los desactivados; en una entidad por empresa, solo los de la empresa de la sesión.
+    """
+    if 'atributo_activo' not in e or 'listar' not in e.get('operaciones', {}):
+        return None
+    nombre = e['atributo_activo']
+    prefijo = 'findAllByEmpresaIdAnd' if tiene_empresa(e) else 'findAllBy'
+    return {'campo': camel(nombre), 'consulta': prefijo + pascal(nombre)}
+
+
 def consultas_unicas(e):
     """Consultas de los datos únicos de una sola columna, para revisarlos antes de guardar (409).
 
@@ -280,6 +297,7 @@ def archivos_persistencia(entidades, e):
     consultas = consultas_unicas(e)
     # En bloque, las filas de la empresa se leen todas juntas, y para editarlas se bloquean.
     en_bloque = bool(e.get('edicion_en_bloque')) and tiene_empresa(e)
+    activo = None if en_bloque else filtro_por_activo(e)
     importaciones = {'java.util.UUID', 'org.springframework.data.jpa.repository.JpaRepository'}
     if consultas or en_bloque:
         importaciones |= {'org.springframework.data.jpa.repository.Query',
@@ -292,11 +310,13 @@ def archivos_persistencia(entidades, e):
     elif tiene_empresa(e):
         importaciones |= {'java.util.Optional', 'org.springframework.data.domain.Page',
                           'org.springframework.data.domain.Pageable'}
+    if activo:
+        importaciones |= {'org.springframework.data.domain.Page', 'org.springframework.data.domain.Pageable'}
     for c in consultas:
         importaciones |= importaciones_tipo(entidades, e, atributo(e, c['atributo']), p)
     archivos.append((ruta(e, e['clase'] + 'Repositorio'), 'java/main/repositorio.java.j2', {
         'paquete': p, 'clase': e['clase'], 'entidad': e['entidad'], 'importaciones': sorted(importaciones),
-        'con_empresa': tiene_empresa(e), 'en_bloque': en_bloque,
+        'con_empresa': tiene_empresa(e), 'en_bloque': en_bloque, 'activo': activo,
         'consultas': [dict(c, tipo=tipo_java(entidades, e, atributo(e, c['atributo']))) for c in consultas],
         'header': _header(entidades, [e], f"{e['clase']}Repositorio.java",
                           f"Repositorio de Spring Data JPA de la tabla {e['entidad']}.")}))
@@ -443,8 +463,54 @@ def _problemas_de_campo(a, donde, en_bloque=False):
     return problemas
 
 
+def anotacion(validacion, a):
+    """La anotación de Bean Validation de una validación de ``campos.del_atributo``, o ``None`` si Java no la
+    necesita: un código que no existe en una lista ya lo rechaza Jackson al leer la petición."""
+    x = validacion
+    mensaje = f'message = "{{{x.clave}}}"'
+    if x.tipo == 'obligatorio':
+        return f'@{"NotBlank" if x.valor else "NotNull"}({mensaje})'
+    if x.tipo == 'no_en_blanco':
+        return f'@NoEnBlanco({mensaje})'
+    if x.tipo == 'valor_permitido':
+        valores = ', '.join(f'"{codigo}"' for codigo in x.valor)
+        return f'@ValorPermitido(valores = {{{valores}}}, {mensaje})'
+    if x.tipo in ('longitud_max', 'longitud_min'):
+        return f"@Size({'max' if x.tipo == 'longitud_max' else 'min'} = {x.valor}, {mensaje})"
+    if x.tipo == 'bytes_max':
+        return f'@MaximoBytes(value = {x.valor}, {mensaje})'
+    if x.tipo == 'patron':
+        return f'@Pattern(regexp = {texto_java(x.valor)}, {mensaje})'
+    if x.tipo == 'correo':
+        return f'@Email({mensaje})'
+    if x.tipo in ('minimo', 'maximo'):
+        nombre = 'Min' if x.tipo == 'minimo' else 'Max'
+        if a['tipo'] == 'entero':
+            return f'@{nombre}(value = {int(x.valor)}, {mensaje})'
+        return f'@Decimal{nombre}(value = "{x.valor}", {mensaje})'
+    if x.tipo == 'decimales':
+        return f'@MaximoDecimales(value = {x.valor}, {mensaje})'
+    return None
+
+
+def valor_java(valor):
+    """Un valor de un caso de límite (``campos.Valor``) como expresión de Java para la prueba generada."""
+    if valor.tipo == 'falta':
+        return 'null'
+    if valor.tipo == 'repetir':
+        return f'{texto_java(valor.texto)}.repeat({valor.veces})'
+    if valor.tipo == 'texto':
+        return texto_java(valor.texto)
+    if valor.tipo == 'numero':
+        return valor.texto
+    return f'correoDeLargo({valor.veces})'
+
+
 def campo_solicitud(e, a, campo_json, nombre=None, obligatorio=None):
     """Un campo de una solicitud: tipo, anotaciones, normalización y casos de prueba de validación.
+
+    Las validaciones y sus casos de límite salen de ``campos.del_atributo``, el mismo modelo de Yup en el
+    frontend.
 
     Args:
         e: entidad dueña del atributo (sus mensajes son los que responde la API).
@@ -453,79 +519,14 @@ def campo_solicitud(e, a, campo_json, nombre=None, obligatorio=None):
         obligatorio: si es obligatorio, cuando no lo dice ``obligatorio`` del atributo.
     """
     nombre = nombre or camel(a['nombre'])
-    v = a.get('validaciones', {})
-    texto = a['tipo'] in ('texto', 'contrasena')
-    requerido = (a.get('obligatorio') and 'por_defecto' not in a) if obligatorio is None else obligatorio
-    sin_formato = 'patron' not in v and 'formato' not in v
-    anotaciones, casos = [], []
-
-    if requerido:
-        anotaciones.append(f'@{"NotBlank" if texto else "NotNull"}(message = "{{validacion.obligatorio}}")')
-        casos.append(('null', mensaje_esperado(e, a, 'obligatorio')))
-    elif a['tipo'] == 'contrasena':
-        # Opcional, como al editar: si no llega, queda la que había; si llega en blanco, se rechaza con
-        # el mismo mensaje que al crear, porque tampoco serviría para iniciar sesión.
-        anotaciones.append('@NoEnBlanco(message = "{validacion.obligatorio}")')
-    if a['tipo'] == 'contrasena':
-        # Solo espacios y con el largo mínimo: falla solo por estar en blanco (prueba de límite).
-        casos.append((f'" ".repeat({v.get("longitud_min", 1)})', mensaje_esperado(e, a, 'obligatorio')))
-    if 'valores_en_formulario' in a:
-        # Un valor que existe pero no se puede asignar responde 403, no 400: va en la prueba de permisos.
-        valores = ', '.join(f'"{codigo}"' for codigo in a['valores_en_formulario'])
-        clave = clave_mensaje(e, a, 'valores_en_formulario')
-        anotaciones.append(f'@ValorPermitido(valores = {{{valores}}}, message = "{{{clave}}}")')
-    if a['tipo'] == 'texto' or 'longitud_max' in v:
-        limites = ([(a['longitud'], False)] if a['tipo'] == 'texto' else []) + (
-            [(v['longitud_max'], True)] if 'longitud_max' in v else [])
-        maximo, propio = min(limites)
-        clave = clave_mensaje(e, a, 'longitud_max') if propio else 'validacion.longitud_max'
-        anotaciones.append(f'@Size(max = {maximo}, message = "{{{clave}}}")')
-        mensaje = mensaje_esperado(e, a if propio else {}, 'longitud_max', maximo)
-        if sin_formato:
-            casos.append((f'"x".repeat({maximo + 1})', mensaje))
-        elif v.get('formato') == 'correo':
-            casos.append((f'correoDeLargo({maximo + 1})', mensaje))
-    if 'longitud_min' in v:
-        minimo = v['longitud_min']
-        anotaciones.append(f'@Size(min = {minimo}, message = "{{{clave_mensaje(e, a, "longitud_min")}}}")')
-        if minimo > 1 and sin_formato:
-            casos.append((f'"x".repeat({minimo - 1})', mensaje_esperado(e, a, 'longitud_min', minimo)))
-    if 'bytes_max' in v:
-        bytes_max = v['bytes_max']
-        anotaciones.append(f'@MaximoBytes(value = {bytes_max}, message = "{{{clave_mensaje(e, a, "bytes_max")}}}")')
-        caracteres = bytes_max // 2 + 1
-        maximo = v.get('longitud_max', a.get('longitud', caracteres))
-        if sin_formato and v.get('longitud_min', 0) <= caracteres <= maximo:
-            casos.append((f'"ñ".repeat({caracteres})', mensaje_esperado(e, a, 'bytes_max')))
-    if 'patron' in v:
-        anotaciones.append(f'@Pattern(regexp = {texto_java(v["patron"])}, '
-                           f'message = "{{{clave_mensaje(e, a, "patron")}}}")')
-        casos.append(('"?"', mensaje_esperado(e, a, 'patron')))
-    if v.get('formato') == 'correo':
-        anotaciones.append(f'@Email(message = "{{{clave_mensaje(e, a, "formato")}}}")')
-        casos.append(('"sin-arroba"', mensaje_esperado(e, a, 'formato')))
-    for limite, anotacion in (('min', 'Min'), ('max', 'Max')):
-        if limite in v and a['tipo'] in ('entero', 'decimal'):
-            valor = v[limite]
-            clave = clave_mensaje(e, a, limite)
-            if a['tipo'] == 'entero':
-                anotaciones.append(f'@{anotacion}(value = {int(valor)}, message = "{{{clave}}}")')
-                fuera = int(valor) - 1 if limite == 'min' else int(valor) + 1
-            else:
-                anotaciones.append(f'@Decimal{anotacion}(value = "{valor}", message = "{{{clave}}}")')
-                fuera = valor - 1 if limite == 'min' else valor + 1
-            casos.append((json_java(fuera), mensaje_esperado(e, a, limite, valor)))
-    if a['tipo'] == 'decimal':
-        # Los decimales de su escala, sin contar los ceros del final: con escala 1, 90.50 sirve y 90.55 no.
-        escala = a['escala']
-        validacion = 'decimales_uno' if escala == 1 else 'decimales'
-        anotaciones.append(f'@MaximoDecimales(value = {escala}, message = "{{{clave_mensaje(e, a, validacion)}}}")')
-        casos.append((_con_un_decimal_de_mas(a), mensaje_esperado(e, a, validacion, escala)))
+    datos = campos.del_atributo(e, a, obligatorio)
+    requerido = any(x.tipo == 'obligatorio' for x in datos.validaciones)
+    anotaciones = [texto for texto in (anotacion(x, a) for x in datos.validaciones) if texto]
 
     normalizacion = nombre
-    if v.get('recortar'):
+    if datos.recortar:
         normalizacion = f'Textos.recortar({normalizacion})'
-    if v.get('minusculas'):
+    if datos.minusculas:
         normalizacion = f'Textos.minusculas({normalizacion})'
     esquema = [f'description = {texto_java(a["etiquetas"]["es"])}']
     if a['tipo'] != 'contrasena' and ejemplo_openapi(a) is not None:
@@ -536,21 +537,15 @@ def campo_solicitud(e, a, campo_json, nombre=None, obligatorio=None):
             'etiqueta': a['etiquetas']['es'],
             'esquema': ', '.join(esquema), 'anotaciones': anotaciones,
             'normalizacion': None if normalizacion == nombre else normalizacion,
-            'casos': casos, 'ejemplo': json_java(ejemplo(a)), 'recorta': bool(v.get('recortar')),
+            'casos': [(valor_java(c.valor), c.mensaje) for c in datos.casos],
+            'bordes': [valor_java(valor) for valor in datos.bordes],
+            'ejemplo': json_java(ejemplo(a)), 'recorta': datos.recortar,
             'opcional_con_defecto': a.get('obligatorio', False) and 'por_defecto' in a,
             'setter': 'set' + pascal(a['nombre']),
             # Lo que el mapeador copia al registro: un decimal, con la escala de su columna, como lo guarda la
             # base; así la respuesta de una edición lo dice igual que el listado (90.50 queda 90.5).
             'desde_solicitud': (f"Decimales.conEscala(solicitud.{nombre}(), {a['escala']})" if a['tipo'] == 'decimal'
                                 else f'solicitud.{nombre}()')}
-
-
-def _con_un_decimal_de_mas(a):
-    """Un número dentro de ``min`` y ``max`` con un decimal más de los que permite su escala, como 0.05 con
-    escala 1: para la prueba generada de ``@MaximoDecimales``."""
-    v = a.get('validaciones', {})
-    base = Decimal(str(v['min'])) if 'min' in v else Decimal(str(v['max'])) - 1 if 'max' in v else Decimal(0)
-    return str(base + Decimal(5).scaleb(-(a['escala'] + 1)))
 
 
 def _importaciones_solicitud(entidades, e, campos):
@@ -725,7 +720,8 @@ def modelo_api(entidades, e):
 
     activo = None
     if 'atributo_activo' in e:
-        activo = {'setter': 'set' + pascal(e['atributo_activo']), 'campo': camel(e['atributo_activo'])}
+        activo = {'setter': 'set' + pascal(e['atributo_activo']), 'campo': camel(e['atributo_activo']),
+                  'consulta': (filtro_por_activo(e) or {}).get('consulta')}
 
     nombres = [a['nombre'] for a in e['atributos']]
     orden = ('Sort.by(Sort.Order.asc("nombre").ignoreCase(), Sort.Order.asc("id"))' if 'nombre' in nombres
@@ -906,6 +902,8 @@ def _importaciones_servicio(m):
         importaciones.add('org.springframework.security.crypto.password.PasswordEncoder')
     if m['con_empresa']:
         importaciones.add(SESION)
+    if m['activo'] and 'listar' in m['operaciones']:
+        importaciones.add('org.springframework.data.domain.Page')
     for inicial in m['iniciales']:
         if inicial['paquete'] != m['paquete']:
             importaciones |= {f"{inicial['paquete']}.{inicial['repositorio']}",
@@ -965,6 +963,12 @@ def _modelo_prueba(entidades, e, m):
                       mensaje_esperado(e, c['_atributo'], 'valores_en_formulario'))
                      for c in listas if 'valores_en_formulario' in c['_atributo']
                      for v in c['_atributo']['valores'] if v['codigo'] not in c['_atributo']['valores_en_formulario']]
+    # Los valores del borde que acepta cada validación: el largo máximo, el mínimo y los bytes justos.
+    bordes_crear = [(c['campo_json'], valor) for c in crear for valor in c['bordes']]
+    if cc:
+        bordes_crear += [(c['campo_json'], valor) for c in cc['campos_internos'] for valor in c['bordes']]
+    bordes_editar = [(c['campo_json'], valor) for c in editar for valor in c['bordes']]
+    valores = [valor for _, valor, _ in validaciones_crear] + [valor for _, valor in bordes_crear + bordes_editar]
     return {
         'roles': roles,
         'permisos': [(r['operacion'], rol, rol in r['roles']) for r in m['rutas'] for rol in roles],
@@ -973,9 +977,14 @@ def _modelo_prueba(entidades, e, m):
         'datos_editar': [(c['campo_json'], c['ejemplo']) for c in editar],
         'validaciones_crear': validaciones_crear,
         'validaciones_editar': [(c['campo_json'], valor, mensaje) for c in editar for valor, mensaje in c['casos']],
+        'bordes_crear': bordes_crear,
+        'bordes_editar': bordes_editar,
         'unicos': unicos,
         'normalizados': [(c['campo_json'], c['ejemplo']) for c in crear if c['recorta'] and c['tipo'] == 'String'],
-        'usa_correo_largo': any('correoDeLargo' in valor for _, valor, _ in validaciones_crear),
+        'usa_correo_largo': any('correoDeLargo' in valor for valor in valores),
+        # Hace falta un registro y desactivarlo para ver que el filtro ?activo= lo cambia de lado (D-33).
+        'filtra_por_activo': bool(m['activo'] and m['activo']['consulta'])
+                             and {'crear', 'desactivar'} <= set(m['operaciones']),
         'tablas': ', '.join(dict.fromkeys(tablas)),
         'ficha': m['fichas'][0],
         'con_empresa': m['con_empresa'],

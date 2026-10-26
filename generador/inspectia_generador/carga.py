@@ -1,12 +1,12 @@
 # Nombre: carga.py
-# Descripción: Lectura de los JSON de entidades, del alcance de la API y de los códigos que existen
-#              en specs/.
+# Descripción: Lectura de los JSON de entidades, del alcance de la API y de las pantallas, y de los
+#              códigos que existen en specs/.
 # Fecha de creación: 13/10/2026
-# Actualización: 13/10/2026
+# Actualización: 26/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.1
-"""Lectura de los JSON de entidades, de ``alcance.json`` y de los códigos (RF, RNF, D, P y RP) que
-existen en specs/."""
+# Versión: 1.2
+"""Lectura de los JSON de entidades, de ``alcance.json`` (las entidades con API y las que tienen pantalla) y de
+los códigos (RF, RNF, D, P y RP) que existen en specs/."""
 
 import json
 import re
@@ -53,8 +53,21 @@ def cargar_alcance(ruta):
     return tuple(datos.get('api', []))
 
 
-def revisar_alcance(api, entidades):
-    """Errores del alcance: cada entidad de ``api`` debe existir y tener CRUD.
+def cargar_pantallas(ruta):
+    """Entidades que tienen pantalla en el frontend, según ``pantallas`` de ``alcance.json``.
+
+    Args:
+        ruta: el archivo ``alcance.json``.
+
+    Returns:
+        tuple: los nombres de ``pantallas``, en el orden del archivo.
+    """
+    datos = json.loads(Path(ruta).read_text(encoding='utf-8'))
+    return tuple(datos.get('pantallas', []))
+
+
+def revisar_alcance(api, entidades, pantallas=()):
+    """Errores del alcance: cada entidad de ``api`` debe existir y tener CRUD, y cada pantalla, su API.
 
     Returns:
         list: mensajes de error; vacía si todo está bien.
@@ -65,6 +78,12 @@ def revisar_alcance(api, entidades):
             errores.append(f'alcance.json: la entidad {nombre} no existe')
         elif not entidades[nombre]['crud']:
             errores.append(f'alcance.json: {nombre} no tiene CRUD')
+    for nombre in pantallas:
+        if nombre not in entidades:
+            if nombre not in api:
+                errores.append(f'alcance.json: la entidad {nombre} no existe')
+        elif nombre not in api:
+            errores.append(f'alcance.json: la pantalla de {nombre} necesita su API: agrega {nombre} a api')
     return errores
 
 

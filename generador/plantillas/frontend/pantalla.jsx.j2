@@ -1,0 +1,172 @@
+{#
+  Nombre: pantalla.jsx.j2
+  Descripción: Plantilla de la pantalla de una entidad (RP-23): lo que dice su JSON (campos, columnas, roles
+               de cada acción y claves de sus textos) sobre las piezas comunes de src/crud, escritas a mano.
+               Lo que el JSON no puede declarar llega en extensiones, desde Rutas.jsx.
+  Fecha de creación: 26/10/2026
+  Actualización: 26/10/2026
+  Autor: Equipo InspectIA
+  Versión: 1.0
+#}
+{% from 'frontend/_macros.j2' import encabezado %}
+{% macro campo(c) -%}
+{% if c.componente == 'CampoDeLista' -%}
+<CampoDeLista nombre="{{ c.campo }}" etiqueta={t('{{ c.etiqueta }}')}{% if c.ayuda %} ayuda={t('{{ c.ayuda }}')}{% endif %} opciones={[{% for codigo, clave in c.opciones %}{ valor: '{{ codigo }}', etiqueta: t('{{ clave }}') }{{ ', ' if not loop.last else '' }}{% endfor %}]} />
+{%- else -%}
+<{{ c.componente }} nombre="{{ c.campo }}" etiqueta={t('{{ c.etiqueta }}')}{% if c.ayuda %} ayuda={t('{{ c.ayuda }}')}{% endif %}{% if c.tipo_html %} type="{{ c.tipo_html }}"{% endif %} autoComplete="{{ c.autocompletar }}" />
+{%- endif %}
+{%- endmacro %}
+{% set propios = crear | rejectattr('grupo') | list if crear else editar %}
+{% set con_formulario = crear or editar %}
+{% set esquemas = (['esquemaParaCrear'] if crear else []) + (['esquemaParaEditar'] if editar else []) %}
+{{ encabezado(header) }}
+{% if con_formulario %}
+import { useTranslation } from 'react-i18next';
+{% endif %}
+{% if 'CampoContrasena' in componentes %}
+import { CampoContrasena } from '../../componentes/CampoContrasena.jsx';
+{% endif %}
+{% if 'CampoDeTexto' in componentes %}
+import { CampoDeTexto } from '../../componentes/CampoDeTexto.jsx';
+{% endif %}
+{% if 'CampoDeLista' in componentes %}
+import { CampoDeLista } from '../../crud/CampoDeLista.jsx';
+{% endif %}
+{% if grupo %}
+import { GrupoDeCampos } from '../../crud/GrupoDeCampos.jsx';
+{% endif %}
+import { PantallaDeRegistros } from '../../crud/PantallaDeRegistros.jsx';
+import * as api from './{{ var }}Api.js';
+{% if esquemas %}
+import { {{ esquemas | join(', ') }} } from './{{ var }}Esquemas.js';
+{% endif %}
+
+/**
+ * Lo que dice de la pantalla specs/entidades/{{ entidad }}.json: los roles de cada acción, las columnas de la lista
+ * y las claves de sus textos, o null los que el JSON no trae.
+ *
+ * @type {import('../../crud/PantallaDeRegistros.jsx').DescripcionDePantalla}
+ */
+const PANTALLA = {
+  entidad: '{{ entidad }}',
+  titulo: '{{ entidad }}.etiqueta.plural',
+  operaciones: {{ acciones }},
+  atributoActivo: {{ atributo_activo }},
+  atributoDelNombre: {{ atributo_del_nombre }},
+  columnas: [
+{% for columna in columnas %}
+    {{ columna }},
+{% endfor %}
+  ],
+  textos: {
+{% for clave, valor in textos %}
+    {{ clave }}: {{ valor }},
+{% endfor %}
+  },
+  confirmarDesactivar: {{ confirmar }},
+};
+{% if crear %}
+
+/** Los campos del formulario para registrar, en orden: se llaman como en la API, también en sus errores. */
+const CAMPOS_PARA_CREAR = {{ campos_al_crear }};
+{% endif %}
+{% if editar %}
+
+/** Los campos del formulario para editar, en orden. */
+const CAMPOS_PARA_EDITAR = {{ campos_al_editar }};
+{% endif %}
+{% if crear %}
+
+/**
+ * Los valores de un registro nuevo: vacíos, o el valor por defecto del JSON.
+ *
+ * @returns {object} los valores del formulario
+ */
+function valoresParaCrear() {
+  return {{ valores_al_crear }};
+}
+{% endif %}
+{% if editar %}
+
+/**
+ * Los valores de un registro para editarlo: los de su fila.
+ *
+ * @param {object} fila el registro, como lo responde la API
+ * @returns {object} los valores del formulario
+ */
+function valoresParaEditar(fila) {
+  return {
+{% for c in editar %}
+    {{ c.clave }}: fila.{{ c.clave }} ?? {{ c.inicial_js }},
+{% endfor %}
+  };
+}
+{% endif %}
+{% if con_formulario %}
+
+/**
+ * Los campos del formulario, en el orden del JSON.
+ *
+{% if grupo %}
+ * @param {object} props las propiedades
+ * @param {boolean} props.paraCrear si es el formulario para registrar, que lleva también el grupo «{{ grupo.etiqueta_es }}»
+{% endif %}
+ * @returns {import('react').ReactElement} los campos
+ */
+function Campos({{ '{ paraCrear }' if grupo else '' }}) {
+  const { t } = useTranslation();
+  return (
+    <>
+{% if grupo %}
+      <GrupoDeCampos titulo={t('{{ entidad }}.etiqueta.singular')}>
+{% for c in propios %}
+        {{ campo(c) }}
+{% endfor %}
+      </GrupoDeCampos>
+      {paraCrear && (
+        <GrupoDeCampos titulo={t('{{ grupo.etiqueta }}')}>
+{% for c in crear | selectattr('grupo') %}
+          {{ campo(c) }}
+{% endfor %}
+        </GrupoDeCampos>
+      )}
+{% else %}
+{% for c in propios %}
+      {{ campo(c) }}
+{% endfor %}
+{% endif %}
+    </>
+  );
+}
+
+/** El formulario: sus campos, sus valores y sus validaciones. */
+const FORMULARIO = {
+  Campos,
+{% if crear %}
+  camposParaCrear: CAMPOS_PARA_CREAR,
+  valoresParaCrear,
+  esquemaParaCrear,
+{% endif %}
+{% if editar %}
+  camposParaEditar: CAMPOS_PARA_EDITAR,
+  valoresParaEditar,
+  esquemaParaEditar,
+{% endif %}
+};
+{% endif %}
+
+/**
+ * La pantalla de {{ plural }} ({{ ficha }}): la lista, {{ 'el formulario y ' if con_formulario else '' }}las acciones de cada fila. Lo que su JSON
+ * no puede declarar llega en extensiones, desde Rutas.jsx.
+ *
+ * @param {object} props las propiedades
+ * @param {import('../../crud/PantallaDeRegistros.jsx').Extensiones} [props.extensiones] lo escrito a mano para
+ *   esta pantalla
+ * @returns {import('react').ReactElement} la pantalla
+ */
+export default function {{ clase }}Pantalla({ extensiones }) {
+  return (
+    <PantallaDeRegistros pantalla={PANTALLA} api={api}{{ ' formulario={FORMULARIO}' if con_formulario else '' }}
+      extensiones={extensiones} />
+  );
+}

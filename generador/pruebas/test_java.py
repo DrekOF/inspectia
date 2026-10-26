@@ -19,8 +19,9 @@ from inspectia_generador.sql import ErrorGeneracion
 JAVA = 'backend/src/generated/java/co/edu/usco/inspectia'
 PRUEBAS = 'backend/src/test-generated/java/co/edu/usco/inspectia'
 TEXTOS = 'backend/src/generated/resources/i18n'
-# Lo que generaba el generador 1.2 para empresa, antes de la API por empresa (RF-03): debe seguir igual,
-# salvo el header. Si un cambio a propósito lo modifica, se actualizan estas copias en el mismo commit.
+# Lo que genera el generador para empresa: solo cambia a propósito, y entonces estas copias se actualizan en el
+# mismo commit; se comparan sin el header. Salieron de la 1.2, antes de la API por empresa (RF-03), y la 1.7 les
+# agregó el filtro activo del listado (D-33) y los valores del borde de la prueba generada.
 EMPRESA_GENERADA = EJEMPLOS / 'empresa_generada'
 # Con el JDK 25, al recompilar sin «clean», los constructores que crean estas anotaciones quedan sin
 # la llamada a super() y la JVM rechaza la clase (VerifyError). Ver CLAUDE.md.
@@ -240,7 +241,7 @@ def test_reglas_con_sesion_y_parametros(entidades):
     assert 'boolean cumpleNitDigitoVerificacion(Empresa empresa);' in archivos[f'{JAVA}/empresa/ReglasEmpresa.java']
 
 
-@pytest.mark.caso('RP-23 · lo generado de empresa no cambia al agregar la API por empresa: solo su header')
+@pytest.mark.caso('RP-23 · lo generado de empresa solo cambia a propósito: es igual a su copia de referencia, salvo el header')
 def test_empresa_sigue_igual(entidades):
     archivos = generar(entidades)
 

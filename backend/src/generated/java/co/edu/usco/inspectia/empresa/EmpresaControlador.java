@@ -5,8 +5,8 @@
  *              o la plantilla, y se regenera.
  * Fecha de creación: 13/10/2026
  * Actualización: 26/10/2026
- * Autor: Equipo InspectIA (generado por generador/ v1.6)
- * Versión: 1.6
+ * Autor: Equipo InspectIA (generado por generador/ v1.7)
+ * Versión: 1.7
  * Entidades: empresa 1.3, usuario 1.6, rango_recomendacion 1.2
  */
 package co.edu.usco.inspectia.empresa;
@@ -59,6 +59,7 @@ public class EmpresaControlador {
      *
      * @param pagina número de la página, desde 0
      * @param tamano filas por página
+     * @param activo solo los activos ({@code true}) o solo los desactivados ({@code false}); sin él, todos
      * @return la página
      */
     @GetMapping
@@ -71,8 +72,10 @@ public class EmpresaControlador {
             @Parameter(description = "Filas por página, de 1 a " + Pagina.TAMANO_MAXIMO + ".")
             @RequestParam(name = "tamano", defaultValue = "" + Pagina.TAMANO_POR_DEFECTO)
             @Min(value = 1, message = "{validacion.minimo}")
-            @Max(value = Pagina.TAMANO_MAXIMO, message = "{validacion.maximo}") int tamano) {
-        return servicio.listar(pagina, tamano);
+            @Max(value = Pagina.TAMANO_MAXIMO, message = "{validacion.maximo}") int tamano,
+            @Parameter(description = "Solo los activos (true) o solo los desactivados (false); sin él, todos.")
+            @RequestParam(name = "activo", required = false) Boolean activo) {
+        return servicio.listar(pagina, tamano, activo);
     }
 
     /**
