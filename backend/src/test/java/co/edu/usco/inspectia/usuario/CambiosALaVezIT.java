@@ -4,8 +4,9 @@
  *              transacción lee la fila y se detiene antes de guardar, la segunda termina, y entonces la primera
  *              sigue. Cada UPDATE debe escribir solo lo que cambió: desactivar a un usuario mientras cambia su
  *              contraseña no lo reactiva, y editar su nombre mientras se restablece su contraseña no la
- *              deshace. Y el contador de sesión sube una vez por cada cambio (RF-03, RF-02 C12, RF-18,
- *              RNF-04 C6).
+ *              deshace. El contador de sesión sube una vez por cada cambio, y un fallo que bloquea la cuenta
+ *              mientras se restablece la contraseña no la deja bloqueada (RF-03, RF-02 C12, RF-18, RNF-04 C6,
+ *              D-30).
  * Fecha de creación: 26/10/2026
  * Actualización: 26/10/2026
  * Autor: Equipo InspectIA
@@ -174,6 +175,27 @@ class CambiosALaVezIT {
         assertThat(jdbc.queryForObject("SELECT version_sesion FROM usuario WHERE id = ?", Integer.class, ana))
                 .isEqualTo(2);
         assertThat(api.iniciar(ANA, NUEVA)).as("queda la contraseña del último que guardó").hasStatus(HttpStatus.OK);
+    }
+
+    @Test
+    @DisplayName("D-30 · el quinto fallo seguido que llega mientras se restablece la contraseña no deja la cuenta bloqueada: el usuario entra de una vez con la nueva")
+    void unFalloQueBloqueaMientrasSeRestablece() throws Exception {
+        for (int intento = 1; intento <= 4; intento++) {
+            assertThat(api.iniciar(ANA, OTRA)).as("fallo " + intento).hasStatus(HttpStatus.UNAUTHORIZED);
+        }
+        Pausa pausa = new Pausa();
+        doAnswer(pausa.respuesta()).when(reglas).cortarSesionesAlCambiarContrasena(any(), any());
+        String dePlataforma = api.token(PLATAFORMA);
+
+        Future<MvcTestResult> restablecimiento = hilo.submit(() -> restablecer(dePlataforma, NUEVA));
+        pausa.esperarQueLlegue();
+        assertThat(api.iniciar(ANA, OTRA)).as("el quinto fallo").hasStatus(HttpStatus.UNAUTHORIZED);
+        assertThat(jdbc.queryForObject("SELECT bloqueado_hasta IS NOT NULL FROM usuario WHERE id = ?", Boolean.class,
+                ana)).as("el quinto fallo bloqueó la cuenta").isTrue();
+        pausa.soltar();
+
+        assertThat(restablecimiento.get(30, TimeUnit.SECONDS)).hasStatus(HttpStatus.NO_CONTENT);
+        assertThat(api.iniciar(ANA, NUEVA)).as("entra de una vez con la nueva").hasStatus(HttpStatus.OK);
     }
 
     /** El administrador de la plataforma restablece la contraseña de Ana (RF-02 C12). */
