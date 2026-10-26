@@ -3,7 +3,7 @@
 # Fecha de creación: 13/10/2026
 # Actualización: 26/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.3
+# Versión: 1.4
 """Pruebas de la validación de los JSON de entidades contra su formato y contra specs/."""
 
 import pytest
@@ -152,3 +152,21 @@ def test_patron_que_todos_leen_igual(entidades, codigos):
 
     assert 'empresa.nit: el patron va anclado: empieza con ^ y termina con $' in errores
     assert 'empresa.ciudad: el patron usa ++, que Java, PostgreSQL y JavaScript no leen igual' in errores
+
+
+@pytest.mark.caso('RP-23 · la validación rechaza solo_lo_cambian_las_reglas donde no serviría: en un atributo del formulario, en una entidad sin CRUD y en un atributo obligatorio sin por_defecto')
+def test_solo_lo_cambian_las_reglas(entidades, codigos):
+    atributo(entidades['usuario'], 'nombre')['solo_lo_cambian_las_reglas'] = True
+    atributo(entidades['lote'], 'codigo')['solo_lo_cambian_las_reglas'] = True
+    intentos = atributo(entidades['usuario'], 'intentos_fallidos')
+    del intentos['por_defecto']
+    intentos['solo_lo_cambian_las_reglas'] = True
+
+    errores = validar(entidades, codigos)
+
+    for error in ('usuario.nombre: solo_lo_cambian_las_reglas no va en un atributo del formulario: JPA no lo '
+                  'guardaría',
+                  'lote.codigo: solo_lo_cambian_las_reglas va solo en entidades con CRUD',
+                  'usuario.intentos_fallidos: solo_lo_cambian_las_reglas en un atributo obligatorio necesita '
+                  'por_defecto: JPA no lo escribe al crear'):
+        assert error in errores

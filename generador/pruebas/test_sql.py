@@ -1,9 +1,9 @@
 # Nombre: test_sql.py
 # Descripción: Pruebas del esquema SQL que genera el generador desde specs/entidades.
 # Fecha de creación: 13/10/2026
-# Actualización: 13/10/2026
+# Actualización: 26/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.0
+# Versión: 1.1
 """Pruebas del script de creación de las tablas (migración V1 de Flyway)."""
 
 import re
@@ -47,6 +47,13 @@ def test_restricciones_de_columnas(sql):
     assert "CONSTRAINT muestra_repeticiones_rango CHECK (repeticiones BETWEEN 0 AND 2)" in sql
     assert ("CONSTRAINT usuario_empresa_segun_rol CHECK "
             "((rol = 'ADMIN_PLATAFORMA') = (empresa_id IS NULL))") in sql
+
+
+@pytest.mark.caso('RP-15 · la tabla usuario guarda la versión de sesión, un entero que empieza en 0 y no baja de 0, y ya no la hora sesiones_desde')
+def test_version_de_sesion(sql):
+    assert '    version_sesion integer NOT NULL DEFAULT 0,' in sql
+    assert 'CONSTRAINT usuario_version_sesion_minimo CHECK (version_sesion >= 0)' in sql
+    assert 'sesiones_desde' not in sql
 
 
 @pytest.mark.caso('RP-15 · las tablas de cada empresa se referencian con FK compuestas (registro, empresa)')

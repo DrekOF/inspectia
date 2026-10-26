@@ -1,11 +1,12 @@
 /*
  * Nombre: TokensDePrueba.java
  * Descripción: Arma tokens JWT para las pruebas de sesión sin usar el código del backend: válidos,
- *              vencidos, alterados, sin firma o firmados con otra clave (RNF-04, D-28).
+ *              vencidos, alterados, sin firma o firmados con otra clave, con la versión de sesión que se
+ *              pida (RNF-04, D-28).
  * Fecha de creación: 14/10/2026
- * Actualización: 18/10/2026
+ * Actualización: 26/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 package co.edu.usco.inspectia.usuario.sesion;
 
@@ -25,8 +26,9 @@ import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Tokens JWT armados a mano con HMAC-SHA256 de Java, para que las pruebas no dependan de cómo el
- * backend los emite. Siguen D-28: firma HS256 y, en el contenido, solo {@code iss}, {@code sub},
- * {@code iat} y {@code exp}.
+ * backend los emite. Siguen D-28: firma HS256 y, en el contenido, {@code iss}, {@code sub}, {@code iat},
+ * {@code exp} y la versión de sesión del usuario ({@code version_sesion}), que sube cada vez que cambian su
+ * contraseña: un token con la versión de antes es de una sesión que ya no sirve (RNF-04 C6).
  */
 public final class TokensDePrueba {
 
@@ -42,18 +44,29 @@ public final class TokensDePrueba {
     private TokensDePrueba() {
     }
 
-    /** Un token como los del backend, emitido en {@code emitido}, firmado con la clave de las pruebas. */
+    /**
+     * Un token como los del backend, emitido en {@code emitido} con la versión de sesión 0, la de un usuario que
+     * nunca cambió su contraseña, firmado con la clave de las pruebas.
+     */
     public static String token(UUID usuario, Instant emitido) {
-        return firmar(contenido(EMISOR, usuario, emitido), clave());
+        return token(usuario, emitido, 0);
     }
 
-    /** El contenido de un token: emisor, usuario y fechas. */
+    /** Un token como los del backend, emitido en {@code emitido} con la versión de sesión dada. */
+    public static String token(UUID usuario, Instant emitido, int versionSesion) {
+        Map<String, Object> contenido = contenido(EMISOR, usuario, emitido);
+        contenido.put("version_sesion", versionSesion);
+        return firmar(contenido, clave());
+    }
+
+    /** El contenido de un token: emisor, usuario, fechas y la versión de sesión 0. */
     public static Map<String, Object> contenido(String emisor, UUID usuario, Instant emitido) {
         Map<String, Object> contenido = new LinkedHashMap<>();
         contenido.put("iss", emisor);
         contenido.put("sub", usuario.toString());
         contenido.put("iat", emitido.getEpochSecond());
         contenido.put("exp", emitido.plus(VIGENCIA).getEpochSecond());
+        contenido.put("version_sesion", 0);
         return contenido;
     }
 

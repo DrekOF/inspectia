@@ -1,11 +1,11 @@
 /*
  * Nombre: ValidadorDeVigenciaTest.java
  * Descripción: Pruebas unitarias del vencimiento de los tokens: sirven hasta el segundo en que vencen,
- *              sin tolerancia, y deben traer sus fechas (RF-01, RNF-04, D-28).
+ *              sin tolerancia, y deben traer sus fechas y su versión de sesión (RF-01, RNF-04, D-28).
  * Fecha de creación: 14/10/2026
- * Actualización: 18/10/2026
+ * Actualización: 26/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 package co.edu.usco.inspectia.comun.seguridad;
 
@@ -58,10 +58,25 @@ class ValidadorDeVigenciaTest {
     }
 
     @Test
-    @DisplayName("RNF-04 · un token sin fecha de emisión no sirve: sin ella no se sabe si es de antes de cambiar la contraseña")
+    @DisplayName("RNF-04 · un token sin fecha de emisión no sirve: todos los del servidor la traen (D-28)")
     void unTokenSinEmisionNoSirve() {
         ValidadorDeVigencia validador = new ValidadorDeVigencia(reloj(VENCE.minusSeconds(60)));
-        Jwt token = Jwt.withTokenValue("token").header("alg", "HS256").subject("usuario").expiresAt(VENCE).build();
+        Jwt token = Jwt.withTokenValue("token").header("alg", "HS256").subject("usuario").expiresAt(VENCE)
+                .claim("version_sesion", 0).build();
+
+        OAuth2TokenValidatorResult resultado = validador.validate(token);
+
+        assertThat(resultado.hasErrors()).isTrue();
+        assertThat(resultado.getErrors()).extracting(OAuth2Error::getErrorCode)
+                .doesNotContain(ValidadorDeVigencia.SESION_VENCIDA);
+    }
+
+    @Test
+    @DisplayName("RNF-04 · C6 · un token sin versión de sesión no sirve: sin ella no se sabe si es de antes de cambiar la contraseña")
+    void unTokenSinVersionDeSesionNoSirve() {
+        ValidadorDeVigencia validador = new ValidadorDeVigencia(reloj(VENCE.minusSeconds(60)));
+        Jwt token = Jwt.withTokenValue("token").header("alg", "HS256").subject("usuario")
+                .issuedAt(VENCE.minus(Duration.ofHours(8))).expiresAt(VENCE).build();
 
         OAuth2TokenValidatorResult resultado = validador.validate(token);
 
@@ -72,7 +87,7 @@ class ValidadorDeVigenciaTest {
 
     private static Jwt token(Instant vence) {
         return Jwt.withTokenValue("token").header("alg", "HS256").subject("usuario")
-                .issuedAt(vence.minus(Duration.ofHours(8))).expiresAt(vence).build();
+                .issuedAt(vence.minus(Duration.ofHours(8))).expiresAt(vence).claim("version_sesion", 0).build();
     }
 
     private static Clock reloj(Instant ahora) {

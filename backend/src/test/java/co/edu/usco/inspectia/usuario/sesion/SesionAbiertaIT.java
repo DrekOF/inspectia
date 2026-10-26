@@ -4,9 +4,9 @@
  *              horas, volver a entrar con la sesión vencida, revisión del usuario y su empresa en
  *              cada petición y tokens que no sirven (RF-01, RNF-04, D-28).
  * Fecha de creación: 14/10/2026
- * Actualización: 14/10/2026
+ * Actualización: 26/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 package co.edu.usco.inspectia.usuario.sesion;
 
@@ -125,7 +125,7 @@ class SesionAbiertaIT {
     }
 
     @Test
-    @DisplayName("RNF-04 · C4 · el token del inicio de sesión dura exactamente 8 horas y solo lleva el emisor, el usuario y las fechas")
+    @DisplayName("RNF-04 · C4 · el token del inicio de sesión dura exactamente 8 horas y solo lleva el emisor, el usuario, las fechas y la versión de sesión, que empieza en 0")
     void elTokenDuraOchoHoras() {
         UUID id = api.crearUsuario(null, "Ana Pérez", CORREO, "ADMIN_PLATAFORMA");
 
@@ -133,9 +133,10 @@ class SesionAbiertaIT {
 
         assertThat(inicio).hasStatus(HttpStatus.OK);
         Map<String, Object> contenido = TokensDePrueba.leer((String) json(inicio).get("token"));
-        assertThat(contenido).containsOnlyKeys("iss", "sub", "iat", "exp")
+        assertThat(contenido).containsOnlyKeys("iss", "sub", "iat", "exp", "version_sesion")
                 .containsEntry("iss", TokensDePrueba.EMISOR)
-                .containsEntry("sub", id.toString());
+                .containsEntry("sub", id.toString())
+                .containsEntry("version_sesion", 0);
         long emitido = ((Number) contenido.get("iat")).longValue();
         long vence = ((Number) contenido.get("exp")).longValue();
         assertThat(vence - emitido).isEqualTo(Duration.ofHours(8).toSeconds());
