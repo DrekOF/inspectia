@@ -1,11 +1,11 @@
 /*
  * Nombre: DatosDeSesion.java
  * Descripción: Lo que necesita la sesión de un usuario, leído de la base junto con su empresa (RF-01,
- *              D-27, D-28), incluido desde cuándo sirven sus sesiones (RNF-04, D-30).
+ *              D-27, D-28), incluida la versión de sesión que corta sus sesiones (RNF-04, D-30).
  * Fecha de creación: 14/10/2026
- * Actualización: 18/10/2026
+ * Actualización: 26/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 package co.edu.usco.inspectia.usuario.sesion;
 
@@ -26,14 +26,13 @@ import java.util.UUID;
  * @param rol su rol
  * @param activo si está activo (RF-03)
  * @param bloqueadoHasta hasta cuándo está bloqueada su cuenta; {@code null} si no lo está (RNF-04)
- * @param sesionesDesde desde cuándo sirven sus sesiones: la hora del último cambio de contraseña;
- *                      {@code null} si nunca cambió (RNF-04 C6, D-30)
+ * @param versionSesion su versión de sesión: sube cada vez que cambian su contraseña (RNF-04 C6, D-30)
  * @param empresaId su empresa; {@code null} para el administrador de la plataforma
  * @param empresaNombre el nombre de su empresa
  * @param empresaActiva si su empresa está activa (D-27); {@code null} si no tiene empresa
  */
 public record DatosDeSesion(UUID id, String nombre, String correo, String contrasenaHash, UsuarioRol rol,
-        Boolean activo, OffsetDateTime bloqueadoHasta, OffsetDateTime sesionesDesde, UUID empresaId,
+        Boolean activo, OffsetDateTime bloqueadoHasta, Integer versionSesion, UUID empresaId,
         String empresaNombre, Boolean empresaActiva) {
 
     /** Si la cuenta está bloqueada en este momento. El bloqueo termina en el instante de {@code bloqueadoHasta}. */
@@ -52,12 +51,12 @@ public record DatosDeSesion(UUID id, String nombre, String correo, String contra
     }
 
     /**
-     * Si la contraseña cambió después de emitir un token: el token es de una sesión abierta antes del
-     * cambio y ya no sirve (RNF-04 C6). Las dos fechas van en segundos enteros, así que un token del
-     * mismo segundo del cambio sigue sirviendo.
+     * Si un token es de otra versión de sesión: es de una sesión abierta antes de que cambiaran la
+     * contraseña y ya no sirve (RNF-04 C6). Solo se comparan los números, así que no depende de la hora del
+     * servidor. Una versión mayor que la de la base tampoco sirve.
      */
-    boolean contrasenaCambiadaDespuesDe(Instant emitido) {
-        return sesionesDesde != null && emitido.isBefore(sesionesDesde.toInstant());
+    boolean otraVersionDeSesion(int versionDelToken) {
+        return versionSesion != versionDelToken;
     }
 
     /** El usuario de una sesión que vence en {@code vence}. */
@@ -69,7 +68,7 @@ public record DatosDeSesion(UUID id, String nombre, String correo, String contra
     @Override
     public String toString() {
         return "DatosDeSesion[id=" + id + ", rol=" + rol + ", activo=" + activo + ", bloqueadoHasta=" + bloqueadoHasta
-                + ", sesionesDesde=" + sesionesDesde + ", empresaId=" + empresaId + ", empresaActiva=" + empresaActiva
+                + ", versionSesion=" + versionSesion + ", empresaId=" + empresaId + ", empresaActiva=" + empresaActiva
                 + "]";
     }
 }

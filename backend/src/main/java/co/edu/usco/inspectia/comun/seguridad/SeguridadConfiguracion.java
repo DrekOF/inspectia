@@ -3,9 +3,9 @@
  * Descripción: Cadena de seguridad del servidor: todo /api exige sesión con un token JWT, cada
  *              operación su rol y las contraseñas se guardan con BCrypt (RNF-04, D-28).
  * Fecha de creación: 13/10/2026
- * Actualización: 18/10/2026
+ * Actualización: 26/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.3
+ * Versión: 1.4
  */
 package co.edu.usco.inspectia.comun.seguridad;
 
@@ -72,7 +72,7 @@ public class SeguridadConfiguracion {
                 .oauth2ResourceServer(servidor -> servidor
                         .bearerTokenResolver(tokenSalvoEn(sinToken))
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(token -> new SesionAutenticada(
-                                cargador.cargar(usuarioDe(token), token.getIssuedAt(), token.getExpiresAt()))))
+                                cargador.cargar(usuarioDe(token), versionDe(token), token.getExpiresAt()))))
                         .authenticationEntryPoint(respuestas)
                         .accessDeniedHandler(respuestas))
                 .exceptionHandling(errores -> errores
@@ -116,5 +116,11 @@ public class SeguridadConfiguracion {
         } catch (IllegalArgumentException error) {
             throw new SesionNoValidaExcepcion("error.sesion_invalida");
         }
+    }
+
+    /** La versión de sesión que trae el token: {@link ValidadorDeVigencia} ya revisó que sea válida. */
+    private static int versionDe(Jwt token) {
+        return ValidadorDeVigencia.versionDeSesion(token)
+                .orElseThrow(() -> new SesionNoValidaExcepcion("error.sesion_invalida"));
     }
 }

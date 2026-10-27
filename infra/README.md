@@ -2,9 +2,9 @@
 Nombre: README.md (infra)
 Descripción: Qué va en la carpeta infra/ de InspectIA, cómo reiniciar la base local, cómo crear el administrador de la plataforma y restablecer su contraseña, cómo probar la sesión en local y cómo usan infra/ las pruebas de punta a punta.
 Fecha de creación: 12/10/2026
-Actualización: 20/10/2026
+Actualización: 27/10/2026
 Autor: Equipo InspectIA
-Versión: 1.6
+Versión: 1.7
 -->
 
 # infra
@@ -32,11 +32,11 @@ La EC2 t4g es ARM (Graviton), así que toda imagen debe funcionar en amd64 y en 
 
 Desde la raíz del repositorio, la base se enciende con `docker compose -f infra/docker-compose.yml up -d` y se apaga con `docker compose -f infra/docker-compose.yml down`. Los demás comandos están en la sección Comandos de `CLAUDE.md`.
 
-Si cambia `V1__esquema_inicial.sql`, quien ya tenga la base local debe reiniciarla: Flyway no arranca si una migración ya aplicada cambió (P-16), aunque sea solo su header. Pasó cuando RF-03 agregó la columna `usuario.sesiones_desde`, y cuando RF-13 subió el generador a la 1.6, que solo cambió el header. Esto borra los datos locales:
+Si cambia `V1__esquema_inicial.sql`, quien ya tenga la base local debe reiniciarla: Flyway no arranca si una migración ya aplicada cambió (P-16), aunque sea solo su header. Pasó cuando RF-03 agregó la columna `usuario.sesiones_desde`, cuando RF-13 subió el generador a la 1.6, que solo cambió el header, y cuando P-18 la cambió por `usuario.version_sesion` (D-35). Esto borra los datos locales:
 
 1. `docker compose -f infra/docker-compose.yml down -v`
 2. `docker compose -f infra/docker-compose.yml up -d`
-3. Arranca el backend (`./mvnw spring-boot:run` en `backend/`) y vuelve a crear el administrador con el script (ver «Primer administrador de la plataforma»).
+3. Arranca el backend con `clean`, para que no queden clases viejas de antes de regenerar: `./mvnw clean spring-boot:run` en `backend/` (en PowerShell, `.\mvnw clean spring-boot:run`). Después vuelve a crear el administrador con el script (ver «Primer administrador de la plataforma»).
 
 ## Base de las pruebas de punta a punta
 
@@ -84,20 +84,11 @@ Qué pide y qué hace:
 
 - El correo sale de `INSPECTIA_ADMIN_CORREO`, del entorno o de `infra/.env`. Si no está en ninguno, lo pide, y se ve al escribirlo: así se puede correr en el servidor sin crear archivos.
 - La contraseña nueva la pide dos veces y sin mostrarla, así que no queda en ningún archivo ni en el historial de la consola. Pasa por las reglas de siempre: de 8 a 64 caracteres, como máximo 72 bytes y no solo espacios.
-- Guarda la contraseña nueva, corta las sesiones abiertas del administrador y quita su bloqueo por intentos fallidos (D-30). No reactiva nada.
+- Guarda la contraseña nueva, sube la versión de sesión del administrador, así sus sesiones abiertas dejan de servir, y quita su bloqueo por intentos fallidos, todo en una sola sentencia (D-30, D-35). No depende de la hora de la base ni de la del backend. No reactiva nada.
 - Si el correo es de un usuario de una empresa, o no existe, se detiene sin cambiar nada.
 - La contraseña nueva viaja en `INSPECTIA_ADMIN_CONTRASENA_NUEVA`, una variable que nunca va en `infra/.env`. Si viajara en `INSPECTIA_ADMIN_CONTRASENA` y quedara vacía, docker compose tomaría de `infra/.env` la del script de creación.
 
 `backend/src/test/java/co/edu/usco/inspectia/RestablecerAdminPlataformaIT.java` lo prueba con Testcontainers.
-
-### Relojes en local
-
-El script toma la hora del cambio del reloj de la base, y el backend la compara con la hora de emisión de cada token. En el servidor, la base y el backend comparten reloj, así que esto no pasa. En tu PC, Docker Desktop corre en su propia máquina virtual, y su reloj puede quedar unos segundos distinto del de Windows, o más después de suspender el equipo:
-
-- Si el reloj de Docker va atrasado, una sesión abierta en ese atraso no se corta.
-- Si va adelantado, el token de un inicio de sesión hecho justo después del cambio se rechaza con «Tu contraseña cambió» durante esos segundos.
-
-Para comparar los dos relojes, mira `docker compose -f infra/docker-compose.yml exec postgres date -u` y la hora de Windows en UTC (`date -u` en Git Bash). Si no coinciden, reinicia Docker Desktop: al arrancar vuelve a tomar la hora de Windows.
 
 ## Probar el inicio de sesión en Swagger UI
 

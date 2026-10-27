@@ -3,19 +3,15 @@
  * Descripción: Reglas de usuario escritas a mano: implementa la interfaz generada ReglasUsuario (RP-23,
  *              RF-03), con el corte de sesiones al cambiar una contraseña (RNF-04, D-30).
  * Fecha de creación: 18/10/2026
- * Actualización: 18/10/2026
+ * Actualización: 26/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.2
+ * Versión: 1.3
  */
 package co.edu.usco.inspectia.usuario.reglas;
 
 import co.edu.usco.inspectia.comun.seguridad.UsuarioEnSesion;
 import co.edu.usco.inspectia.usuario.ReglasUsuario;
 import co.edu.usco.inspectia.usuario.Usuario;
-import java.time.Clock;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.time.temporal.ChronoUnit;
 import org.springframework.stereotype.Component;
 
 /**
@@ -27,17 +23,17 @@ import org.springframework.stereotype.Component;
 public class ReglasUsuarioImpl implements ReglasUsuario {
 
     private final UsuariosActivosRepositorio activos;
-    private final Clock reloj;
+    private final VersionDeSesionRepositorio versiones;
 
     /**
-     * Crea las reglas; Spring les pasa el conteo de activos y la hora del servidor.
+     * Crea las reglas; Spring les pasa el conteo de activos y la versión de sesión.
      *
      * @param activos cuenta los usuarios activos de una empresa
-     * @param reloj la hora del servidor
+     * @param versiones sube la versión de sesión de un usuario y quita su bloqueo
      */
-    public ReglasUsuarioImpl(UsuariosActivosRepositorio activos, Clock reloj) {
+    public ReglasUsuarioImpl(UsuariosActivosRepositorio activos, VersionDeSesionRepositorio versiones) {
         this.activos = activos;
-        this.reloj = reloj;
+        this.versiones = versiones;
     }
 
     /**
@@ -84,15 +80,18 @@ public class ReglasUsuarioImpl implements ReglasUsuario {
 
     /**
      * Al restablecer o cambiar una contraseña, las sesiones abiertas antes del cambio dejan de servir y la
-     * cuenta se desbloquea (RNF-04 C6, D-30). {@code sesiones_desde} toma la hora del cambio en segundos
-     * enteros, como el {@code iat} de los tokens: en cada petición, un token emitido antes de ese segundo
-     * responde 401 «Tu contraseña cambió». Uno emitido en el mismo segundo sigue sirviendo; es una
-     * ventana de menos de un segundo que se aceptó en el plan de RF-03.
+     * cuenta se desbloquea (RNF-04 C6, D-30). Una sola sentencia sube en uno la versión de sesión del
+     * usuario y quita su bloqueo: en cada petición, un token con otra versión responde 401 «Tu contraseña
+     * cambió». No depende de la hora, así que tampoco de que el reloj del servidor se atrase ni del segundo
+     * en que se cambia. Y un fallo que bloquea la cuenta mientras tanto no queda (ver
+     * {@link VersionDeSesionRepositorio#subirYDesbloquear}).
+     *
+     * <p>La entidad queda igual a la base: con la versión que devolvió la base, que es la del token con el
+     * que sigue la sesión en RF-18, y sin intentos fallidos ni bloqueo.
      */
     @Override
     public void cortarSesionesAlCambiarContrasena(Usuario usuario, UsuarioEnSesion sesion) {
-        usuario.setSesionesDesde(OffsetDateTime.ofInstant(reloj.instant().truncatedTo(ChronoUnit.SECONDS),
-                ZoneOffset.UTC));
+        usuario.setVersionSesion(versiones.subirYDesbloquear(usuario.getId()));
         usuario.setIntentosFallidos(0);
         usuario.setBloqueadoHasta(null);
     }

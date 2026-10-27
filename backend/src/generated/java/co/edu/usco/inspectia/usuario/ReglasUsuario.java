@@ -4,10 +4,10 @@
  *              Archivo generado por generador/ (RP-23): no se edita a mano; se cambia el JSON
  *              o la plantilla, y se regenera.
  * Fecha de creación: 13/10/2026
- * Actualización: 26/10/2026
- * Autor: Equipo InspectIA (generado por generador/ v1.7)
- * Versión: 1.7
- * Entidades: usuario 1.6
+ * Actualización: 27/10/2026
+ * Autor: Equipo InspectIA (generado por generador/ v1.8)
+ * Versión: 1.8
+ * Entidades: usuario 1.7
  */
 package co.edu.usco.inspectia.usuario;
 
@@ -75,11 +75,12 @@ public interface ReglasUsuario {
 
     /**
      * cortar_sesiones_al_cambiar_contrasena: Al restablecer o cambiar una contraseña, las sesiones
-     * abiertas antes del cambio dejan de servir y la cuenta se desbloquea: sesiones_desde toma la hora
-     * del cambio, en segundos enteros como el iat del token, y los intentos fallidos vuelven a cero. Lo
-     * aplican la edición de usuarios, el restablecimiento de RF-02 C12 y, después, RF-18. Pasa al
+     * abiertas antes del cambio dejan de servir y la cuenta se desbloquea: una sola sentencia de la
+     * base sube version_sesion en uno, deja los intentos fallidos en cero y quita el bloqueo, y un
+     * token con otra versión ya no sirve, sin depender de la hora (D-35). Lo aplican la edición de
+     * usuarios, el restablecimiento de RF-02 C12 y el cambio de la propia contraseña (RF-18). Pasa al
      * editar, solo si llega una contraseña nueva y después de guardar su hash, antes de escribir los
-     * cambios en la base (RNF-04, RF-02, RF-03, RF-18, D-30).
+     * cambios en la base (RNF-04, RF-02, RF-03, RF-18, D-30, D-35).
      *
      * @param usuario el registro con los datos que se van a guardar: el efecto lo cambia
      * @param sesion el usuario de la sesión, con su empresa

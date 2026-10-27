@@ -2,10 +2,10 @@
 -- Descripción: Crea las tablas de InspectIA desde specs/entidades (RP-15). Archivo generado por
 --              generador/ (RP-23): no se edita a mano; se cambia el JSON o la plantilla y se regenera.
 -- Fecha de creación: 13/10/2026
--- Actualización: 26/10/2026
--- Autor: Equipo InspectIA (generado por generador/ v1.7)
--- Versión: 1.7
--- Entidades: empresa 1.3, foto 1.0, grano 1.0, lote 1.0, modelo 1.0, muestra 1.0, rango_recomendacion 1.2, usuario 1.6
+-- Actualización: 27/10/2026
+-- Autor: Equipo InspectIA (generado por generador/ v1.8)
+-- Versión: 1.8
+-- Entidades: empresa 1.3, foto 1.0, grano 1.0, lote 1.0, modelo 1.0, muestra 1.0, rango_recomendacion 1.2, usuario 1.7
 
 -- Mantiene fecha_actualizacion en cada cambio, también cuando lo hace un script.
 CREATE FUNCTION actualizar_fecha_actualizacion() RETURNS trigger
@@ -120,13 +120,14 @@ CREATE TABLE usuario (
     activo boolean NOT NULL DEFAULT true,
     intentos_fallidos integer NOT NULL DEFAULT 0,
     bloqueado_hasta timestamptz,
-    sesiones_desde timestamptz,
+    version_sesion integer NOT NULL DEFAULT 0,
     fecha_creacion timestamptz NOT NULL DEFAULT now(),
     fecha_actualizacion timestamptz NOT NULL DEFAULT now(),
     CONSTRAINT usuario_pk PRIMARY KEY (id),
     CONSTRAINT usuario_id_empresa_unico UNIQUE (id, empresa_id),
     CONSTRAINT usuario_rol_valores CHECK (rol IN ('USUARIO_FINAL', 'ADMIN_EMPRESA', 'ADMIN_PLATAFORMA')),
     CONSTRAINT usuario_intentos_fallidos_minimo CHECK (intentos_fallidos >= 0),
+    CONSTRAINT usuario_version_sesion_minimo CHECK (version_sesion >= 0),
     CONSTRAINT usuario_empresa_segun_rol CHECK ((rol = 'ADMIN_PLATAFORMA') = (empresa_id IS NULL)),
     CONSTRAINT usuario_empresa_id_fk FOREIGN KEY (empresa_id) REFERENCES empresa (id) ON DELETE RESTRICT
 );
@@ -144,7 +145,7 @@ COMMENT ON COLUMN usuario.rol IS 'Rol (RF-01, RF-03, D-05, D-13)';
 COMMENT ON COLUMN usuario.activo IS 'Activo (RF-01, RF-03)';
 COMMENT ON COLUMN usuario.intentos_fallidos IS 'Intentos fallidos (RF-01, RNF-04)';
 COMMENT ON COLUMN usuario.bloqueado_hasta IS 'Bloqueado hasta (RF-01, RNF-04)';
-COMMENT ON COLUMN usuario.sesiones_desde IS 'Sesiones válidas desde (RNF-04, D-30)';
+COMMENT ON COLUMN usuario.version_sesion IS 'Versión de sesión (RNF-04, D-30, D-35)';
 COMMENT ON COLUMN usuario.fecha_creacion IS 'Fecha de creación del registro';
 COMMENT ON COLUMN usuario.fecha_actualizacion IS 'Fecha de la última actualización; la mantiene un trigger';
 

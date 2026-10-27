@@ -5,8 +5,8 @@
  *              o la plantilla, y se regenera.
  * Fecha de creación: 13/10/2026
  * Actualización: 26/10/2026
- * Autor: Equipo InspectIA (generado por generador/ v1.7)
- * Versión: 1.7
+ * Autor: Equipo InspectIA (generado por generador/ v1.8)
+ * Versión: 1.8
  * Entidades: empresa 1.3
  */
 package co.edu.usco.inspectia.empresa;
@@ -19,6 +19,7 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.annotations.Generated;
 import org.hibernate.annotations.UuidGenerator;
 import org.hibernate.generator.EventType;
@@ -28,10 +29,12 @@ import org.hibernate.generator.EventType;
  * demás empresas (RNF-03). No se borra: se desactiva (D-27).
  *
  * <p>Tabla {@code empresa} (RF-02, RNF-03, D-13, D-27). Las fechas las pone la base: la de creación al
- * insertar y la de actualización con un trigger en cada cambio.
+ * insertar y la de actualización con un trigger en cada cambio. Cada UPDATE escribe solo las columnas que
+ * cambiaron ({@code @DynamicUpdate}): así dos cambios a la vez sobre columnas distintas no se pisan.
  */
 @Entity
 @Table(name = "empresa")
+@DynamicUpdate
 @Getter
 @Setter
 public class Empresa {

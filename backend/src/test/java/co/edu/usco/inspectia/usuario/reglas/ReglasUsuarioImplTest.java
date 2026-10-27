@@ -4,24 +4,23 @@
  *              no desactivarse ni cambiarse el rol o la contraseña a sí mismo (RF-03), y el corte de
  *              sesiones al cambiar una contraseña (RNF-04).
  * Fecha de creación: 18/10/2026
- * Actualización: 18/10/2026
+ * Actualización: 26/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.2
+ * Versión: 1.3
  */
 package co.edu.usco.inspectia.usuario.reglas;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import co.edu.usco.inspectia.comun.seguridad.UsuarioEnSesion;
 import co.edu.usco.inspectia.usuario.Usuario;
 import co.edu.usco.inspectia.usuario.UsuarioRol;
-import java.time.Clock;
 import java.time.Instant;
 import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -34,8 +33,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 /**
- * Pruebas de {@link ReglasUsuarioImpl} sin base de datos: el conteo de activos es simulado y el reloj,
- * fijo. La sesión es la de Ana, administradora de la empresa; Luis es otro usuario de la misma empresa.
+ * Pruebas de {@link ReglasUsuarioImpl} sin base de datos: el conteo de activos y la versión de sesión son
+ * simulados. La sesión es la de Ana, administradora de la empresa; Luis es otro usuario de la misma empresa.
  */
 @ExtendWith(MockitoExtension.class)
 class ReglasUsuarioImplTest {
@@ -44,17 +43,17 @@ class ReglasUsuarioImplTest {
     private static final UUID ANA = UUID.fromString("0199e2a0-0000-7000-8000-000000000002");
     private static final UUID LUIS = UUID.fromString("0199e2a0-0000-7000-8000-000000000003");
 
-    /** La hora del servidor, con milisegundos: el corte de sesiones guarda solo los segundos. */
-    private static final Instant AHORA = Instant.parse("2026-10-18T15:00:07.650Z");
-
     @Mock
     private UsuariosActivosRepositorio activos;
+
+    @Mock
+    private VersionDeSesionRepositorio versiones;
 
     private ReglasUsuarioImpl reglas;
 
     @BeforeEach
     void preparar() {
-        reglas = new ReglasUsuarioImpl(activos, Clock.fixed(AHORA, ZoneOffset.UTC));
+        reglas = new ReglasUsuarioImpl(activos, versiones);
     }
 
     @ParameterizedTest(name = "{0} activos: ¿se puede? {1}")
@@ -112,15 +111,19 @@ class ReglasUsuarioImplTest {
     }
 
     @Test
-    @DisplayName("RNF-04 · C6 · al cambiar una contraseña, sesiones_desde toma la hora del cambio en segundos enteros y la cuenta se desbloquea")
+    @DisplayName("RNF-04 · C6 · al cambiar una contraseña, la versión de sesión sube y la cuenta se desbloquea en una sola sentencia de la base, y el usuario queda igual a la base: con la versión que devolvió, no con la que había leído")
     void cortaLasSesionesYDesbloquea() {
         Usuario luis = usuario(LUIS, UsuarioRol.USUARIO_FINAL);
+        luis.setVersionSesion(2);
         luis.setIntentosFallidos(3);
-        luis.setBloqueadoHasta(OffsetDateTime.ofInstant(AHORA.plusSeconds(600), ZoneOffset.UTC));
+        luis.setBloqueadoHasta(OffsetDateTime.parse("2026-10-18T15:10:07Z"));
+        // Mientras tanto, otro cambio de contraseña ya la había subido a 3.
+        when(versiones.subirYDesbloquear(LUIS)).thenReturn(4);
 
         reglas.cortarSesionesAlCambiarContrasena(luis, sesion());
 
-        assertThat(luis.getSesionesDesde()).isEqualTo(OffsetDateTime.parse("2026-10-18T15:00:07Z"));
+        verify(versiones).subirYDesbloquear(LUIS);
+        assertThat(luis.getVersionSesion()).isEqualTo(4);
         assertThat(luis.getIntentosFallidos()).isZero();
         assertThat(luis.getBloqueadoHasta()).isNull();
     }

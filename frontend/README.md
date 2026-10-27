@@ -3,9 +3,9 @@ Nombre: README.md (frontend)
 Descripción: La página web de InspectIA: qué hay en frontend/, cómo arrancarla junto con el backend, sus textos,
              sus pruebas y el entorno aislado de las pruebas de punta a punta.
 Fecha de creación: 12/10/2026
-Actualización: 26/10/2026
+Actualización: 27/10/2026
 Autor: Equipo InspectIA
-Versión: 1.2
+Versión: 1.3
 -->
 
 # frontend
@@ -82,8 +82,6 @@ En PowerShell, por ejemplo: `$env:INSPECTIA_E2E_SIN_FIREFOX = '1'; npm run e2e:p
 Las pruebas que solo miran, como las generadas de los permisos de una pantalla, entran con `personaDelRol`, que da la persona fija del entorno para cada rol. Las que cambian datos crean los suyos por la API, así no chocan entre navegadores: usuarios con `crearUsuario` y empresas con `crearEmpresa`, con un NIT válido nuevo. Como la lista va de 20 en 20, `botonDeLaFila` pasa de página hasta encontrar la fila.
 
 Si una prueba de Selenium falla, su captura (`.png`) y la consola del navegador (`.consola.log`, que empieza con la prueba, el error, la dirección y la hora) quedan en `reports/selenium/`. No van en `test-results/` porque Playwright vacía esa carpeta en cada corrida.
-
-Hasta P-18, RF-18 C5 puede fallar en Windows si el sistema atrasa el reloj justo durante esa prueba: el corte de sesiones compara horas en segundos enteros (ver la bitácora del 26/10/2026).
 
 Playwright corre cada prueba en Chrome, Firefox y Safari en tamaño de PC (1280 × 800) y en Chrome (Pixel 7) y Safari (iPhone 13) de celular (RNF-05 C3). axe revisa las pautas WCAG 2.2 AA en cada pantalla, en los temas claro y oscuro (RNF-06 C4).
 

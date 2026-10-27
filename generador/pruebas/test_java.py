@@ -3,7 +3,7 @@
 # Fecha de creación: 13/10/2026
 # Actualización: 26/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.7
+# Versión: 1.8
 """Pruebas de lo que genera el generador para el backend: la persistencia de cada CRUD, la API de las
 entidades del alcance, incluidas las de una entidad por empresa y las de edición en bloque, y los textos
 en español e inglés."""
@@ -23,8 +23,9 @@ TEXTOS = 'backend/src/generated/resources/i18n'
 # Donde la API escoge el error de un campo, que es el orden de las validaciones de Yup.
 MANEJADOR_DE_ERRORES = 'backend/src/main/java/co/edu/usco/inspectia/comun/errores/ManejadorDeErrores.java'
 # Lo que genera el generador para empresa: solo cambia a propósito, y entonces estas copias se actualizan en el
-# mismo commit; se comparan sin el header. Salieron de la 1.2, antes de la API por empresa (RF-03), y la 1.7 les
-# agregó el filtro activo del listado (D-33) y los valores del borde de la prueba generada.
+# mismo commit; se comparan sin el header. Salieron de la 1.2, antes de la API por empresa (RF-03); la 1.7 les
+# agregó el filtro activo del listado (D-33) y los valores del borde de la prueba generada, y la 1.8, @DynamicUpdate
+# en la entidad.
 EMPRESA_GENERADA = EJEMPLOS / 'empresa_generada'
 # Con el JDK 25, al recompilar sin «clean», los constructores que crean estas anotaciones quedan sin
 # la llamada a super() y la JVM rechaza la clase (VerifyError). Ver CLAUDE.md.
@@ -272,7 +273,7 @@ def test_respuesta_sin_datos_internos(entidades):
     archivos = generar(entidades, api=('empresa', 'usuario'))
 
     respuesta = archivos[f'{JAVA}/usuario/UsuarioRespuesta.java']
-    for interno in ('contrasenaHash', 'intentosFallidos', 'bloqueadoHasta'):
+    for interno in ('contrasenaHash', 'intentosFallidos', 'bloqueadoHasta', 'versionSesion'):
         assert interno not in respuesta
     for publico in ('String nombre', 'String correo', 'UsuarioRol rol', 'Boolean activo'):
         assert publico in respuesta
@@ -353,6 +354,27 @@ def test_valores_iniciales(entidades):
     assert iniciales.count('fila(empresaId,') == 4
     servicio = archivos[f'{JAVA}/empresa/EmpresaServicio.java']
     assert 'RangoRecomendacionValoresIniciales.paraEmpresa(empresa.getId())' in servicio
+
+
+@pytest.mark.caso('RP-23 · cada entidad generada lleva @DynamicUpdate: cada UPDATE escribe solo las columnas que cambiaron, así dos cambios a columnas distintas de la misma fila no se pisan')
+def test_dynamic_update(entidades):
+    archivos = generar(entidades)
+
+    for clase in ('empresa/Empresa', 'usuario/Usuario', 'rango/RangoRecomendacion'):
+        entidad = archivos[f'{JAVA}/{clase}.java']
+        anotaciones = entidad[:entidad.index(f"public class {clase.split('/')[1]} ")]
+        assert 'import org.hibernate.annotations.DynamicUpdate;' in entidad, clase
+        assert '\n@DynamicUpdate\n' in anotaciones, clase
+
+
+@pytest.mark.caso('RP-23 · un atributo con solo_lo_cambian_las_reglas sale en la entidad sin que JPA lo escriba al crear ni al editar, y empieza en su por_defecto, como la columna')
+def test_solo_lo_cambian_las_reglas(entidades):
+    usuario = generar(entidades)[f'{JAVA}/usuario/Usuario.java']
+
+    assert ('    @Column(name = "version_sesion", nullable = false, insertable = false, updatable = false)\n'
+            '    private Integer versionSesion = 0;\n') in usuario
+    assert '    @Column(name = "intentos_fallidos", nullable = false)\n' in usuario, 'los demás, JPA sí los escribe'
+    assert 'sesionesDesde' not in usuario
 
 
 @pytest.mark.caso('RP-23 · el código generado escribe sus constructores, sin las anotaciones de Lombok que los crean')

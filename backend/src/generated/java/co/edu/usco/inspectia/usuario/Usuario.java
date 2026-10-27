@@ -4,10 +4,10 @@
  *              Archivo generado por generador/ (RP-23): no se edita a mano; se cambia el JSON
  *              o la plantilla, y se regenera.
  * Fecha de creación: 13/10/2026
- * Actualización: 26/10/2026
- * Autor: Equipo InspectIA (generado por generador/ v1.7)
- * Versión: 1.7
- * Entidades: usuario 1.6
+ * Actualización: 27/10/2026
+ * Autor: Equipo InspectIA (generado por generador/ v1.8)
+ * Versión: 1.8
+ * Entidades: usuario 1.7
  */
 package co.edu.usco.inspectia.usuario;
 
@@ -21,6 +21,7 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
+import org.hibernate.annotations.DynamicUpdate;
 import org.hibernate.annotations.Generated;
 import org.hibernate.annotations.UuidGenerator;
 import org.hibernate.generator.EventType;
@@ -30,10 +31,12 @@ import org.hibernate.generator.EventType;
  * hizo cada análisis (RF-03). Solo el administrador de la plataforma no tiene empresa (RNF-03).
  *
  * <p>Tabla {@code usuario} (RF-03, RF-01, RF-02, RNF-03, RNF-04). Las fechas las pone la base: la de creación al
- * insertar y la de actualización con un trigger en cada cambio.
+ * insertar y la de actualización con un trigger en cada cambio. Cada UPDATE escribe solo las columnas que
+ * cambiaron ({@code @DynamicUpdate}): así dos cambios a la vez sobre columnas distintas no se pisan.
  */
 @Entity
 @Table(name = "usuario")
+@DynamicUpdate
 @Getter
 @Setter
 public class Usuario {
@@ -77,9 +80,9 @@ public class Usuario {
     @Column(name = "bloqueado_hasta")
     private OffsetDateTime bloqueadoHasta;
 
-    /** Sesiones válidas desde (RNF-04, D-30). */
-    @Column(name = "sesiones_desde")
-    private OffsetDateTime sesionesDesde;
+    /** Versión de sesión (RNF-04, D-30, D-35). Solo lo cambian las reglas: JPA no lo escribe. */
+    @Column(name = "version_sesion", nullable = false, insertable = false, updatable = false)
+    private Integer versionSesion = 0;
 
     /** Fecha de creación del registro: la pone la base al insertar. */
     @Generated

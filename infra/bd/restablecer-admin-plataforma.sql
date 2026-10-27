@@ -3,9 +3,9 @@
 --              RF-18). Script de psql que toma los datos de variables de entorno, para que la contraseña
 --              no quede en el repositorio ni en la línea de comandos.
 -- Fecha de creación: 19/10/2026
--- Actualización: 19/10/2026
+-- Actualización: 26/10/2026
 -- Autor: Equipo InspectIA
--- Versión: 1.0
+-- Versión: 1.1
 --
 -- Uso: no se corre directamente. Lo corren restablecer-admin-plataforma.sh (Linux, macOS, Git Bash y la
 -- EC2) o restablecer-admin-plataforma.ps1 (Windows), con psql dentro del contenedor de la base. Los
@@ -27,11 +27,11 @@
 --      existe, o si es de una empresa, se detiene: esas contraseñas se restablecen desde la app (D-30).
 --   3. Guarda la contraseña en hash BCrypt de pgcrypto ($2a$, costo 10), el formato que verifica Spring
 --      Security, y aplica lo mismo que la regla cortar_sesiones_al_cambiar_contrasena (D-30):
---      sesiones_desde toma el segundo actual, así las sesiones abiertas dejan de servir, y los intentos
---      fallidos vuelven a cero, así la cuenta queda sin bloqueo. No reactiva nada.
+--      version_sesion sube en uno, así las sesiones abiertas dejan de servir, y los intentos fallidos
+--      vuelven a cero, así la cuenta queda sin bloqueo. No reactiva nada.
 --
--- La hora del cambio sale del reloj de la base. En el servidor, la base y el backend comparten reloj; en
--- Docker Desktop pueden diferir unos segundos (ver infra/README.md).
+-- El corte no depende de la hora: el backend compara la versión de sesión de cada token con la de la
+-- base, así que no importa si el reloj de la base y el del backend difieren (RNF-04 C6).
 --
 -- La contraseña no sale en pantalla ni en el registro de PostgreSQL: va en una sola sentencia, que no
 -- puede fallar y corre con el registro de sentencias apagado. El bloque DO la lee de una tabla temporal
@@ -115,7 +115,7 @@ BEGIN
 
     UPDATE usuario
        SET contrasena_hash = crypt(contrasena_admin, gen_salt('bf', 10)),
-           sesiones_desde = date_trunc('second', now()),
+           version_sesion = version_sesion + 1,
            intentos_fallidos = 0,
            bloqueado_hasta = NULL
      WHERE id = id_admin;

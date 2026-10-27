@@ -1,12 +1,12 @@
 /*
  * Nombre: EmisorDeTokens.java
- * Descripción: Emite el token JWT de una sesión: emisor, usuario y fechas, firmado con HS256 y con
- *              vigencia de 8 horas (RNF-04, D-28). Al cambiar la propia contraseña, emite el token con
- *              el que sigue la misma sesión (RF-18).
+ * Descripción: Emite el token JWT de una sesión: emisor, usuario, fechas y versión de sesión, firmado con
+ *              HS256 y con vigencia de 8 horas (RNF-04, D-28). Al cambiar la propia contraseña, emite el
+ *              token con el que sigue la misma sesión (RF-18).
  * Fecha de creación: 14/10/2026
- * Actualización: 19/10/2026
+ * Actualización: 26/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 package co.edu.usco.inspectia.comun.seguridad;
 
@@ -24,14 +24,19 @@ import org.springframework.stereotype.Component;
 
 /**
  * Emite el token de una sesión (D-28). Solo lleva el emisor ({@code iss}), el identificador del
- * usuario ({@code sub}) y sus fechas ({@code iat} y {@code exp}): el rol y la empresa se leen de la
- * base en cada petición, para que un cambio surta efecto sin otro token.
+ * usuario ({@code sub}), sus fechas ({@code iat} y {@code exp}) y la versión de sesión del usuario
+ * ({@value #VERSION_SESION}): el rol y la empresa se leen de la base en cada petición, para que un cambio
+ * surta efecto sin otro token. La versión sube cada vez que cambian su contraseña: un token con otra
+ * versión es de una sesión abierta antes del cambio y ya no sirve (RNF-04 C6).
  */
 @Component
 public class EmisorDeTokens {
 
     /** Emisor de los tokens: el servidor solo acepta los suyos. */
     public static final String EMISOR = "inspectia";
+
+    /** Nombre de la versión de sesión en el contenido del token. */
+    public static final String VERSION_SESION = "version_sesion";
 
     /** Vigencia de una sesión (RNF-04). No se renueva: después hay que iniciar sesión de nuevo. */
     public static final Duration VIGENCIA = Duration.ofHours(8);
@@ -55,31 +60,34 @@ public class EmisorDeTokens {
      * guarda el token, así {@code vence} coincide con su {@code exp}.
      *
      * @param usuario el identificador del usuario
+     * @param versionSesion la versión de sesión del usuario en la base
      * @return el token y cuándo vence
      */
-    public TokenEmitido emitir(UUID usuario) {
+    public TokenEmitido emitir(UUID usuario, int versionSesion) {
         Instant emitido = reloj.instant().truncatedTo(ChronoUnit.SECONDS);
-        return emitir(usuario, emitido, emitido.plus(VIGENCIA));
+        return emitir(usuario, versionSesion, emitido, emitido.plus(VIGENCIA));
     }
 
     /**
      * Emite el token con el que sigue una sesión ya abierta, con su hora de emisión y su vencimiento.
-     * Al cambiar la propia contraseña, la sesión sigue con un token emitido en el segundo del cambio, que
+     * Al cambiar la propia contraseña, la sesión sigue con un token de la versión de sesión nueva, que
      * vence cuando vencía el anterior: cambiar la contraseña no alarga la sesión (RF-18 C5, RNF-04 C4).
      * Las fechas van en segundos enteros, como las guarda el token.
      *
      * @param usuario el identificador del usuario
+     * @param versionSesion la versión de sesión del usuario en la base
      * @param emitido la hora de emisión
      * @param vence cuándo vence
      * @return el token y cuándo vence
      */
-    public TokenEmitido emitir(UUID usuario, Instant emitido, Instant vence) {
+    public TokenEmitido emitir(UUID usuario, int versionSesion, Instant emitido, Instant vence) {
         Instant vencimiento = vence.truncatedTo(ChronoUnit.SECONDS);
         JwtClaimsSet contenido = JwtClaimsSet.builder()
                 .issuer(EMISOR)
                 .subject(usuario.toString())
                 .issuedAt(emitido.truncatedTo(ChronoUnit.SECONDS))
                 .expiresAt(vencimiento)
+                .claim(VERSION_SESION, versionSesion)
                 .build();
         JwsHeader encabezado = JwsHeader.with(MacAlgorithm.HS256).type("JWT").build();
         String token = codificador.encode(JwtEncoderParameters.from(encabezado, contenido)).getTokenValue();

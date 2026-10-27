@@ -1,12 +1,12 @@
 /*
  * Nombre: SesionServicio.java
  * Descripción: Inicio de sesión con correo y contraseña, bloqueo por intentos fallidos y revisión
- *              del usuario de cada token en cada petición, incluido si su contraseña cambió después
- *              de emitirlo (RF-01, RNF-04, D-28, D-30).
+ *              del usuario de cada token en cada petición, incluido si su contraseña cambió desde que
+ *              se emitió, por su versión de sesión (RF-01, RNF-04, D-28, D-30).
  * Fecha de creación: 14/10/2026
- * Actualización: 18/10/2026
+ * Actualización: 26/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.2
+ * Versión: 1.3
  */
 package co.edu.usco.inspectia.usuario.sesion;
 
@@ -106,25 +106,25 @@ public class SesionServicio implements CargadorDeSesion {
         if (usuario.empresaDesactivada()) {
             throw new SesionRechazadaExcepcion("error.empresa_desactivada");
         }
-        EmisorDeTokens.TokenEmitido token = emisor.emitir(usuario.id());
+        EmisorDeTokens.TokenEmitido token = emisor.emitir(usuario.id(), usuario.versionSesion());
         return SesionRespuesta.de(token, usuario.enSesion(token.vence()));
     }
 
     /**
      * El usuario de un token válido, leído de la base en cada petición (D-28). Si el usuario o su
      * empresa ya no están activos, la sesión deja de servir en esta misma petición (RF-01 C3 y C4). Si
-     * su contraseña cambió después de emitir el token, también: era una sesión abierta antes del cambio
-     * (RNF-04 C6, D-30).
+     * el token es de otra versión de sesión, también: su contraseña cambió desde que se emitió, así que
+     * era una sesión abierta antes del cambio (RNF-04 C6, D-30).
      *
      * @param id el identificador que trae el token
-     * @param emitido cuándo se emitió el token
+     * @param versionSesion la versión de sesión que trae el token
      * @param vence cuándo vence el token
      * @return el usuario, con su rol y su empresa de este momento
      * @throws SesionNoValidaExcepcion si el usuario ya no existe, si él o su empresa están desactivados o
-     *                                 si su contraseña cambió después de emitir el token
+     *                                 si su contraseña cambió desde que se emitió el token
      */
     @Override
-    public UsuarioEnSesion cargar(UUID id, Instant emitido, Instant vence) {
+    public UsuarioEnSesion cargar(UUID id, int versionSesion, Instant vence) {
         DatosDeSesion usuario = repositorio.buscarPorId(id)
                 .orElseThrow(() -> new SesionNoValidaExcepcion("error.sesion_invalida"));
         if (usuario.desactivado()) {
@@ -133,7 +133,7 @@ public class SesionServicio implements CargadorDeSesion {
         if (usuario.empresaDesactivada()) {
             throw new SesionNoValidaExcepcion("error.empresa_desactivada");
         }
-        if (usuario.contrasenaCambiadaDespuesDe(emitido)) {
+        if (usuario.otraVersionDeSesion(versionSesion)) {
             throw new SesionNoValidaExcepcion("error.contrasena_cambiada");
         }
         return usuario.enSesion(vence);

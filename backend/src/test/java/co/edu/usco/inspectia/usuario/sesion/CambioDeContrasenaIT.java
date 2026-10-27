@@ -4,9 +4,9 @@
  *              contraseña actual, bloqueo por intentos fallidos, validaciones de la nueva y la sesión que
  *              sigue abierta mientras las demás se cortan (RF-18, RNF-04, D-30).
  * Fecha de creación: 19/10/2026
- * Actualización: 19/10/2026
+ * Actualización: 26/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.usuario.sesion;
 
@@ -57,8 +57,8 @@ import org.springframework.test.web.servlet.assertj.MvcTestResult;
  *       cuenta para el bloqueo de RF-01. Desde el quinto fallo seguido y mientras dure el bloqueo
  *       responde 429, con {@code bloqueadoHasta} y el encabezado {@code Retry-After}.</li>
  * </ul>
- * Las sesiones «de antes» las arma {@link TokensDePrueba}, emitidas 5 segundos atrás: un token del mismo
- * segundo del cambio sigue sirviendo, por la ventana que se aceptó en RF-03.
+ * Las sesiones «de antes» las arma {@link TokensDePrueba} con la versión de sesión de antes del cambio: el
+ * corte no depende de la hora (RNF-04 C6).
  */
 @PruebaIntegracion
 class CambioDeContrasenaIT {
@@ -247,8 +247,8 @@ class CambioDeContrasenaIT {
                 .isEqualTo(vence);
         Map<String, Object> contenido = TokensDePrueba.leer(nuevo);
         assertThat(((Number) contenido.get("exp")).longValue()).isEqualTo(vence.getEpochSecond());
-        assertThat(((Number) contenido.get("iat")).longValue()).as("el token nuevo es del segundo del cambio")
-                .isEqualTo(sesionesDesde(ana).getEpochSecond());
+        assertThat(contenido).as("el token nuevo lleva la versión de sesión que quedó en la base")
+                .containsEntry("version_sesion", versionSesion(ana));
     }
 
     @ParameterizedTest(name = "«{0}»: {1}")
@@ -356,8 +356,7 @@ class CambioDeContrasenaIT {
                 .toInstant();
     }
 
-    private Instant sesionesDesde(UUID usuario) {
-        return jdbc.queryForObject("SELECT sesiones_desde FROM usuario WHERE id = ?", OffsetDateTime.class, usuario)
-                .toInstant();
+    private int versionSesion(UUID usuario) {
+        return jdbc.queryForObject("SELECT version_sesion FROM usuario WHERE id = ?", Integer.class, usuario);
     }
 }

@@ -2,9 +2,9 @@
 Nombre: README.md (specs/entidades)
 Descripción: Qué hay en specs/entidades/ y formato de los JSON de entidades que lee el generador (RP-23).
 Fecha de creación: 12/10/2026
-Actualización: 26/10/2026
+Actualización: 27/10/2026
 Autor: Equipo InspectIA
-Versión: 1.10
+Versión: 1.11
 -->
 
 # specs/entidades
@@ -25,7 +25,7 @@ Un archivo JSON por cada tabla de la base de datos. Es la entrada de `generador/
 ## Qué genera el generador
 
 - **De todos los JSON:** el script SQL de creación de las tablas, con sus restricciones, índices y triggers (RP-15), y los textos en español e inglés (`i18n/generado.properties` y `generado_en.properties`): etiquetas de entidades, atributos y valores, y mensajes (RP-11).
-- **De los que tienen `"crud": true`:** la persistencia en el backend: entidad JPA, repositorio (con las consultas de los datos únicos), un `enum` por cada lista y, si hay `valores_iniciales`, la clase que los arma.
+- **De los que tienen `"crud": true`:** la persistencia en el backend: entidad JPA, repositorio (con las consultas de los datos únicos), un `enum` por cada lista y, si hay `valores_iniciales`, la clase que los arma. La entidad lleva `@DynamicUpdate`: cada UPDATE escribe solo las columnas que cambiaron, así dos cambios a columnas distintas de la misma fila no se pisan; si dos cambian la misma columna a la vez, queda el último (D-36). Por eso, lo que una regla debe dejar en un valor aunque ya lo tuviera al leer la fila va en SQL, como el desbloqueo al cambiar una contraseña (D-35).
 - **De los que están en `generador/alcance.json`, además:** la API en `/api/v1/<ruta>`: servicio, controlador con OpenAPI, reglas de acceso por ruta, solicitudes con sus validaciones, respuesta, la interfaz de las `reglas` y una prueba de integración generada. Hoy todas las entidades con CRUD tienen API; una nueva la recibe cuando llega su ficha. Las de `edicion_en_bloque` tienen otra API (ver «Edición en bloque»).
 - **De los que están en `pantallas` de `generador/alcance.json`:** la pantalla del frontend, con su lista, su formulario y sus acciones; el cliente de su API; sus validaciones de Yup; y sus pruebas, con Vitest y con Playwright. Hoy la tiene `empresa`; las de usuario y rangos llegan en sus PR. Ver «Pantalla generada».
 - El código generado no se edita a mano (RP-23). Las `reglas` se programan a mano, fuera de las carpetas generadas, y el código generado las llama. En el frontend, lo que el JSON no puede declarar de una pantalla, como el panel de administradores de una empresa, va a mano en `frontend/src/extensiones.js`: lo generado no importa código escrito a mano.
@@ -162,6 +162,7 @@ No se escriben en los JSON. El generador las agrega a todas las tablas, y se pue
 | `ayuda` | Texto de ayuda bajo el campo (`es` y `en`) |
 | `ejemplo` | Un valor válido, que cumple todas las validaciones y `reglas` del atributo. Va en la documentación OpenAPI, en los datos de las pruebas generadas y en los casos de límite de su `patron`. Obligatorio si el atributo tiene `patron` y va en el formulario de una API, porque no se puede inventar (un NIT con su dígito de verificación, por ejemplo); en los demás, el generador arma uno |
 | `en_lista`, `en_formulario` | Solo con CRUD: si el atributo sale en la lista y en el formulario |
+| `solo_lo_cambian_las_reglas` | `true`: JPA lee la columna, pero no la escribe (`insertable` y `updatable` en `false`); solo la cambian las reglas, con SQL, como `usuario.version_sesion` (D-35, D-36). Solo con CRUD y fuera del formulario. Si el atributo es obligatorio, necesita `por_defecto`: al crear, el valor lo pone la base. La validación rechaza la clave donde no serviría, en vez de ignorarla |
 | `etiquetas` | `es` y `en` |
 | `fichas` | Trazabilidad del atributo |
 

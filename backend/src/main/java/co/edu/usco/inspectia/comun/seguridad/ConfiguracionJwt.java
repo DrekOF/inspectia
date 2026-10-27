@@ -2,9 +2,9 @@
  * Nombre: ConfiguracionJwt.java
  * Descripción: Clave, firma y validación de los tokens JWT del inicio de sesión (D-28, RNF-04).
  * Fecha de creación: 14/10/2026
- * Actualización: 14/10/2026
+ * Actualización: 26/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.comun.seguridad;
 
@@ -31,7 +31,8 @@ import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
  * <ul>
  *   <li>La firma, solo con HS256: un token sin firma ({@code alg: none}) o de otro algoritmo no sirve.</li>
  *   <li>El emisor: {@value EmisorDeTokens#EMISOR}.</li>
- *   <li>Que no haya vencido, sin tolerancia ({@link ValidadorDeVigencia}).</li>
+ *   <li>Que traiga sus fechas y su versión de sesión, y que no haya vencido, sin tolerancia
+ *       ({@link ValidadorDeVigencia}).</li>
  * </ul>
  * El usuario, su rol y su empresa se leen de la base en cada petición ({@link CargadorDeSesion}).
  */

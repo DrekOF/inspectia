@@ -3,7 +3,7 @@
 # Fecha de creación: 13/10/2026
 # Actualización: 26/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.3
+# Versión: 1.4
 """Validación de los JSON de entidades.
 
 Revisa el formato de ``specs/entidades/README.md`` y que cada ficha, decisión o requisito citado
@@ -189,7 +189,21 @@ class _Revision:
             # Solo la edición en bloque sabe en qué filas no se edita el dato: en otra entidad se ignoraría.
             if not e.get('edicion_en_bloque'):
                 self.error(donde, 'solo_lectura_si va solo en una entidad con edicion_en_bloque')
+        if a.get('solo_lo_cambian_las_reglas'):
+            self.solo_lo_cambian_las_reglas(donde, e, a)
         self.fichas(donde, a.get('fichas'))
+
+    def solo_lo_cambian_las_reglas(self, donde, e, a):
+        """Un atributo que JPA lee pero no escribe: solo lo cambian las reglas, con SQL. Va en una entidad con
+        CRUD, que es la que tiene entidad de JPA, fuera del formulario, y si es obligatorio, con por_defecto: al
+        crear, el valor lo pone la base."""
+        if not e['crud']:
+            self.error(donde, 'solo_lo_cambian_las_reglas va solo en entidades con CRUD')
+        if a.get('en_formulario'):
+            self.error(donde, 'solo_lo_cambian_las_reglas no va en un atributo del formulario: JPA no lo guardaría')
+        if a.get('obligatorio') and 'por_defecto' not in a:
+            self.error(donde, 'solo_lo_cambian_las_reglas en un atributo obligatorio necesita por_defecto: JPA no '
+                              'lo escribe al crear')
 
     def marcadores(self, donde, mensaje, valores):
         """Cada {nombre} del mensaje debe tener valor; $ no se permite (Bean Validation lo interpreta)."""

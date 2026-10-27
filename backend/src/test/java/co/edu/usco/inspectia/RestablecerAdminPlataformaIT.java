@@ -2,11 +2,12 @@
  * Nombre: RestablecerAdminPlataformaIT.java
  * Descripción: Pruebas del script infra/bd/restablecer-admin-plataforma.sql, con el que el equipo
  *              restablece la contraseña del administrador de la plataforma, corrido con psql dentro del
- *              contenedor de PostgreSQL 18 (D-30, RF-18).
+ *              contenedor de PostgreSQL 18 (D-30, RF-18). El corte de sesiones no depende de la diferencia
+ *              entre el reloj de la base y el del backend (RNF-04 C6).
  * Fecha de creación: 19/10/2026
- * Actualización: 19/10/2026
+ * Actualización: 26/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 package co.edu.usco.inspectia;
 
@@ -19,6 +20,7 @@ import co.edu.usco.inspectia.usuario.sesion.ApiSesion;
 import co.edu.usco.inspectia.usuario.sesion.TokensDePrueba;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
+import java.time.Clock;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.HashMap;
@@ -37,6 +39,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.test.context.bean.override.convention.TestBean;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
 import org.testcontainers.containers.Container.ExecResult;
@@ -51,8 +54,9 @@ import org.testcontainers.utility.MountableFile;
  * piden la contraseña por teclado y la pasan en {@code INSPECTIA_ADMIN_CONTRASENA_NUEVA}, una variable que
  * nunca está en {@code infra/.env}.
  *
- * <p>La sesión «de antes» se arma con el reloj de la base: el script toma de él la hora del cambio, y en
- * Docker Desktop puede diferir unos segundos del reloj del equipo donde corren las pruebas.
+ * <p>El reloj del backend es uno de prueba, que cada prueba pone en la hora de la base. En Docker Desktop, el
+ * reloj de la base puede quedar unos segundos distinto del de Windows, donde corre el backend: dos pruebas
+ * adelantan o atrasan el del backend para revisar que el corte de sesiones no dependa de esa diferencia.
  */
 @PruebaIntegracion
 class RestablecerAdminPlataformaIT {
@@ -75,6 +79,12 @@ class RestablecerAdminPlataformaIT {
 
     private static final BCryptPasswordEncoder BCRYPT = new BCryptPasswordEncoder();
 
+    private static final RelojDePrueba RELOJ = new RelojDePrueba(Instant.now());
+
+    /** El reloj del backend en estas pruebas: reemplaza al bean {@code reloj} de la aplicación. */
+    @TestBean(name = "reloj", methodName = "relojDePrueba")
+    private Clock reloj;
+
     @Autowired
     private PostgreSQLContainer postgres;
 
@@ -87,8 +97,13 @@ class RestablecerAdminPlataformaIT {
     private ApiSesion api;
     private UUID admin;
 
+    static Clock relojDePrueba() {
+        return RELOJ;
+    }
+
     @BeforeEach
     void preparar() {
+        RELOJ.fijar(ahoraEnLaBase());
         postgres.copyFileToContainer(MountableFile.forHostPath(SCRIPT), SCRIPT_EN_CONTENEDOR);
         api = new ApiSesion(mvc, jdbc);
         ApiSesion.borrarDatos(jdbc);
@@ -131,6 +146,31 @@ class RestablecerAdminPlataformaIT {
                 .containsEntry("intentos_fallidos", 0)
                 .containsEntry("bloqueado_hasta", null);
         assertThat(api.iniciar(ADMIN, NUEVA)).hasStatus(HttpStatus.OK);
+    }
+
+    @Test
+    @DisplayName("D-30 · el script corta también una sesión abierta con el reloj de la base atrasado respecto al del backend: el corte no depende de la hora")
+    void cortaConElRelojDeLaBaseAtrasado() throws Exception {
+        RELOJ.fijar(ahoraEnLaBase().plusSeconds(5));
+        String abierta = api.token(ADMIN);
+        assertThat(api.sesion(abierta)).hasStatus(HttpStatus.OK);
+
+        assertThat(correr(ADMIN, NUEVA).codigo()).isZero();
+
+        MvcTestResult cortada = api.sesion(abierta);
+        assertThat(cortada).hasStatus(HttpStatus.UNAUTHORIZED);
+        assertThat(json(cortada)).containsEntry("detail", CONTRASENA_CAMBIADA);
+    }
+
+    @Test
+    @DisplayName("D-30 · con el reloj de la base adelantado respecto al del backend, un inicio de sesión hecho justo después del script sirve")
+    void sirveConElRelojDeLaBaseAdelantado() throws Exception {
+        assertThat(correr(ADMIN, NUEVA).codigo()).isZero();
+        RELOJ.fijar(ahoraEnLaBase().minusSeconds(5));
+
+        String nueva = api.token(ADMIN, NUEVA);
+
+        assertThat(api.sesion(nueva)).hasStatus(HttpStatus.OK);
     }
 
     @ParameterizedTest(name = "{0} caracteres")
@@ -312,7 +352,7 @@ class RestablecerAdminPlataformaIT {
         throw new AssertionError("El registro de PostgreSQL no llegó a la marca " + marca);
     }
 
-    /** La hora de la base: de ella toma el script la hora del cambio. */
+    /** La hora del reloj de la base, que puede no ser la del equipo donde corren las pruebas. */
     private Instant ahoraEnLaBase() {
         return jdbc.queryForObject("SELECT now()", OffsetDateTime.class).toInstant();
     }
