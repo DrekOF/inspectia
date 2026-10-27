@@ -591,7 +591,9 @@ export function PantallaDeRegistros({ pantalla, api, formulario, extensiones }) 
   } else if (PanelExtra) {
     abierto = <PanelExtra key={panel.fila.id} fila={panel.fila} alCerrar={cerrarPanel} />;
   }
-  // En el PC, el formulario va al lado de la lista si su JSON lo pide; si no, y en el celular, va encima.
+  // En el PC, el formulario va al lado de la lista si su JSON lo pide; si no, y en el celular, va encima. La lista
+  // parte de 560 px, no de los 600 del prototipo: así el formulario cabe al lado desde una ventana de unos 1240 px
+  // de ancho, con la barra de desplazamiento (D-37).
   const alLado = esPc && pantalla.formulario === 'al_lado';
 
   const lista = (
@@ -645,7 +647,7 @@ export function PantallaDeRegistros({ pantalla, api, formulario, extensiones }) 
       {resultado?.error && <Box sx={{ mb: 2.5 }}><Aviso tipo="error" titulo={textoDelError(resultado.error, t)} /></Box>}
       {alLado ? (
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3, alignItems: 'flex-start' }}>
-          <Box sx={{ flex: '999 1 600px', minWidth: 0 }}>{lista}</Box>
+          <Box sx={{ flex: '999 1 560px', minWidth: 0 }}>{lista}</Box>
           {abierto && <Box sx={{ flex: '1 1 320px', minWidth: 0 }}>{abierto}</Box>}
         </Box>
       ) : (
