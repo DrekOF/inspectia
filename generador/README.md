@@ -4,7 +4,7 @@ Descripción: Qué hace el generador de InspectIA (RP-23), cómo se usa y cómo 
 Fecha de creación: 12/10/2026
 Actualización: 27/10/2026
 Autor: Equipo InspectIA
-Versión: 1.8
+Versión: 1.9
 -->
 
 # generador
@@ -24,13 +24,13 @@ Scripts de Python 3.13 que leen las entidades de `specs/entidades/*.json` (forma
 | Las entidades de `pantallas` | `frontend/e2e/generated/<entidad>.spec.js` | Prueba de Playwright: qué roles abren la pantalla, sus fallas de accesibilidad (axe, en los dos temas) y que no se desplace a los lados desde 360 px |
 | Siempre | `frontend/src/generated/pantallas.js` y `textos.js` | Las pantallas que leen el menú y las rutas, con carga diferida, y los textos de `pantalla.textos`, en español y en inglés |
 
-`alcance.json` dice qué entidades con CRUD tienen API (`api`) y cuáles tienen pantalla (`pantallas`). La API la tienen las tres: `empresa` (RF-02), `usuario` (RF-03, una API por empresa) y `rango_recomendacion` (RF-13, una API de edición en bloque). La pantalla la tiene `empresa`; las de usuario y rangos llegan en sus PR. Cómo responden la API y la pantalla generadas, y lo que no soportan todavía, está en `specs/entidades/README.md`.
+`alcance.json` dice qué entidades con CRUD tienen API (`api`) y cuáles tienen pantalla (`pantallas`). La API la tienen las tres: `empresa` (RF-02), `usuario` (RF-03, una API por empresa) y `rango_recomendacion` (RF-13, una API de edición en bloque). La pantalla la tienen `empresa` (RF-02) y `usuario` (RF-03); la de rangos llega con su PR. Cómo responden la API y la pantalla generadas, y lo que no soportan todavía, está en `specs/entidades/README.md`.
 
 Las carpetas generadas son solo del generador: `generar` borra lo que ya no se genera. Lo escrito a mano, como las reglas de cada módulo (`<modulo>/reglas/`) y el módulo `comun`, va fuera de ellas. En el frontend, lo que el JSON no puede declarar de una pantalla, como el panel de administradores de una empresa, va en `frontend/src/extensiones.js`: lo generado no importa código escrito a mano.
 
 ## Validaciones y casos de límite
 
-Las validaciones de cada campo salen de un solo modelo, `inspectia_generador/campos.py`. De él salen las anotaciones de Bean Validation, las validaciones de Yup y los casos de límite de las pruebas generadas de la API y de Yup, con el mismo mensaje en español; los casos están en `specs/entidades/README.md`. Cada validación lleva su restricción de Bean Validation, y Yup revisa en el orden en que la API escoge el error de un campo (`orden_de_la_api`, como `ManejadorDeErrores`): así un valor que falla por dos validaciones da el mismo mensaje en el formulario y en la API. Una prueba del generador lee `ManejadorDeErrores` y falla si esa regla cambia en el backend.
+Las validaciones de cada campo salen de un solo modelo, `inspectia_generador/campos.py`. De él salen las anotaciones de Bean Validation, las validaciones de Yup y los casos de límite de las pruebas generadas de la API y de Yup, con el mismo mensaje en español; los casos están en `specs/entidades/README.md`. Cada validación lleva su restricción de Bean Validation, y Yup revisa en el orden en que la API escoge el error de un campo (`orden_de_la_api`, como `ManejadorDeErrores`): así un valor que falla por dos validaciones da el mismo mensaje en el formulario y en la API. Una prueba del generador lee `ManejadorDeErrores` y falla si esa regla cambia en el backend. La prueba de Yup revisa además cada valor de una lista que existe pero el formulario no ofrece (`valores_en_formulario`), como ADMIN_PLATAFORMA en el rol, con el mensaje del 403 de la API; la prueba de la API lo revisa en la de permisos.
 
 ## Uso
 

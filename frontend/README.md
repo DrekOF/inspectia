@@ -5,21 +5,21 @@ Descripción: La página web de InspectIA: qué hay en frontend/, cómo arrancar
 Fecha de creación: 12/10/2026
 Actualización: 27/10/2026
 Autor: Equipo InspectIA
-Versión: 1.3
+Versión: 1.4
 -->
 
 # frontend
 
 Página web de InspectIA, para PC y celular (RNF-05). Hecha con React 19, Material UI 9 y Vite 8, con Node 24.22.0 (la de `.node-version`). Las versiones de cada librería están en `package.json` y en la tabla de versiones del README principal.
 
-Esta versión tiene el marco (barra superior, menú según el rol, idioma y tema), Iniciar sesión (RF-01), Cambiar contraseña (RF-18), Acerca de, con la cita del dataset (RNF-08), y la pantalla de Empresas (RF-02), generada desde su JSON (RP-23). Las demás secciones del menú dicen «Esta sección estará disponible pronto.» hasta que llegue su función. La referencia visual es el prototipo de `02_Analisis_Diseno/Prototipo_Frontend`, fuera del repositorio.
+Esta versión tiene el marco (barra superior, menú según el rol, idioma y tema), Iniciar sesión (RF-01), Cambiar contraseña (RF-18), Acerca de, con la cita del dataset (RNF-08), y las pantallas de Empresas (RF-02) y Usuarios (RF-03), generadas desde su JSON (RP-23). Las demás secciones del menú dicen «Esta sección estará disponible pronto.» hasta que llegue su función. La referencia visual es el prototipo de `02_Analisis_Diseno/Prototipo_Frontend`, fuera del repositorio.
 
 ## Qué hay
 
 | Carpeta | Qué va ahí |
 |---|---|
 | `src/generated/` | Lo que sale de `generador/` (RP-23): las pantallas, los clientes de su API, sus validaciones de Yup, sus textos y sus pruebas. No se edita a mano. |
-| `src/crud/` | Lo común de las pantallas generadas: la lista en páginas de 20 (tabla en el PC y tarjetas en el celular), el formulario, la confirmación al desactivar y el foco al abrir y cerrar un panel. |
+| `src/crud/` | Lo común de las pantallas generadas: la lista en páginas de 20 (tabla en el PC y tarjetas en el celular), el formulario, encima de la lista o a su lado en el PC (D-37), la confirmación al desactivar, el máximo de activos, la fila de quien tiene la sesión y el foco al abrir y cerrar un panel. |
 | `src/empresa/` | Lo escrito a mano para la pantalla de empresas: el panel de administradores, que restablece la contraseña de uno (RF-02 C12). |
 | `src/extensiones.js` | Lo escrito a mano de cada pantalla generada, por entidad. Las rutas se lo pasan a la pantalla, así lo generado no importa código escrito a mano. |
 | `src/paginas/` | Las pantallas: Iniciar sesión, el inicio de cada rol, Cambiar contraseña, Acerca de, las secciones pendientes y las direcciones que no existen. |
@@ -27,7 +27,7 @@ Esta versión tiene el marco (barra superior, menú según el rol, idioma y tema
 | `src/sesion/` | La sesión (D-28, D-31): se guarda en el navegador, vence a las 8 horas, se cierra con un 401 y vuelve a la pantalla anterior si entra el mismo usuario. |
 | `src/api/` | El cliente de la API: el token, el idioma y los errores `application/problem+json` del backend. |
 | `src/componentes/` | Piezas comunes: campos, avisos, tarjetas, títulos, la marca y los selectores de idioma y tema. |
-| `src/validacion/` | Los esquemas de Yup (RP-07), con los mismos límites y mensajes del backend. |
+| `src/validacion/` | Los esquemas de Yup de las páginas escritas a mano (RP-07), con los mismos límites y mensajes del backend. La contraseña nueva de Cambiar contraseña usa la validación generada de la contraseña de un usuario, en el orden en que la API escoge el error. |
 | `src/i18n/` | Los idiomas (RP-11): español por defecto e inglés. |
 | `src/tema/` | Los tokens de color, letra y medidas (`tokens.js`) y el tema de Material UI, claro y oscuro (RP-08). |
 | `herramientas/` | La lectura de los `.properties` del backend (plugin de Vite) y la copia en espejo que usa el entorno de punta a punta. |
@@ -35,7 +35,7 @@ Esta versión tiene el marco (barra superior, menú según el rol, idioma y tema
 | `selenium/` | Las pruebas con Selenium, en Chrome y en Edge. |
 | `reports/` | Lo que dejan las pruebas y no se sube: el informe de mutación y, si una prueba de Selenium falla, su captura y la consola del navegador. |
 
-Las pantallas CRUD salen de `generador/` y no se editan a mano (RP-23): hoy la de empresas; las de usuarios y rangos llegan en sus PR. Para cambiar una, se cambia su JSON o la plantilla y se vuelve a generar. Lo que su JSON no puede declarar va en `src/extensiones.js`.
+Las pantallas CRUD salen de `generador/` y no se editan a mano (RP-23): hoy las de empresas y usuarios; la de rangos llega con su PR. Para cambiar una, se cambia su JSON o la plantilla y se vuelve a generar. Lo que su JSON no puede declarar va en `src/extensiones.js`.
 
 ## Textos
 
@@ -79,7 +79,7 @@ Las contraseñas y la clave de los tokens son nuevas en cada corrida. Quedan en 
 
 En PowerShell, por ejemplo: `$env:INSPECTIA_E2E_SIN_FIREFOX = '1'; npm run e2e:playwright`.
 
-Las pruebas que solo miran, como las generadas de los permisos de una pantalla, entran con `personaDelRol`, que da la persona fija del entorno para cada rol. Las que cambian datos crean los suyos por la API, así no chocan entre navegadores: usuarios con `crearUsuario` y empresas con `crearEmpresa`, con un NIT válido nuevo. Como la lista va de 20 en 20, `botonDeLaFila` pasa de página hasta encontrar la fila.
+Las pruebas que solo miran, como las generadas de los permisos de una pantalla, entran con `personaDelRol`, que da la persona fija del entorno para cada rol. Las que cambian datos crean los suyos por la API, así no chocan entre navegadores: usuarios con `crearUsuario` y empresas con `crearEmpresa`, con un NIT válido nuevo. Las de la pantalla de usuarios registran cada una su propia empresa y entran con su administrador, para no llenar los 25 activos de Cacaos del Huila. Como la lista va de 20 en 20, `botonDeLaFila` pasa de página hasta encontrar la fila; en cada página espera que cambien las filas, porque el rango cambia antes de que lleguen.
 
 Si una prueba de Selenium falla, su captura (`.png`) y la consola del navegador (`.consola.log`, que empieza con la prueba, el error, la dirección y la hora) quedan en `reports/selenium/`. No van en `test-results/` porque Playwright vacía esa carpeta en cada corrida.
 

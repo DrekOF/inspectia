@@ -4,7 +4,7 @@ Descripción: Qué hay en specs/entidades/ y formato de los JSON de entidades qu
 Fecha de creación: 12/10/2026
 Actualización: 27/10/2026
 Autor: Equipo InspectIA
-Versión: 1.11
+Versión: 1.12
 -->
 
 # specs/entidades
@@ -27,7 +27,7 @@ Un archivo JSON por cada tabla de la base de datos. Es la entrada de `generador/
 - **De todos los JSON:** el script SQL de creación de las tablas, con sus restricciones, índices y triggers (RP-15), y los textos en español e inglés (`i18n/generado.properties` y `generado_en.properties`): etiquetas de entidades, atributos y valores, y mensajes (RP-11).
 - **De los que tienen `"crud": true`:** la persistencia en el backend: entidad JPA, repositorio (con las consultas de los datos únicos), un `enum` por cada lista y, si hay `valores_iniciales`, la clase que los arma. La entidad lleva `@DynamicUpdate`: cada UPDATE escribe solo las columnas que cambiaron, así dos cambios a columnas distintas de la misma fila no se pisan; si dos cambian la misma columna a la vez, queda el último (D-36). Por eso, lo que una regla debe dejar en un valor aunque ya lo tuviera al leer la fila va en SQL, como el desbloqueo al cambiar una contraseña (D-35).
 - **De los que están en `generador/alcance.json`, además:** la API en `/api/v1/<ruta>`: servicio, controlador con OpenAPI, reglas de acceso por ruta, solicitudes con sus validaciones, respuesta, la interfaz de las `reglas` y una prueba de integración generada. Hoy todas las entidades con CRUD tienen API; una nueva la recibe cuando llega su ficha. Las de `edicion_en_bloque` tienen otra API (ver «Edición en bloque»).
-- **De los que están en `pantallas` de `generador/alcance.json`:** la pantalla del frontend, con su lista, su formulario y sus acciones; el cliente de su API; sus validaciones de Yup; y sus pruebas, con Vitest y con Playwright. Hoy la tiene `empresa`; las de usuario y rangos llegan en sus PR. Ver «Pantalla generada».
+- **De los que están en `pantallas` de `generador/alcance.json`:** la pantalla del frontend, con su lista, su formulario y sus acciones; el cliente de su API; sus validaciones de Yup; y sus pruebas, con Vitest y con Playwright. Hoy la tienen `empresa` y `usuario`; la de rangos llega con su PR. Ver «Pantalla generada».
 - El código generado no se edita a mano (RP-23). Las `reglas` se programan a mano, fuera de las carpetas generadas, y el código generado las llama. En el frontend, lo que el JSON no puede declarar de una pantalla, como el panel de administradores de una empresa, va a mano en `frontend/src/extensiones.js`: lo generado no importa código escrito a mano.
 
 ### Cómo responde la API generada
@@ -73,9 +73,10 @@ Si una entidad del alcance usa algo de esta lista, el generador se detiene y dic
 
 La pantalla de una entidad de `pantallas` se arma con lo que dice su JSON:
 
-- **Lista:** páginas fijas de 20 registros, como en el prototipo. En el PC es una tabla, y en el celular, una tarjeta por registro (D-34). Muestra los atributos con `en_lista`, el de `debajo_del_nombre` bajo el nombre y, si la entidad tiene `atributo_activo`, su estado. Arriba va el resumen, como «7 empresas registradas: 6 activas y 1 desactivada.», que cuenta los activos con el filtro del listado (D-33).
+- **Lista:** páginas fijas de 20 registros, como en el prototipo. En el PC es una tabla, y en el celular, una tarjeta por registro (D-34). Muestra los atributos con `en_lista`, el de `debajo_del_nombre` bajo el nombre y, si la entidad tiene `atributo_activo`, su estado. Arriba va el resumen, como «7 empresas registradas: 6 activas y 1 desactivada.», que cuenta los activos con el filtro del listado (D-33). Con `limite_de_activos`, el resumen cuenta los activos contra el máximo de esa regla, como «5 de 25 usuarios activos, contándote a ti.», y al llegar a él «Nuevo» y «Reactivar» se deshabilitan, con un aviso que dice por qué: el mensaje de la regla.
 - **Acciones:** cada rol ve solo las de sus `operaciones`; la API lo revisa igual (RNF-04). Desactivar pide confirmación si `textos` trae `confirmar_desactivar`. Después de guardar, desactivar o reactivar, un mensaje dice qué pasó, con el nombre del registro, como «Se guardó Cacaos del Huila.».
-- **Formulario:** los atributos con `en_formulario` y, al registrar, los de `crear_con`, cada grupo con su título. Yup valida lo mismo que la API (ver «Validaciones»). Los errores que responde la API van a su campo, y los que no son de un campo, arriba del formulario.
+- **Formulario:** los atributos con `en_formulario` y, al registrar, los de `crear_con`, cada grupo con su título. Yup valida lo mismo que la API (ver «Validaciones»). Los errores que responde la API van a su campo, y los que no son de un campo, arriba del formulario. En el PC va encima de la lista o, con `formulario: "al_lado"`, a su lado; en el celular, siempre encima (D-37). Al registrar, un campo empieza con el valor de `inicial`, como el rol Usuario final. Una contraseña opcional al editar, como la de un usuario, vacía va como `null` y queda la que había; al escribir la de otra persona aparece `nota_contrasena_de_otro`, con lo que pasa al guardarla (D-30).
+- **Fila propia:** las reglas con `en_la_fila_propia` (ver «Reglas») se cumplen en la fila de quien tiene la sesión antes de llamar a la API, que las sigue revisando. Esa fila lleva la marca de `fila_propia`, como «Tú», y no tiene la acción que impide una regla sin `atributo`, como «Desactivar». Al editarla, el campo de una regla con `atributo` se ve deshabilitado, con el mensaje de la regla, como el rol; si es una contraseña, en su lugar va el mensaje, y si nombra «Cambiar contraseña», ese nombre es un enlace a esa página.
 - **Teclado (RNF-06 C4):** al abrir un panel, el foco va a su título; al cerrarlo, vuelve al botón que lo abrió.
 - **Menú y rutas:** la sección sale con su `icono` y con los roles de `listar`. Un ícono que el menú no conoce, como el de otra temática, sale genérico.
 
@@ -83,9 +84,12 @@ La pantalla de una entidad de `pantallas` se arma con lo que dice su JSON:
 |---|---|
 | `icono` | El ícono de la sección en el menú, por su nombre, como `empresas` |
 | `debajo_del_nombre` | El atributo que va bajo el nombre en la lista, como el NIT de una empresa |
+| `formulario` | Dónde va el formulario en el PC: `encima` de la lista, como en Empresas, o `al_lado`, como en Usuarios. Sin la clave, encima. En el celular va siempre encima |
+| `limite_de_activos` | El `codigo` de la regla de `validacion` cuyo `parametros.maximo` limita los activos al crear o al reactivar, como `maximo_usuarios_activos`. Necesita `atributo_activo` |
+| `inicial` | El valor con que empieza un campo del formulario al registrar, como `{ "rol": "USUARIO_FINAL" }`; en una lista, uno de los que ofrece el formulario. No es un `por_defecto`: la base no cambia |
 | `textos` | Los textos propios de la pantalla, en `es` y `en`. Los de una fila, como `editar_fila`, usan `{atributo}` con los valores de esa fila: «Editar {nombre}» |
 
-| Textos | Cuándo son obligatorios | En empresa |
+| Textos | Cuándo son obligatorios | Ejemplo |
 |---|---|---|
 | `titulo_lista`, `vacia` | Con `listar` | «Empresas registradas» |
 | `nuevo`, `crear` | Con `crear` | «Nueva empresa», «Registrar empresa» |
@@ -94,13 +98,15 @@ La pantalla de una entidad de `pantallas` se arma con lo que dice su JSON:
 | `desactivar_fila`, `al_desactivar` | Con `desactivar` | «Desactivar {nombre}», «Se desactivó {nombre}.» |
 | `reactivar_fila`, `al_reactivar` | Con `reactivar` | «Reactivar {nombre}», «Se reactivó {nombre}.» |
 | `activo`, `inactivo` | Con `atributo_activo` | «Activa», «Desactivada» |
-| `resumen`, `resumen_total`, `resumen_activos`, `resumen_inactivos` | Si trae uno, todos; los de activos, solo con `atributo_activo`. Los que cuentan van en `singular` y `plural`, con `{cantidad}` | «{total}: {activos} y {inactivos}.» |
+| `resumen` y los contados que usa | `resumen`, si trae alguno de los textos del resumen; de `resumen_total`, `resumen_activos` y `resumen_inactivos`, los que usa `resumen` (`{total}`, `{activos}` o `{inactivos}`), y los de activos, solo con `atributo_activo`. Los contados van en `singular` y `plural`, con `{cantidad}`. Con `limite_de_activos`, `resumen` y `resumen_activos` pueden usar `{maximo}` | «{total}: {activos} y {inactivos}.»; en usuario, «{activos}, contándote a ti.», con «{cantidad} de {maximo} usuarios activos» |
 | `confirmar_desactivar`, `confirmar_desactivar_detalle` | Si trae uno, los dos | «¿Desactivar {nombre}?» |
+| `fila_propia` | Con una regla `en_la_fila_propia` | «Tú», en usuario |
+| `contrasena_al_editar`, `ayuda_contrasena_al_editar`, `nota_contrasena_de_otro` | Con una contraseña opcional al editar | «Contraseña nueva», en usuario. La nota usa los atributos de la fila, como `{nombre}` |
 | `descripcion`, `columna_nombre`, `debajo_del_nombre`, `nota_formulario`, `nota_lista`, `contrasena_al_crear`, `ayuda_contrasena_al_crear` | Opcionales | «NIT {nit}» bajo el nombre |
 
 ### Lo que la pantalla generada todavía no soporta
 
-Si una entidad de `pantallas` usa algo de esta lista, el generador se detiene y dice qué falta: la edición en bloque (la pantalla de rangos llega con RF-13), una entidad sin `listar` o sin `pantalla`, un texto obligatorio que falte, un atributo del formulario que no sea texto, contraseña o lista, una contraseña propia de la entidad que al editar es opcional (la de usuario llega con RF-03) y una columna de la lista que no sea texto ni lista.
+Si una entidad de `pantallas` usa algo de esta lista, el generador se detiene y dice qué falta: la edición en bloque (la pantalla de rangos llega con RF-13), una entidad sin `listar` o sin `pantalla`, un texto obligatorio que falte, un atributo del formulario que no sea texto, contraseña o lista y una columna de la lista que no sea texto ni lista.
 
 ## Columnas implícitas
 
@@ -137,7 +143,7 @@ No se escriben en los JSON. El generador las agrega a todas las tablas, y se pue
 | `indices` | No | Índices adicionales. Cada referencia ya tiene el suyo |
 | `reglas` | No | Reglas que se programan a mano |
 | `valores_iniciales` | No | Filas por defecto |
-| `pantalla` | Con pantalla | Lo propio de su pantalla generada: `icono`, `debajo_del_nombre` y `textos` (ver «Pantalla generada») |
+| `pantalla` | Con pantalla | Lo propio de su pantalla generada: `icono`, `debajo_del_nombre`, `formulario`, `limite_de_activos`, `inicial` y `textos` (ver «Pantalla generada») |
 
 ## Claves del atributo
 
@@ -207,6 +213,7 @@ La `longitud` de un `texto` también se valida en el backend y en el frontend.
 - El dato que falta, y un carácter de más y uno de menos que el largo.
 - Con `bytes_max`, una eñe de más que la mitad de los bytes y, si también hay largo máximo, una eñe más que el largo, que falla por los dos.
 - Con `patron`: un valor que no lo cumple; el `ejemplo` con algo pegado antes y con algo pegado después, como x900123456-8 y 900123456-8x, que solo aceptaría un patrón sin anclar; y un valor demasiado largo que tampoco lo cumple.
+- Con `valores_en_formulario`, cada valor de la lista que existe pero el formulario no ofrece, como ADMIN_PLATAFORMA en el rol, con el mensaje del 403 de la API: la prueba de Yup lo rechaza, y la de la API lo revisa en la de permisos (ver «Valores permitidos en el CRUD»).
 - Los valores del borde, que se aceptan.
 
 **Valores permitidos en el CRUD.** `valores_en_formulario` no solo limita el formulario: el backend también lo valida, sin depender de los CHECK de la base. Los CHECK son la última defensa, no la validación que ve el usuario. Si alguien envía a mano a la API un código para una `lista`:
@@ -230,7 +237,7 @@ La `longitud` de un `texto` también se valida en el backend y en el frontend.
 
 ## Reglas
 
-Lo que no se puede declarar se nombra como regla: `{ "codigo", "tipo", "cuando", "atributo", "roles", "parametros", "descripcion", "mensaje", "fichas" }`.
+Lo que no se puede declarar se nombra como regla: `{ "codigo", "tipo", "cuando", "atributo", "en_la_fila_propia", "roles", "parametros", "descripcion", "mensaje", "fichas" }`.
 
 | Tipo | Qué es | Ejemplo |
 |---|---|---|
@@ -239,6 +246,8 @@ Lo que no se puede declarar se nombra como regla: `{ "codigo", "tipo", "cuando",
 | `accion` | Operación extra para los `roles` indicados | Restablecer la contraseña de un administrador (RF-02) |
 
 En los mensajes, `{nombre}` se reemplaza por el valor del mismo nombre en `parametros` o en `validaciones`.
+
+Con `en_la_fila_propia: true`, una regla de `validacion` se aplica a la fila de quien tiene la sesión, como «No puedes desactivar tu propio usuario.». Va en el JSON, y no solo en el código de la regla, porque se puede declarar (RP-23): así la pantalla generada la cumple antes de llamar a la API, sin código propio de cada entidad, y la API la sigue revisando. Va solo en `usuario`, la entidad de quien tiene la sesión: sin `atributo`, solo en `desactivar`; con `atributo`, solo en `editar` y con un atributo del formulario. Ver «Pantalla generada».
 
 En una entidad con `edicion_en_bloque`, una regla de `validacion` recibe todas las filas juntas, en el orden de la lista, y solo se revisa al editar.
 
