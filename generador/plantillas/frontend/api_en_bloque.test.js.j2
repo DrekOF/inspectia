@@ -1,0 +1,64 @@
+{#
+  Nombre: api_en_bloque.test.js.j2
+  Descripción: Plantilla de la prueba generada del cliente de la API de una entidad que se edita en bloque: la
+               ruta y el método de cada operación del JSON (RP-23).
+  Fecha de creación: 27/10/2026
+  Actualización: 27/10/2026
+  Autor: Equipo InspectIA
+  Versión: 1.0
+#}
+{% from 'frontend/_macros.j2' import encabezado %}
+{{ encabezado(header) }}
+import { http, HttpResponse } from 'msw';
+import { describe, expect, it } from 'vitest';
+import { crearCliente } from '../../api/cliente.js';
+import { servidor } from '../../pruebas/servidor.js';
+import * as api from './{{ var }}Api.js';
+
+/** El cliente de la API, con una sesión de prueba: estas pruebas solo miran lo que pide. */
+const pedir = crearCliente({ token: () => 'token-de-prueba', idioma: () => 'es', alCerrarSesion: () => {} });
+
+/**
+ * Atiende cualquier petición a la API y anota su método, su ruta y su cuerpo.
+ *
+ * @returns {Array<{ metodo: string, ruta: string, cuerpo: object|null }>} las peticiones, en orden
+ */
+function anotarPeticiones() {
+  const peticiones = [];
+  servidor.use(http.all('/api/v1/*', async ({ request }) => {
+    const direccion = new URL(request.url);
+    const texto = await request.text();
+    peticiones.push({ metodo: request.method, ruta: direccion.pathname + direccion.search,
+      cuerpo: texto ? JSON.parse(texto) : null });
+    return HttpResponse.json([]);
+  }));
+  return peticiones;
+}
+
+describe('cliente de la API de {{ entidad }} (generado)', () => {
+  it('{{ ficha }} · el cliente de la API de {{ entidad }} usa la ruta y el método de cada operación del JSON: las filas van todas juntas', async () => {
+    const peticiones = anotarPeticiones();
+
+{% if 'listar' in operaciones %}
+    await api.listar(pedir);
+{% endif %}
+{% if 'editar' in operaciones %}
+    await api.editar(pedir, [{ dato: 'editado' }]);
+{% endif %}
+{% if 'restaurar_por_defecto' in operaciones %}
+    await api.restaurarPorDefecto(pedir);
+{% endif %}
+
+    expect(peticiones).toEqual([
+{% if 'listar' in operaciones %}
+      { metodo: 'GET', ruta: '/api/v1{{ ruta }}', cuerpo: null },
+{% endif %}
+{% if 'editar' in operaciones %}
+      { metodo: 'PUT', ruta: '/api/v1{{ ruta }}', cuerpo: { filas: [{ dato: 'editado' }] } },
+{% endif %}
+{% if 'restaurar_por_defecto' in operaciones %}
+      { metodo: 'POST', ruta: '/api/v1{{ ruta }}/restaurar-por-defecto', cuerpo: null },
+{% endif %}
+    ]);
+  });
+});

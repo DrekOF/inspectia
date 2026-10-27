@@ -5,10 +5,10 @@
  *              Archivo generado por generador/ (RP-23): no se edita a mano; se cambia el JSON
  *              o la plantilla, y se regenera.
  * Fecha de creación: 13/10/2026
- * Actualización: 20/10/2026
- * Autor: Equipo InspectIA (generado por generador/ v1.9)
- * Versión: 1.9
- * Entidades: rango_recomendacion 1.2
+ * Actualización: 27/10/2026
+ * Autor: Equipo InspectIA (generado por generador/ v1.10)
+ * Versión: 1.10
+ * Entidades: rango_recomendacion 1.3
  */
 package co.edu.usco.inspectia.rango;
 
@@ -146,6 +146,8 @@ class RangoRecomendacionApiGeneradaIT {
                 Arguments.of("limiteInferior", -1, "Debe ser mayor o igual a 0."),
                 Arguments.of("limiteInferior", 101, "Debe ser menor o igual a 100."),
                 Arguments.of("limiteInferior", 0.05, "Usa como máximo 1 decimal."),
+                Arguments.of("limiteInferior", 100.55, "Debe ser menor o igual a 100."),
+                Arguments.of("limiteInferior", -0.55, "Debe ser mayor o igual a 0."),
                 Arguments.of("recomendacion", null, "Este dato es obligatorio."),
                 Arguments.of("recomendacion", "x".repeat(301), "Puede tener como máximo 300 caracteres."));
     }

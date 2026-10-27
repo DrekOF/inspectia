@@ -1,0 +1,93 @@
+{#
+  Nombre: esquemas_en_bloque.test.js.j2
+  Descripción: Plantilla de la prueba generada de las validaciones de Yup de una entidad que se edita en bloque:
+               en una fila, los mismos casos de límite que la prueba generada de la API, con el mismo mensaje en
+               español, los valores del borde que acepta cada campo y cómo se escribe un número (RP-12, RP-13,
+               RP-23).
+  Fecha de creación: 27/10/2026
+  Actualización: 27/10/2026
+  Autor: Equipo InspectIA
+  Versión: 1.0
+#}
+{% from 'frontend/_macros.j2' import encabezado %}
+{{ encabezado(header) }}
+import { describe, expect, it } from 'vitest';
+import i18n from '../../i18n/i18n.js';
+import { esquemaDelBloque } from './{{ var }}Esquemas.js';
+
+/** Las filas válidas: las de los valores por defecto del JSON, como las muestra el formulario. */
+const FILAS = [
+{% for fila in filas_del_formulario %}
+  {{ fila }},
+{% endfor %}
+];
+
+/** Lo que rechaza cada validación del JSON en una fila, con el mensaje en español de la API. */
+const CASOS = [
+{% for caso in casos %}
+  [{{ caso | join(', ') }}],
+{% endfor %}
+];
+
+/**
+ * Los valores del borde que acepta cada validación del JSON en una fila. En la API, un valor del borde puede no
+ * cumplir una regla del bloque escrita a mano, como el orden de los límites: por eso solo los revisa esta prueba.
+ */
+const BORDES = [
+{% for borde in bordes %}
+  [{{ borde | join(', ') }}],
+{% endfor %}
+];
+
+/**
+ * El primer error de un campo de la primera fila, o null si cumple sus validaciones.
+ *
+ * @param {string} campo el campo, con el nombre de la API
+ * @param {string} valor lo que se escribe en él
+ * @returns {Promise<string|null>} el mensaje
+ */
+async function errorDe(campo, valor) {
+  const datos = { filas: FILAS.map((fila, posicion) => (posicion === 0 ? { ...fila, [campo]: valor } : fila)) };
+  try {
+    await esquemaDelBloque(i18n.t).validateAt(`filas[0].${campo}`, datos);
+    return null;
+  } catch (error) {
+    return error.message;
+  }
+}
+
+describe('validaciones de las filas de {{ entidad }} (generadas)', () => {
+  it('{{ ficha }} · los valores por defecto de {{ entidad }}, como los muestra el formulario, cumplen las validaciones', async () => {
+    expect(await esquemaDelBloque(i18n.t).isValid({ filas: FILAS })).toBe(true);
+  });
+
+  it.each(CASOS)('{{ ficha }} · cada validación del JSON de {{ entidad }} rechaza en una fila lo mismo que la API, con su mensaje: %s',
+    async (campo, valor, mensaje) => {
+      expect(await errorDe(campo, valor)).toBe(mensaje);
+    });
+
+  it.each(BORDES)('{{ ficha }} · cada validación del JSON de {{ entidad }} acepta en una fila su valor del borde: %s',
+    async (campo, valor) => {
+      expect(await errorDe(campo, valor)).toBeNull();
+    });
+{% for c in decimales %}
+
+  it('{{ ficha }} · {{ c.nombre }} se escribe con coma o con punto, y lo que no es un número tiene su mensaje', async () => {
+    const esquema = esquemaDelBloque(i18n.t);
+    const fila = (valor) => ({ filas: [{ ...FILAS[0], {{ c.nombre }}: valor }] });
+
+    expect(esquema.cast(fila('{{ '1,5' if c.escala else '1' }}')).filas[0].{{ c.nombre }}).toBe({{ '1.5' if c.escala else '1' }});
+    expect(esquema.cast(fila('{{ '1.5' if c.escala else '1' }}')).filas[0].{{ c.nombre }}).toBe({{ '1.5' if c.escala else '1' }});
+    expect(await errorDe('{{ c.nombre }}', 'abc')).toBe('Escribe un número, como 90,5.');
+  });
+{% endfor %}
+
+  it('{{ ficha }} · los mensajes de las validaciones de {{ entidad }} salen en el idioma de la app', async () => {
+    await i18n.changeLanguage('en');
+    try {
+      expect(await errorDe({{ casos[0][0] }}, '')).toBe('This field is required.');
+    } finally {
+      await i18n.changeLanguage('es');
+    }
+  });
+});

@@ -5,8 +5,8 @@
     "fecha_creacion": "13/10/2026",
     "actualizacion": "27/10/2026",
     "autor": "Equipo InspectIA",
-    "version": "1.4"
+    "version": "1.5"
   },
   "api": ["empresa", "usuario", "rango_recomendacion"],
-  "pantallas": ["empresa", "usuario"]
+  "pantallas": ["empresa", "usuario", "rango_recomendacion"]
 }

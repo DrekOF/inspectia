@@ -6,9 +6,9 @@
  *              o la plantilla, y se regenera.
  * Fecha de creación: 13/10/2026
  * Actualización: 27/10/2026
- * Autor: Equipo InspectIA (generado por generador/ v1.9)
- * Versión: 1.9
- * Entidades: empresa 1.3, foto 1.0, grano 1.0, lote 1.0, modelo 1.0, muestra 1.0, rango_recomendacion 1.2, usuario 1.8
+ * Autor: Equipo InspectIA (generado por generador/ v1.10)
+ * Versión: 1.10
+ * Entidades: empresa 1.3, foto 1.0, grano 1.0, lote 1.0, modelo 1.0, muestra 1.0, rango_recomendacion 1.3, usuario 1.8
  */
 import { lazy } from 'react';
 
@@ -43,5 +43,13 @@ export const PANTALLAS = [
     icono: 'usuarios',
     roles: ['ADMIN_EMPRESA'],
     Pantalla: lazy(() => import('./usuario/UsuarioPantalla.jsx')),
+  },
+  {
+    entidad: 'rango_recomendacion',
+    ruta: '/rangos-recomendacion',
+    etiqueta: 'rango_recomendacion.etiqueta.plural',
+    icono: 'rangos',
+    roles: ['ADMIN_EMPRESA'],
+    Pantalla: lazy(() => import('./rango/RangoRecomendacionPantalla.jsx')),
   },
 ];

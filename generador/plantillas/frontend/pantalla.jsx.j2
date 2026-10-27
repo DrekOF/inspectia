@@ -6,14 +6,14 @@
   Fecha de creación: 26/10/2026
   Actualización: 27/10/2026
   Autor: Equipo InspectIA
-  Versión: 1.1
+  Versión: 1.2
 #}
 {% from 'frontend/_macros.j2' import encabezado %}
 {% macro campo(c, solo_lectura=None) -%}
 {% if c.componente == 'CampoDeLista' -%}
 <CampoDeLista nombre="{{ c.campo }}" etiqueta={t('{{ c.etiqueta }}')}{% if c.ayuda %} ayuda={t('{{ c.ayuda }}')}{% endif %} opciones={[{% for codigo, clave in c.opciones %}{ valor: '{{ codigo }}', etiqueta: t('{{ clave }}') }{{ ', ' if not loop.last else '' }}{% endfor %}]}{% if solo_lectura %} soloLectura={propia ? t('{{ solo_lectura }}') : null}{% endif %} />
 {%- else -%}
-<{{ c.componente }} nombre="{{ c.campo }}" etiqueta={t('{{ c.etiqueta }}')}{% if c.ayuda %} ayuda={t('{{ c.ayuda }}')}{% endif %}{% if c.tipo_html %} type="{{ c.tipo_html }}"{% endif %} autoComplete="{{ c.autocompletar }}"{% if solo_lectura %} soloLectura={propia ? t('{{ solo_lectura }}') : null}{% endif %} />
+<{{ c.componente }} nombre="{{ c.campo }}" etiqueta={t('{{ c.etiqueta }}')}{% if c.ayuda %} ayuda={t('{{ c.ayuda }}')}{% endif %}{% if c.tipo_html %} type="{{ c.tipo_html }}"{% endif %} autoComplete="{{ c.autocompletar }}"{% if c.varias_lineas %} variasLineas{% endif %}{% if solo_lectura %} soloLectura={propia ? t('{{ solo_lectura }}') : null}{% endif %} />
 {%- endif %}
 {%- endmacro %}
 {% set propios = crear | rejectattr('grupo') | list if crear else editar %}

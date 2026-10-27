@@ -3,9 +3,9 @@
 #              Validation y Yup, con sus casos de límite: los valores que rechaza cada validación y los del
 #              borde que acepta (RP-23).
 # Fecha de creación: 26/10/2026
-# Actualización: 26/10/2026
+# Actualización: 27/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.0
+# Versión: 1.1
 """Las validaciones de cada campo, en un solo modelo.
 
 De aquí salen las anotaciones de Bean Validation (``java.py``) y las validaciones de Yup (``frontend.py``), con la
@@ -228,22 +228,40 @@ def del_atributo(e, a, obligatorio=None):
         campo.validaciones.append(Validacion('correo', None, clave_mensaje(e, a, 'formato'), solo_backend=True,
                                              restriccion=_restriccion('correo', a)))
         campo.casos.append(Caso(Valor('texto', 'sin-arroba'), mensaje_esperado(e, a, 'formato'), solo_backend=True))
+    # La validación del mínimo y la del máximo, con su mensaje y su límite, para los casos que fallan también por
+    # los decimales.
+    numericos = {}
     for limite, tipo in (('min', 'minimo'), ('max', 'maximo')):
         if limite in v and a['tipo'] in ('entero', 'decimal'):
             valor = v[limite]
-            campo.validaciones.append(_validacion(e, a, tipo, limite, valor))
+            validacion = _validacion(e, a, tipo, limite, valor)
+            campo.validaciones.append(validacion)
+            mensaje = mensaje_esperado(e, a, limite, valor)
+            numericos[limite] = (validacion, mensaje, valor)
             if a['tipo'] == 'entero':
                 fuera = int(valor) - 1 if limite == 'min' else int(valor) + 1
             else:
                 fuera = valor - 1 if limite == 'min' else valor + 1
-            campo.casos.append(Caso(Valor('numero', _numero(fuera)), mensaje_esperado(e, a, limite, valor)))
+            campo.casos.append(Caso(Valor('numero', _numero(fuera)), mensaje))
             campo.bordes.append(Valor('numero', _numero(valor)))
     if a['tipo'] == 'decimal':
         # Los decimales de su escala, sin contar los ceros del final: con escala 1, 90.50 sirve y 90.55 no.
         escala = a['escala']
         nombre = 'decimales_uno' if escala == 1 else 'decimales'
-        campo.validaciones.append(_validacion(e, a, 'decimales', nombre, escala))
-        campo.casos.append(Caso(Valor('numero', _con_un_decimal_de_mas(a)), mensaje_esperado(e, a, nombre, escala)))
+        validacion = _validacion(e, a, 'decimales', nombre, escala)
+        campo.validaciones.append(validacion)
+        mensaje = mensaje_esperado(e, a, nombre, escala)
+        campo.casos.append(Caso(Valor('numero', _con_un_decimal_de_mas(a)), mensaje))
+        # Fuera de un límite y con un decimal de más, como 100.55 o -0.55 con escala 1, falla por los dos: la API
+        # responde un solo error, el del límite, que va antes por su nombre (DecimalMax y DecimalMin antes que
+        # MaximoDecimales), y Yup, el mismo.
+        demas = Decimal(55).scaleb(-(escala + 1))
+        for limite, signo in (('max', 1), ('min', -1)):
+            if limite in numericos:
+                del_limite, mensaje_del_limite, valor = numericos[limite]
+                campo.casos.append(Caso(Valor('numero', _numero(Decimal(str(valor)) + signo * demas)),
+                                        _el_que_responde_la_api((del_limite, mensaje_del_limite),
+                                                                (validacion, mensaje))))
     return campo
 
 

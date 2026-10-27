@@ -6,9 +6,9 @@
  *              o la plantilla, y se regenera.
  * Fecha de creación: 13/10/2026
  * Actualización: 27/10/2026
- * Autor: Equipo InspectIA (generado por generador/ v1.9)
- * Versión: 1.9
- * Entidades: empresa 1.3, foto 1.0, grano 1.0, lote 1.0, modelo 1.0, muestra 1.0, rango_recomendacion 1.2, usuario 1.8
+ * Autor: Equipo InspectIA (generado por generador/ v1.10)
+ * Versión: 1.10
+ * Entidades: empresa 1.3, foto 1.0, grano 1.0, lote 1.0, modelo 1.0, muestra 1.0, rango_recomendacion 1.3, usuario 1.8
  */
 
 /**
@@ -69,6 +69,13 @@ export default {
     'usuario.pantalla.al_desactivar': 'Se desactivó a {nombre}.',
     'usuario.pantalla.al_reactivar': 'Se reactivó a {nombre}.',
     'usuario.pantalla.nota_lista': 'Los usuarios no se borran: se desactivan, para conservar quién hizo cada análisis. Tu propio rol y tu contraseña no se cambian aquí.',
+    'rango_recomendacion.pantalla.descripcion': 'Según su porcentaje de granos sanos, cada análisis toma de aquí la categoría probable y la recomendación. Los cambios solo aplican a los análisis nuevos: los anteriores conservan su resultado.',
+    'rango_recomendacion.pantalla.titulo_editar': 'Editar los rangos',
+    'rango_recomendacion.pantalla.nota_formulario': 'Los límites van de 0 a 100 %, con un decimal como máximo, y deben bajar en orden.',
+    'rango_recomendacion.pantalla.al_guardar': 'Se guardaron los rangos.',
+    'rango_recomendacion.pantalla.nota_restaurar': 'Restaurar vuelve a los límites y textos por defecto, basados en la NTC 1252:2021.',
+    'rango_recomendacion.pantalla.confirmar_restaurar_detalle': 'Se pierden los límites y los textos propios de la empresa.',
+    'rango_recomendacion.pantalla.al_restaurar': 'Se restauraron los valores por defecto.',
   },
   en: {
     'empresa.pantalla.resumen': '{total}: {activos} and {inactivos}.',
@@ -122,5 +129,12 @@ export default {
     'usuario.pantalla.al_desactivar': '{nombre} was deactivated.',
     'usuario.pantalla.al_reactivar': '{nombre} was reactivated.',
     'usuario.pantalla.nota_lista': 'Users are not deleted: they are deactivated, to keep who made each analysis. Your own role and password are not changed here.',
+    'rango_recomendacion.pantalla.descripcion': 'Each analysis takes its likely category and recommendation from here, according to its percentage of healthy beans. Changes only apply to new analyses: earlier ones keep their result.',
+    'rango_recomendacion.pantalla.titulo_editar': 'Edit the ranges',
+    'rango_recomendacion.pantalla.nota_formulario': 'The limits go from 0 to 100%, with at most one decimal place, and must go down in order.',
+    'rango_recomendacion.pantalla.al_guardar': 'The ranges were saved.',
+    'rango_recomendacion.pantalla.nota_restaurar': 'Restoring goes back to the default limits and texts, based on NTC 1252:2021.',
+    'rango_recomendacion.pantalla.confirmar_restaurar_detalle': 'The company\'s own limits and texts are lost.',
+    'rango_recomendacion.pantalla.al_restaurar': 'The default values were restored.',
   },
 };
