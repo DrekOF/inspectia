@@ -1,9 +1,9 @@
 # Nombre: test_validacion.py
 # Descripción: Pruebas de la validación de specs/entidades/*.json.
 # Fecha de creación: 13/10/2026
-# Actualización: 26/10/2026
+# Actualización: 27/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.4
+# Versión: 1.5
 """Pruebas de la validación de los JSON de entidades contra su formato y contra specs/."""
 
 import pytest
@@ -170,3 +170,77 @@ def test_solo_lo_cambian_las_reglas(entidades, codigos):
                   'usuario.intentos_fallidos: solo_lo_cambian_las_reglas en un atributo obligatorio necesita '
                   'por_defecto: JPA no lo escribe al crear'):
         assert error in errores
+
+
+@pytest.mark.caso('RP-23 · la validación revisa las claves nuevas de pantalla: formulario encima o al lado, limite_de_activos con una regla de validación con maximo en crear o reactivar, e inicial con valores que el formulario ofrece')
+def test_claves_nuevas_de_la_pantalla(entidades, codigos):
+    usuario = entidades['usuario']
+    usuario['pantalla'] = {'formulario': 'abajo', 'limite_de_activos': 'no_desactivarse_a_si_mismo',
+                           'inicial': {'rol': 'ADMIN_PLATAFORMA', 'activo': True}, 'textos': {}}
+
+    errores = validar(entidades, codigos)
+
+    for error in ('usuario.pantalla: formulario debe ser encima o al_lado',
+                  'usuario.pantalla: limite_de_activos debe ser una regla de validación con parametros.maximo, en '
+                  'crear o reactivar',
+                  'usuario.pantalla.inicial: rol no puede empezar en ADMIN_PLATAFORMA, que el formulario no ofrece',
+                  'usuario.pantalla.inicial: activo no es un campo del formulario'):
+        assert error in errores
+
+    usuario['pantalla'] = {'formulario': 'al_lado', 'limite_de_activos': 'maximo_usuarios_activos',
+                           'inicial': {'rol': 'USUARIO_FINAL'}, 'textos': {}}
+
+    assert not [e for e in validar(entidades, codigos) if e.startswith('usuario.pantalla')]
+
+    del usuario['atributo_activo']
+
+    assert 'usuario.pantalla: limite_de_activos necesita atributo_activo' in validar(entidades, codigos)
+
+
+@pytest.mark.caso('RP-23 · en_la_fila_propia va solo en usuario, la entidad de quien tiene la sesión: en una regla de desactivar sin atributo o en una de editar atada a un atributo del formulario')
+def test_en_la_fila_propia(entidades, codigos):
+    entidades['empresa']['reglas'][0]['en_la_fila_propia'] = True
+    reglas = {r['codigo']: r for r in entidades['usuario']['reglas']}
+    for codigo in ('no_desactivarse_a_si_mismo', 'no_cambiar_su_propio_rol', 'maximo_usuarios_activos'):
+        reglas[codigo]['en_la_fila_propia'] = True
+    entidades['usuario']['reglas'].append({
+        'codigo': 'no_cambiar_sus_intentos', 'tipo': 'validacion', 'cuando': ['editar'], 'atributo': 'intentos_fallidos',
+        'en_la_fila_propia': True, 'descripcion': 'x', 'mensaje': {'es': 'x', 'en': 'x'}, 'fichas': ['RF-03']})
+
+    errores = validar(entidades, codigos)
+
+    for error in ('empresa.reglas.nit_digito_verificacion: en_la_fila_propia va solo en usuario, la entidad de quien '
+                  'tiene la sesión',
+                  'usuario.reglas.maximo_usuarios_activos: en_la_fila_propia, sin atributo, va solo en desactivar',
+                  'usuario.reglas.no_cambiar_sus_intentos: en_la_fila_propia necesita un atributo del formulario, al '
+                  'editar'):
+        assert error in errores
+    for valida in ('no_desactivarse_a_si_mismo', 'no_cambiar_su_propio_rol'):
+        assert not [e for e in errores if e.startswith(f'usuario.reglas.{valida}')], valida
+
+
+@pytest.mark.caso('RP-23 · el resumen y el texto de los activos pueden usar {maximo}, el de la regla de limite_de_activos, solo si la pantalla la declara')
+def test_maximo_en_el_resumen(entidades, codigos):
+    entidades['empresa']['pantalla']['textos']['resumen'] = {'es': '{activos} de {maximo}.', 'en': '{activos} of {maximo}.'}
+    entidades['usuario']['pantalla'] = {'limite_de_activos': 'maximo_usuarios_activos', 'textos': {
+        'resumen': {'es': '{activos}, contándote a ti.', 'en': '{activos}, counting you.'},
+        'resumen_activos': {'es': {'singular': '{cantidad} de {maximo}', 'plural': '{cantidad} de {maximo}'},
+                            'en': {'singular': '{cantidad} of {maximo}', 'plural': '{cantidad} of {maximo}'}}}}
+
+    errores = validar(entidades, codigos)
+
+    assert 'empresa.pantalla.textos.resumen: usa {maximo}, que no existe en este texto' in errores
+    assert not [e for e in errores if e.startswith('usuario.pantalla')]
+
+
+@pytest.mark.caso('RP-23 · la validación conoce los textos de la fila propia y de la contraseña al editar; la nota de la contraseña de otra persona usa los valores de la fila, como {nombre}')
+def test_textos_de_la_fila_propia_y_de_la_contrasena(entidades, codigos):
+    entidades['usuario']['pantalla'] = {'textos': {
+        'fila_propia': {'es': 'Tú', 'en': 'You'},
+        'contrasena_al_editar': {'es': 'Contraseña nueva', 'en': 'New password'},
+        'ayuda_contrasena_al_editar': {'es': 'Déjala vacía para no cambiarla.', 'en': 'Leave it empty to keep it.'},
+        'nota_contrasena_de_otro': {'es': 'Compártela con {nombre} y {jefe}.', 'en': 'Share it with {nombre} and {jefe}.'}}}
+
+    errores = [e for e in validar(entidades, codigos) if e.startswith('usuario.pantalla')]
+
+    assert errores == ['usuario.pantalla.textos.nota_contrasena_de_otro: usa {jefe}, que no existe en este texto']

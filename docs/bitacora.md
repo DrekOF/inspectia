@@ -4,7 +4,7 @@ Descripción: Registro paso a paso de cómo se construyó InspectIA, para la sus
 Fecha de creación: 12/10/2026
 Actualización: 27/10/2026
 Autor: Equipo InspectIA
-Versión: 1.17
+Versión: 1.18
 -->
 
 # Bitácora de construcción (RP-24)
@@ -610,6 +610,80 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
   - D-35 y D-36 con la fecha en que se decidieron, el 26/10/2026, como D-31 y D-32, y el borrador del PR con el aviso de reiniciar la base local y sus pasos para PowerShell en VS Code.
   - Antes de subir la rama: correr Playwright otra vez sobre el último commit, porque después de `9a40413` cambiaron el desbloqueo, el validador y el reloj; arrancar el backend con `.\mvnw clean spring-boot:run` en el reinicio de la base, como lo corre en PowerShell; y subir la rama después de su recorrido.
 - Archivos o PR: la rama `feature/RNF-04-contador-de-sesion`; el PR lo abre Cristhian.
+
+## 27/10/2026 · RF-03 y RP-23: la pantalla de usuarios
+
+- Quién: Cristhian Sánchez (`DrekOF`), con Claude Code.
+- Qué se hizo:
+  - **En la rama `feature/RF-03-pantalla-usuarios`, commit por commit, cada uno revisado por Cristhian antes del siguiente:**
+    1. **Las pruebas del generador, en rojo** (`2c9550e`): las claves nuevas de `pantalla` (`formulario`, `limite_de_activos` e `inicial`), `en_la_fila_propia` en las reglas, `{maximo}` en el resumen, los textos de la fila propia y de la contraseña al editar, la pantalla de usuario y los límites de los campos que usa Cambiar contraseña (RF-18).
+    2. **El generador 1.9 y los JSON** (`bd7b7fd`):
+       - `usuario.json` (1.8) trae su pantalla: el correo bajo el nombre, el formulario al lado de la lista, el límite de `maximo_usuarios_activos`, el rol que empieza en Usuario final (`pantalla.inicial`) y sus textos, con el resumen «5 de 25 usuarios activos, contándote a ti.» y la nota de D-30. Sus tres reglas sobre la fila propia llevan `en_la_fila_propia` (C7, C8 y C11). `alcance.json` (1.4) agrega la pantalla.
+       - El generador arma dónde va el formulario, el límite de activos, la fila propia con su marca, la contraseña opcional al editar (vacía va como `null`; si llega, no puede estar en blanco), los límites de los campos (`LIMITES`) y el resumen con `{maximo}`, que pide solo los textos contados que usa su frase.
+       - Una lista obligatoria vacía, como el rol, da en Yup el error de obligatorio, como la API, y no el de sus valores: Yup revisa `oneOf` antes que las demás pruebas. Salió al generar la primera pantalla con una lista obligatoria. Su prueba del generador, `test_lista_obligatoria_vacia`, va en este commit y se vio fallar antes del arreglo.
+       - El backend generado solo cambia en los headers, también el de `V1__esquema_inicial.sql`: hay que reiniciar la base local (P-16).
+    3. **Las pruebas del frontend, en rojo** (`39489bc`): `GestionarUsuarios.test.jsx`, con C1 a C5, C7, C8, C10, C11 y la nota de D-30; el texto de una regla sin campo; Cambiar contraseña con el orden de la API y los límites del JSON; y Usuarios en el menú.
+    4. **El código del frontend** (`d935bec`):
+       - `PantallaDeRegistros`, lo común de las pantallas generadas:
+         - el formulario va al lado de la lista en el PC y encima en el celular;
+         - con el máximo de activos, un aviso que no interrumpe, y «Nuevo usuario» y «Reactivar» deshabilitados, con el aviso como descripción;
+         - el resumen cuenta los activos contra el máximo;
+         - la fila propia lleva «Tú» y no tiene «Desactivar»;
+         - la nota de D-30 aparece al escribir la contraseña de otra persona, debajo de los campos y encima de los botones.
+       - `MensajeDeLaFilaPropia`: el mensaje de la regla en lugar de la contraseña propia, con el enlace solo en «Cambiar contraseña». La plantilla de la prueba generada y la prueba de C11 revisan la frase completa, por el texto del párrafo, y el enlace por su nombre.
+       - Cambiar contraseña (RF-18) usa la validación generada de la contraseña de un usuario, en el orden de la API: con 65 eñes da el error de los bytes, como la API. Así se cierra el pendiente que dejó el PR de empresas, con el borde de 72 bytes de `reglasDeContrasena`, que ahora recibe los límites del JSON (`LIMITES.contrasena`) como parámetro, para no tener un ciclo de importaciones.
+       - El texto de una regla sin campo que no deja guardar es su mensaje, no «Revisa los datos marcados.».
+       - Con el código van pruebas nuevas: `noEnBlanco` y `vacioComoAusente`, el resumen con el máximo, C11 en inglés y `textoDelError` con errores de campos y de reglas a la vez, que pidió Stryker.
+    5. **El caso de `oneOf` en la prueba generada de Yup** (`db42659` en rojo y `10dc47c`): un caso por cada valor de una lista que existe pero el formulario no ofrece, como ADMIN_PLATAFORMA en el rol, con el mensaje del 403 de la API. Antes, el generador mandaba ese caso solo a la prueba de permisos de la API, y Stryker dejaba vivos los dos mutantes del mensaje de `oneOf` del rol.
+    6. **Las pruebas de punta a punta** (`828b25d`):
+       - Playwright, en PC y en celular, contra el backend real: C1, C2, C3 y C4 (al crear y al restablecer), C5, C6 y reactivar, C7 a C11 y dónde va el formulario. Cada prueba registra su propia empresa por la API y entra con su administrador, para no chocar con los otros navegadores ni llenar los 25 activos de la empresa de prueba.
+       - Selenium, en Chrome y Edge, de PC y de celular: C1, en una empresa propia.
+    7. **El formulario a 1250 px** (`5cd1171` en rojo y `dbe350c`): ver «Problemas encontrados».
+    8. **Documentación:** D-37; el README de las entidades (las claves nuevas de `pantalla`, la fila propia, `en_la_fila_propia` con su motivo, RP-23, y el caso de `valores_en_formulario` en los casos de límite); los README del generador, del frontend, de infra y el principal; y esta bitácora.
+  - **Problemas encontrados:**
+    - **Una carrera en `botonDeLaFila` hizo fallar C9 y C10 de RF-02.**
+      - En la primera corrida completa de Playwright fallaron dos pruebas de empresas en celular-chrome. Una no encontró la empresa en ninguna página; la otra encontró el botón en una fila que ya había cambiado («element was detached»).
+      - La causa: al pasar de página, el rango («21–40 de 80») cambia enseguida, pero las filas siguen siendo las de la página anterior hasta que responde la API, y la ayuda solo esperaba el rango. Con las empresas que registran las pruebas nuevas, la lista tiene más páginas y la API tarda más, y la carrera apareció.
+      - El arreglo: antes de buscar en la página nueva, la ayuda espera que cambie su primera fila, de la tabla o de la lista con nombre (no la del panel de administradores). Con él, Playwright pasó completo dos veces seguidas en el mismo entorno.
+    - **A 1280 px, el formulario cabía al lado de la lista con 1 px de sobra.**
+      - Se midió con la barra de desplazamiento visible, que ocupa 15 px en el Chromium de Playwright, en Edge y en Chrome. La fila mide 945 px, y el formulario necesitaba 944: la lista partía de 600, más 24 de separación y 320 del formulario, los valores del prototipo. En una ventana un poco más angosta, el formulario pasaba debajo de la lista.
+      - **Decisión de Cristhian:** la lista parte de 560 px. Primero, una prueba de punta a punta en una ventana de 1250 px, que falló: el formulario empezaba en x = 305, debajo de la lista. Después, el cambio. A 1280 px se ve igual, porque la lista crece hasta llenar el espacio, y sobran 41 px. Queda en D-37.
+  - **Mutantes que quedan vivos** (Stryker, sobre los `.js` que cambiaron):
+    - En el paso 4, 94,55 % con 17 vivos. Dos eran huecos de las pruebas nuevas (`textoDelError` con errores de campos y de reglas, y el resumen, que pedía textos que no usa) y se cerraron: 95,19 %, con 15 vivos.
+    - En el paso 5, `usuarioEsquemas.js` pasó de 76,92 % a 80,77 %: murieron los dos mutantes del mensaje de `oneOf` del rol.
+    - Quedan 13, equivalentes: los nombres de las pruebas de Yup (10 en `usuarioEsquemas.js` y 2 en `esquemas.js`), que solo van en el tipo del error, que la app no lee, y el respaldo de `erroresPorCampo`.
+    - Stryker no muta los `.jsx`: los cubren las pruebas de las pantallas.
+  - **Los números de las reglas de «Cambiar contraseña» se quedan escritos en sus textos (8, 64 y 72).** Decisión de Cristhian: también están en la ayuda del panel de administradores y en las ayudas de la contraseña de `usuario.json`; cambiar solo un lugar no quita la copia, y son valores estables.
+  - **Comportamiento que no piden las fichas:**
+    - La nota de D-30 al escribir la contraseña de otra persona: «Al guardar, se cierran las sesiones abiertas de {nombre} y se quita su bloqueo por intentos fallidos, si lo tenía.». Solo cuenta lo que ya hace D-30.
+    - El resumen cuenta a quien tiene la sesión: «5 de 25 usuarios activos, contándote a ti.».
+    - Yup rechaza ADMIN_PLATAFORMA en el rol, con el mensaje del 403, aunque el formulario no lo ofrece.
+  - **Resultado:**
+    - Generador: 107 pruebas en verde, y lo generado, al día (56 archivos).
+    - Vitest: 463 pruebas en verde, y ESLint, limpio.
+    - Backend: 119 pruebas unitarias y 399 de integración en verde, en la copia del entorno aislado. En este PR solo cambiaron los headers de lo generado.
+    - Playwright, en el entorno aislado sobre `dbe350c`, con todo el código del PR: 204 en verde y 4 omitidas (iniciar sesión solo con el teclado y la de 1250 px, en el celular). Firefox se saltó en este equipo.
+    - Selenium: 20 en verde.
+    - Las corridas de punta a punta se hicieron con un script temporal, fuera del repositorio, que enciende el entorno aislado una vez, corre `npx playwright test` y `npm run e2e:selenium` con `INSPECTIA_E2E_URL` y lo apaga al final.
+    - Casos de prueba: 633 pruebas; de los 143 criterios de las fichas, 55 tienen prueba. RF-03 tiene sus 11 criterios con prueba, pero sigue en «Aprobado»: la parte del historial de C6 se prueba con RF-14 (D-29).
+- Por qué: RF-03 necesitaba su pantalla para funcionar de punta a punta (D-29). Es la segunda pantalla generada (RP-23): lo propio de la fila de quien tiene la sesión y el límite de activos quedan declarados en el JSON, así que otra temática los cambia sin tocar código.
+- Cómo se pidió: Cristhian pidió primero el plan y lo aprobó con seis decisiones:
+  1. El resumen «5 de 25 usuarios activos, contándote a ti.», sin la empresa ni negrita, con `{maximo}`.
+  2. `en_la_fila_propia` va en el JSON, porque se puede declarar (RP-23), y el README de las entidades lo dice así.
+  3. El rol inicial sale de `pantalla.inicial`.
+  4. Con 25 activos, también «Reactivar» se deshabilita, con el aviso como descripción.
+  5. La nota de D-30 aparece al escribir en «Contraseña nueva».
+  6. El formulario va al lado de la lista en el PC y encima en el celular.
+
+  D-37 recoge cómo se aparta del prototipo. En el camino pidió:
+  - Dejar `test_lista_obligatoria_vacia` en el commit del generador y anotar aquí que se vio fallar antes del arreglo; la nota de D-30 debajo de los campos y encima de los botones; y el aviso de reiniciar la base en el PR, con sus pasos, como en el PR #8. Aprobó también que el resumen use el mismo texto en singular y en plural, que el inglés diga «they» y que empresa tenga `LIMITES` aunque no los use.
+  - El enlace solo en «Cambiar contraseña», porque el texto del enlace dice a dónde lleva, y que la plantilla de la prueba generada y la prueba de C11 revisen la frase completa y el enlace por su nombre.
+  - Que le escriba en español, también los avisos mientras trabajo.
+  - El caso de `oneOf` en dos commits, antes de las pruebas de punta a punta, y dejar los números de las reglas de «Cambiar contraseña» como están, anotando por qué.
+  - El arreglo de `botonDeLaFila` en «Problemas encontrados» del PR.
+  - Bajar la base de la lista a 560 px, con la prueba de 1250 px primero, y anotarlo en D-37.
+  - Al final, el borrador del PR con «Fichas y documentación» y el aviso de reiniciar la base y sus pasos.
+- Archivos o PR: la rama `feature/RF-03-pantalla-usuarios`; el PR lo abre Cristhian.
 
 ## Plantilla para nuevas entradas
 

@@ -2,14 +2,15 @@
  * Nombre: reglas.test.js
  * Descripción: Pruebas de las funciones que usan las validaciones de Yup generadas (RP-07, RP-23): recortar y
  *              pasar a minúsculas como lo hace la API antes de validar, saber si un dato está lleno como lo
- *              sabe @NotBlank y si un texto cabe en sus bytes como lo revisa @MaximoBytes.
+ *              sabe @NotBlank, si uno opcional llega sin estar en blanco como lo revisa @NoEnBlanco, el texto
+ *              vacío como ausente y si un texto cabe en sus bytes como lo revisa @MaximoBytes.
  * Fecha de creación: 26/10/2026
- * Actualización: 26/10/2026
+ * Actualización: 27/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 import { describe, expect, it } from 'vitest';
-import { cabeEnBytes, lleno, minusculas, recortar } from './reglas.js';
+import { cabeEnBytes, lleno, minusculas, noEnBlanco, recortar, vacioComoAusente } from './reglas.js';
 
 describe('recortar', () => {
   it.each([
@@ -56,6 +57,28 @@ describe('lleno', () => {
     ['un número, aunque sea cero', 0, true],
   ])('RP-07 · un dato está lleno con la misma regla de @NotBlank en la API: %s', (_, valor, estaLleno) => {
     expect(lleno(valor)).toBe(estaLleno);
+  });
+});
+
+describe('no en blanco', () => {
+  it.each([
+    ['sin valor: es opcional', undefined, true],
+    ['nulo', null, true],
+    ['vacío', '', false],
+    ['solo espacios', ' '.repeat(8), false],
+    ['con letras', 'Clave-Segura-2026', true],
+  ])('RP-07 · un dato opcional que llega no puede estar en blanco, como lo revisa @NoEnBlanco en la API: %s',
+    (_, valor, cumple) => {
+      expect(noEnBlanco(valor)).toBe(cumple);
+    });
+});
+
+describe('vacío como ausente', () => {
+  it('RP-07 · un texto vacío cuenta como ausente, como el dato que no llega a la API; lo demás queda igual', () => {
+    expect(vacioComoAusente('')).toBeUndefined();
+    expect(vacioComoAusente('  ')).toBe('  ');
+    expect(vacioComoAusente('USUARIO_FINAL')).toBe('USUARIO_FINAL');
+    expect(vacioComoAusente(null)).toBeNull();
   });
 });
 

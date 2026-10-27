@@ -5,7 +5,7 @@
     "fecha_creacion": "13/10/2026",
     "actualizacion": "27/10/2026",
     "autor": "Equipo InspectIA",
-    "version": "1.7"
+    "version": "1.8"
   },
   "entidad": "usuario",
   "clase": "Usuario",
@@ -188,6 +188,7 @@
       "codigo": "no_desactivarse_a_si_mismo",
       "tipo": "validacion",
       "cuando": ["desactivar"],
+      "en_la_fila_propia": true,
       "descripcion": "El administrador no puede desactivar su propio usuario.",
       "mensaje": {
         "es": "No puedes desactivar tu propio usuario.",
@@ -200,6 +201,7 @@
       "tipo": "validacion",
       "cuando": ["editar"],
       "atributo": "rol",
+      "en_la_fila_propia": true,
       "descripcion": "El administrador no puede cambiar su propio rol: si fuera el único administrador, la empresa quedaría sin quien la gestione, porque el administrador de la plataforma no edita usuarios.",
       "mensaje": {
         "es": "No puedes cambiar tu propio rol.",
@@ -212,6 +214,7 @@
       "tipo": "validacion",
       "cuando": ["editar"],
       "atributo": "contrasena_hash",
+      "en_la_fila_propia": true,
       "descripcion": "El administrador no puede cambiar su propia contraseña desde la gestión de usuarios: la cambia en «Cambiar contraseña» (RF-18), escribiendo la actual. Sin esta regla, una sesión robada bastaría para cambiarla.",
       "mensaje": {
         "es": "Para cambiar tu propia contraseña, usa «Cambiar contraseña».",
@@ -234,5 +237,51 @@
       "descripcion": "El administrador de la plataforma restablece la contraseña de un administrador de empresa, con las mismas validaciones de la contraseña, y aplica cortar_sesiones_al_cambiar_contrasena.",
       "fichas": ["RF-02"]
     }
-  ]
+  ],
+  "pantalla": {
+    "icono": "usuarios",
+    "debajo_del_nombre": "correo",
+    "formulario": "al_lado",
+    "limite_de_activos": "maximo_usuarios_activos",
+    "inicial": { "rol": "USUARIO_FINAL" },
+    "textos": {
+      "resumen": { "es": "{activos}, contándote a ti.", "en": "{activos}, including you." },
+      "resumen_activos": {
+        "es": { "singular": "{cantidad} de {maximo} usuarios activos", "plural": "{cantidad} de {maximo} usuarios activos" },
+        "en": { "singular": "{cantidad} of {maximo} active users", "plural": "{cantidad} of {maximo} active users" }
+      },
+      "vacia": { "es": "Todavía no hay usuarios en la empresa.", "en": "There are no users in the company yet." },
+      "nuevo": { "es": "Nuevo usuario", "en": "New user" },
+      "crear": { "es": "Crear usuario", "en": "Create user" },
+      "titulo_editar": { "es": "Editar usuario", "en": "Edit user" },
+      "contrasena_al_crear": { "es": "Contraseña inicial", "en": "Initial password" },
+      "ayuda_contrasena_al_crear": {
+        "es": "De 8 a 64 caracteres; cada tilde o eñe ocupa 2 de los 72 bytes. Compártela con la persona: podrá cambiarla en «Cambiar contraseña».",
+        "en": "8 to 64 characters; each accented letter or ñ takes 2 of the 72 bytes. Share it with the person: they can change it in “Change password”."
+      },
+      "contrasena_al_editar": { "es": "Contraseña nueva", "en": "New password" },
+      "ayuda_contrasena_al_editar": {
+        "es": "Déjala vacía para no cambiarla. De 8 a 64 caracteres; cada tilde o eñe ocupa 2 de los 72 bytes.",
+        "en": "Leave it empty to keep the current one. 8 to 64 characters; each accented letter or ñ takes 2 of the 72 bytes."
+      },
+      "nota_contrasena_de_otro": {
+        "es": "Al guardar, se cierran las sesiones abiertas de {nombre} y se quita su bloqueo por intentos fallidos, si lo tenía. Compártela con {nombre}: podrá cambiarla en «Cambiar contraseña».",
+        "en": "When you save, the open sessions of {nombre} are closed and their lock for failed attempts is removed, if they had one. Share it with {nombre}: they can change it in “Change password”."
+      },
+      "titulo_lista": { "es": "Usuarios de la empresa", "en": "Company users" },
+      "fila_propia": { "es": "Tú", "en": "You" },
+      "activo": { "es": "Activo", "en": "Active" },
+      "inactivo": { "es": "Desactivado", "en": "Deactivated" },
+      "editar_fila": { "es": "Editar a {nombre}", "en": "Edit {nombre}" },
+      "desactivar_fila": { "es": "Desactivar a {nombre}", "en": "Deactivate {nombre}" },
+      "reactivar_fila": { "es": "Reactivar a {nombre}", "en": "Reactivate {nombre}" },
+      "al_guardar": { "es": "Se guardaron los datos de {nombre}.", "en": "The details of {nombre} were saved." },
+      "al_desactivar": { "es": "Se desactivó a {nombre}.", "en": "{nombre} was deactivated." },
+      "al_reactivar": { "es": "Se reactivó a {nombre}.", "en": "{nombre} was reactivated." },
+      "nota_lista": {
+        "es": "Los usuarios no se borran: se desactivan, para conservar quién hizo cada análisis. Tu propio rol y tu contraseña no se cambian aquí.",
+        "en": "Users are not deleted: they are deactivated, to keep who made each analysis. Your own role and password are not changed here."
+      }
+    }
+  }
 }

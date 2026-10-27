@@ -6,12 +6,22 @@
  *              o la plantilla, y se regenera.
  * Fecha de creación: 13/10/2026
  * Actualización: 27/10/2026
- * Autor: Equipo InspectIA (generado por generador/ v1.8)
- * Versión: 1.8
- * Entidades: empresa 1.3, usuario 1.7
+ * Autor: Equipo InspectIA (generado por generador/ v1.9)
+ * Versión: 1.9
+ * Entidades: empresa 1.3, usuario 1.8
  */
 import { object, string } from 'yup';
 import { cabeEnBytes, lleno, minusculas, recortar } from '../../validacion/reglas.js';
+
+/**
+ * Los límites de cada campo, los del JSON: para las páginas escritas a mano que validan lo mismo, como Cambiar
+ * contraseña (RF-18), sin copiarlos.
+ */
+export const LIMITES = {
+  nombre: { maximo: 120 },
+  nit: { maximo: 15 },
+  ciudad: { maximo: 80 },
+};
 
 /**
  * Las validaciones del formulario para registrar empresa: las de la API, con sus mensajes (RF-02).

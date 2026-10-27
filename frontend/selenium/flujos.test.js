@@ -1,17 +1,19 @@
 /*
  * Nombre: flujos.test.js
  * Descripción: Pruebas con Selenium de los flujos principales (RP-14): entrar con el menú del rol, los datos
- *              errados, cambiar la contraseña y registrar una empresa, en Chrome y en Edge, en tamaño de PC y de
- *              celular (RNF-05). Si una falla, guarda su captura y la consola del navegador en reports/selenium.
+ *              errados, cambiar la contraseña, registrar una empresa y crear un usuario que entra, en Chrome y
+ *              en Edge, en tamaño de PC y de celular (RNF-05). Si una falla, guarda su captura y la consola del
+ *              navegador en reports/selenium.
  * Fecha de creación: 20/10/2026
- * Actualización: 26/10/2026
+ * Actualización: 27/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
+import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
-  abrirNavegador, APP, boton, Browser, By, campo, campoDelGrupo, CELULAR, CONTRASENA, crearUsuario, datos,
-  descartarConsola, desactivarUsuario, empresaNueva, entrar, esperar, esperarTexto, guardarFalla,
+  abrirNavegador, APP, boton, Browser, By, campo, campoDelGrupo, CELULAR, CONTRASENA, crearEmpresa, crearUsuario,
+  datos, descartarConsola, desactivarUsuario, empresaNueva, entrar, esperar, esperarTexto, guardarFalla,
 } from './ayudas.js';
 
 const COMBINACIONES = [
@@ -110,6 +112,30 @@ describe.each(COMBINACIONES)('%s en %s', (_, navegador, __, celular) => {
       await (await boton(driver, 'Registrar empresa')).click();
 
       await esperarTexto(driver, `Se guardó ${empresa.nombre}.`);
+    } finally {
+      await driver.executeScript('localStorage.clear()');
+    }
+  });
+
+  it('RF-03 · C1 · el administrador de empresa crea un usuario en la pantalla y ese usuario inicia sesión (Selenium)', async () => {
+    // En una empresa propia, para no llenar los 25 activos de la empresa de prueba.
+    const empresa = await crearEmpresa();
+    const pedro = { nombre: 'Pedro Salas', correo: `pedro.salas.${randomUUID().slice(0, 8)}@cacaoandino.test`,
+      contrasena: CONTRASENA };
+    try {
+      await entrar(driver, empresa.administrador);
+      await esperarTexto(driver, 'Hola, Laura');
+      await driver.get(`${APP}/usuarios`);
+      await (await boton(driver, 'Nuevo usuario')).click();
+      await (await campo(driver, 'Nombre')).sendKeys(pedro.nombre);
+      await (await campo(driver, 'Correo')).sendKeys(pedro.correo);
+      await (await campo(driver, 'Contraseña inicial')).sendKeys(pedro.contrasena);
+      await (await boton(driver, 'Crear usuario')).click();
+      await esperarTexto(driver, `Se guardaron los datos de ${pedro.nombre}.`);
+
+      await driver.executeScript('localStorage.clear()');
+      await entrar(driver, pedro);
+      await esperarTexto(driver, 'Hola, Pedro');
     } finally {
       await driver.executeScript('localStorage.clear()');
     }

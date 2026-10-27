@@ -3,10 +3,10 @@
     "nombre": "alcance.json",
     "descripcion": "Entidades con CRUD a las que el generador les genera la API (servicio, controlador, solicitudes, respuesta y pruebas) y, de ellas, las que tienen pantalla en el frontend (cliente de la API, esquemas de Yup, pantalla y pruebas). Hoy todas las que tienen CRUD tienen API; una entidad con CRUD nueva solo tiene persistencia hasta que llegue su ficha, y su pantalla llega con la ficha de la pantalla.",
     "fecha_creacion": "13/10/2026",
-    "actualizacion": "26/10/2026",
+    "actualizacion": "27/10/2026",
     "autor": "Equipo InspectIA",
-    "version": "1.3"
+    "version": "1.4"
   },
   "api": ["empresa", "usuario", "rango_recomendacion"],
-  "pantallas": ["empresa"]
+  "pantallas": ["empresa", "usuario"]
 }

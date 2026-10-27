@@ -2,12 +2,12 @@
  * Nombre: ayudas.js (selenium)
  * Descripción: Ayudas de las pruebas con Selenium (RP-14): abrir Chrome o Edge en tamaño de PC o de celular,
  *              buscar campos por su etiqueta, también dentro de un grupo, y botones por su texto, crear
- *              usuarios propios por la API y, si una prueba falla, guardar una captura de la pantalla y la
- *              consola del navegador en reports/selenium, que no se sube al repositorio.
+ *              usuarios y empresas propios por la API y, si una prueba falla, guardar una captura de la
+ *              pantalla y la consola del navegador en reports/selenium, que no se sube al repositorio.
  * Fecha de creación: 20/10/2026
- * Actualización: 26/10/2026
+ * Actualización: 27/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 import { randomUUID } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -158,12 +158,13 @@ function pedir(metodo, ruta, datosDeLaPeticion, token) {
 }
 
 /**
- * El token del administrador de la empresa de prueba.
+ * El token de una persona del entorno, como el administrador de la empresa de prueba.
  *
+ * @param {{ correo: string, contrasena: string }} persona quién inicia sesión
  * @returns {Promise<string>} el token
  */
-async function tokenDelAdministrador() {
-  const respuesta = await pedir('POST', '/sesion', { correo: datos.adminEmpresa.correo, contrasena: datos.adminEmpresa.contrasena });
+async function tokenDe(persona) {
+  const respuesta = await pedir('POST', '/sesion', { correo: persona.correo, contrasena: persona.contrasena });
   return (await respuesta.json()).token;
 }
 
@@ -175,7 +176,7 @@ async function tokenDelAdministrador() {
 export async function crearUsuario() {
   const persona = { nombre: 'Luis Gómez', correo: `luis.${randomUUID().slice(0, 8)}@cacaosdelhuila.test`,
     contrasena: CONTRASENA, rol: 'USUARIO_FINAL' };
-  const respuesta = await pedir('POST', '/usuarios', persona, await tokenDelAdministrador());
+  const respuesta = await pedir('POST', '/usuarios', persona, await tokenDe(datos.adminEmpresa));
   if (respuesta.status !== 201) {
     throw new Error(`No se pudo crear el usuario de prueba: ${respuesta.status}`);
   }
@@ -188,7 +189,22 @@ export async function crearUsuario() {
  * @param {string} id el usuario
  */
 export async function desactivarUsuario(id) {
-  await pedir('POST', `/usuarios/${id}/desactivar`, null, await tokenDelAdministrador());
+  await pedir('POST', `/usuarios/${id}/desactivar`, null, await tokenDe(datos.adminEmpresa));
+}
+
+/**
+ * Registra una empresa nueva por la API, con el administrador de la plataforma: para las pruebas que crean
+ * usuarios en la pantalla sin llenar los 25 activos de la empresa de prueba (RF-03).
+ *
+ * @returns {Promise<object>} la empresa, con su id y su primer administrador
+ */
+export async function crearEmpresa() {
+  const empresa = empresaNueva(CONTRASENA);
+  const respuesta = await pedir('POST', '/empresas', empresa, await tokenDe(datos.plataforma));
+  if (respuesta.status !== 201) {
+    throw new Error(`No se pudo registrar la empresa de prueba: ${respuesta.status}`);
+  }
+  return { ...empresa, id: (await respuesta.json()).id };
 }
 
 /**

@@ -6,9 +6,9 @@
  *              o la plantilla, y se regenera.
  * Fecha de creación: 13/10/2026
  * Actualización: 27/10/2026
- * Autor: Equipo InspectIA (generado por generador/ v1.8)
- * Versión: 1.8
- * Entidades: empresa 1.3, foto 1.0, grano 1.0, lote 1.0, modelo 1.0, muestra 1.0, rango_recomendacion 1.2, usuario 1.7
+ * Autor: Equipo InspectIA (generado por generador/ v1.9)
+ * Versión: 1.9
+ * Entidades: empresa 1.3, foto 1.0, grano 1.0, lote 1.0, modelo 1.0, muestra 1.0, rango_recomendacion 1.2, usuario 1.8
  */
 
 /**
@@ -46,6 +46,29 @@ export default {
     'empresa.pantalla.al_desactivar': 'Se desactivó {nombre}.',
     'empresa.pantalla.al_reactivar': 'Se reactivó {nombre}.',
     'empresa.pantalla.nota_lista': 'Desactivar una empresa no borra nada: sus usuarios no pueden iniciar sesión hasta que la reactives, y sus lotes y resultados se conservan.',
+    'usuario.pantalla.resumen': '{activos}, contándote a ti.',
+    'usuario.pantalla.resumen_activos.singular': '{cantidad} de {maximo} usuarios activos',
+    'usuario.pantalla.resumen_activos.plural': '{cantidad} de {maximo} usuarios activos',
+    'usuario.pantalla.vacia': 'Todavía no hay usuarios en la empresa.',
+    'usuario.pantalla.nuevo': 'Nuevo usuario',
+    'usuario.pantalla.crear': 'Crear usuario',
+    'usuario.pantalla.titulo_editar': 'Editar usuario',
+    'usuario.pantalla.contrasena_al_crear': 'Contraseña inicial',
+    'usuario.pantalla.ayuda_contrasena_al_crear': 'De 8 a 64 caracteres; cada tilde o eñe ocupa 2 de los 72 bytes. Compártela con la persona: podrá cambiarla en «Cambiar contraseña».',
+    'usuario.pantalla.contrasena_al_editar': 'Contraseña nueva',
+    'usuario.pantalla.ayuda_contrasena_al_editar': 'Déjala vacía para no cambiarla. De 8 a 64 caracteres; cada tilde o eñe ocupa 2 de los 72 bytes.',
+    'usuario.pantalla.nota_contrasena_de_otro': 'Al guardar, se cierran las sesiones abiertas de {nombre} y se quita su bloqueo por intentos fallidos, si lo tenía. Compártela con {nombre}: podrá cambiarla en «Cambiar contraseña».',
+    'usuario.pantalla.titulo_lista': 'Usuarios de la empresa',
+    'usuario.pantalla.fila_propia': 'Tú',
+    'usuario.pantalla.activo': 'Activo',
+    'usuario.pantalla.inactivo': 'Desactivado',
+    'usuario.pantalla.editar_fila': 'Editar a {nombre}',
+    'usuario.pantalla.desactivar_fila': 'Desactivar a {nombre}',
+    'usuario.pantalla.reactivar_fila': 'Reactivar a {nombre}',
+    'usuario.pantalla.al_guardar': 'Se guardaron los datos de {nombre}.',
+    'usuario.pantalla.al_desactivar': 'Se desactivó a {nombre}.',
+    'usuario.pantalla.al_reactivar': 'Se reactivó a {nombre}.',
+    'usuario.pantalla.nota_lista': 'Los usuarios no se borran: se desactivan, para conservar quién hizo cada análisis. Tu propio rol y tu contraseña no se cambian aquí.',
   },
   en: {
     'empresa.pantalla.resumen': '{total}: {activos} and {inactivos}.',
@@ -76,5 +99,28 @@ export default {
     'empresa.pantalla.al_desactivar': '{nombre} was deactivated.',
     'empresa.pantalla.al_reactivar': '{nombre} was reactivated.',
     'empresa.pantalla.nota_lista': 'Deactivating a company deletes nothing: its users can\'t sign in until you reactivate it, and its lots and results are kept.',
+    'usuario.pantalla.resumen': '{activos}, including you.',
+    'usuario.pantalla.resumen_activos.singular': '{cantidad} of {maximo} active users',
+    'usuario.pantalla.resumen_activos.plural': '{cantidad} of {maximo} active users',
+    'usuario.pantalla.vacia': 'There are no users in the company yet.',
+    'usuario.pantalla.nuevo': 'New user',
+    'usuario.pantalla.crear': 'Create user',
+    'usuario.pantalla.titulo_editar': 'Edit user',
+    'usuario.pantalla.contrasena_al_crear': 'Initial password',
+    'usuario.pantalla.ayuda_contrasena_al_crear': '8 to 64 characters; each accented letter or ñ takes 2 of the 72 bytes. Share it with the person: they can change it in “Change password”.',
+    'usuario.pantalla.contrasena_al_editar': 'New password',
+    'usuario.pantalla.ayuda_contrasena_al_editar': 'Leave it empty to keep the current one. 8 to 64 characters; each accented letter or ñ takes 2 of the 72 bytes.',
+    'usuario.pantalla.nota_contrasena_de_otro': 'When you save, the open sessions of {nombre} are closed and their lock for failed attempts is removed, if they had one. Share it with {nombre}: they can change it in “Change password”.',
+    'usuario.pantalla.titulo_lista': 'Company users',
+    'usuario.pantalla.fila_propia': 'You',
+    'usuario.pantalla.activo': 'Active',
+    'usuario.pantalla.inactivo': 'Deactivated',
+    'usuario.pantalla.editar_fila': 'Edit {nombre}',
+    'usuario.pantalla.desactivar_fila': 'Deactivate {nombre}',
+    'usuario.pantalla.reactivar_fila': 'Reactivate {nombre}',
+    'usuario.pantalla.al_guardar': 'The details of {nombre} were saved.',
+    'usuario.pantalla.al_desactivar': '{nombre} was deactivated.',
+    'usuario.pantalla.al_reactivar': '{nombre} was reactivated.',
+    'usuario.pantalla.nota_lista': 'Users are not deleted: they are deactivated, to keep who made each analysis. Your own role and password are not changed here.',
   },
 };

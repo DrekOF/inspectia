@@ -1,9 +1,9 @@
 # Nombre: modelo.py
 # Descripción: Consultas sobre las entidades cargadas que comparten la validación y la generación.
 # Fecha de creación: 13/10/2026
-# Actualización: 26/10/2026
+# Actualización: 27/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.2
+# Versión: 1.3
 """Consultas sobre las entidades ya cargadas (los JSON como diccionarios).
 
 Las usan la validación y la generación, para que las dos lean el formato de la misma manera
@@ -16,8 +16,17 @@ COLUMNAS_IMPLICITAS = ('id', 'fecha_creacion', 'fecha_actualizacion')
 #: Columna que agrega el generador a las tablas de cada empresa (RNF-03).
 EMPRESA_ID = 'empresa_id'
 
-#: Las claves de ``pantalla``: el ícono del menú, el atributo que va debajo del nombre en la lista y los textos.
-CLAVES_DE_PANTALLA = ('icono', 'debajo_del_nombre', 'textos')
+#: Las claves de ``pantalla``: el ícono del menú, el atributo que va debajo del nombre en la lista, dónde va el
+#: formulario, la regla que limita los activos, los valores con que empieza el formulario al registrar y los textos.
+CLAVES_DE_PANTALLA = ('icono', 'debajo_del_nombre', 'formulario', 'limite_de_activos', 'inicial', 'textos')
+
+#: Dónde va el formulario en el PC: encima de la lista, como en Empresas, o al lado, como en Usuarios. En el
+#: celular va siempre encima.
+FORMULARIOS = ('encima', 'al_lado')
+
+#: El marcador del resumen que da el máximo de la regla de ``limite_de_activos``, como 25. Solo existe si la
+#: pantalla declara esa regla.
+MAXIMO = 'maximo'
 
 #: En un texto de una fila, cada ``{atributo}`` de la lista toma el valor de esa fila, como «Editar {nombre}».
 FILA = 'fila'
@@ -26,9 +35,9 @@ FILA = 'fila'
 #: pueden usar. Cuáles son obligatorios lo dicen las operaciones de la entidad (``frontend.py``).
 TEXTOS_DE_PANTALLA = {
     'descripcion': (False, ()),
-    'resumen': (False, ('total', 'activos', 'inactivos')),
+    'resumen': (False, ('total', 'activos', 'inactivos', MAXIMO)),
     'resumen_total': (True, ('cantidad',)),
-    'resumen_activos': (True, ('cantidad',)),
+    'resumen_activos': (True, ('cantidad', MAXIMO)),
     'resumen_inactivos': (True, ('cantidad',)),
     'vacia': (False, ()),
     'nuevo': (False, ()),
@@ -37,6 +46,10 @@ TEXTOS_DE_PANTALLA = {
     'nota_formulario': (False, ()),
     'contrasena_al_crear': (False, ()),
     'ayuda_contrasena_al_crear': (False, ()),
+    'contrasena_al_editar': (False, ()),
+    'ayuda_contrasena_al_editar': (False, ()),
+    'nota_contrasena_de_otro': (False, FILA),
+    'fila_propia': (False, ()),
     'titulo_lista': (False, ()),
     'columna_nombre': (False, ()),
     'debajo_del_nombre': (False, FILA),
@@ -134,3 +147,23 @@ def orden_de_creacion(entidades):
         for deps in pendientes.values():
             deps.discard(siguiente)
     return orden
+
+
+def regla(entidad, codigo):
+    """La regla ``codigo`` de una entidad, o ``None`` si no la tiene."""
+    return next((r for r in entidad.get('reglas', []) if r.get('codigo') == codigo), None)
+
+
+def reglas_de_la_fila_propia(entidad):
+    """Las reglas que se aplican a la fila de quien tiene la sesión (``en_la_fila_propia``): la pantalla las cumple
+    antes de llamar a la API."""
+    return [r for r in entidad.get('reglas', []) if r.get('en_la_fila_propia')]
+
+
+def contrasena_opcional_al_editar(entidad):
+    """La contraseña del formulario que al editar es opcional, como la de un usuario, o ``None``: vacía, queda la
+    que había."""
+    if 'editar' not in entidad.get('operaciones', {}):
+        return None
+    return next((a for a in entidad['atributos'] if a['tipo'] == 'contrasena' and a.get('en_formulario')
+                 and not a['entrada']['obligatoria_al_editar']), None)

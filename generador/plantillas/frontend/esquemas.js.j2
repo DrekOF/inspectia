@@ -4,9 +4,9 @@
                del mismo modelo que Bean Validation, en su orden y con las mismas claves de mensaje (RP-07,
                RP-23). El formato del correo no va: lo valida solo el backend.
   Fecha de creación: 26/10/2026
-  Actualización: 26/10/2026
+  Actualización: 27/10/2026
   Autor: Equipo InspectIA
-  Versión: 1.0
+  Versión: 1.1
 #}
 {% from 'frontend/_macros.j2' import encabezado %}
 {% macro campos_yup(lista, sangria) %}
@@ -21,6 +21,18 @@
 import { object, string } from 'yup';
 {% if usa %}
 import { {{ usa | join(', ') }} } from '../../validacion/reglas.js';
+{% endif %}
+{% if limites %}
+
+/**
+ * Los límites de cada campo, los del JSON: para las páginas escritas a mano que validan lo mismo, como Cambiar
+ * contraseña (RF-18), sin copiarlos.
+ */
+export const LIMITES = {
+{% for clave, valor in limites %}
+  {{ clave }}: {{ valor }},
+{% endfor %}
+};
 {% endif %}
 {% if crear %}
 

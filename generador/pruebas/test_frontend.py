@@ -2,9 +2,9 @@
 # Descripción: Pruebas de la generación del frontend: la pantalla de cada entidad de «pantallas» en
 #              alcance.json, con su cliente de la API, sus esquemas de Yup, sus textos y sus pruebas.
 # Fecha de creación: 26/10/2026
-# Actualización: 26/10/2026
+# Actualización: 27/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.0
+# Versión: 1.1
 """Pruebas de lo que genera el generador para el frontend (RP-23).
 
 De cada entidad de ``pantallas`` en ``alcance.json`` sale su pantalla (lista, formulario y acciones), con su
@@ -29,6 +29,10 @@ PRUEBAS_JAVA = 'backend/src/test-generated/java/co/edu/usco/inspectia'
 #: Lo que genera cada pantalla en frontend/src/generated/<modulo>/.
 ARCHIVOS_DE_EMPRESA = ('empresaApi.js', 'empresaApi.test.js', 'empresaEsquemas.js', 'empresaEsquemas.test.js',
                        'EmpresaPantalla.jsx', 'EmpresaPantalla.test.jsx')
+ARCHIVOS_DE_USUARIO = ('usuarioApi.js', 'usuarioApi.test.js', 'usuarioEsquemas.js', 'usuarioEsquemas.test.js',
+                       'UsuarioPantalla.jsx', 'UsuarioPantalla.test.jsx')
+#: La API y las pantallas con la de usuario (RF-03).
+CON_USUARIO = {'api': ('empresa', 'usuario'), 'pantallas': ('empresa', 'usuario')}
 
 
 def generar(entidades, api=('empresa',), pantallas=('empresa',)):
@@ -90,13 +94,14 @@ def test_pantalla_necesita_su_api(entidades):
     assert 'alcance.json: la entidad no_existe no existe' in errores
 
 
-@pytest.mark.caso('RP-23 · alcance.json dice qué entidades tienen pantalla: empresa (RF-02) y solo entidades con API')
+@pytest.mark.caso('RP-23 · alcance.json dice qué entidades tienen pantalla: empresa (RF-02), usuario (RF-03) y solo entidades con API')
 def test_alcance_de_las_pantallas():
     from inspectia_generador.carga import cargar_pantallas
 
     pantallas = cargar_pantallas(GENERADOR / 'alcance.json')
 
     assert 'empresa' in pantallas
+    assert 'usuario' in pantallas
     assert set(pantallas) <= set(cargar_alcance(GENERADOR / 'alcance.json'))
 
 
@@ -305,6 +310,153 @@ def test_marcas_de_las_pruebas_generadas(entidades):
         assert all(p.generada for p in pruebas)
         marcas = ('RF-02 · ', 'RNF-04 · ', 'RNF-05 · C1 · ', 'RNF-06 · ')
         assert all(p.marca.startswith(marcas) for p in pruebas), ruta
+    con_usuario = generar(entidades, **CON_USUARIO)
+    for ruta in [f'{FRONTEND}/usuario/{nombre}' for nombre in ARCHIVOS_DE_USUARIO if '.test.' in nombre] + [
+            f'{E2E}/usuario.spec.js']:
+        pruebas, errores = pruebas_javascript(con_usuario[ruta], ruta)
+        assert not errores and pruebas, ruta
+        assert all(p.marca.startswith(('RF-03 · ', 'RNF-04 · ', 'RNF-05 · C1 · ', 'RNF-06 · ')) for p in pruebas), ruta
     marcas = [p.marca for p in pruebas_javascript(archivos[f'{E2E}/empresa.spec.js'], f'{E2E}/empresa.spec.js')[0]]
     assert any(m.startswith('RNF-06 · C4 · ') for m in marcas), 'axe en la pantalla generada'
     assert any(m.startswith('RNF-05 · C1 · ') for m in marcas), 'sin desplazarse a los lados en un celular'
+
+
+@pytest.mark.caso('RP-23 · la pantalla de usuario sale de su JSON: el correo debajo del nombre, el rol con sus valores, el formulario al lado de la lista y desactivar sin confirmación (D-34)')
+def test_pantalla_de_usuario(entidades):
+    archivos = generar(entidades, **CON_USUARIO)
+
+    for nombre in ARCHIVOS_DE_USUARIO:
+        assert f'{FRONTEND}/usuario/{nombre}' in archivos
+    assert f'{E2E}/usuario.spec.js' in archivos
+    pantalla = compacto(archivos[f'{FRONTEND}/usuario/UsuarioPantalla.jsx'])
+    assert ("{ atributo: 'nombre', etiqueta: 'usuario.nombre.etiqueta', "
+            "debajo: { atributo: 'correo', texto: null } }") in pantalla
+    assert "{ atributo: 'rol', etiqueta: 'usuario.rol.etiqueta', valores: 'usuario.rol' }" in pantalla
+    assert "formulario: 'al_lado'" in pantalla
+    assert 'confirmarDesactivar: null' in pantalla, 'desactivar un usuario no pide confirmación (D-34)'
+    assert "formulario: 'encima'" in compacto(archivos[f'{FRONTEND}/empresa/EmpresaPantalla.jsx'])
+    assert "icono: 'usuarios'" in archivos[f'{FRONTEND}/pantallas.js']
+
+
+@pytest.mark.caso('RP-23 · con limite_de_activos, la pantalla recibe el máximo y el mensaje de su regla: el resumen cuenta los activos contra el máximo y solo pide los textos que usa su frase (RF-03 C5, D-34)')
+def test_limite_de_activos(entidades):
+    archivos = generar(entidades, **CON_USUARIO)
+
+    pantalla = compacto(archivos[f'{FRONTEND}/usuario/UsuarioPantalla.jsx'])
+    assert "limiteDeActivos: { maximo: 25, mensaje: 'usuario.reglas.maximo_usuarios_activos' }" in pantalla
+    assert "resumen: { frase: 'usuario.pantalla.resumen', activos: 'usuario.pantalla.resumen_activos' }" in pantalla
+    assert 'limiteDeActivos: null' in compacto(archivos[f'{FRONTEND}/empresa/EmpresaPantalla.jsx'])
+    espanol = archivos[f'{FRONTEND}/textos.js'].split('  en: {')[0]
+    assert "'usuario.pantalla.resumen': '{activos}, contándote a ti.'," in espanol
+    assert "'usuario.pantalla.resumen_activos.plural': '{cantidad} de {maximo} usuarios activos'," in espanol
+    assert "'1 de 25 usuarios activos, contándote a ti.'" in archivos[f'{FRONTEND}/usuario/UsuarioPantalla.test.jsx']
+
+
+@pytest.mark.caso('RP-23 · una lista obligatoria vacía da en Yup el error de obligatorio, como la API, y no el de sus valores: Yup revisa oneOf antes que las demás pruebas, así que el vacío cuenta como ausente')
+def test_lista_obligatoria_vacia(entidades):
+    esquemas = generar(entidades, **CON_USUARIO)[f'{FRONTEND}/usuario/usuarioEsquemas.js']
+    rol = ['.transform(vacioComoAusente)', ".test('obligatorio', t('validacion.obligatorio'), lleno)",
+           ".oneOf(['USUARIO_FINAL', 'ADMIN_EMPRESA'], t('usuario.rol.valores_en_formulario'))"]
+
+    assert cadena_yup(esquemas, 'esquemaParaCrear', 'rol') == rol
+    assert cadena_yup(esquemas, 'esquemaParaEditar', 'rol') == rol
+
+
+@pytest.mark.caso('RP-23 · la prueba generada de Yup rechaza cada valor de una lista que existe pero el formulario no ofrece, como ADMIN_PLATAFORMA en el rol, con el mismo mensaje del 403 de la API')
+def test_valores_que_el_formulario_no_ofrece(entidades):
+    archivos = generar(entidades, **CON_USUARIO)
+    prueba_yup = archivos[f'{FRONTEND}/usuario/usuarioEsquemas.test.js']
+    prueba_api = archivos[f'{PRUEBAS_JAVA}/usuario/UsuarioApiGeneradaIT.java']
+    mensaje = 'Solo puedes asignar los roles Usuario final o Administrador de empresa.'
+
+    for constante in ('CASOS_AL_CREAR', 'CASOS_AL_EDITAR'):
+        assert ('rol', "'ADMIN_PLATAFORMA'", mensaje) in casos_js(prueba_yup, constante), constante
+    assert f'"rol", "ADMIN_PLATAFORMA", "{mensaje}"' in prueba_api, 'el mismo caso y el mismo mensaje del 403 de la API'
+
+
+@pytest.mark.caso('RP-23 · pantalla.inicial da el valor con que empieza un campo al registrar, sin tocar la base: el rol empieza en Usuario final')
+def test_valor_inicial(entidades):
+    archivos = generar(entidades, **CON_USUARIO)
+
+    pantalla = compacto(archivos[f'{FRONTEND}/usuario/UsuarioPantalla.jsx'])
+    assert "return { nombre: '', correo: '', contrasena: '', rol: 'USUARIO_FINAL' };" in pantalla
+    assert '    rol varchar(30) NOT NULL,' in archivos['backend/src/generated/resources/db/migration/V1__esquema_inicial.sql']
+
+
+@pytest.mark.caso('RP-23 · una contraseña opcional al editar va en el formulario: vacía no se envía y queda la que había; si llega, no puede estar en blanco y cumple las mismas validaciones, en el orden de la API')
+def test_contrasena_opcional_al_editar(entidades):
+    archivos = generar(entidades, **CON_USUARIO)
+
+    pantalla = compacto(archivos[f'{FRONTEND}/usuario/UsuarioPantalla.jsx'])
+    assert "const CAMPOS_PARA_EDITAR = ['nombre', 'correo', 'contrasena', 'rol'];" in pantalla
+    assert "contrasena: valores.contrasena === '' ? null : valores.contrasena" in pantalla
+    assert "t('usuario.pantalla.contrasena_al_editar')" in pantalla
+    assert "t('usuario.pantalla.ayuda_contrasena_al_editar')" in pantalla
+    assert "notaContrasenaDeOtro: 'usuario.pantalla.nota_contrasena_de_otro'" in pantalla
+    esquemas = archivos[f'{FRONTEND}/usuario/usuarioEsquemas.js']
+    assert cadena_yup(esquemas, 'esquemaParaEditar', 'contrasena') == [
+        '.transform(vacioComoAusente)', ".test('obligatorio', t('validacion.obligatorio'), noEnBlanco)",
+        ".test('bytes_max', t('usuario.contrasena_hash.bytes_max'), cabeEnBytes(72))",
+        ".max(64, t('usuario.contrasena_hash.longitud_max'))", ".min(8, t('usuario.contrasena_hash.longitud_min'))"]
+    assert cadena_yup(esquemas, 'esquemaParaCrear', 'contrasena')[0] == \
+        ".test('obligatorio', t('validacion.obligatorio'), lleno)", 'al registrar es obligatoria'
+    espanol = archivos[f'{FRONTEND}/textos.js'].split('  en: {')[0]
+    assert ("'usuario.pantalla.nota_contrasena_de_otro': 'Al guardar, se cierran las sesiones abiertas de {nombre} y "
+            "se quita su bloqueo por intentos fallidos, si lo tenía. Compártela con {nombre}: podrá cambiarla en "
+            "«Cambiar contraseña».',") in espanol
+
+
+@pytest.mark.caso('RP-23 · las reglas en_la_fila_propia se aplican en la pantalla antes que en la API: la fila de quien tiene la sesión lleva su marca y no tiene las acciones que impiden, y al editarla los campos que impiden no se cambian y muestran el mensaje de la regla (RF-03 C7, C8 y C11)')
+def test_fila_propia(entidades):
+    archivos = generar(entidades, **CON_USUARIO)
+
+    pantalla = compacto(archivos[f'{FRONTEND}/usuario/UsuarioPantalla.jsx'])
+    assert "filaPropia: { marca: 'usuario.pantalla.fila_propia', sinAcciones: ['desactivar'] }" in pantalla
+    assert 'function Campos({ paraCrear, propia })' in pantalla
+    assert "t('usuario.reglas.no_cambiar_su_propio_rol')" in pantalla
+    assert "t('usuario.reglas.no_cambiar_su_propia_contrasena')" in pantalla
+    assert 'filaPropia: null' in compacto(archivos[f'{FRONTEND}/empresa/EmpresaPantalla.jsx'])
+    espanol = archivos[f'{FRONTEND}/textos.js'].split('  en: {')[0]
+    assert "'usuario.pantalla.fila_propia': 'Tú'," in espanol
+
+
+@pytest.mark.caso('RP-23 · los esquemas generados exportan los límites de cada campo, los del JSON, para que una página escrita a mano, como Cambiar contraseña (RF-18), no los copie')
+def test_limites_de_los_campos(entidades):
+    esquemas = compacto(generar(entidades, **CON_USUARIO)[f'{FRONTEND}/usuario/usuarioEsquemas.js'])
+
+    assert 'export const LIMITES = {' in esquemas
+    assert 'contrasena: { minimo: 8, maximo: 64, maximoBytes: 72 }' in esquemas
+    assert 'nombre: { maximo: 120 }' in esquemas
+
+
+@pytest.mark.caso('RP-23 · la prueba generada de la pantalla revisa lo nuevo de usuario: el límite de activos, la fila propia, la nota de la contraseña, la contraseña vacía al editar y el valor inicial')
+def test_pruebas_generadas_de_usuario(entidades):
+    prueba = generar(entidades, **CON_USUARIO)[f'{FRONTEND}/usuario/UsuarioPantalla.test.jsx']
+
+    for titulo in ('RF-03 · al llegar al máximo de activos de su regla, no deja registrar ni reactivar y muestra el '
+                   'mensaje de la regla',
+                   'RF-03 · la fila de quien tiene la sesión lleva su marca y no tiene las acciones que impiden sus '
+                   'reglas',
+                   'RF-03 · al editar la fila propia, los campos que impiden sus reglas no se cambian y muestran el '
+                   'mensaje de la regla',
+                   'RF-03 · al editar a otra persona, la nota de la contraseña aparece al escribir una nueva',
+                   'RF-03 · al editar sin escribir una contraseña, no la envía y queda la que había',
+                   'RF-03 · el formulario para registrar empieza con los valores iniciales del JSON'):
+        assert titulo in prueba
+    assert ("expect(within(parrafoCon('Para cambiar tu propia contraseña, usa «Cambiar contraseña».'))"
+            ".getByRole('link', { name: 'Cambiar contraseña' })) .toHaveAttribute('href', '/cambiar-contrasena');"
+            ) in compacto(prueba), 'el enlace va solo en el nombre de la página, y la frase se revisa completa'
+
+
+@pytest.mark.caso('RP-23 · la pantalla de usuario pide los textos de lo nuevo: la marca de la fila propia y los de la contraseña al editar, y el generador dice cuál falta')
+def test_textos_que_pide_la_pantalla_de_usuario(entidades):
+    textos = entidades['usuario']['pantalla']['textos']
+    del textos['fila_propia'], textos['contrasena_al_editar'], textos['nota_contrasena_de_otro']
+
+    with pytest.raises(ErrorGeneracion) as error:
+        generar(entidades, **CON_USUARIO)
+
+    for falta in ('pantalla.textos.fila_propia, que pide en_la_fila_propia',
+                  'pantalla.textos.contrasena_al_editar, que pide la contraseña opcional al editar',
+                  'pantalla.textos.nota_contrasena_de_otro, que pide la contraseña opcional al editar'):
+        assert falta in str(error.value)

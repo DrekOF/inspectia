@@ -1,13 +1,13 @@
 /*
  * Nombre: CambiarContrasena.jsx
  * Descripción: La pantalla Cambiar contraseña (RF-18), como en el prototipo: la contraseña actual, la nueva
- *              con sus reglas a la vista mientras se escribe, y la nueva repetida. Al guardar, esta sesión
- *              sigue con el token nuevo; si la actual está errada la marca, y si la cuenta está bloqueada dice
- *              a qué hora termina el bloqueo.
+ *              con sus reglas a la vista mientras se escribe, con los límites del JSON de usuario (RP-23), y
+ *              la nueva repetida. Al guardar, esta sesión sigue con el token nuevo; si la actual está errada la
+ *              marca, y si la cuenta está bloqueada dice a qué hora termina el bloqueo.
  * Fecha de creación: 20/10/2026
- * Actualización: 20/10/2026
+ * Actualización: 27/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 import CancelOutlined from '@mui/icons-material/CancelOutlined';
 import CheckCircleOutlineOutlined from '@mui/icons-material/CheckCircleOutlineOutlined';
@@ -24,6 +24,7 @@ import { Aviso } from '../componentes/Aviso.jsx';
 import { CampoContrasena } from '../componentes/CampoContrasena.jsx';
 import { EnfocarPrimerError } from '../componentes/EnfocarPrimerError.jsx';
 import { TituloDePagina } from '../componentes/TituloDePagina.jsx';
+import { LIMITES } from '../generated/usuario/usuarioEsquemas.js';
 import { idiomaDe } from '../i18n/i18n.js';
 import { useSesion } from '../sesion/contexto.js';
 import { medidas } from '../tema/tokens.js';
@@ -49,7 +50,7 @@ const REGLAS = [
  */
 function Reglas({ contrasena }) {
   const { t } = useTranslation();
-  const cumple = reglasDeContrasena(contrasena);
+  const cumple = reglasDeContrasena(contrasena, LIMITES.contrasena);
   return (
     <Box id={ID_REGLAS} sx={{ display: 'flex', flexDirection: 'column', gap: 1, p: '14px 16px', borderRadius: 1,
       bgcolor: 'background.default' }}>
