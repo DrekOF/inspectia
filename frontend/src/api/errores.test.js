@@ -1,12 +1,13 @@
 /*
  * Nombre: errores.test.js
  * Descripción: Pruebas del texto que muestra la app para un error de la API (RNF-06 C3): el mensaje del
- *              backend o, si no hubo conexión o el servidor no dio un mensaje, qué pasó y qué hacer; y de
- *              los errores de cada campo que se marcan en el formulario (RF-18).
+ *              backend, el de las reglas sin campo que no dejan guardar o, si no hubo conexión o el servidor no
+ *              dio un mensaje, qué pasó y qué hacer; y de los errores de cada campo que se marcan en el
+ *              formulario (RF-18).
  * Fecha de creación: 20/10/2026
- * Actualización: 20/10/2026
+ * Actualización: 27/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 import { afterEach, describe, expect, it } from 'vitest';
 import i18n from '../i18n/i18n.js';
@@ -25,6 +26,24 @@ describe('texto de un error', () => {
     const error = new ErrorDeApi({ estado: 401, detalle: 'Correo o contraseña incorrectos' });
 
     expect(textoDelError(error, i18n.t)).toBe('Correo o contraseña incorrectos');
+  });
+
+  it('RNF-06 · C3 · si una regla sin campo no deja guardar, el texto es su mensaje, que dice por qué y qué hacer, y no el general', () => {
+    const error = new ErrorDeApi({ estado: 400, detalle: 'Revisa los datos marcados.', errores: [
+      { campo: null, mensaje: 'La empresa ya tiene 25 usuarios activos: desactiva uno antes de crear o reactivar otro.' },
+    ] });
+
+    expect(textoDelError(error, i18n.t))
+      .toBe('La empresa ya tiene 25 usuarios activos: desactiva uno antes de crear o reactivar otro.');
+  });
+
+  it('RNF-06 · C3 · si no dejan guardar varias reglas sin campo, el texto tiene sus mensajes, en el orden de la API', () => {
+    const error = new ErrorDeApi({ estado: 400, detalle: 'Revisa los datos marcados.', errores: [
+      { campo: null, mensaje: 'La primera regla no deja guardar.' },
+      { campo: null, mensaje: 'La segunda tampoco.' },
+    ] });
+
+    expect(textoDelError(error, i18n.t)).toBe('La primera regla no deja guardar. La segunda tampoco.');
   });
 
   it('RNF-06 · C3 · sin conexión dice que no se pudo conectar con el servidor y que revise la conexión', () => {
