@@ -362,6 +362,18 @@ def test_lista_obligatoria_vacia(entidades):
     assert cadena_yup(esquemas, 'esquemaParaEditar', 'rol') == rol
 
 
+@pytest.mark.caso('RP-23 · la prueba generada de Yup rechaza cada valor de una lista que existe pero el formulario no ofrece, como ADMIN_PLATAFORMA en el rol, con el mismo mensaje del 403 de la API')
+def test_valores_que_el_formulario_no_ofrece(entidades):
+    archivos = generar(entidades, **CON_USUARIO)
+    prueba_yup = archivos[f'{FRONTEND}/usuario/usuarioEsquemas.test.js']
+    prueba_api = archivos[f'{PRUEBAS_JAVA}/usuario/UsuarioApiGeneradaIT.java']
+    mensaje = 'Solo puedes asignar los roles Usuario final o Administrador de empresa.'
+
+    for constante in ('CASOS_AL_CREAR', 'CASOS_AL_EDITAR'):
+        assert ('rol', "'ADMIN_PLATAFORMA'", mensaje) in casos_js(prueba_yup, constante), constante
+    assert f'"rol", "ADMIN_PLATAFORMA", "{mensaje}"' in prueba_api, 'el mismo caso y el mismo mensaje del 403 de la API'
+
+
 @pytest.mark.caso('RP-23 · pantalla.inicial da el valor con que empieza un campo al registrar, sin tocar la base: el rol empieza en Usuario final')
 def test_valor_inicial(entidades):
     archivos = generar(entidades, **CON_USUARIO)

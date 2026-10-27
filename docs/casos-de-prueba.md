@@ -22,7 +22,7 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 ## Resumen
 
 - **143 criterios de aceptación** en 26 fichas: 55 con prueba y 88 pendientes.
-- **616 pruebas:** 237 de Java (33 generadas), 273 de JavaScript (52 generadas) y 106 de Python. Una prueba parametrizada cuenta una vez.
+- **617 pruebas:** 237 de Java (33 generadas), 273 de JavaScript (52 generadas) y 107 de Python. Una prueba parametrizada cuenta una vez.
 
 | Ficha | Criterios | Con prueba | Pendientes |
 |---|---:|---:|---:|
@@ -687,6 +687,7 @@ Pruebas que no cubren un criterio de una ficha, sino una pauta del docente (RP) 
 - [`test_frontend.py`](../generador/pruebas/test_frontend.py) · la pantalla de usuario pide los textos de lo nuevo: la marca de la fila propia y los de la contraseña al editar, y el generador dice cuál falta
 - [`test_frontend.py`](../generador/pruebas/test_frontend.py) · la pantalla de usuario sale de su JSON: el correo debajo del nombre, el rol con sus valores, el formulario al lado de la lista y desactivar sin confirmación (D-34)
 - [`test_frontend.py`](../generador/pruebas/test_frontend.py) · la pantalla toma del JSON sus campos, sus columnas, los roles de cada acción y sus textos
+- [`test_frontend.py`](../generador/pruebas/test_frontend.py) · la prueba generada de Yup rechaza cada valor de una lista que existe pero el formulario no ofrece, como ADMIN_PLATAFORMA en el rol, con el mismo mensaje del 403 de la API
 - [`test_frontend.py`](../generador/pruebas/test_frontend.py) · la prueba generada de Yup rechaza el ejemplo de un patrón con algo pegado antes o después, como la API: en JavaScript, un patrón sin ^ ni $ aceptaría x900123456-8
 - [`test_frontend.py`](../generador/pruebas/test_frontend.py) · la prueba generada de Yup revisa los mismos casos de límite que la prueba generada de la API, con el mismo mensaje en español, salvo el formato del correo
 - [`test_frontend.py`](../generador/pruebas/test_frontend.py) · la prueba generada de la pantalla revisa lo nuevo de usuario: el límite de activos, la fila propia, la nota de la contraseña, la contraseña vacía al editar y el valor inicial
