@@ -4,9 +4,9 @@
  *              de cada rol, crear usuarios y empresas propios por la API para las pruebas que cambian datos,
  *              iniciar y cerrar sesión, y buscar una fila en la lista de una pantalla generada.
  * Fecha de creación: 20/10/2026
- * Actualización: 26/10/2026
+ * Actualización: 27/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 import { randomUUID } from 'node:crypto';
 import { test as base, expect } from '@playwright/test';
@@ -179,7 +179,10 @@ export async function cerrarSesion(page) {
 
 /**
  * Un botón de una fila de la lista de una pantalla generada, como «Desactivar Cacao Andino 1a2b3c4d». Las
- * páginas son de 20 registros: si no está en la que se ve, pasa a la siguiente hasta encontrarlo.
+ * páginas son de 20 registros: si no está en la que se ve, pasa a la siguiente hasta encontrarlo. Al pasar de
+ * página, el rango («21–40 de 45») cambia enseguida, pero las filas siguen siendo las de la página anterior
+ * hasta que responde la API: por eso, antes de buscar otra vez, espera que cambie la primera fila. Si no,
+ * puede encontrar el botón en filas viejas o llegar a la última página antes de que carguen sus filas.
  *
  * @param {import('@playwright/test').Page} page la página, con la lista ya cargada
  * @param {string} nombre el nombre accesible del botón
@@ -188,11 +191,14 @@ export async function cerrarSesion(page) {
 export async function botonDeLaFila(page, nombre) {
   const boton = page.getByRole('button', { name: nombre, exact: true });
   const siguiente = page.getByRole('button', { name: 'Ir a la página siguiente' });
+  // La primera fila de la tabla, en el PC, o la primera tarjeta, en el celular: de la lista con nombre, la de la
+  // pantalla, y no de otra lista de la página, como la del panel de administradores.
+  const primera = page.locator('table tbody tr, ul[role="list"][aria-label] > li').first();
   while (!(await boton.isVisible())) {
     await expect(siguiente, `«${nombre}» no está en ninguna página de la lista`).toBeEnabled();
-    const rango = await page.getByText(/^\d+–\d+ de \d+$/).textContent();
+    const antes = await primera.textContent();
     await siguiente.click();
-    await expect(page.getByText(rango, { exact: true })).toHaveCount(0);
+    await expect(primera).not.toHaveText(antes);
   }
   return boton;
 }
