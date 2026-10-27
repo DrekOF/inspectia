@@ -576,6 +576,7 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
        - D-35 (el contador de sesión) y D-36 (`@DynamicUpdate`), con la fecha en que se decidieron, el 26/10/2026. P-18 queda «Resuelto: ver D-35», y D-28 lleva una nota: el token lleva también la versión de sesión.
        - `usuario.json` cita D-35 en `version_sesion` y en la regla, cuya descripción dice ahora que la misma sentencia quita el bloqueo; lo generado se regeneró.
        - `modelo-datos.md`, el README de las entidades (`solo_lo_cambian_las_reglas` y `@DynamicUpdate`), el del generador, `infra/README.md`, sin «Relojes en local», y `frontend/README.md`, sin la nota de RF-18 C5.
+    6. **Cierre** (27/10/2026): Playwright otra vez, sobre `93d4f10`, y el `clean` en el reinicio de la base de `infra/README.md`.
   - **Problemas encontrados:**
     - **El quinto fallo seguido de RF-18 respondía, a veces, que faltaban 901 segundos de un bloqueo de 900.**
       - Lo mostró la primera corrida de las pruebas en rojo: `CambioDeContrasenaIT.cincoFallosBloquean`, que este PR no tocaba, falló con un `Retry-After` de 901, y en la corrida siguiente, otra vez.
@@ -592,9 +593,10 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
   - **Resultado:**
     - Backend: 119 pruebas unitarias y 399 de integración en verde, en la copia del entorno aislado.
     - Generador: 93 pruebas en verde, y lo generado, al día (49 archivos).
-    - Playwright, con el contador (`9a40413`): 126 en verde y 2 omitidas, las del teclado en el celular. RF-18 C5 pasó en los cuatro proyectos. Firefox se saltó en este equipo.
+    - Playwright, en el entorno aislado sobre `93d4f10`, con todo el código del PR: 126 en verde y 2 omitidas, las del teclado en el celular. RF-18 C5 pasó en los cuatro proyectos. Sobre `9a40413`, antes de los ajustes, había dado lo mismo. Firefox se saltó en este equipo.
     - Vitest: 344 en verde, y ESLint, limpio. Este PR no cambia código del frontend, solo la fecha de un archivo generado. Una corrida al mismo tiempo que la suite del backend tuvo 4 fallas, y la misma corrida sola pasó completa, en 18,6 s contra 46 s; no se guardaron los mensajes de esas fallas.
     - Casos de prueba: 541 pruebas; de los 143 criterios de las fichas, 55 tienen prueba.
+    - Recorrido: Cristhian lo hizo en su PC y estuvo bien.
 - Por qué: P-18. El corte de sesiones comparaba, en segundos enteros, la hora de emisión del token con la del cambio de contraseña, así que dependía del reloj: en este equipo, Windows atrasó la hora 2 segundos y RF-18 C5 falló (ver la entrada anterior). Con un contador, el corte no depende de la hora.
 - Cómo se pidió: Cristhian pidió primero el plan, sin código, y lo aprobó con cuatro decisiones:
   1. El token se rechaza si su versión es distinta de la de la base.
@@ -606,6 +608,7 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
   - Desbloquear la cuenta en la misma sentencia que sube la versión, con su prueba en rojo primero, y que la versión del token sea un entero ≥ 0, como decía el plan.
   - Arreglar el 901 en este PR, en commits aparte: el bean `reloj` al microsegundo, no truncar en los servicios; una prueba en rojo del bean con 1.000 lecturas, que quedaron espaciadas por la medición de arriba; comparar los `nanoTime` con una resta, por el desborde; corregir el JavaDoc de `RelojDePrueba`, anotar aquí la causa y el arreglo, y correr `cincoFallosBloquean` unas 10 veces.
   - D-35 y D-36 con la fecha en que se decidieron, el 26/10/2026, como D-31 y D-32, y el borrador del PR con el aviso de reiniciar la base local y sus pasos para PowerShell en VS Code.
+  - Antes de subir la rama: correr Playwright otra vez sobre el último commit, porque después de `9a40413` cambiaron el desbloqueo, el validador y el reloj; arrancar el backend con `.\mvnw clean spring-boot:run` en el reinicio de la base, como lo corre en PowerShell; y subir la rama después de su recorrido.
 - Archivos o PR: la rama `feature/RNF-04-contador-de-sesion`; el PR lo abre Cristhian.
 
 ## Plantilla para nuevas entradas

@@ -36,7 +36,7 @@ Si cambia `V1__esquema_inicial.sql`, quien ya tenga la base local debe reiniciar
 
 1. `docker compose -f infra/docker-compose.yml down -v`
 2. `docker compose -f infra/docker-compose.yml up -d`
-3. Arranca el backend (`./mvnw spring-boot:run` en `backend/`) y vuelve a crear el administrador con el script (ver «Primer administrador de la plataforma»).
+3. Arranca el backend con `clean`, para que no queden clases viejas de antes de regenerar: `./mvnw clean spring-boot:run` en `backend/` (en PowerShell, `.\mvnw clean spring-boot:run`). Después vuelve a crear el administrador con el script (ver «Primer administrador de la plataforma»).
 
 ## Base de las pruebas de punta a punta
 
