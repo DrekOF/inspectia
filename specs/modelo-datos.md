@@ -2,9 +2,9 @@
 Nombre: modelo-datos.md
 Descripción: Modelo de datos de InspectIA: diagrama entidad-relación, tablas con su trazabilidad a las fichas y decisiones de diseño.
 Fecha de creación: 13/10/2026
-Actualización: 20/10/2026
+Actualización: 27/10/2026
 Autor: Equipo InspectIA
-Versión: 1.6
+Versión: 1.7
 -->
 
 # Modelo de datos de InspectIA
@@ -44,7 +44,7 @@ erDiagram
         boolean activo
         integer intentos_fallidos
         timestamptz bloqueado_hasta
-        timestamptz sesiones_desde
+        integer version_sesion
     }
     rango_recomendacion {
         uuid id PK
@@ -161,7 +161,7 @@ En las tablas, «Oblig.» dice si el campo es obligatorio y «Único» si no se 
 | activo | boolean, por defecto true | Sí | — | RF-01, RF-03 |
 | intentos_fallidos | integer, por defecto 0 | Sí | — | RF-01, RNF-04 |
 | bloqueado_hasta | timestamptz | No | — | RF-01, RNF-04 |
-| sesiones_desde | timestamptz: hora del último cambio de contraseña, en segundos enteros | No | — | RNF-04, D-30 |
+| version_sesion | integer, por defecto 0 y nunca menor. Solo lo cambian las reglas: JPA lo lee, pero no lo escribe | Sí | — | RNF-04, D-30, D-35 |
 
 - El administrador de empresa gestiona los usuarios de su empresa: listar, ver, crear, editar, desactivar y reactivar (RF-03). No se borran.
 - El formulario solo ofrece los roles USUARIO_FINAL y ADMIN_EMPRESA, y el backend rechaza los demás aunque lleguen a mano a la API, sin esperar al CHECK de la base:
@@ -170,7 +170,7 @@ En las tablas, «Oblig.» dice si el campo es obligatorio y «Único» si no se 
 - Reglas (RF-03): máximo 25 usuarios activos por empresa. El administrador no puede desactivarse a sí mismo ni cambiar su propio rol, porque la empresa podría quedar sin administrador y el de la plataforma no edita usuarios.
 - Para contar los 25 activos al crear o reactivar un usuario, el backend bloquea la fila de la empresa hasta terminar (`SELECT … FOR UPDATE`). Si dos administradores lo hacen a la vez, el segundo espera al primero y cuenta con su usuario incluido, así la empresa no pasa de 25.
 - El administrador de la plataforma puede restablecer la contraseña de un administrador de empresa (RF-02).
-- Al restablecer o cambiar una contraseña, la regla `cortar_sesiones_al_cambiar_contrasena` guarda la hora en `sesiones_desde` y desbloquea la cuenta. En cada petición, un token emitido antes de esa hora responde 401 «Tu contraseña cambió: inicia sesión de nuevo» (RNF-04 C6, D-30). El token no cambia (D-28): se compara su `iat`, que va en segundos enteros, así que uno emitido en el mismo segundo del cambio sigue sirviendo.
+- Al restablecer o cambiar una contraseña, la regla `cortar_sesiones_al_cambiar_contrasena` sube `version_sesion` en uno y desbloquea la cuenta, en una sola sentencia de la base. El token lleva la versión con la que se emitió: en cada petición, uno con otra versión responde 401 «Tu contraseña cambió: inicia sesión de nuevo» (RNF-04 C6, D-30, D-35). No depende de la hora del servidor.
 - La contraseña se escribe en el formulario: de 8 a 64 caracteres y como máximo 72 bytes. Una de solo espacios se rechaza como si faltara, también al restablecerla, porque tampoco serviría para iniciar sesión. Se guarda solo su hash (RF-02, RF-03).
 - Un CHECK exige que `empresa_id` vaya vacía si y solo si el rol es ADMIN_PLATAFORMA (RNF-03).
 
@@ -350,6 +350,7 @@ Ejemplos verificados: 890903938-8 y 899999068-1.
 | PDF del lote | Se crea en la primera descarga y después se reutiliza; se borra y se rehace cuando termina la segunda muestra (RF-15, D-25). |
 | Consistencia por estado | Varios CHECK usan `num_nonnulls()` para exigir los campos de cada estado: lote ANALIZADO, muestra TERMINADA y modelo completo. |
 | Empresa en cada tabla | FK compuestas con `empresa_id`, para que la base impida mezclar empresas (RNF-03). |
+| Cambios a la vez | Las entidades de los CRUD generados llevan `@DynamicUpdate`: cada UPDATE escribe solo las columnas que cambiaron, así dos cambios a columnas distintas de la misma fila no se pisan; si dos cambian la misma columna a la vez, queda el último (D-36). Una columna que solo cambian las reglas, como `usuario.version_sesion`, JPA la lee pero no la escribe (`solo_lo_cambian_las_reglas`). |
 | Datos iniciales | El script de base de datos (RP-15) crea el primer administrador de la plataforma, con la contraseña tomada de una variable de entorno y nunca del repositorio (RF-01), y carga los modelos. Los rangos por defecto están en `rango_recomendacion.json`. |
 
 ## 6. Qué no tiene tabla

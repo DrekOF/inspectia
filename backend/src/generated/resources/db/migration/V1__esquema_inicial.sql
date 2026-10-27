@@ -2,7 +2,7 @@
 -- Descripción: Crea las tablas de InspectIA desde specs/entidades (RP-15). Archivo generado por
 --              generador/ (RP-23): no se edita a mano; se cambia el JSON o la plantilla y se regenera.
 -- Fecha de creación: 13/10/2026
--- Actualización: 26/10/2026
+-- Actualización: 27/10/2026
 -- Autor: Equipo InspectIA (generado por generador/ v1.8)
 -- Versión: 1.8
 -- Entidades: empresa 1.3, foto 1.0, grano 1.0, lote 1.0, modelo 1.0, muestra 1.0, rango_recomendacion 1.2, usuario 1.7
@@ -145,7 +145,7 @@ COMMENT ON COLUMN usuario.rol IS 'Rol (RF-01, RF-03, D-05, D-13)';
 COMMENT ON COLUMN usuario.activo IS 'Activo (RF-01, RF-03)';
 COMMENT ON COLUMN usuario.intentos_fallidos IS 'Intentos fallidos (RF-01, RNF-04)';
 COMMENT ON COLUMN usuario.bloqueado_hasta IS 'Bloqueado hasta (RF-01, RNF-04)';
-COMMENT ON COLUMN usuario.version_sesion IS 'Versión de sesión (RNF-04, D-30)';
+COMMENT ON COLUMN usuario.version_sesion IS 'Versión de sesión (RNF-04, D-30, D-35)';
 COMMENT ON COLUMN usuario.fecha_creacion IS 'Fecha de creación del registro';
 COMMENT ON COLUMN usuario.fecha_actualizacion IS 'Fecha de la última actualización; la mantiene un trigger';
 

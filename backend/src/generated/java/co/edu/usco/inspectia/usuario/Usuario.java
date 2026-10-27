@@ -4,7 +4,7 @@
  *              Archivo generado por generador/ (RP-23): no se edita a mano; se cambia el JSON
  *              o la plantilla, y se regenera.
  * Fecha de creación: 13/10/2026
- * Actualización: 26/10/2026
+ * Actualización: 27/10/2026
  * Autor: Equipo InspectIA (generado por generador/ v1.8)
  * Versión: 1.8
  * Entidades: usuario 1.7
@@ -80,7 +80,7 @@ public class Usuario {
     @Column(name = "bloqueado_hasta")
     private OffsetDateTime bloqueadoHasta;
 
-    /** Versión de sesión (RNF-04, D-30). Solo lo cambian las reglas: JPA no lo escribe. */
+    /** Versión de sesión (RNF-04, D-30, D-35). Solo lo cambian las reglas: JPA no lo escribe. */
     @Column(name = "version_sesion", nullable = false, insertable = false, updatable = false)
     private Integer versionSesion = 0;
 

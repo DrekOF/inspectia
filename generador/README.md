@@ -2,9 +2,9 @@
 Nombre: README.md (generador)
 Descripción: Qué hace el generador de InspectIA (RP-23), cómo se usa y cómo se prueba.
 Fecha de creación: 12/10/2026
-Actualización: 26/10/2026
+Actualización: 27/10/2026
 Autor: Equipo InspectIA
-Versión: 1.7
+Versión: 1.8
 -->
 
 # generador
@@ -17,7 +17,7 @@ Scripts de Python 3.13 que leen las entidades de `specs/entidades/*.json` (forma
 |---|---|---|
 | Todas las entidades | `backend/src/generated/resources/db/migration/V1__esquema_inicial.sql` | Las 8 tablas, con restricciones, índices, triggers y comentarios. Flyway la aplica al arrancar el backend (RP-15) |
 | Todas las entidades | `backend/src/generated/resources/i18n/generado.properties` y `generado_en.properties` | Etiquetas, valores de las listas y mensajes en español y en inglés (RP-11) |
-| Las entidades con CRUD | `backend/src/generated/java/.../<modulo>/` | Entidad JPA, repositorio, un `enum` por lista y los valores iniciales |
+| Las entidades con CRUD | `backend/src/generated/java/.../<modulo>/` | Entidad JPA, con `@DynamicUpdate` (D-36), repositorio, un `enum` por lista y los valores iniciales. Un atributo con `solo_lo_cambian_las_reglas` sale en la entidad sin que JPA lo escriba |
 | Las entidades de `alcance.json` | `backend/src/generated/java/.../<modulo>/` | API REST: servicio, controlador, reglas de acceso por ruta, solicitudes, respuesta, mapeador y la interfaz de las reglas |
 | Las entidades de `alcance.json` | `backend/src/test-generated/java/.../<modulo>/<Clase>ApiGeneradaIT.java` | Prueba de integración: un caso por cada permiso y cada validación del JSON, más los datos únicos y el filtro `activo` del listado (D-33). En una edición en bloque, también las filas completas, los datos de solo lectura y los valores por defecto |
 | Las entidades de `pantallas` | `frontend/src/generated/<modulo>/` | La pantalla (`<Clase>Pantalla.jsx`), el cliente de su API (`<entidad>Api.js`) y sus validaciones de Yup (`<entidad>Esquemas.js`), cada uno con su prueba de Vitest |

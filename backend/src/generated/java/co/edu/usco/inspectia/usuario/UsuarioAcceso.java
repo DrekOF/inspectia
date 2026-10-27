@@ -4,7 +4,7 @@
  *              Archivo generado por generador/ (RP-23): no se edita a mano; se cambia el JSON
  *              o la plantilla, y se regenera.
  * Fecha de creación: 13/10/2026
- * Actualización: 26/10/2026
+ * Actualización: 27/10/2026
  * Autor: Equipo InspectIA (generado por generador/ v1.8)
  * Versión: 1.8
  * Entidades: usuario 1.7
