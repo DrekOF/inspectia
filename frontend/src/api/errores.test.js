@@ -46,6 +46,16 @@ describe('texto de un error', () => {
     expect(textoDelError(error, i18n.t)).toBe('La primera regla no deja guardar. La segunda tampoco.');
   });
 
+  it('RNF-06 · C3 · con errores de campos y de reglas sin campo, el texto tiene solo los de las reglas: los de los campos van en sus campos', () => {
+    const error = new ErrorDeApi({ estado: 400, detalle: 'Revisa los datos marcados.', errores: [
+      { campo: 'correo', mensaje: 'Escribe un correo válido.' },
+      { campo: null, mensaje: 'La empresa ya tiene 25 usuarios activos: desactiva uno antes de crear o reactivar otro.' },
+    ] });
+
+    expect(textoDelError(error, i18n.t))
+      .toBe('La empresa ya tiene 25 usuarios activos: desactiva uno antes de crear o reactivar otro.');
+  });
+
   it('RNF-06 · C3 · sin conexión dice que no se pudo conectar con el servidor y que revise la conexión', () => {
     expect(textoDelError(new ErrorDeApi({ estado: 0 }), i18n.t)).toBe(SIN_CONEXION);
   });

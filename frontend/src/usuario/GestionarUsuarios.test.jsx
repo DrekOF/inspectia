@@ -14,6 +14,7 @@
 import { screen, within } from '@testing-library/react';
 import { http } from 'msw';
 import { describe, expect, it } from 'vitest';
+import i18n from '../i18n/i18n.js';
 import { abrirApp, conSesion, USUARIOS } from '../pruebas/ayudas.jsx';
 import { apiSimulada } from '../pruebas/crud.js';
 import { anchoDePantalla } from '../pruebas/preparacion.js';
@@ -331,17 +332,29 @@ describe('gestionar los usuarios de la empresa (RF-03)', () => {
     expect(simulada.registros).toHaveLength(3);
   });
 
-  it('RF-03 · C11 · al editar su propia fila no aparece la contraseña: el mensaje de la regla es un enlace a «Cambiar contraseña»', async () => {
+  it('RF-03 · C11 · al editar su propia fila no aparece la contraseña: el mensaje de la regla lleva a «Cambiar contraseña», con el enlace en su nombre', async () => {
     const { usuario } = abrirUsuarios();
 
     await usuario.click(await screen.findByRole('button', { name: 'Editar a Ana Pérez' }));
     const formulario = screen.getByRole('form', { name: 'Editar usuario' });
     expect(within(formulario).queryByLabelText('Contraseña nueva')).not.toBeInTheDocument();
-    const enlace = within(formulario).getByRole('link', { name: MENSAJES.contrasenaPropia });
+    const enlace = within(formulario).getByRole('link', { name: 'Cambiar contraseña' });
+    expect(enlace.closest('p').textContent).toBe(MENSAJES.contrasenaPropia);
     expect(enlace).toHaveAttribute('href', '/cambiar-contrasena');
     await usuario.click(enlace);
 
     expect(await screen.findByRole('heading', { name: 'Cambiar contraseña', level: 1 })).toBeInTheDocument();
+  });
+
+  it('RF-03 · C11 · en inglés, el enlace del mensaje también va en el nombre de la página, «Change password»', async () => {
+    await i18n.changeLanguage('en');
+    const { usuario } = abrirUsuarios();
+
+    await usuario.click(await screen.findByRole('button', { name: 'Edit Ana Pérez' }));
+    const enlace = within(screen.getByRole('form', { name: 'Edit user' })).getByRole('link', { name: 'Change password' });
+
+    expect(enlace.closest('p').textContent).toBe('To change your own password, use “Change password”.');
+    expect(enlace).toHaveAttribute('href', '/cambiar-contrasena');
   });
 
   it('RF-03 · al restablecer la contraseña de otra persona, la nota de D-30 aparece al escribirla, debajo de los campos, y se va si se borra', async () => {

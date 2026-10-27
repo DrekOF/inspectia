@@ -1,20 +1,15 @@
 /*
  * Nombre: reglas.js
  * Descripción: Reglas de los datos que se revisan antes de enviarlos, iguales a las del backend: un dato en
- *              blanco y los límites de una contraseña nueva (RF-18 C3 y C4), y lo que usan las validaciones de
- *              Yup de las pantallas generadas: recortar y pasar a minúsculas como la API antes de validar, un
- *              dato lleno y el máximo de bytes (RP-07, RP-23).
+ *              blanco y las reglas de una contraseña nueva, con los límites del JSON de usuario (RF-18 C3 y
+ *              C4), y lo que usan las validaciones de Yup de las pantallas generadas: recortar y pasar a
+ *              minúsculas como la API antes de validar, un dato lleno, uno opcional que no llega en blanco, el
+ *              texto vacío como ausente y el máximo de bytes (RP-07, RP-23).
  * Fecha de creación: 20/10/2026
- * Actualización: 26/10/2026
+ * Actualización: 27/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
-
-/**
- * Límites de una contraseña nueva, los mismos del backend: de 8 a 64 caracteres y como máximo 72 bytes,
- * porque BCrypt solo usa 72 (RF-18).
- */
-export const CONTRASENA = { minimo: 8, maximo: 64, maximoBytes: 72 };
 
 const codificador = new TextEncoder();
 
@@ -44,13 +39,15 @@ export function enBlanco(texto) {
  * Qué reglas cumple una contraseña nueva, para mostrarlas mientras se escribe (RF-18 C3 y C4).
  *
  * @param {string} contrasena la contraseña nueva
+ * @param {{ minimo: number, maximo: number, maximoBytes: number }} limites sus límites, los del JSON de usuario
+ *   (LIMITES.contrasena, generado): de 8 a 64 caracteres y como máximo 72 bytes, porque BCrypt solo usa 72
  * @returns {{ largo: boolean, bytes: boolean, espacios: boolean }} si cumple el largo, los bytes y si tiene
  *   algo más que espacios
  */
-export function reglasDeContrasena(contrasena) {
+export function reglasDeContrasena(contrasena, limites) {
   return {
-    largo: contrasena.length >= CONTRASENA.minimo && contrasena.length <= CONTRASENA.maximo,
-    bytes: bytesUtf8(contrasena) <= CONTRASENA.maximoBytes,
+    largo: contrasena.length >= limites.minimo && contrasena.length <= limites.maximo,
+    bytes: bytesUtf8(contrasena) <= limites.maximoBytes,
     espacios: !enBlanco(contrasena),
   };
 }
@@ -119,6 +116,29 @@ export function lleno(valor) {
     return !enBlanco(valor);
   }
   return valor !== undefined && valor !== null;
+}
+
+/**
+ * Si un dato opcional que llega no está en blanco, como `@NoEnBlanco` en la API, que responde lo mismo que
+ * `@NotBlank`. Si falta, lo deja pasar: es opcional.
+ *
+ * @param {unknown} valor el valor del campo
+ * @returns {boolean} si falta o no está en blanco
+ */
+export function noEnBlanco(valor) {
+  return valor === undefined || valor === null || lleno(valor);
+}
+
+/**
+ * Un texto vacío cuenta como ausente, como el dato que no llega a la API. Así no se revisa un dato opcional vacío,
+ * como la contraseña al editar, y una lista obligatoria vacía da el error de obligatorio y no el de sus valores:
+ * Yup revisa oneOf antes que las demás pruebas, y lo ausente lo deja pasar.
+ *
+ * @param {unknown} valor el valor del campo
+ * @returns {unknown} undefined si es un texto vacío, o el valor como llegó
+ */
+export function vacioComoAusente(valor) {
+  return valor === '' ? undefined : valor;
 }
 
 /**

@@ -1,13 +1,13 @@
 /*
  * Nombre: registros.test.js
  * Descripción: Pruebas de lo que calcula la pantalla de registros generada: qué acciones ve cada rol según su
- *              JSON (RNF-04), el resumen de la lista en singular y en plural, los valores de una fila para sus
- *              textos y los errores de la API de un campo dentro de un grupo, como el correo del primer
- *              administrador (RP-23).
+ *              JSON (RNF-04), el resumen de la lista en singular y en plural, también con el máximo de activos,
+ *              los valores de una fila para sus textos y los errores de la API de un campo dentro de un grupo,
+ *              como el correo del primer administrador (RP-23).
  * Fecha de creación: 26/10/2026
- * Actualización: 26/10/2026
+ * Actualización: 27/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 import { describe, expect, it } from 'vitest';
 import i18n from '../i18n/i18n.js';
@@ -58,6 +58,28 @@ describe('resumen de la lista', () => {
     } finally {
       await i18n.changeLanguage('es');
     }
+  });
+
+  it.each([
+    [5, '5 de 25 usuarios activos, contándote a ti.'],
+    [1, '1 de 25 usuarios activos, contándote a ti.'],
+  ])('RP-23 · con límite de activos, el resumen cuenta los activos contra el máximo y solo lo que usa su frase: %i activos',
+    (activos, frase) => {
+      const resumen = { frase: 'usuario.pantalla.resumen', activos: 'usuario.pantalla.resumen_activos' };
+
+      expect(resumenDeRegistros(i18n.t, resumen, { total: activos + 1, activos, maximo: 25 })).toBe(frase);
+    });
+
+  it('RP-23 · la frase del resumen también recibe el máximo de activos, y solo se piden los textos que ella usa', () => {
+    const pedidos = [];
+    const t = (clave, valores) => {
+      pedidos.push(clave);
+      return clave === 'frase' ? `${valores.activos}; máximo ${valores.maximo}` : `${valores.cantidad}`;
+    };
+
+    expect(resumenDeRegistros(t, { frase: 'frase', activos: 'activos' }, { total: 6, activos: 5, maximo: 25 }))
+      .toBe('5; máximo 25');
+    expect(pedidos).toEqual(['activos.plural', 'frase']);
   });
 
   it('RP-23 · si el JSON no trae los textos del resumen, la pantalla no muestra resumen', () => {

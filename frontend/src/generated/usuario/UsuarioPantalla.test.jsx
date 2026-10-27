@@ -30,6 +30,14 @@ const OTRO_REGISTRO = { id: '0199e2a0-0000-7000-8000-0000000000a2', nombre: 'Ana
 /** Lo que necesita saber la API simulada. */
 const OPCIONES = { atributoActivo: 'activo' };
 
+/**
+ * El párrafo que dice un texto completo, aunque una parte de él sea un enlace.
+ *
+ * @param {string} texto el texto
+ * @returns {HTMLElement} el párrafo
+ */
+const parrafoCon = (texto) => screen.getByText((_, elemento) => elemento?.tagName === 'P' && elemento.textContent === texto);
+
 describe('pantalla de usuario (generada)', () => {
   it('RF-03 · la pantalla de usuario muestra sus registros y su resumen', async () => {
     conSesion(USUARIOS.ADMIN_EMPRESA);
@@ -171,7 +179,8 @@ describe('pantalla de usuario (generada)', () => {
     expect(screen.getByLabelText('Rol')).toBeDisabled();
     expect(screen.getByText('No puedes cambiar tu propio rol.')).toBeInTheDocument();
     expect(screen.queryByLabelText('Contraseña nueva')).toBeNull();
-    expect(screen.getByText('Para cambiar tu propia contraseña, usa «Cambiar contraseña».')).toBeInTheDocument();
+    expect(within(parrafoCon('Para cambiar tu propia contraseña, usa «Cambiar contraseña».')).getByRole('link', { name: 'Cambiar contraseña' }))
+      .toHaveAttribute('href', '/cambiar-contrasena');
   });
 
   it('RF-03 · al editar a otra persona, la nota de la contraseña aparece al escribir una nueva', async () => {

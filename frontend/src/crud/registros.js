@@ -1,12 +1,13 @@
 /*
  * Nombre: registros.js
  * Descripción: Lo que calcula la pantalla de registros generada a partir de lo que dice su JSON (RP-23): qué
- *              acciones ve cada rol (RNF-04), el resumen de la lista en singular y en plural, los valores de una
- *              fila para sus textos y los errores de la API de un campo dentro de un grupo.
+ *              acciones ve cada rol (RNF-04), el resumen de la lista en singular y en plural, con el máximo de
+ *              activos si la pantalla tiene límite, los valores de una fila para sus textos y los errores de la
+ *              API de un campo dentro de un grupo.
  * Fecha de creación: 26/10/2026
- * Actualización: 26/10/2026
+ * Actualización: 27/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 import { setIn } from 'formik';
 
@@ -34,33 +35,35 @@ export function puede(operaciones, rol, operacion) {
  * @param {Traducir} t la función de traducción
  * @param {string} clave la clave del texto, sin su forma, como empresa.pantalla.resumen_total
  * @param {number} cantidad cuántos son
+ * @param {object} [valores] los demás valores del texto, como el máximo en «5 de 25 usuarios activos»
  * @returns {string} el texto
  */
-export function textoContado(t, clave, cantidad) {
-  return t(`${clave}.${cantidad === 1 ? 'singular' : 'plural'}`, { cantidad });
+export function textoContado(t, clave, cantidad, valores = {}) {
+  return t(`${clave}.${cantidad === 1 ? 'singular' : 'plural'}`, { ...valores, cantidad });
 }
 
+/** Lo que puede contar el resumen: los registros, los activos y los desactivados. */
+const PARTES_DEL_RESUMEN = ['total', 'activos', 'inactivos'];
+
 /**
- * El resumen de la lista, como «7 empresas registradas: 6 activas y 1 desactivada.», o null si el JSON no trae sus
- * textos.
+ * El resumen de la lista, como «7 empresas registradas: 6 activas y 1 desactivada.» o «5 de 25 usuarios activos,
+ * contándote a ti.», o null si el JSON no trae sus textos. Cuenta solo lo que usa su frase.
  *
  * @param {Traducir} t la función de traducción
- * @param {{ frase: string, total: string, activos?: string, inactivos?: string }|null} resumen las claves de sus
+ * @param {{ frase: string, total?: string, activos?: string, inactivos?: string }|null} resumen las claves de sus
  *   textos: la frase y lo que cuenta
- * @param {{ total: number, activos?: number }} cuentas cuántos registros hay y, si la entidad se desactiva,
- *   cuántos están activos
+ * @param {{ total: number, activos?: number, maximo?: number }} cuentas cuántos registros hay; si la entidad se
+ *   desactiva, cuántos están activos; y si la pantalla tiene límite de activos, su máximo
  * @returns {string|null} el resumen
  */
-export function resumenDeRegistros(t, resumen, { total, activos }) {
+export function resumenDeRegistros(t, resumen, { total, activos, maximo }) {
   if (!resumen) {
     return null;
   }
-  const partes = { total: textoContado(t, resumen.total, total) };
-  if (resumen.activos) {
-    partes.activos = textoContado(t, resumen.activos, activos);
-    partes.inactivos = textoContado(t, resumen.inactivos, total - activos);
-  }
-  return t(resumen.frase, partes);
+  const cuentas = { total, activos, inactivos: total - activos };
+  const partes = Object.fromEntries(PARTES_DEL_RESUMEN.filter((parte) => resumen[parte])
+    .map((parte) => [parte, textoContado(t, resumen[parte], cuentas[parte], { maximo })]));
+  return t(resumen.frase, { ...partes, maximo });
 }
 
 /**

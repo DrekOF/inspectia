@@ -39,6 +39,16 @@ const OTRO_REGISTRO = {{ p.otro_registro }};
 
 /** Lo que necesita saber la API simulada. */
 const OPCIONES = { atributoActivo: {{ atributo_activo }} };
+{% if p.fila_propia and p.fila_propia.campos | selectattr('oculto') | list %}
+
+/**
+ * El párrafo que dice un texto completo, aunque una parte de él sea un enlace.
+ *
+ * @param {string} texto el texto
+ * @returns {HTMLElement} el párrafo
+ */
+const parrafoCon = (texto) => screen.getByText((_, elemento) => elemento?.tagName === 'P' && elemento.textContent === texto);
+{% endif %}
 
 describe('pantalla de {{ entidad }} (generada)', () => {
   it('{{ ficha }} · la pantalla de {{ entidad }} muestra sus registros{{ ' y su resumen' if p.resumen else '' }}', async () => {
@@ -210,10 +220,12 @@ describe('pantalla de {{ entidad }} (generada)', () => {
 {% for c in p.fila_propia.campos %}
 {% if c.oculto %}
     expect(screen.queryByLabelText({{ c.etiqueta | js }})).toBeNull();
+    expect(within(parrafoCon({{ c.mensaje | js }})).getByRole('link', { name: 'Cambiar contraseña' }))
+      .toHaveAttribute('href', '/cambiar-contrasena');
 {% else %}
     expect(screen.getByLabelText({{ c.etiqueta | js }})).toBeDisabled();
-{% endif %}
     expect(screen.getByText({{ c.mensaje | js }})).toBeInTheDocument();
+{% endif %}
 {% endfor %}
   });
 {% endif %}

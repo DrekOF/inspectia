@@ -431,6 +431,9 @@ def test_pruebas_generadas_de_usuario(entidades):
                    'RF-03 · al editar sin escribir una contraseña, no la envía y queda la que había',
                    'RF-03 · el formulario para registrar empieza con los valores iniciales del JSON'):
         assert titulo in prueba
+    assert ("expect(within(parrafoCon('Para cambiar tu propia contraseña, usa «Cambiar contraseña».'))"
+            ".getByRole('link', { name: 'Cambiar contraseña' })) .toHaveAttribute('href', '/cambiar-contrasena');"
+            ) in compacto(prueba), 'el enlace va solo en el nombre de la página, y la frase se revisa completa'
 
 
 @pytest.mark.caso('RP-23 · la pantalla de usuario pide los textos de lo nuevo: la marca de la fila propia y los de la contraseña al editar, y el generador dice cuál falta')
