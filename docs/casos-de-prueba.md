@@ -22,7 +22,7 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 ## Resumen
 
 - **143 criterios de aceptación** en 26 fichas: 55 con prueba y 88 pendientes.
-- **541 pruebas:** 237 de Java (33 generadas), 211 de JavaScript (23 generadas) y 93 de Python. Una prueba parametrizada cuenta una vez.
+- **553 pruebas:** 237 de Java (33 generadas), 211 de JavaScript (23 generadas) y 105 de Python. Una prueba parametrizada cuenta una vez.
 
 | Ficha | Criterios | Con prueba | Pendientes |
 |---|---:|---:|---:|
@@ -640,18 +640,26 @@ Pruebas que no cubren un criterio de una ficha, sino una pauta del docente (RP) 
 - [`registros.test.js`](../frontend/src/crud/registros.test.js) · un texto que se cuenta va en singular solo con uno
 - [`pantallasGeneradas.test.jsx`](../frontend/src/navegacion/pantallasGeneradas.test.jsx) · una pantalla generada con un ícono que el menú no conoce sale con uno genérico
 - [`pantallasGeneradas.test.jsx`](../frontend/src/navegacion/pantallasGeneradas.test.jsx) · una pantalla generada que menu.js no nombra entra al final del menú de los roles de su listar
-- [`test_frontend.py`](../generador/pruebas/test_frontend.py) · alcance.json dice qué entidades tienen pantalla: empresa (RF-02) y solo entidades con API
+- [`test_frontend.py`](../generador/pruebas/test_frontend.py) · alcance.json dice qué entidades tienen pantalla: empresa (RF-02), usuario (RF-03) y solo entidades con API
 - [`test_frontend.py`](../generador/pruebas/test_frontend.py) · cada entidad de pantallas en alcance.json tiene su pantalla, su cliente de la API, sus esquemas de Yup y sus pruebas; las demás, no
+- [`test_frontend.py`](../generador/pruebas/test_frontend.py) · con limite_de_activos, la pantalla recibe el máximo y el mensaje de su regla: el resumen cuenta los activos contra el máximo y solo pide los textos que usa su frase (RF-03 C5, D-34)
 - [`test_frontend.py`](../generador/pruebas/test_frontend.py) · desactivar pide confirmación solo si pantalla.textos trae su texto (D-34): la empresa lo trae
 - [`test_frontend.py`](../generador/pruebas/test_frontend.py) · el cliente de la API de una pantalla usa la ruta y las operaciones del JSON, y el listado filtra por activo (D-33)
 - [`test_frontend.py`](../generador/pruebas/test_frontend.py) · el formato del correo se valida solo en el backend, como el dígito del NIT: Yup no lo revisa y su error llega al campo al guardar
 - [`test_frontend.py`](../generador/pruebas/test_frontend.py) · el generador se detiene con una pantalla que todavía no sabe generar o a la que le faltan textos, y dice qué falta
+- [`test_frontend.py`](../generador/pruebas/test_frontend.py) · la pantalla de usuario pide los textos de lo nuevo: la marca de la fila propia y los de la contraseña al editar, y el generador dice cuál falta
+- [`test_frontend.py`](../generador/pruebas/test_frontend.py) · la pantalla de usuario sale de su JSON: el correo debajo del nombre, el rol con sus valores, el formulario al lado de la lista y desactivar sin confirmación (D-34)
 - [`test_frontend.py`](../generador/pruebas/test_frontend.py) · la pantalla toma del JSON sus campos, sus columnas, los roles de cada acción y sus textos
 - [`test_frontend.py`](../generador/pruebas/test_frontend.py) · la prueba generada de Yup rechaza el ejemplo de un patrón con algo pegado antes o después, como la API: en JavaScript, un patrón sin ^ ni $ aceptaría x900123456-8
 - [`test_frontend.py`](../generador/pruebas/test_frontend.py) · la prueba generada de Yup revisa los mismos casos de límite que la prueba generada de la API, con el mismo mensaje en español, salvo el formato del correo
+- [`test_frontend.py`](../generador/pruebas/test_frontend.py) · la prueba generada de la pantalla revisa lo nuevo de usuario: el límite de activos, la fila propia, la nota de la contraseña, la contraseña vacía al editar y el valor inicial
+- [`test_frontend.py`](../generador/pruebas/test_frontend.py) · las reglas en_la_fila_propia se aplican en la pantalla antes que en la API: la fila de quien tiene la sesión lleva su marca y no tiene las acciones que impiden, y al editarla los campos que impiden no se cambian y muestran el mensaje de la regla (RF-03 C7, C8 y C11)
 - [`test_frontend.py`](../generador/pruebas/test_frontend.py) · las validaciones del JSON pasan a Yup con la misma clave de mensaje, la propia del atributo o la general, y en el orden en que la API escoge el error de un campo: primero el dato que falta y después por el nombre de la restricción
+- [`test_frontend.py`](../generador/pruebas/test_frontend.py) · los esquemas generados exportan los límites de cada campo, los del JSON, para que una página escrita a mano, como Cambiar contraseña (RF-18), no los copie
 - [`test_frontend.py`](../generador/pruebas/test_frontend.py) · los mensajes de resultado salen de pantalla.textos con el valor de la fila, como «Se guardó {nombre}.», y la prueba generada los toma del JSON
+- [`test_frontend.py`](../generador/pruebas/test_frontend.py) · pantalla.inicial da el valor con que empieza un campo al registrar, sin tocar la base: el rol empieza en Usuario final
 - [`test_frontend.py`](../generador/pruebas/test_frontend.py) · un valor que falla por dos validaciones da en Yup el mismo error que en la API: el NIT largo y mal escrito, el del patrón, y la contraseña con demasiadas eñes, el de los bytes
+- [`test_frontend.py`](../generador/pruebas/test_frontend.py) · una contraseña opcional al editar va en el formulario: vacía no se envía y queda la que había; si llega, no puede estar en blanco y cumple las mismas validaciones, en el orden de la API
 - [`test_frontend.py`](../generador/pruebas/test_frontend.py) · una pantalla necesita la API de su entidad: el alcance no acepta una pantalla sin API ni de una entidad que no existe
 - [`test_java.py`](../generador/pruebas/test_java.py) · cada CRUD tiene persistencia y solo las entidades del alcance tienen API
 - [`test_java.py`](../generador/pruebas/test_java.py) · cada entidad generada lleva @DynamicUpdate: cada UPDATE escribe solo las columnas que cambiaron, así dos cambios a columnas distintas de la misma fila no se pisan
@@ -693,6 +701,9 @@ Pruebas que no cubren un criterio de una ficha, sino una pauta del docente (RP) 
 - [`test_salida.py`](../generador/pruebas/test_salida.py) · generar borra de las carpetas generadas lo que ya no se genera
 - [`test_salida.py`](../generador/pruebas/test_salida.py) · la salida es determinista y usa finales de línea LF
 - [`test_salida.py`](../generador/pruebas/test_salida.py) · lo generado no lleva valores de Python: un booleano sale como true o false, también en los ejemplos de OpenAPI y en el frontend, y nada sale como None
+- [`test_validacion.py`](../generador/pruebas/test_validacion.py) · el resumen y el texto de los activos pueden usar {maximo}, el de la regla de limite_de_activos, solo si la pantalla la declara
+- [`test_validacion.py`](../generador/pruebas/test_validacion.py) · en_la_fila_propia va solo en usuario, la entidad de quien tiene la sesión: en una regla de desactivar sin atributo o en una de editar atada a un atributo del formulario
+- [`test_validacion.py`](../generador/pruebas/test_validacion.py) · la validación conoce los textos de la fila propia y de la contraseña al editar; la nota de la contraseña de otra persona usa los valores de la fila, como {nombre}
 - [`test_validacion.py`](../generador/pruebas/test_validacion.py) · la validación detecta un CHECK con un valor que no está en ninguna lista
 - [`test_validacion.py`](../generador/pruebas/test_validacion.py) · la validación detecta una ficha que no existe en specs/
 - [`test_validacion.py`](../generador/pruebas/test_validacion.py) · la validación detecta una referencia a una entidad que no existe
@@ -701,6 +712,7 @@ Pruebas que no cubren un criterio de una ficha, sino una pauta del docente (RP) 
 - [`test_validacion.py`](../generador/pruebas/test_validacion.py) · la validación rechaza solo_lo_cambian_las_reglas donde no serviría: en un atributo del formulario, en una entidad sin CRUD y en un atributo obligatorio sin por_defecto
 - [`test_validacion.py`](../generador/pruebas/test_validacion.py) · la validación rechaza un mensaje con un marcador que no está en validaciones
 - [`test_validacion.py`](../generador/pruebas/test_validacion.py) · la validación revisa la clave pantalla: claves conocidas, textos en español y en inglés, singular y plural donde se cuenta, y marcadores que existen
+- [`test_validacion.py`](../generador/pruebas/test_validacion.py) · la validación revisa las claves nuevas de pantalla: formulario encima o al lado, limite_de_activos con una regla de validación con maximo en crear o reactivar, e inicial con valores que el formulario ofrece
 - [`test_validacion.py`](../generador/pruebas/test_validacion.py) · la validación revisa que el ejemplo de un atributo cumpla sus validaciones
 - [`test_validacion.py`](../generador/pruebas/test_validacion.py) · los JSON de specs/entidades pasan la validación
 - [`test_validacion.py`](../generador/pruebas/test_validacion.py) · un atributo con solo_lectura_si puede traer su mensaje; uno sin solo_lectura_si, no
