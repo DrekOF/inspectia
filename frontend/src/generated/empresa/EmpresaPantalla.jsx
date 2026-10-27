@@ -5,9 +5,9 @@
  *              o la plantilla, y se regenera.
  * Fecha de creación: 13/10/2026
  * Actualización: 27/10/2026
- * Autor: Equipo InspectIA (generado por generador/ v1.8)
- * Versión: 1.8
- * Entidades: empresa 1.3, usuario 1.7
+ * Autor: Equipo InspectIA (generado por generador/ v1.9)
+ * Versión: 1.9
+ * Entidades: empresa 1.3, usuario 1.8
  */
 import { useTranslation } from 'react-i18next';
 import { CampoContrasena } from '../../componentes/CampoContrasena.jsx';
@@ -18,8 +18,9 @@ import * as api from './empresaApi.js';
 import { esquemaParaCrear, esquemaParaEditar } from './empresaEsquemas.js';
 
 /**
- * Lo que dice de la pantalla specs/entidades/empresa.json: los roles de cada acción, las columnas de la lista
- * y las claves de sus textos, o null los que el JSON no trae.
+ * Lo que dice de la pantalla specs/entidades/empresa.json: los roles de cada acción, las columnas de la lista,
+ * las claves de sus textos, dónde va el formulario, el límite de activos y la fila de quien tiene la sesión, o null
+ * lo que el JSON no trae.
  *
  * @type {import('../../crud/PantallaDeRegistros.jsx').DescripcionDePantalla}
  */
@@ -40,6 +41,7 @@ const PANTALLA = {
     crear: 'empresa.pantalla.crear',
     tituloEditar: 'empresa.pantalla.titulo_editar',
     notaFormulario: 'empresa.pantalla.nota_formulario',
+    notaContrasenaDeOtro: null,
     tituloLista: 'empresa.pantalla.titulo_lista',
     activo: 'empresa.pantalla.activo',
     inactivo: 'empresa.pantalla.inactivo',
@@ -53,6 +55,9 @@ const PANTALLA = {
     resumen: { frase: 'empresa.pantalla.resumen', total: 'empresa.pantalla.resumen_total', activos: 'empresa.pantalla.resumen_activos', inactivos: 'empresa.pantalla.resumen_inactivos' },
   },
   confirmarDesactivar: { titulo: 'empresa.pantalla.confirmar_desactivar', detalle: 'empresa.pantalla.confirmar_desactivar_detalle' },
+  formulario: 'encima',
+  limiteDeActivos: null,
+  filaPropia: null,
 };
 
 /** Los campos del formulario para registrar, en orden: se llaman como en la API, también en sus errores. */
@@ -62,7 +67,7 @@ const CAMPOS_PARA_CREAR = ['nombre', 'nit', 'ciudad', 'administrador.nombre', 'a
 const CAMPOS_PARA_EDITAR = ['nombre', 'nit', 'ciudad'];
 
 /**
- * Los valores de un registro nuevo: vacíos, o el valor por defecto del JSON.
+ * Los valores de un registro nuevo: vacíos, el valor por defecto del JSON o el de pantalla.inicial.
  *
  * @returns {object} los valores del formulario
  */

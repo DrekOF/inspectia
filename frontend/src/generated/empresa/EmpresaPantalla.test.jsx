@@ -6,9 +6,9 @@
  *              o la plantilla, y se regenera.
  * Fecha de creación: 13/10/2026
  * Actualización: 27/10/2026
- * Autor: Equipo InspectIA (generado por generador/ v1.8)
- * Versión: 1.8
- * Entidades: empresa 1.3, usuario 1.7
+ * Autor: Equipo InspectIA (generado por generador/ v1.9)
+ * Versión: 1.9
+ * Entidades: empresa 1.3, usuario 1.8
  */
 import { screen, within } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';

@@ -4,9 +4,9 @@
                lista y su resumen, registrar y editar, los errores de la API en su campo, desactivar y
                reactivar, quién la abre, sin conexión y un dato con HTML (RP-12, RP-13, RP-23).
   Fecha de creación: 26/10/2026
-  Actualización: 26/10/2026
+  Actualización: 27/10/2026
   Autor: Equipo InspectIA
-  Versión: 1.0
+  Versión: 1.1
 #}
 {% from 'frontend/_macros.j2' import encabezado %}
 {% set p = prueba %}
@@ -160,6 +160,106 @@ describe('pantalla de {{ entidad }} (generada)', () => {
     expect(simulada.peticiones.filter(({ metodo }) => metodo === 'POST').map(({ ruta }) => ruta)).toEqual([
       `${API}/${REGISTRO.id}/desactivar`, `${API}/${OTRO_REGISTRO.id}/reactivar`,
     ]);
+  });
+{% endif %}
+{% if p.limite %}
+
+  it('{{ ficha }} · al llegar al máximo de activos de su regla, no deja registrar ni reactivar y muestra el mensaje de la regla', async () => {
+    conSesion(USUARIOS.{{ p.rol }});
+    const activos = Array.from({ length: {{ p.limite.maximo }} }, (_, posicion) => ({
+      ...REGISTRO, id: `0199e2a0-0000-7000-8000-${String(posicion + 100).padStart(12, '0')}`,
+      {{ p.clave_del_nombre }}: `Activo ${posicion + 1}`,
+    }));
+    apiSimulada(API, [OTRO_REGISTRO, ...activos], OPCIONES);
+    abrirApp(RUTA);
+
+    expect(await screen.findByText({{ p.limite.mensaje | js }})).toBeInTheDocument();
+{% if registra %}
+    expect(screen.getByRole('button', { name: {{ p.nuevo | js }} })).toBeDisabled();
+{% endif %}
+{% if p.puede.reactivar and p.reactivar_fila %}
+    expect(screen.getByRole('button', { name: {{ p.reactivar_fila | js }} })).toBeDisabled();
+{% endif %}
+  });
+{% endif %}
+{% if p.fila_propia %}
+
+  it('{{ ficha }} · la fila de quien tiene la sesión lleva su marca y no tiene las acciones que impiden sus reglas', async () => {
+    conSesion(USUARIOS.{{ p.rol }});
+    apiSimulada(API, [{ ...REGISTRO, id: USUARIOS.{{ p.rol }}.id }, { ...OTRO_REGISTRO{{ ', ' ~ activo_js ~ ': true' if activo_js else '' }} }], OPCIONES);
+    abrirApp(RUTA);
+
+    const tabla = await screen.findByRole('table', { name: {{ p.titulo_lista | js }} });
+    const propia = within(tabla).getByText({{ p.nombre | js }}).closest('tr');
+    expect(within(propia).getByText({{ p.fila_propia.marca | js }})).toBeInTheDocument();
+{% for nombre in p.fila_propia.sin_acciones %}
+    expect(within(propia).queryByRole('button', { name: {{ nombre | js }} })).toBeNull();
+{% endfor %}
+{% for nombre in p.fila_propia.en_otra %}
+    expect(within(tabla).getByRole('button', { name: {{ nombre | js }} })).toBeInTheDocument();
+{% endfor %}
+  });
+{% if p.puede.editar and p.fila_propia.campos %}
+
+  it('{{ ficha }} · al editar la fila propia, los campos que impiden sus reglas no se cambian y muestran el mensaje de la regla', async () => {
+    conSesion(USUARIOS.{{ p.rol }});
+    apiSimulada(API, [{ ...REGISTRO, id: USUARIOS.{{ p.rol }}.id }], OPCIONES);
+    const { usuario } = abrirApp(RUTA);
+
+    await usuario.click(await screen.findByRole('button', { name: {{ p.editar_fila | js }} }));
+{% for c in p.fila_propia.campos %}
+{% if c.oculto %}
+    expect(screen.queryByLabelText({{ c.etiqueta | js }})).toBeNull();
+{% else %}
+    expect(screen.getByLabelText({{ c.etiqueta | js }})).toBeDisabled();
+{% endif %}
+    expect(screen.getByText({{ c.mensaje | js }})).toBeInTheDocument();
+{% endfor %}
+  });
+{% endif %}
+{% endif %}
+{% if p.nota_contrasena and p.puede.editar %}
+
+  it('{{ ficha }} · al editar a otra persona, la nota de la contraseña aparece al escribir una nueva', async () => {
+    conSesion(USUARIOS.{{ p.rol }});
+    apiSimulada(API, [REGISTRO], OPCIONES);
+    const { usuario } = abrirApp(RUTA);
+
+    await usuario.click(await screen.findByRole('button', { name: {{ p.editar_fila | js }} }));
+    expect(screen.queryByText({{ p.nota_contrasena.nota | js }})).toBeNull();
+    await usuario.type(screen.getByLabelText({{ p.nota_contrasena.etiqueta | js }}), {{ p.nota_contrasena.valor | js }});
+
+    expect(await screen.findByText({{ p.nota_contrasena.nota | js }})).toBeInTheDocument();
+  });
+{% endif %}
+{% if p.opcionales_al_editar and p.puede.editar %}
+
+  it('{{ ficha }} · al editar sin escribir una contraseña, no la envía y queda la que había', async () => {
+    conSesion(USUARIOS.{{ p.rol }});
+    const simulada = apiSimulada(API, [REGISTRO], OPCIONES);
+    const { usuario } = abrirApp(RUTA);
+
+    await usuario.click(await screen.findByRole('button', { name: {{ p.editar_fila | js }} }));
+    await usuario.click(screen.getByRole('button', { name: 'Guardar cambios' }));
+
+    expect(await screen.findByText({{ p.al_guardar | js }})).toBeInTheDocument();
+    const { cuerpo } = simulada.peticiones.find(({ metodo }) => metodo === 'PUT');
+{% for campo in p.opcionales_al_editar %}
+    expect(cuerpo.{{ campo }}).toBeNull();
+{% endfor %}
+  });
+{% endif %}
+{% if p.iniciales and registra %}
+
+  it('{{ ficha }} · el formulario para registrar empieza con los valores iniciales del JSON', async () => {
+    conSesion(USUARIOS.{{ p.rol }});
+    apiSimulada(API, [], OPCIONES);
+    const { usuario } = abrirApp(RUTA);
+
+    await usuario.click(await screen.findByRole('button', { name: {{ p.nuevo | js }} }));
+{% for etiqueta, valor in p.iniciales %}
+    expect(screen.getByLabelText({{ etiqueta | js }})).toHaveValue({{ valor | js }});
+{% endfor %}
   });
 {% endif %}
 {% if p.roles_sin_permiso %}

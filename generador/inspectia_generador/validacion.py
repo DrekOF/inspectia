@@ -1,9 +1,9 @@
 # Nombre: validacion.py
 # Descripción: Validación de los JSON de entidades contra su formato y contra specs/.
 # Fecha de creación: 13/10/2026
-# Actualización: 26/10/2026
+# Actualización: 27/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.4
+# Versión: 1.5
 """Validación de los JSON de entidades.
 
 Revisa el formato de ``specs/entidades/README.md`` y que cada ficha, decisión o requisito citado
@@ -13,8 +13,9 @@ exista en ``specs/``. Devuelve todos los errores juntos, para corregirlos de una
 import json
 import re
 
-from inspectia_generador.modelo import (CLAVES_DE_PANTALLA, COLUMNAS_IMPLICITAS, EMPRESA_ID, FILA,
-                                        TEXTOS_DE_PANTALLA, atributo, columnas, tiene_empresa, valores_lista)
+from inspectia_generador.modelo import (CLAVES_DE_PANTALLA, COLUMNAS_IMPLICITAS, EMPRESA_ID, FILA, FORMULARIOS,
+                                        MAXIMO, TEXTOS_DE_PANTALLA, atributo, columnas, regla, tiene_empresa,
+                                        valores_lista)
 
 TIPOS = {'texto', 'entero', 'decimal', 'booleano', 'fecha', 'fecha_hora', 'lista', 'referencia',
          'contrasena'}
@@ -319,7 +320,24 @@ class _Revision:
             for parametro in re.findall(r'\{(\w+)\}', mensaje):
                 if parametro not in r.get('parametros', {}):
                     self.error(donde, f'el mensaje usa {{{parametro}}} sin ese parámetro')
+            if r.get('en_la_fila_propia'):
+                self.en_la_fila_propia(donde, nombre, e, r)
             self.fichas(donde, r.get('fichas'))
+
+    def en_la_fila_propia(self, donde, nombre, e, r):
+        """Una regla que se aplica a la fila de quien tiene la sesión: la pantalla la cumple antes de llamar a la API,
+        porque se puede declarar (RP-23), y la API la sigue revisando. Va solo en usuario, la entidad de quien tiene
+        la sesión: sin atributo, en desactivar, y la fila propia no tiene esa acción; con atributo, en editar y con un
+        atributo del formulario, que al editar la fila propia no se cambia."""
+        if nombre != 'usuario':
+            self.error(donde, 'en_la_fila_propia va solo en usuario, la entidad de quien tiene la sesión')
+        elif 'atributo' not in r:
+            if r.get('cuando') != ['desactivar']:
+                self.error(donde, 'en_la_fila_propia, sin atributo, va solo en desactivar')
+        else:
+            a = atributo(e, r['atributo'])
+            if a is None or not a.get('en_formulario') or r.get('cuando') != ['editar']:
+                self.error(donde, 'en_la_fila_propia necesita un atributo del formulario, al editar')
 
     def crear_con(self, nombre, e):
         if 'crear_con' not in e:
@@ -360,6 +378,12 @@ class _Revision:
         de_la_lista = [a['nombre'] for a in e['atributos'] if a.get('en_lista')]
         if 'debajo_del_nombre' in pantalla and pantalla['debajo_del_nombre'] not in de_la_lista:
             self.error(donde, 'debajo_del_nombre debe ser un atributo de la lista')
+        if 'formulario' in pantalla and pantalla['formulario'] not in FORMULARIOS:
+            self.error(donde, 'formulario debe ser encima o al_lado')
+        if 'limite_de_activos' in pantalla:
+            self.limite_de_activos(donde, e, pantalla['limite_de_activos'])
+        if 'inicial' in pantalla:
+            self.inicial(f'{donde}.inicial', e, pantalla['inicial'])
         for clave, texto in pantalla.get('textos', {}).items():
             if clave not in TEXTOS_DE_PANTALLA:
                 self.error(f'{donde}.textos', f'texto desconocido {clave}')
@@ -374,10 +398,35 @@ class _Revision:
                     continue
             else:
                 self.textos(lugar, texto)
-            permitidos = de_la_lista if marcadores == FILA else marcadores
+            permitidos = de_la_lista if marcadores == FILA else [
+                m for m in marcadores if m != MAXIMO or 'limite_de_activos' in pantalla]
             usados = re.findall(r'\{(\w+)\}', json.dumps(texto, ensure_ascii=False))
             for marcador in dict.fromkeys(m for m in usados if m not in permitidos):
                 self.error(lugar, f'usa {{{marcador}}}, que no existe en este texto')
+
+    def limite_de_activos(self, donde, e, codigo):
+        """``pantalla.limite_de_activos``: la regla de validación cuyo ``parametros.maximo`` limita los registros
+        activos al crear o al reactivar, como el máximo de 25 usuarios (RF-03). La pantalla cuenta los activos contra
+        ese máximo y, al llegar a él, no deja crear ni reactivar."""
+        r = regla(e, codigo)
+        if (r is None or r.get('tipo') != 'validacion' or 'maximo' not in r.get('parametros', {})
+                or not r.get('cuando') or not set(r['cuando']) <= {'crear', 'reactivar'}):
+            self.error(donde, 'limite_de_activos debe ser una regla de validación con parametros.maximo, en crear o '
+                              'reactivar')
+        if 'atributo_activo' not in e:
+            self.error(donde, 'limite_de_activos necesita atributo_activo')
+
+    def inicial(self, donde, e, valores):
+        """``pantalla.inicial``: el valor con que empieza un campo del formulario al registrar, sin tocar la base;
+        en una lista, uno de los valores que el formulario ofrece."""
+        for nombre, valor in valores.items():
+            a = atributo(e, nombre)
+            if a is None or not a.get('en_formulario'):
+                self.error(donde, f'{nombre} no es un campo del formulario')
+            elif a['tipo'] == 'lista':
+                ofrece = a.get('valores_en_formulario') or valores_lista(self.entidades, a)
+                if valor not in ofrece:
+                    self.error(donde, f'{nombre} no puede empezar en {valor}, que el formulario no ofrece')
 
     def valores_iniciales(self, nombre, e):
         if 'valores_iniciales' not in e:

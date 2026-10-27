@@ -2,9 +2,9 @@
 # Descripción: Arma los datos de las plantillas del frontend: la pantalla de cada entidad de «pantallas» en
 #              alcance.json, con su cliente de la API, sus esquemas de Yup, sus textos y sus pruebas (RP-23).
 # Fecha de creación: 26/10/2026
-# Actualización: 26/10/2026
+# Actualización: 27/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.0
+# Versión: 1.1
 """Datos de las plantillas del frontend (React, Material UI, Formik y Yup).
 
 - ``pantallas.js``: la ruta, la entrada del menú y los roles de cada pantalla, que son los de ``listar``.
@@ -18,10 +18,13 @@ de cada pantalla, que le pasa ``Rutas.jsx``. Las pantallas todavía no soportan 
 ``pantallas`` usa algo que falta, la generación se detiene y dice qué.
 """
 
+import json
+
 from inspectia_generador import campos
 from inspectia_generador.encabezado import datos_header
 from inspectia_generador.java import consultas_unicas, ejemplo
-from inspectia_generador.modelo import atributo, valores_lista
+from inspectia_generador.modelo import (atributo, contrasena_opcional_al_editar, regla, reglas_de_la_fila_propia,
+                                        valores_lista)
 from inspectia_generador.nombres import camel, patron_js, texto_js
 from inspectia_generador.sql import ErrorGeneracion
 from inspectia_generador.textos import reemplazar
@@ -40,10 +43,15 @@ ICONO_POR_DEFECTO = 'registros'
 #: de desactivar van aparte.
 TEXTOS_JS = (('descripcion', 'descripcion'), ('vacia', 'vacia'), ('nuevo', 'nuevo'), ('crear', 'crear'),
              ('tituloEditar', 'titulo_editar'), ('notaFormulario', 'nota_formulario'),
+             ('notaContrasenaDeOtro', 'nota_contrasena_de_otro'),
              ('tituloLista', 'titulo_lista'), ('activo', 'activo'), ('inactivo', 'inactivo'),
              ('editarFila', 'editar_fila'), ('desactivarFila', 'desactivar_fila'),
              ('reactivarFila', 'reactivar_fila'), ('alGuardar', 'al_guardar'), ('alDesactivar', 'al_desactivar'),
              ('alReactivar', 'al_reactivar'), ('notaLista', 'nota_lista'))
+#: Lo que cuenta el resumen: cada parte que usa su frase, como {activos}, tiene su texto contado (resumen_activos).
+PARTES_DEL_RESUMEN = ('total', 'activos', 'inactivos')
+#: Los límites de un campo que exportan los esquemas generados, con los nombres que usa el frontend.
+LIMITES_JS = (('longitud_min', 'minimo'), ('longitud_max', 'maximo'), ('bytes_max', 'maximoBytes'))
 #: Identificadores de los dos registros de las pruebas generadas, como los UUID v7 de la API.
 IDS_DE_PRUEBA = ('0199e2a0-0000-7000-8000-0000000000a1', '0199e2a0-0000-7000-8000-0000000000a2')
 
@@ -104,7 +112,8 @@ def _formulario(entidades, e):
 
 def textos_obligatorios(e):
     """Los textos de ``pantalla.textos`` que necesita la pantalla, con lo que los pide: cada operación pide los
-    suyos, y el resumen y la confirmación de desactivar, si están, van completos.
+    suyos; el resumen, los textos contados que usa su frase; la confirmación de desactivar, si está, va completa; la
+    fila propia pide su marca, y la contraseña opcional al editar, sus textos y la nota de D-30.
 
     Returns:
         list: ``(texto, quién lo pide)``.
@@ -127,12 +136,17 @@ def textos_obligatorios(e):
     if 'atributo_activo' in e:
         pedidos += [('activo', 'atributo_activo'), ('inactivo', 'atributo_activo')]
     if any(clave.startswith('resumen') for clave in textos):
-        pedidos += [('resumen', 'el resumen'), ('resumen_total', 'el resumen')]
-        if 'atributo_activo' in e:
-            pedidos += [('resumen_activos', 'el resumen'), ('resumen_inactivos', 'el resumen')]
+        pedidos.append(('resumen', 'el resumen'))
+        frase = json.dumps(textos.get('resumen', {}), ensure_ascii=False)
+        pedidos += [(f'resumen_{parte}', 'el resumen') for parte in PARTES_DEL_RESUMEN if f'{{{parte}}}' in frase]
     if 'confirmar_desactivar' in textos or 'confirmar_desactivar_detalle' in textos:
         pedidos += [('confirmar_desactivar', 'la confirmación de desactivar'),
                     ('confirmar_desactivar_detalle', 'la confirmación de desactivar')]
+    if reglas_de_la_fila_propia(e):
+        pedidos.append(('fila_propia', 'en_la_fila_propia'))
+    if contrasena_opcional_al_editar(e):
+        pedidos += [(clave, 'la contraseña opcional al editar')
+                    for clave in ('contrasena_al_editar', 'ayuda_contrasena_al_editar', 'nota_contrasena_de_otro')]
     return pedidos
 
 
@@ -158,8 +172,6 @@ def verificar_pantalla(entidades, e):
         donde = campo if grupo else a['nombre']
         if a['tipo'] not in TIPOS_EN_FORMULARIO:
             problemas.append(f"{donde}, de tipo {a['tipo']}, en el formulario")
-        elif a['tipo'] == 'contrasena' and grupo is None and 'editar' in operaciones:
-            problemas.append(f'{donde}, una contraseña que al editar es opcional, en el formulario')
     for a in e['atributos']:
         if a.get('en_lista') and a['nombre'] != e.get('atributo_activo') and a['tipo'] not in TIPOS_EN_LISTA:
             problemas.append(f"{a['nombre']}, de tipo {a['tipo']}, en la lista")
@@ -182,8 +194,11 @@ def lineas_yup(datos):
     (``campos.orden_de_la_api``): Yup dice el error de la primera que falla, así un valor que falla por dos da el
     mismo mensaje en el formulario y en la API.
 
-    Primero se normaliza el texto, como lo hace la solicitud de la API antes de validar. El formato del correo
-    no va: lo valida solo el backend, y su error llega al campo al guardar.
+    Primero se normaliza el texto, como lo hace la solicitud de la API antes de validar. Un campo opcional, como la
+    contraseña al editar, vacío no se revisa: no llega a la API y queda el valor que había. En un campo obligatorio
+    con valores, como el rol, el vacío también cuenta como ausente: Yup revisa oneOf antes que las demás pruebas, y
+    así el error es el de obligatorio, como en la API. El formato del correo no va: lo valida solo el backend, y su
+    error llega al campo al guardar.
 
     Args:
         datos: el campo, de ``campos.del_atributo``.
@@ -193,12 +208,17 @@ def lineas_yup(datos):
         lineas.append('.transform(recortar)')
     if datos.minusculas:
         lineas.append('.transform(minusculas)')
+    tipos = {v.tipo for v in datos.validaciones if not v.solo_backend}
+    if 'no_en_blanco' in tipos or ('obligatorio' in tipos and tipos & {'valor_permitido', 'valores'}):
+        lineas.append('.transform(vacioComoAusente)')
     for v in sorted(datos.validaciones, key=campos.orden_de_la_api):
         if v.solo_backend:
             continue
         mensaje = _mensaje_js(v)
         if v.tipo == 'obligatorio':
             lineas.append(f".test('obligatorio', {mensaje}, lleno)")
+        elif v.tipo == 'no_en_blanco':
+            lineas.append(f".test('obligatorio', {mensaje}, noEnBlanco)")
         elif v.tipo in ('valor_permitido', 'valores'):
             lineas.append(f'.oneOf({literal_js(v.valor)}, {mensaje})')
         elif v.tipo == 'longitud_max':
@@ -238,18 +258,26 @@ def _campo(entidades, e, duena, a, campo, grupo, al_editar=False):
     base = f"{duena['entidad']}.{a['nombre']}"
     etiqueta, etiqueta_es = f'{base}.etiqueta', a['etiquetas']['es']
     ayuda = f'{base}.ayuda' if 'ayuda' in a else None
-    if a['tipo'] == 'contrasena' and not al_editar:
-        if 'contrasena_al_crear' in textos:
-            etiqueta, etiqueta_es = f"{e['entidad']}.pantalla.contrasena_al_crear", textos['contrasena_al_crear']['es']
-        if 'ayuda_contrasena_al_crear' in textos:
-            ayuda = f"{e['entidad']}.pantalla.ayuda_contrasena_al_crear"
+    if a['tipo'] == 'contrasena':
+        # Sus textos al registrar y al editar, como «Contraseña inicial» y «Contraseña nueva».
+        momento = 'editar' if al_editar else 'crear'
+        if f'contrasena_al_{momento}' in textos:
+            etiqueta = f"{e['entidad']}.pantalla.contrasena_al_{momento}"
+            etiqueta_es = textos[f'contrasena_al_{momento}']['es']
+        if f'ayuda_contrasena_al_{momento}' in textos:
+            ayuda = f"{e['entidad']}.pantalla.ayuda_contrasena_al_{momento}"
     opciones = []
     if a['tipo'] == 'lista':
         prefijo = _prefijo_de_valores(entidades, duena, a)
         codigos = a.get('valores_en_formulario') or valores_lista(entidades, a)
         opciones = [(codigo, f'{prefijo}.{codigo}') for codigo in codigos]
     v = a.get('validaciones', {})
-    inicial = a['por_defecto'] if a['tipo'] == 'lista' and 'por_defecto' in a else ''
+    # Al registrar, el valor de pantalla.inicial, como el rol de un usuario nuevo; si no, el por defecto de una lista.
+    iniciales = e['pantalla'].get('inicial', {}) if grupo is None and not al_editar else {}
+    if a['nombre'] in iniciales:
+        inicial = iniciales[a['nombre']]
+    else:
+        inicial = a['por_defecto'] if a['tipo'] == 'lista' and 'por_defecto' in a else ''
     return {
         'campo': campo, 'clave': campo.split('.')[-1], 'grupo': grupo, 'tipo': a['tipo'],
         'componente': COMPONENTES[a['tipo']], 'etiqueta': etiqueta, 'etiqueta_es': etiqueta_es, 'ayuda': ayuda,
@@ -263,7 +291,27 @@ def _campo(entidades, e, duena, a, campo, grupo, al_editar=False):
         'usa_correo_largo': any(valor.tipo == 'correo_de_largo' for valor in datos.bordes)
                             or any(c.valor.tipo == 'correo_de_largo' and not c.solo_backend for c in datos.casos),
         'ejemplo': ejemplo(a),
+        'nombre': a['nombre'],
+        'limites': _limites(datos),
+        'opcional': a['tipo'] == 'contrasena' and not obligatorio,
     }
+
+
+def _limites(datos):
+    """Los límites de un campo, como ``{ minimo: 8, maximo: 64, maximoBytes: 72 }``: los exportan los esquemas
+    generados para las páginas escritas a mano que validan lo mismo, como Cambiar contraseña (RF-18)."""
+    valores = {v.tipo: v.valor for v in datos.validaciones}
+    return {js: valores[tipo] for tipo, js in LIMITES_JS if tipo in valores}
+
+
+def _limite(e):
+    """El límite de activos de la pantalla (``limite_de_activos``): el máximo de su regla y la clave de su mensaje, o
+    ``None``."""
+    codigo = e.get('pantalla', {}).get('limite_de_activos')
+    if codigo is None:
+        return None
+    r = regla(e, codigo)
+    return {'maximo': r['parametros']['maximo'], 'mensaje': f"{e['entidad']}.reglas.{r['codigo']}"}
 
 
 def _de_la_respuesta(e):
@@ -319,22 +367,27 @@ def _con_valores(texto, registro):
     return reemplazar(texto, {clave: valor for clave, valor in registro.items() if isinstance(valor, str)})
 
 
-def _contar(textos, clave, cantidad):
-    """Un texto que se cuenta, en español, en singular o en plural según la cantidad."""
+def _contar(textos, clave, cantidad, maximo=None):
+    """Un texto que se cuenta, en español, en singular o en plural según la cantidad, con el máximo del límite."""
     forma = 'singular' if cantidad == 1 else 'plural'
-    return textos[clave]['es'][forma].replace('{cantidad}', str(cantidad))
+    texto = textos[clave]['es'][forma].replace('{cantidad}', str(cantidad))
+    return texto if maximo is None else texto.replace('{maximo}', str(maximo))
 
 
 def _resumen_es(e, activos, inactivos):
-    """El resumen en español, como lo arma la pantalla: «2 empresas registradas: 1 activa y 1 desactivada.»."""
+    """El resumen en español, como lo arma la pantalla: «2 empresas registradas: 1 activa y 1 desactivada.» o «1 de
+    25 usuarios activos, contándote a ti.»."""
     textos = e['pantalla']['textos']
     if 'resumen' not in textos:
         return None
-    frase = textos['resumen']['es'].replace('{total}', _contar(textos, 'resumen_total', activos + inactivos))
-    if 'atributo_activo' in e:
-        frase = (frase.replace('{activos}', _contar(textos, 'resumen_activos', activos))
-                 .replace('{inactivos}', _contar(textos, 'resumen_inactivos', inactivos)))
-    return frase
+    limite = _limite(e)
+    maximo = limite['maximo'] if limite else None
+    cuentas = {'total': activos + inactivos, 'activos': activos, 'inactivos': inactivos}
+    frase = textos['resumen']['es']
+    for parte in PARTES_DEL_RESUMEN:
+        if f'{{{parte}}}' in frase:
+            frase = frase.replace(f'{{{parte}}}', _contar(textos, f'resumen_{parte}', cuentas[parte], maximo))
+    return frase if maximo is None else frase.replace('{maximo}', str(maximo))
 
 
 def _textos(e):
@@ -343,9 +396,9 @@ def _textos(e):
     lista = [(js, literal_js(f'{n}.pantalla.{clave}' if clave in textos else None)) for js, clave in TEXTOS_JS]
     resumen = None
     if 'resumen' in textos:
-        resumen = {'frase': f'{n}.pantalla.resumen', 'total': f'{n}.pantalla.resumen_total'}
-        if 'atributo_activo' in e:
-            resumen |= {'activos': f'{n}.pantalla.resumen_activos', 'inactivos': f'{n}.pantalla.resumen_inactivos'}
+        frase = json.dumps(textos['resumen'], ensure_ascii=False)
+        resumen = {'frase': f'{n}.pantalla.resumen'} | {
+            parte: f'{n}.pantalla.resumen_{parte}' for parte in PARTES_DEL_RESUMEN if f'{{{parte}}}' in frase}
     confirmar = None
     if 'confirmar_desactivar' in textos:
         confirmar = {'titulo': f'{n}.pantalla.confirmar_desactivar',
@@ -386,6 +439,21 @@ def modelo_pantalla(entidades, e):
                     'etiqueta_es': cc['etiquetas']['es']}
     textos_js, confirmar = _textos(e)
     columnas = _columnas(entidades, e)
+    limite = _limite(e)
+    # Lo que impiden en la fila de quien tiene la sesión sus reglas: las acciones, y los campos que al editarla no
+    # se cambian, con la regla que los impide.
+    propias = reglas_de_la_fila_propia(e)
+    sin_acciones = [o for r in propias if 'atributo' not in r for o in r['cuando']]
+    impedidas = {nombre_de_campo(atributo(e, r['atributo'])): r for r in propias if 'atributo' in r}
+    fila_propia = {'marca': f'{n}.pantalla.fila_propia', 'sinAcciones': sin_acciones} if propias else None
+    campos_formulario = _campos_del_formulario(
+        crear, editar, {campo: f"{n}.reglas.{r['codigo']}" for campo, r in impedidas.items()})
+    props_campos = [nombre for nombre, usa in (
+        ('paraCrear', bool(cc) or any(f['modo'] == 'distinto' for f in campos_formulario)),
+        ('propia', bool(impedidas))) if usa]
+    opcionales = [c['clave'] for c in editar if c['opcional']]
+    contrasena_al_editar = next((c['campo'] for c in editar if c['opcional'] and c['tipo'] == 'contrasena'), None)
+    al_editar = {c['campo']: c for c in editar}
     nombres = [a['nombre'] for a in e['atributos'] if a.get('en_lista')]
     atributo_del_nombre = 'nombre' if 'nombre' in nombres else columnas[0]['atributo']
     acciones = {o: operaciones[o] for o in ('crear', 'editar', 'desactivar', 'reactivar') if o in operaciones}
@@ -416,7 +484,8 @@ def modelo_pantalla(entidades, e):
         elif c['ejemplo'] != c['inicial']:
             pasos_al_crear.append(f"await usuario.selectOptions({donde}, {texto_js(c['ejemplo'])});")
     editable = next((c for c in editar if c['tipo'] == 'texto'), None)
-    cuerpo_al_editar = {c['clave']: registro.get(c['clave'], '') for c in editar}
+    # Un campo opcional que no se escribe, como la contraseña al editar, va como null.
+    cuerpo_al_editar = {c['clave']: None if c['opcional'] else registro.get(c['clave'], '') for c in editar}
     if editable:
         cuerpo_al_editar[editable['clave']] = otro[editable['clave']]
     prueba = {
@@ -432,6 +501,7 @@ def modelo_pantalla(entidades, e):
                             None),
         'registro': literal_js(registro), 'otro_registro': literal_js(otro),
         'nombre': registro[atributo_del_nombre], 'nombre_otro': otro[atributo_del_nombre],
+        'clave_del_nombre': atributo_del_nombre,
         'titulo_lista': textos['titulo_lista']['es'],
         'vacia': textos['vacia']['es'],
         'debajo': (_con_valores(textos['debajo_del_nombre']['es'], registro) if 'debajo_del_nombre' in textos
@@ -456,6 +526,15 @@ def modelo_pantalla(entidades, e):
                               if 'confirmar_desactivar_detalle' in textos else None),
         'puede': puede,
         'html': literal_js(dict(registro, **{atributo_del_nombre: '<img src=x onerror=alert(1)>'})),
+        'limite': _limite_de_la_prueba(e, limite),
+        'fila_propia': _fila_propia_de_la_prueba(e, sin_acciones, impedidas, al_editar, registro, otro),
+        'nota_contrasena': ({'etiqueta': al_editar[contrasena_al_editar]['etiqueta_es'],
+                             'valor': al_editar[contrasena_al_editar]['ejemplo'],
+                             'nota': _con_valores(textos['nota_contrasena_de_otro']['es'], registro)}
+                            if contrasena_al_editar and 'nota_contrasena_de_otro' in textos else None),
+        'opcionales_al_editar': opcionales,
+        'iniciales': [(c['etiqueta_es'], c['inicial']) for c in crear
+                      if not c['grupo'] and c['nombre'] in pantalla.get('inicial', {})],
     }
     return {
         'entidad': n, 'clase': e['clase'], 'var': camel(n), 'modulo': e['modulo'], 'ficha': e['fichas'][0],
@@ -480,6 +559,62 @@ def modelo_pantalla(entidades, e):
         'datos_al_editar': literal_js(_objeto(editar, lambda c: c['ejemplo'])),
         'usa_correo_largo': any(c['usa_correo_largo'] for c in crear + editar),
         'icono': pantalla.get('icono', ICONO_POR_DEFECTO), 'prueba': prueba,
+        'formulario': pantalla.get('formulario', 'encima'),
+        'limite_js': literal_js(limite), 'fila_propia_js': literal_js(fila_propia),
+        'campos_formulario': campos_formulario, 'props_campos': props_campos,
+        'firma_campos': '{ ' + ', '.join(props_campos) + ' }' if props_campos else '',
+        'opcionales_al_editar': opcionales, 'contrasena_al_editar': contrasena_al_editar,
+        'usa_mensaje_propio': any(f['propia'] and f['modo'] == 'distinto' for f in campos_formulario),
+        'limites': [(f['una']['clave'], literal_js(f['una']['limites'])) for f in campos_formulario
+                    if f['una']['limites']],
+        'activo_js': camel(activo) if activo else None,
+    }
+
+
+def _campos_del_formulario(crear, editar, impedidos):
+    """Los campos propios del formulario, sin el grupo de ``crear_con``, cada uno con cómo va al registrar y al
+    editar: igual en los dos si tiene el mismo control y los mismos textos; si no, como la contraseña, cada
+    formulario lleva el suyo.
+
+    Args:
+        impedidos: los campos que una regla de la fila propia no deja cambiar, con la clave de su mensaje.
+    """
+    para_editar = {c['campo']: c for c in editar}
+    propios = [c for c in crear if not c['grupo']] if crear else editar
+    lista = []
+    for c in propios:
+        al_crear = c if crear else None
+        al_editar = para_editar.get(c['campo']) if crear else c
+        distinto = al_crear is not None and al_editar is not None and any(
+            al_crear[clave] != al_editar[clave] for clave in ('componente', 'etiqueta', 'ayuda'))
+        lista.append({'modo': 'distinto' if distinto else 'igual', 'crear': al_crear, 'editar': al_editar,
+                      'una': al_crear or al_editar, 'propia': impedidos.get(c['campo'])})
+    return lista
+
+
+def _limite_de_la_prueba(e, limite):
+    """Lo que revisa la prueba generada del límite de activos: el máximo y el mensaje de su regla, en español."""
+    if limite is None:
+        return None
+    r = regla(e, e['pantalla']['limite_de_activos'])
+    return {'maximo': limite['maximo'], 'mensaje': reemplazar(r['mensaje']['es'], r.get('parametros', {}))}
+
+
+def _fila_propia_de_la_prueba(e, sin_acciones, impedidas, al_editar, registro, otro):
+    """Lo que revisa la prueba generada de la fila propia, en español: su marca, los botones que no tiene, que sí
+    tiene otra fila activa, y los campos que al editarla no se cambian, con el mensaje de su regla."""
+    textos = e['pantalla']['textos']
+    if 'fila_propia' not in textos:
+        return None
+    otra_activa = dict(otro, **{camel(e['atributo_activo']): True}) if 'atributo_activo' in e else otro
+    botones = [f'{o}_fila' for o in sin_acciones if f'{o}_fila' in textos]
+    return {
+        'marca': textos['fila_propia']['es'],
+        'sin_acciones': [_con_valores(textos[clave]['es'], registro) for clave in botones],
+        'en_otra': [_con_valores(textos[clave]['es'], otra_activa) for clave in botones],
+        'campos': [{'etiqueta': al_editar[campo]['etiqueta_es'],
+                    'mensaje': reemplazar(r['mensaje']['es'], r.get('parametros', {})),
+                    'oculto': al_editar[campo]['tipo'] == 'contrasena'} for campo, r in impedidas.items()],
     }
 
 
@@ -501,7 +636,8 @@ def _localizador(c, grupos):
 def _ayudantes(lineas):
     """Las funciones de ``src/validacion/reglas.js`` que usan las validaciones de Yup de un campo."""
     texto = '\n'.join(lineas)
-    return [nombre for nombre in ('cabeEnBytes', 'lleno', 'minusculas', 'recortar') if nombre in texto]
+    return [nombre for nombre in ('cabeEnBytes', 'lleno', 'minusculas', 'noEnBlanco', 'recortar', 'vacioComoAusente')
+            if nombre in texto]
 
 
 # --- Archivos -------------------------------------------------------------------------------------

@@ -4,16 +4,16 @@
                de cada acción y claves de sus textos) sobre las piezas comunes de src/crud, escritas a mano.
                Lo que el JSON no puede declarar llega en extensiones, desde Rutas.jsx.
   Fecha de creación: 26/10/2026
-  Actualización: 26/10/2026
+  Actualización: 27/10/2026
   Autor: Equipo InspectIA
-  Versión: 1.0
+  Versión: 1.1
 #}
 {% from 'frontend/_macros.j2' import encabezado %}
-{% macro campo(c) -%}
+{% macro campo(c, solo_lectura=None) -%}
 {% if c.componente == 'CampoDeLista' -%}
-<CampoDeLista nombre="{{ c.campo }}" etiqueta={t('{{ c.etiqueta }}')}{% if c.ayuda %} ayuda={t('{{ c.ayuda }}')}{% endif %} opciones={[{% for codigo, clave in c.opciones %}{ valor: '{{ codigo }}', etiqueta: t('{{ clave }}') }{{ ', ' if not loop.last else '' }}{% endfor %}]} />
+<CampoDeLista nombre="{{ c.campo }}" etiqueta={t('{{ c.etiqueta }}')}{% if c.ayuda %} ayuda={t('{{ c.ayuda }}')}{% endif %} opciones={[{% for codigo, clave in c.opciones %}{ valor: '{{ codigo }}', etiqueta: t('{{ clave }}') }{{ ', ' if not loop.last else '' }}{% endfor %}]}{% if solo_lectura %} soloLectura={propia ? t('{{ solo_lectura }}') : null}{% endif %} />
 {%- else -%}
-<{{ c.componente }} nombre="{{ c.campo }}" etiqueta={t('{{ c.etiqueta }}')}{% if c.ayuda %} ayuda={t('{{ c.ayuda }}')}{% endif %}{% if c.tipo_html %} type="{{ c.tipo_html }}"{% endif %} autoComplete="{{ c.autocompletar }}" />
+<{{ c.componente }} nombre="{{ c.campo }}" etiqueta={t('{{ c.etiqueta }}')}{% if c.ayuda %} ayuda={t('{{ c.ayuda }}')}{% endif %}{% if c.tipo_html %} type="{{ c.tipo_html }}"{% endif %} autoComplete="{{ c.autocompletar }}"{% if solo_lectura %} soloLectura={propia ? t('{{ solo_lectura }}') : null}{% endif %} />
 {%- endif %}
 {%- endmacro %}
 {% set propios = crear | rejectattr('grupo') | list if crear else editar %}
@@ -35,6 +35,9 @@ import { CampoDeLista } from '../../crud/CampoDeLista.jsx';
 {% if grupo %}
 import { GrupoDeCampos } from '../../crud/GrupoDeCampos.jsx';
 {% endif %}
+{% if usa_mensaje_propio %}
+import { MensajeDeLaFilaPropia } from '../../crud/MensajeDeLaFilaPropia.jsx';
+{% endif %}
 import { PantallaDeRegistros } from '../../crud/PantallaDeRegistros.jsx';
 import * as api from './{{ var }}Api.js';
 {% if esquemas %}
@@ -42,8 +45,9 @@ import { {{ esquemas | join(', ') }} } from './{{ var }}Esquemas.js';
 {% endif %}
 
 /**
- * Lo que dice de la pantalla specs/entidades/{{ entidad }}.json: los roles de cada acción, las columnas de la lista
- * y las claves de sus textos, o null los que el JSON no trae.
+ * Lo que dice de la pantalla specs/entidades/{{ entidad }}.json: los roles de cada acción, las columnas de la lista,
+ * las claves de sus textos, dónde va el formulario, el límite de activos y la fila de quien tiene la sesión, o null
+ * lo que el JSON no trae.
  *
  * @type {import('../../crud/PantallaDeRegistros.jsx').DescripcionDePantalla}
  */
@@ -64,6 +68,9 @@ const PANTALLA = {
 {% endfor %}
   },
   confirmarDesactivar: {{ confirmar }},
+  formulario: '{{ formulario }}',
+  limiteDeActivos: {{ limite_js }},
+  filaPropia: {{ fila_propia_js }},
 };
 {% if crear %}
 
@@ -78,7 +85,7 @@ const CAMPOS_PARA_EDITAR = {{ campos_al_editar }};
 {% if crear %}
 
 /**
- * Los valores de un registro nuevo: vacíos, o el valor por defecto del JSON.
+ * Los valores de un registro nuevo: vacíos, el valor por defecto del JSON o el de pantalla.inicial.
  *
  * @returns {object} los valores del formulario
  */
@@ -101,19 +108,37 @@ function valoresParaEditar(fila) {
 {% endfor %}
   };
 }
+{% if opcionales_al_editar %}
+
+/**
+ * Los datos para la API al editar: un campo opcional vacío va como null, así queda el valor que había, como una
+ * contraseña que no se cambia.
+ *
+ * @param {object} valores los valores del formulario
+ * @returns {object} los datos
+ */
+function datosParaEditar(valores) {
+  return { ...valores, {% for campo in opcionales_al_editar %}{{ campo }}: valores.{{ campo }} === '' ? null : valores.{{ campo }}{{ ', ' if not loop.last else '' }}{% endfor %} };
+}
+{% endif %}
 {% endif %}
 {% if con_formulario %}
 
 /**
  * Los campos del formulario, en el orden del JSON.
  *
-{% if grupo %}
+{% if props_campos %}
  * @param {object} props las propiedades
- * @param {boolean} props.paraCrear si es el formulario para registrar, que lleva también el grupo «{{ grupo.etiqueta_es }}»
+{% if 'paraCrear' in props_campos %}
+ * @param {boolean} props.paraCrear si es el formulario para registrar{{ ', que lleva también el grupo «' ~ grupo.etiqueta_es ~ '»' if grupo else '' }}
+{% endif %}
+{% if 'propia' in props_campos %}
+ * @param {boolean} props.propia si se edita la fila de quien tiene la sesión: lo que impiden sus reglas no se cambia
+{% endif %}
 {% endif %}
  * @returns {import('react').ReactElement} los campos
  */
-function Campos({{ '{ paraCrear }' if grupo else '' }}) {
+function Campos({{ firma_campos }}) {
   const { t } = useTranslation();
   return (
     <>
@@ -131,8 +156,20 @@ function Campos({{ '{ paraCrear }' if grupo else '' }}) {
         </GrupoDeCampos>
       )}
 {% else %}
-{% for c in propios %}
-      {{ campo(c) }}
+{% for f in campos_formulario %}
+{% if f.modo == 'igual' %}
+      {{ campo(f.una, f.propia) }}
+{% else %}
+      {paraCrear && (
+        {{ campo(f.crear) }}
+      )}
+      {!paraCrear{{ ' && !propia' if f.propia else '' }} && (
+        {{ campo(f.editar) }}
+      )}
+{% if f.propia %}
+      {propia && <MensajeDeLaFilaPropia mensaje={t('{{ f.propia }}')}{{ ' cambiarContrasena' if f.editar.tipo == 'contrasena' else '' }} />}
+{% endif %}
+{% endif %}
 {% endfor %}
 {% endif %}
     </>
@@ -151,6 +188,12 @@ const FORMULARIO = {
   camposParaEditar: CAMPOS_PARA_EDITAR,
   valoresParaEditar,
   esquemaParaEditar,
+{% if opcionales_al_editar %}
+  datosParaEditar,
+{% endif %}
+{% if contrasena_al_editar %}
+  contrasenaAlEditar: '{{ contrasena_al_editar }}',
+{% endif %}
 {% endif %}
 };
 {% endif %}

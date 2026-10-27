@@ -352,6 +352,16 @@ def test_limite_de_activos(entidades):
     assert "'1 de 25 usuarios activos, contándote a ti.'" in archivos[f'{FRONTEND}/usuario/UsuarioPantalla.test.jsx']
 
 
+@pytest.mark.caso('RP-23 · una lista obligatoria vacía da en Yup el error de obligatorio, como la API, y no el de sus valores: Yup revisa oneOf antes que las demás pruebas, así que el vacío cuenta como ausente')
+def test_lista_obligatoria_vacia(entidades):
+    esquemas = generar(entidades, **CON_USUARIO)[f'{FRONTEND}/usuario/usuarioEsquemas.js']
+    rol = ['.transform(vacioComoAusente)', ".test('obligatorio', t('validacion.obligatorio'), lleno)",
+           ".oneOf(['USUARIO_FINAL', 'ADMIN_EMPRESA'], t('usuario.rol.valores_en_formulario'))"]
+
+    assert cadena_yup(esquemas, 'esquemaParaCrear', 'rol') == rol
+    assert cadena_yup(esquemas, 'esquemaParaEditar', 'rol') == rol
+
+
 @pytest.mark.caso('RP-23 · pantalla.inicial da el valor con que empieza un campo al registrar, sin tocar la base: el rol empieza en Usuario final')
 def test_valor_inicial(entidades):
     archivos = generar(entidades, **CON_USUARIO)
