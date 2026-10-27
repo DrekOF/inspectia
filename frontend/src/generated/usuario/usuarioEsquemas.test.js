@@ -33,6 +33,7 @@ const CASOS_AL_CREAR = [
   ['contrasena', 'ñ'.repeat(37), 'La contraseña es demasiado larga: usa menos caracteres o menos tildes y eñes'],
   ['contrasena', 'ñ'.repeat(65), 'La contraseña es demasiado larga: usa menos caracteres o menos tildes y eñes'],
   ['rol', '', 'Este dato es obligatorio.'],
+  ['rol', 'ADMIN_PLATAFORMA', 'Solo puedes asignar los roles Usuario final o Administrador de empresa.'],
 ];
 
 /** Los valores del borde que acepta cada validación del JSON al registrar, como la API. */
@@ -56,6 +57,7 @@ const CASOS_AL_EDITAR = [
   ['contrasena', 'ñ'.repeat(37), 'La contraseña es demasiado larga: usa menos caracteres o menos tildes y eñes'],
   ['contrasena', 'ñ'.repeat(65), 'La contraseña es demasiado larga: usa menos caracteres o menos tildes y eñes'],
   ['rol', '', 'Este dato es obligatorio.'],
+  ['rol', 'ADMIN_PLATAFORMA', 'Solo puedes asignar los roles Usuario final o Administrador de empresa.'],
 ];
 
 /** Los valores del borde que acepta cada validación del JSON al editar, como la API. */

@@ -11,7 +11,9 @@
 - ``textos.js``: los textos de ``pantalla.textos`` de cada JSON, en español y en inglés.
 - De cada entidad de ``pantallas``: el cliente de su API, sus esquemas de Yup, su pantalla y sus pruebas. Las
   validaciones salen de ``campos.del_atributo``, el mismo modelo de Bean Validation, y la prueba de Yup revisa
-  los mismos casos de límite que la prueba generada de la API.
+  los mismos casos de límite que la prueba generada de la API. También revisa los valores de una lista que existen
+  pero el formulario no ofrece, como ADMIN_PLATAFORMA en el rol, con el mensaje del 403 de la API, que en la prueba
+  de la API van en la de permisos.
 
 Lo que el JSON no puede declarar se escribe a mano: las piezas comunes de ``frontend/src/crud`` y las extensiones
 de cada pantalla, que le pasa ``Rutas.jsx``. Las pantallas todavía no soportan todo el formato: si una entidad de
@@ -27,7 +29,7 @@ from inspectia_generador.modelo import (atributo, contrasena_opcional_al_editar,
                                         valores_lista)
 from inspectia_generador.nombres import camel, patron_js, texto_js
 from inspectia_generador.sql import ErrorGeneracion
-from inspectia_generador.textos import reemplazar
+from inspectia_generador.textos import mensaje_esperado, reemplazar
 
 CARPETA = 'frontend/src/generated'
 CARPETA_E2E = 'frontend/e2e/generated'
@@ -267,10 +269,17 @@ def _campo(entidades, e, duena, a, campo, grupo, al_editar=False):
         if f'ayuda_contrasena_al_{momento}' in textos:
             ayuda = f"{e['entidad']}.pantalla.ayuda_contrasena_al_{momento}"
     opciones = []
+    no_ofrecidos = []
     if a['tipo'] == 'lista':
         prefijo = _prefijo_de_valores(entidades, duena, a)
         codigos = a.get('valores_en_formulario') or valores_lista(entidades, a)
         opciones = [(codigo, f'{prefijo}.{codigo}') for codigo in codigos]
+        # Los valores que existen pero el formulario no ofrece, como ADMIN_PLATAFORMA en el rol: Yup los rechaza con
+        # el mensaje del 403 de la API. No están en datos.casos porque la prueba de la API los revisa en la de
+        # permisos (no_permitidos de java.py), no en la de validaciones.
+        mensaje = mensaje_esperado(duena, a, 'valores_en_formulario')
+        no_ofrecidos = [(texto_js(campo), texto_js(codigo), texto_js(mensaje))
+                        for codigo in valores_lista(entidades, a) if codigo not in codigos]
     v = a.get('validaciones', {})
     # Al registrar, el valor de pantalla.inicial, como el rol de un usuario nuevo; si no, el por defecto de una lista.
     iniciales = e['pantalla'].get('inicial', {}) if grupo is None and not al_editar else {}
@@ -285,7 +294,8 @@ def _campo(entidades, e, duena, a, campo, grupo, al_editar=False):
         'autocompletar': 'new-password' if a['tipo'] == 'contrasena' else 'off',
         'opciones': opciones, 'inicial': inicial, 'inicial_js': literal_js(inicial), 'por_defecto': a.get('por_defecto'),
         'yup': lineas_yup(datos),
-        'casos': [(texto_js(campo), valor_js(c.valor), texto_js(c.mensaje)) for c in datos.casos if not c.solo_backend],
+        'casos': [(texto_js(campo), valor_js(c.valor), texto_js(c.mensaje)) for c in datos.casos if not c.solo_backend]
+                 + no_ofrecidos,
         'bordes': [(texto_js(campo), valor_js(valor)) for valor in datos.bordes],
         'solo_backend': [(campo, c.mensaje) for c in datos.casos if c.solo_backend],
         'usa_correo_largo': any(valor.tipo == 'correo_de_largo' for valor in datos.bordes)
