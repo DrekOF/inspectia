@@ -22,7 +22,7 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 ## Resumen
 
 - **143 criterios de aceptación** en 26 fichas: 55 con prueba y 88 pendientes.
-- **632 pruebas:** 237 de Java (33 generadas), 288 de JavaScript (52 generadas) y 107 de Python. Una prueba parametrizada cuenta una vez.
+- **633 pruebas:** 237 de Java (33 generadas), 289 de JavaScript (52 generadas) y 107 de Python. Una prueba parametrizada cuenta una vez.
 
 | Ficha | Criterios | Con prueba | Pendientes |
 |---|---:|---:|---:|
@@ -196,6 +196,7 @@ Otras pruebas de RF-03, que no cubren un criterio:
 - [`ReglasUsuarioImplTest`](../backend/src/test/java/co/edu/usco/inspectia/usuario/reglas/ReglasUsuarioImplTest.java) · reactivar a un usuario que ya está activo no suma otro: cumple sin contar
 - [`usuarios.spec.js`](../frontend/e2e/usuarios.spec.js) · al reactivar un usuario en la pantalla, vuelve a iniciar sesión (de punta a punta)
 - [`usuarios.spec.js`](../frontend/e2e/usuarios.spec.js) · el formulario va al lado de la lista en el PC y encima de ella en el celular (de punta a punta)
+- [`usuarios.spec.js`](../frontend/e2e/usuarios.spec.js) · en una ventana de PC de 1250 px de ancho, el formulario también va al lado de la lista (de punta a punta)
 - [`UsuarioPantalla.test.jsx`](../frontend/src/generated/usuario/UsuarioPantalla.test.jsx) · al editar a otra persona, la nota de la contraseña aparece al escribir una nueva (generada)
 - [`UsuarioPantalla.test.jsx`](../frontend/src/generated/usuario/UsuarioPantalla.test.jsx) · al editar la fila propia, los campos que impiden sus reglas no se cambian y muestran el mensaje de la regla (generada)
 - [`UsuarioPantalla.test.jsx`](../frontend/src/generated/usuario/UsuarioPantalla.test.jsx) · al editar sin escribir una contraseña, no la envía y queda la que había (generada)

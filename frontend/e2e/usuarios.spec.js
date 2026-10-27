@@ -4,10 +4,11 @@
  *              aislado, en PC y en celular: crear un usuario que entra, el correo repetido, los límites de la
  *              contraseña al crearla y al restablecerla, el máximo de 25 activos, desactivar y reactivar, lo que
  *              el administrador no puede hacer consigo mismo, los usuarios de otra empresa, los roles que se
- *              pueden asignar y dónde va el formulario. Cada prueba usa su propia empresa, registrada por la API,
- *              y entra con su administrador: así no choca con las de los otros navegadores ni llena los 25
- *              activos de la empresa de prueba. Los permisos, la accesibilidad y el ancho de celular de la
- *              pantalla los revisa su prueba generada (generated/usuario.spec.js).
+ *              pueden asignar y dónde va el formulario, también en una ventana de PC de 1250 px. Cada prueba usa
+ *              su propia empresa, registrada por la API, y entra con su administrador: así no choca con las de
+ *              los otros navegadores ni llena los 25 activos de la empresa de prueba. Los permisos, la
+ *              accesibilidad y el ancho de celular de la pantalla los revisa su prueba generada
+ *              (generated/usuario.spec.js).
  * Fecha de creación: 27/10/2026
  * Actualización: 27/10/2026
  * Autor: Equipo InspectIA
@@ -152,6 +153,31 @@ async function llenarNuevoUsuario(page, usuario) {
     await formulario.getByLabel('Rol', { exact: true }).selectOption(usuario.rol);
   }
   return formulario;
+}
+
+/**
+ * Abre «Nuevo usuario» y mide dónde quedaron el formulario y la lista.
+ *
+ * @param {import('@playwright/test').Page} page la página, con la lista ya cargada
+ * @param {boolean} esCelular si la prueba corre en tamaño de celular
+ * @returns {Promise<{ formulario: object, lista: object }>} sus cajas, como las da boundingBox
+ */
+async function cajasDelFormularioYLaLista(page, esCelular) {
+  await page.getByRole('button', { name: 'Nuevo usuario' }).click();
+  return {
+    formulario: await page.getByRole('form', { name: 'Nuevo usuario' }).boundingBox(),
+    lista: await listaDeUsuarios(page, esCelular).boundingBox(),
+  };
+}
+
+/**
+ * Revisa que el formulario esté al lado de la lista: empieza a su derecha y a su altura, no debajo.
+ *
+ * @param {{ formulario: object, lista: object }} cajas las del formulario y la lista
+ */
+function revisarQueVaAlLado({ formulario, lista }) {
+  expect(formulario.x, 'el formulario empieza a la derecha de la lista').toBeGreaterThanOrEqual(lista.x + lista.width);
+  expect(formulario.y, 'el formulario empieza a la altura de la lista, no debajo').toBeLessThan(lista.y + lista.height);
 }
 
 /**
@@ -387,13 +413,20 @@ test('RF-03 · el formulario va al lado de la lista en el PC y encima de ella en
   const empresa = await crearEmpresa(request);
   await abrirUsuarios(page, empresa.administrador);
 
-  await page.getByRole('button', { name: 'Nuevo usuario' }).click();
-  const formulario = await page.getByRole('form', { name: 'Nuevo usuario' }).boundingBox();
-  const lista = await listaDeUsuarios(page, isMobile).boundingBox();
+  const cajas = await cajasDelFormularioYLaLista(page, isMobile);
   if (isMobile) {
-    expect(formulario.y + formulario.height, 'el formulario termina antes de la lista').toBeLessThanOrEqual(lista.y);
+    expect(cajas.formulario.y + cajas.formulario.height, 'el formulario termina antes de la lista')
+      .toBeLessThanOrEqual(cajas.lista.y);
   } else {
-    expect(formulario.x, 'el formulario empieza a la derecha de la lista').toBeGreaterThanOrEqual(lista.x + lista.width);
-    expect(formulario.y, 'el formulario empieza a la altura de la lista, no debajo').toBeLessThan(lista.y + lista.height);
+    revisarQueVaAlLado(cajas);
   }
+});
+
+test('RF-03 · en una ventana de PC de 1250 px de ancho, el formulario también va al lado de la lista (de punta a punta)', async ({ page, request, isMobile }) => {
+  test.skip(isMobile, 'En el celular, el formulario va encima de la lista');
+  await page.setViewportSize({ width: 1250, height: 800 });
+  const empresa = await crearEmpresa(request);
+  await abrirUsuarios(page, empresa.administrador);
+
+  revisarQueVaAlLado(await cajasDelFormularioYLaLista(page, false));
 });
