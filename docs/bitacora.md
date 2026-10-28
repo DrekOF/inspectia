@@ -720,6 +720,7 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
        - el README de las entidades: la pantalla en bloque, `varias_lineas`, los textos de restaurar, los números en el formulario y los casos de límite, con los bordes de la API en una edición en bloque;
        - los README del generador, del frontend, de infra y el principal, y los Comandos de `CLAUDE.md`;
        - esta bitácora, con el recorrido de Usuarios en su entrada.
+    8. **El apellido de Julián** (`de853e8`), en un commit aparte: es Silva, no Silvas. Se corrigió en `README.md`, `CLAUDE.md` y el texto de «Acerca de», en español y en inglés. Ninguna prueba revisaba ese texto.
   - **Problemas encontrados:**
     - **Pruebas de Vitest que fallaban con la máquina ocupada.** Es la segunda vez, después de las 4 del PR #8, y Cristhian pidió buscar la causa.
       - Con dos corridas de Vitest a la vez, en 3 rondas, fallaron de 6 a 10 pruebas por corrida, 12 distintas. Se guardaron los mensajes de cada corrida. Las causas fueron tres:
@@ -740,10 +741,11 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
     - Generador: 117 pruebas en verde, y lo generado, al día (63 archivos).
     - Vitest: 563 pruebas en verde, y ESLint, limpio.
     - Backend: 119 pruebas unitarias y 401 de integración en verde, en la copia del entorno aislado.
-    - Playwright, en el entorno aislado sobre `12265be`: 236 en verde y 4 omitidas (iniciar sesión solo con el teclado y la de 1250 px, en el celular). Firefox se saltó en este equipo. Las de rangos pasaron también 3 veces seguidas en los 4 proyectos.
-    - Selenium: 24 en verde.
+    - Playwright, en el entorno aislado sobre `de853e8`, con todo el código del PR: 236 en verde y 4 omitidas (iniciar sesión solo con el teclado y la de 1250 px, en el celular). Firefox se saltó en este equipo. Las de rangos pasaron también 3 veces seguidas en los 4 proyectos, sobre `12265be`.
+    - Selenium, sobre `de853e8`: 24 en verde.
     - La demostración, con `--con-pruebas`: encendida en unos 50 s. El recorrido salió bien: «Productos» al final del menú; registrar, editar y pasar a Inactivo; Swagger con `/api/v1/productos`; y `\d producto` en psql.
     - Casos de prueba: 707 pruebas; de los 143 criterios de las fichas, 55 tienen prueba. RF-13 tiene prueba en C1, C3, C4 y C5, y sigue en «Aprobado»: C2, que un análisis nuevo use los rangos nuevos, llega con RF-12 (D-29).
+    - El recorrido: Cristhian lo hizo en su PC y estuvo bien, también la demostración y su Ctrl+C.
 - Por qué: RF-13 necesitaba su pantalla para funcionar de punta a punta (D-29). Es la tercera pantalla generada (RP-23) y la primera en bloque. La demostración muestra en la sustentación que, cambiando solo los JSON, sale otro CRUD completo.
 - Cómo se pidió: Cristhian pidió primero el plan, sin código, y lo aprobó con seis decisiones:
   1. El formulario también revisa el orden de los límites, con el mensaje del JSON, y marca los dos límites de cada par que no baja. Sus pruebas usan los mismos bordes que las del backend.
@@ -758,6 +760,7 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
   - Antes del commit del paso 4, buscar la causa de las fallas con carga, corriendo la suite con carga a propósito, y llevarlas a «Problemas encontrados» del PR y a esta bitácora. Aprobó el diagnóstico y los cinco puntos del paso 4: el aviso de éxito junto a los botones, el nombre corregido de la prueba, «Restaurar» en el color de error, las marcas hasta el siguiente intento de guardar y la recomendación que crece con el texto.
   - Probar él mismo el Ctrl+C de la demostración en su recorrido, e incluir la demostración en «Para probarlo» del PR.
   - Anotar en la entrada de Usuarios que hizo el recorrido en su PC y estuvo bien.
+  - Después de su recorrido y antes de subir la rama, corregir el apellido de Julián en un commit aparte, ajustar las pruebas que revisaran ese texto (no había ninguna) y sumarlo a «Fichas y documentación» del PR.
 - Archivos o PR: la rama `feature/RF-13-pantalla-rangos`; el PR lo abre Cristhian.
 
 ## Plantilla para nuevas entradas
