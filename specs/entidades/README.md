@@ -2,9 +2,9 @@
 Nombre: README.md (specs/entidades)
 Descripción: Qué hay en specs/entidades/ y formato de los JSON de entidades que lee el generador (RP-23).
 Fecha de creación: 12/10/2026
-Actualización: 27/10/2026
+Actualización: 28/10/2026
 Autor: Equipo InspectIA
-Versión: 1.12
+Versión: 1.13
 -->
 
 # specs/entidades
@@ -80,6 +80,22 @@ La pantalla de una entidad de `pantallas` se arma con lo que dice su JSON:
 - **Teclado (RNF-06 C4):** al abrir un panel, el foco va a su título; al cerrarlo, vuelve al botón que lo abrió.
 - **Menú y rutas:** la sección sale con su `icono` y con los roles de `listar`. Un ícono que el menú no conoce, como el de otra temática, sale genérico.
 
+**Pantalla en bloque.** Con `edicion_en_bloque`, como los rangos (RF-13), la pantalla no tiene lista ni panel: todas las filas van en un solo formulario (`PantallaEnBloque`).
+
+- **Filas:** una por cada valor de la lista que las identifica, en su orden. Cada fila es un grupo con el nombre de su valor y sus campos. En el PC, el nombre va a la izquierda, como en el prototipo; en el celular, todo va en una columna, y los botones a todo el ancho (D-38).
+- **Campos:** los atributos con `en_formulario`, de tipo `texto` o `decimal`:
+  - un `decimal` se escribe con coma o con punto, y se ve con el separador del idioma y la escala de su columna: 96,0 en español y 96.0 en inglés;
+  - un `texto` con `varias_lineas` va en varias líneas;
+  - en la fila que cumple `solo_lectura_si`, el campo se ve de solo lectura, con un candado, y el mensaje de la regla debajo, como motivo.
+- **Guardar:** envía todas las filas juntas, con los números leídos. Después, los campos quedan como los responde la API: 90,50 queda 90,5.
+- **Errores:** los de Yup y los de la API en `filas[i].campo` van debajo de su campo; los del bloque, en `filas` o sin campo, van arriba del formulario, con su mensaje.
+- **Restaurar:** «Restaurar valores por defecto» pide confirmación, con `confirmar_restaurar_detalle` (D-34). El aviso de que se guardó o se restauró va junto a los botones, donde se ve después de usarlos, también en el celular (D-38).
+- **Lo que va a mano**, en `frontend/src/extensiones.js`, porque el JSON no lo puede declarar:
+  - un resumen antes del formulario, como «Así quedan los rangos»;
+  - las `reglas` de todas las filas juntas, como el orden de los límites, que también van a mano en el backend.
+
+  La pantalla revisa esas reglas antes de enviar, después de Yup, en el mismo orden que la API. Marca los campos de la regla, salvo los de solo lectura, y el aviso de arriba los describe, sin repetir el mensaje en cada uno.
+
 | Clave de `pantalla` | Qué es |
 |---|---|
 | `icono` | El ícono de la sección en el menú, por su nombre, como `empresas` |
@@ -102,11 +118,13 @@ La pantalla de una entidad de `pantallas` se arma con lo que dice su JSON:
 | `confirmar_desactivar`, `confirmar_desactivar_detalle` | Si trae uno, los dos | «¿Desactivar {nombre}?» |
 | `fila_propia` | Con una regla `en_la_fila_propia` | «Tú», en usuario |
 | `contrasena_al_editar`, `ayuda_contrasena_al_editar`, `nota_contrasena_de_otro` | Con una contraseña opcional al editar | «Contraseña nueva», en usuario. La nota usa los atributos de la fila, como `{nombre}` |
-| `descripcion`, `columna_nombre`, `debajo_del_nombre`, `nota_formulario`, `nota_lista`, `contrasena_al_crear`, `ayuda_contrasena_al_crear` | Opcionales | «NIT {nit}» bajo el nombre |
+| `titulo_editar`, `al_guardar`, en una pantalla en bloque | Con `editar` | «Editar los rangos», el nombre del formulario; «Se guardaron los rangos.» |
+| `confirmar_restaurar_detalle`, `al_restaurar` | Con `restaurar_por_defecto` | «Se pierden los límites y los textos propios de la empresa.», «Se restauraron los valores por defecto.» |
+| `descripcion`, `columna_nombre`, `debajo_del_nombre`, `nota_formulario`, `nota_lista`, `nota_restaurar`, `contrasena_al_crear`, `ayuda_contrasena_al_crear` | Opcionales | «NIT {nit}» bajo el nombre |
 
 ### Lo que la pantalla generada todavía no soporta
 
-Si una entidad de `pantallas` usa algo de esta lista, el generador se detiene y dice qué falta: la edición en bloque (la pantalla de rangos llega con RF-13), una entidad sin `listar` o sin `pantalla`, un texto obligatorio que falte, un atributo del formulario que no sea texto, contraseña o lista y una columna de la lista que no sea texto ni lista.
+Si una entidad de `pantallas` usa algo de esta lista, el generador se detiene y dice qué falta: una entidad sin `listar` o sin `pantalla`, un texto obligatorio que falte, un atributo del formulario que no sea texto, contraseña o lista (en una pantalla en bloque, que no sea texto o decimal) y una columna de la lista que no sea texto ni lista.
 
 ## Columnas implícitas
 
@@ -163,7 +181,8 @@ No se escriben en los JSON. El generador las agrega a todas las tablas, y se pue
 | `validaciones` | Ver la tabla de validaciones |
 | `mensajes` | Mensaje propio por validación (`es` y `en`), además de `unico`, `valores` (todavía no se usa: ver «Valores permitidos en el CRUD»), `valores_en_formulario` y `solo_lectura_si`. Si no hay, se usa el genérico |
 | `entrada` | `contrasena`: campo del formulario (`nombre`, `etiquetas`, `obligatoria_al_crear`, `obligatoria_al_editar`) |
-| `solo_lectura_si` | `{ "atributo", "igual_a" }`: el campo no se edita en las filas que cumplen la condición, como el límite de Fuera de norma. Solo en una entidad con `edicion_en_bloque`, en un número del formulario y con la condición sobre la lista que identifica cada fila. Si cambia, la API responde 400 con `mensajes.solo_lectura_si` o el genérico, «Este dato no se puede cambiar.» |
+| `solo_lectura_si` | `{ "atributo", "igual_a" }`: el campo no se edita en las filas que cumplen la condición, como el límite de Fuera de norma. Solo en una entidad con `edicion_en_bloque`, en un número del formulario y con la condición sobre la lista que identifica cada fila. Si cambia, la API responde 400 con `mensajes.solo_lectura_si` o el genérico, «Este dato no se puede cambiar.». En la pantalla, el campo se ve de solo lectura, con ese mensaje como motivo |
+| `varias_lineas` | `texto` del formulario: `true` para que vaya en varias líneas, como la recomendación de un rango. Empieza con dos y crece con el texto |
 | `sugerencias` | `texto`: el formulario sugiere los valores que ya usó la empresa |
 | `ayuda` | Texto de ayuda bajo el campo (`es` y `en`) |
 | `ejemplo` | Un valor válido, que cumple todas las validaciones y `reglas` del atributo. Va en la documentación OpenAPI, en los datos de las pruebas generadas y en los casos de límite de su `patron`. Obligatorio si el atributo tiene `patron` y va en el formulario de una API, porque no se puede inventar (un NIT con su dígito de verificación, por ejemplo); en los demás, el generador arma uno |
@@ -191,7 +210,7 @@ No se escriben en los JSON. El generador las agrega a todas las tablas, y se pue
 | Clave | Base de datos | Backend | Frontend (Yup) |
 |---|---|---|---|
 | `min`, `max` (números) | `CHECK` | `@Min`/`@Max` o `@DecimalMin`/`@DecimalMax` | `min`/`max` |
-| `escala` (de un `decimal`, no va en `validaciones`) | `numeric(precision, escala)` | `@MaximoDecimales`, que cuenta los decimales sin los ceros del final; el número se guarda con esa escala | prueba propia |
+| `escala` (de un `decimal`, no va en `validaciones`) | `numeric(precision, escala)` | `@MaximoDecimales`, que cuenta los decimales sin los ceros del final; el número se guarda con esa escala | prueba propia, que cuenta igual (`maximoDecimales`) |
 | `longitud_min`, `longitud_max` (texto escrito) | — | `@Size` | `min`/`max` |
 | `bytes_max` | — | validador propio, contando bytes en UTF-8 | prueba propia |
 | `patron` | `CHECK (col ~ 'patron')` | `@Pattern` | `matches` |
@@ -201,6 +220,8 @@ No se escriben en los JSON. El generador las agrega a todas las tablas, y se pue
 | `minusculas` | — | pasa a minúsculas antes de guardar | igual |
 
 La `longitud` de un `texto` también se valida en el backend y en el frontend.
+
+**Números en el formulario.** Un `decimal` se escribe con coma o con punto, y Yup lo lee igual (`numeroDecimal`). Vacío cuenta como el dato que falta; lo que no se escribe como un número, como «noventa» o «1.000,5», da «Escribe un número, como 90,5.» (`validacion.numero`). A la API va un número.
 
 **Patrones.** El `patron` va anclado, con `^` al inicio y `$` al final, y sin lo que Java, PostgreSQL y JavaScript leen distinto, como los grupos `(?…)`, los cuantificadores posesivos (`++`) o `\b`: el `CHECK` y `matches` buscan el patrón dentro del texto y `@Pattern` revisa el texto entero, así que solo anclado validan igual los tres. Si no, la generación se detiene.
 
@@ -214,7 +235,9 @@ La `longitud` de un `texto` también se valida en el backend y en el frontend.
 - Con `bytes_max`, una eñe de más que la mitad de los bytes y, si también hay largo máximo, una eñe más que el largo, que falla por los dos.
 - Con `patron`: un valor que no lo cumple; el `ejemplo` con algo pegado antes y con algo pegado después, como x900123456-8 y 900123456-8x, que solo aceptaría un patrón sin anclar; y un valor demasiado largo que tampoco lo cumple.
 - Con `valores_en_formulario`, cada valor de la lista que existe pero el formulario no ofrece, como ADMIN_PLATAFORMA en el rol, con el mensaje del 403 de la API: la prueba de Yup lo rechaza, y la de la API lo revisa en la de permisos (ver «Valores permitidos en el CRUD»).
-- Los valores del borde, que se aceptan.
+- Con `min` o `max`, uno de más y uno de menos que el límite, como −1 y 101.
+- Con `escala`, un decimal de más, como 0,05 con escala 1. Y, con `min` o `max`, el número que falla por el límite y por los decimales a la vez, como 100,55 y −0,55: así queda fijo que Yup escoge el mismo error que la API, el del límite.
+- Los valores del borde, que se aceptan. En una entidad con `edicion_en_bloque` solo los revisa la prueba de Yup: la prueba generada de la API no puede armar un bloque válido sin conocer la regla del orden. Los bordes aceptados del lado de la API ya los prueba `RangosRecomendacionIT`, escrito a mano en el PR #5 (100,0, 0,1, 90,50 y la recomendación de 300 caracteres).
 
 **Valores permitidos en el CRUD.** `valores_en_formulario` no solo limita el formulario: el backend también lo valida, sin depender de los CHECK de la base. Los CHECK son la última defensa, no la validación que ve el usuario. Si alguien envía a mano a la API un código para una `lista`:
 
@@ -258,3 +281,5 @@ En una entidad con `edicion_en_bloque`, una regla de `validacion` recibe todas l
 ## Cambiar de temática
 
 Para otro producto se cambian solo estos JSON: etiquetas, listas (categorías, clases y motivos), valores iniciales, mensajes, los textos de `pantalla` y, si hace falta, atributos. Después se vuelve a generar. Si cambia el código de una lista, revisa los `checks` que lo usan.
+
+`npm run demo:otra-tematica`, desde `frontend/`, lo muestra en una copia del proyecto: agrega a InspectIA el producto de la pauta del docente (`generador/pruebas/ejemplos/producto.json`) y saca su tabla, su API y su pantalla, sin tocar el repositorio. Ver `frontend/README.md`.

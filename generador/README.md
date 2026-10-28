@@ -2,9 +2,9 @@
 Nombre: README.md (generador)
 Descripción: Qué hace el generador de InspectIA (RP-23), cómo se usa y cómo se prueba.
 Fecha de creación: 12/10/2026
-Actualización: 27/10/2026
+Actualización: 28/10/2026
 Autor: Equipo InspectIA
-Versión: 1.9
+Versión: 1.10
 -->
 
 # generador
@@ -20,17 +20,19 @@ Scripts de Python 3.13 que leen las entidades de `specs/entidades/*.json` (forma
 | Las entidades con CRUD | `backend/src/generated/java/.../<modulo>/` | Entidad JPA, con `@DynamicUpdate` (D-36), repositorio, un `enum` por lista y los valores iniciales. Un atributo con `solo_lo_cambian_las_reglas` sale en la entidad sin que JPA lo escriba |
 | Las entidades de `alcance.json` | `backend/src/generated/java/.../<modulo>/` | API REST: servicio, controlador, reglas de acceso por ruta, solicitudes, respuesta, mapeador y la interfaz de las reglas |
 | Las entidades de `alcance.json` | `backend/src/test-generated/java/.../<modulo>/<Clase>ApiGeneradaIT.java` | Prueba de integración: un caso por cada permiso y cada validación del JSON, más los datos únicos y el filtro `activo` del listado (D-33). En una edición en bloque, también las filas completas, los datos de solo lectura y los valores por defecto |
-| Las entidades de `pantallas` | `frontend/src/generated/<modulo>/` | La pantalla (`<Clase>Pantalla.jsx`), el cliente de su API (`<entidad>Api.js`) y sus validaciones de Yup (`<entidad>Esquemas.js`), cada uno con su prueba de Vitest |
+| Las entidades de `pantallas` | `frontend/src/generated/<modulo>/` | La pantalla (`<Clase>Pantalla.jsx`): una lista con su formulario o, con `edicion_en_bloque`, todas las filas en un solo formulario. También el cliente de su API (`<entidad>Api.js`) y sus validaciones de Yup (`<entidad>Esquemas.js`), cada uno con su prueba de Vitest |
 | Las entidades de `pantallas` | `frontend/e2e/generated/<entidad>.spec.js` | Prueba de Playwright: qué roles abren la pantalla, sus fallas de accesibilidad (axe, en los dos temas) y que no se desplace a los lados desde 360 px |
 | Siempre | `frontend/src/generated/pantallas.js` y `textos.js` | Las pantallas que leen el menú y las rutas, con carga diferida, y los textos de `pantalla.textos`, en español y en inglés |
 
-`alcance.json` dice qué entidades con CRUD tienen API (`api`) y cuáles tienen pantalla (`pantallas`). La API la tienen las tres: `empresa` (RF-02), `usuario` (RF-03, una API por empresa) y `rango_recomendacion` (RF-13, una API de edición en bloque). La pantalla la tienen `empresa` (RF-02) y `usuario` (RF-03); la de rangos llega con su PR. Cómo responden la API y la pantalla generadas, y lo que no soportan todavía, está en `specs/entidades/README.md`.
+`alcance.json` dice qué entidades con CRUD tienen API (`api`) y cuáles tienen pantalla (`pantallas`). La API la tienen las tres: `empresa` (RF-02), `usuario` (RF-03, una API por empresa) y `rango_recomendacion` (RF-13, una API de edición en bloque). La pantalla también la tienen las tres; la de rangos (RF-13) es una pantalla en bloque. Cómo responden la API y la pantalla generadas, y lo que no soportan todavía, está en `specs/entidades/README.md`.
 
 Las carpetas generadas son solo del generador: `generar` borra lo que ya no se genera. Lo escrito a mano, como las reglas de cada módulo (`<modulo>/reglas/`) y el módulo `comun`, va fuera de ellas. En el frontend, lo que el JSON no puede declarar de una pantalla, como el panel de administradores de una empresa, va en `frontend/src/extensiones.js`: lo generado no importa código escrito a mano.
 
 ## Validaciones y casos de límite
 
 Las validaciones de cada campo salen de un solo modelo, `inspectia_generador/campos.py`. De él salen las anotaciones de Bean Validation, las validaciones de Yup y los casos de límite de las pruebas generadas de la API y de Yup, con el mismo mensaje en español; los casos están en `specs/entidades/README.md`. Cada validación lleva su restricción de Bean Validation, y Yup revisa en el orden en que la API escoge el error de un campo (`orden_de_la_api`, como `ManejadorDeErrores`): así un valor que falla por dos validaciones da el mismo mensaje en el formulario y en la API. Una prueba del generador lee `ManejadorDeErrores` y falla si esa regla cambia en el backend. La prueba de Yup revisa además cada valor de una lista que existe pero el formulario no ofrece (`valores_en_formulario`), como ADMIN_PLATAFORMA en el rol, con el mensaje del 403 de la API; la prueba de la API lo revisa en la de permisos.
+
+Un `decimal` del formulario se lee con coma o con punto (`numeroDecimal`), y lo que no es un número da «Escribe un número, como 90,5.» (`validacion.numero`). Sus decimales se cuentan como en `@MaximoDecimales` (`maximoDecimales`). Con `min` o `max`, los casos de límite incluyen el número que falla por el límite y por los decimales a la vez, como 100,55 y −0,55, para que Yup escoja el mismo error que la API. En una edición en bloque, la prueba generada de la API no revisa los valores del borde que se aceptan: no puede armar un bloque válido sin conocer las reglas escritas a mano, como el orden de los límites (ver `specs/entidades/README.md`).
 
 ## Uso
 
@@ -52,6 +54,16 @@ generador/.venv/Scripts/python generador/generar.py comprobar   # compara sin es
 `comprobar` encuentra los archivos generados que alguien editó a mano, los que faltan o sobran, y lo que quedó sin regenerar después de cambiar un JSON o una plantilla. Se corre antes de cada commit y, cuando exista, en el CI (RP-18). La salida es determinista: las fechas del header salen de los JSON y los finales de línea son LF.
 
 Si una entidad de `alcance.json` usa algo que la API todavía no soporta, `generar` se detiene y dice qué falta.
+
+## Demostración de otra temática
+
+`npm run demo:otra-tematica`, desde `frontend/` y con Docker Desktop abierto, muestra que cambiando solo los JSON sale otro CRUD completo (RP-23):
+
+1. En una copia del proyecto, en `frontend/.demostracion` (Git la ignora), agrega a las entidades de InspectIA el producto de la pauta del docente, `pruebas/ejemplos/producto.json`, y lo suma a la API y a las pantallas del alcance.
+2. Corre `generar.py generar` en la copia, con `--entidades`, `--alcance` y `--raiz`, y lista por capa lo que escribió: la tabla en V1, la API con su prueba de integración, los textos y la pantalla con sus pruebas.
+3. Enciende la copia como el entorno aislado de las pruebas, con su propia base, y escribe cómo entrar, cómo ver la API en Swagger UI y la tabla en psql. Ctrl+C la apaga y borra su base.
+
+Con `-- --con-pruebas`, antes de encenderla corre en la copia las pruebas generadas de producto. El repositorio no cambia. Los detalles están en `frontend/README.md`; `pruebas/test_otra_tematica.py` revisa lo mismo sin encender nada.
 
 ## Casos de prueba (RP-13)
 
@@ -76,7 +88,7 @@ generador/
 ├── inspectia_generador/     carga, validación, modelo, validaciones de cada campo, SQL, Java, frontend, textos,
 │                            headers, escritura y casos
 ├── plantillas/              plantillas de Jinja2: sql/, java/main/, java/test/, frontend/, i18n/ y docs/
-└── pruebas/                 pruebas con pytest y ejemplos/producto.json
+└── pruebas/                 pruebas con pytest y ejemplos/producto.json, que usa también la demostración
 ```
 
 ## Pruebas

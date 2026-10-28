@@ -2,9 +2,9 @@
 Nombre: bitacora.md
 Descripción: Registro paso a paso de cómo se construyó InspectIA, para la sustentación (RP-24).
 Fecha de creación: 12/10/2026
-Actualización: 27/10/2026
+Actualización: 28/10/2026
 Autor: Equipo InspectIA
-Versión: 1.18
+Versión: 1.19
 -->
 
 # Bitácora de construcción (RP-24)
@@ -666,6 +666,7 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
     - Selenium: 20 en verde.
     - Las corridas de punta a punta se hicieron con un script temporal, fuera del repositorio, que enciende el entorno aislado una vez, corre `npx playwright test` y `npm run e2e:selenium` con `INSPECTIA_E2E_URL` y lo apaga al final.
     - Casos de prueba: 633 pruebas; de los 143 criterios de las fichas, 55 tienen prueba. RF-03 tiene sus 11 criterios con prueba, pero sigue en «Aprobado»: la parte del historial de C6 se prueba con RF-14 (D-29).
+    - El recorrido: Cristhian lo hizo en su PC y estuvo bien. Se anota aquí porque no alcanzó a entrar en el PR #9.
 - Por qué: RF-03 necesitaba su pantalla para funcionar de punta a punta (D-29). Es la segunda pantalla generada (RP-23): lo propio de la fila de quien tiene la sesión y el límite de activos quedan declarados en el JSON, así que otra temática los cambia sin tocar código.
 - Cómo se pidió: Cristhian pidió primero el plan y lo aprobó con seis decisiones:
   1. El resumen «5 de 25 usuarios activos, contándote a ti.», sin la empresa ni negrita, con `{maximo}`.
@@ -684,6 +685,80 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
   - Bajar la base de la lista a 560 px, con la prueba de 1250 px primero, y anotarlo en D-37.
   - Al final, el borrador del PR con «Fichas y documentación» y el aviso de reiniciar la base y sus pasos.
 - Archivos o PR: la rama `feature/RF-03-pantalla-usuarios`; el PR lo abre Cristhian.
+
+## 28/10/2026 · RF-13 y RP-23: la pantalla de rangos y la demostración de otra temática
+
+- Quién: Cristhian Sánchez (`DrekOF`), con Claude Code.
+- Qué se hizo:
+  - **En la rama `feature/RF-13-pantalla-rangos`, commit por commit, cada uno revisado por Cristhian antes del siguiente:**
+    1. **Las pruebas del generador, en rojo** (`f526083`): la pantalla en bloque de rangos, los campos decimales y de varias líneas, los textos de editar y de restaurar, el mensaje «Escribe un número, como 90,5.» y los casos de límite que fallan por dos validaciones a la vez, 100,55 y −0,55.
+    2. **El generador 1.10 y los JSON** (`19bf435`):
+       - `rango_recomendacion.json` (1.3) trae su pantalla: el ícono, la descripción y los textos de editar, guardar y restaurar, con su confirmación. La recomendación lleva `varias_lineas`. `alcance.json` (1.5) agrega la pantalla.
+       - El generador describe la pantalla en bloque: la lista que identifica las filas, los campos por su tipo (un número con su escala y su `solo_lectura_si`, o un texto en varias líneas) y los textos. La pantalla común, `PantallaEnBloque`, los arma.
+       - La prueba generada de Yup usa los números escritos en español, como «100,55», y la de la API suma dos casos: 100,55 da el error del máximo, y −0,55, el del mínimo.
+       - El backend generado solo cambia en los headers, también el de `V1__esquema_inicial.sql`: hay que reiniciar la base local (P-16).
+    3. **Las pruebas del frontend, en rojo** (`0221b14`): `GestionarRangos.test.jsx`, con C1 (con los bordes del backend: el empate, 96,0 y 95,9, y Corriente en 0,1 y en 0), C4 y C5; el resumen; los números en español y en inglés; y Fuera de norma de solo lectura. También las pruebas de la regla del orden, de los decimales, del campo de número y del de varias líneas.
+    4. **El código del frontend** (`aa8493e`):
+       - `PantallaEnBloque`: las filas en un formulario, guardar, restaurar con su confirmación y los errores de la API, de cada fila y del bloque.
+       - `CampoDeNumero`, `variasLineas` en `CampoDeTexto`, `textoDelDecimal`, `numeroDecimal` y `maximoDecimales`.
+       - En `src/rango/`, lo escrito a mano para los rangos, conectado en `extensiones.js`: el resumen «Así quedan los rangos» y la regla del orden de los límites, la misma del backend.
+       - Las esperas de las pruebas de Vitest (ver «Problemas encontrados»).
+    5. **La demostración de otra temática** (`8dfcef7`): `npm run demo:otra-tematica`, desde `frontend/`.
+       - En una copia del proyecto, en `frontend/.demostracion`, agrega a InspectIA el producto de la pauta del docente y lo suma al alcance.
+       - Genera su tabla, su API y su pantalla, lista por capa lo que escribió el generador (23 archivos) y enciende la copia como el entorno aislado de las pruebas, en el proyecto `inspectia-demo`.
+       - Con `--con-pruebas`, corre antes en la copia las pruebas generadas de producto: 27 de Vitest y 34 de `ProductoApiGeneradaIT`.
+       - El repositorio no cambia. `encenderEntorno` recibe la carpeta, el proyecto y un paso de preparación, y sin opciones las pruebas de punta a punta lo usan igual.
+       - En Windows, el `node_modules` se enlaza en la copia con un junction, que no pide permisos de administrador.
+    6. **Las pruebas de punta a punta** (`12265be`):
+       - Playwright, en PC y en celular, cada prueba en su propia empresa, porque guardar cambia sus rangos:
+         - C1: con Estándar en 97 no guarda y, al recargar, Estándar sigue en 90,0;
+         - C4: guarda un límite y un texto propios, restaura con la confirmación y, al recargar, están los de D-10;
+         - 90,50 queda en 90,5, también al recargar.
+       - Selenium: C4, en Chrome y en Edge, de PC y de celular.
+    7. **Documentación:**
+       - D-38;
+       - el README de las entidades: la pantalla en bloque, `varias_lineas`, los textos de restaurar, los números en el formulario y los casos de límite, con los bordes de la API en una edición en bloque;
+       - los README del generador, del frontend, de infra y el principal, y los Comandos de `CLAUDE.md`;
+       - esta bitácora, con el recorrido de Usuarios en su entrada.
+  - **Problemas encontrados:**
+    - **Pruebas de Vitest que fallaban con la máquina ocupada.** Es la segunda vez, después de las 4 del PR #8, y Cristhian pidió buscar la causa.
+      - Con dos corridas de Vitest a la vez, en 3 rondas, fallaron de 6 a 10 pruebas por corrida, 12 distintas. Se guardaron los mensajes de cada corrida. Las causas fueron tres:
+        - `findBy` y `waitFor` esperaban 1 s, lo que trae Testing Library. La primera vez que se abre una pantalla con carga diferida, como Empresas o Usuarios, su módulo tarda más que eso en cargar con la máquina ocupada.
+        - Vitest cortaba cada prueba a los 5 s, y las que llenan un formulario entero, como registrar una empresa, pasaban de ese tiempo.
+        - Una falla en cascada: RF-02 C3 falló solo cuando la prueba anterior, C2, se cortó por tiempo. Vitest corta la prueba, pero no su `usuario.type`, que siguió escribiendo en «Nombre», el campo con el foco de C3. Un registro temporal lo mostró: había 5 mensajes y no 6, y «Nombre» tenía el foco y ya no tenía su error. Corriendo C3 sola, nunca falla.
+      - El arreglo, en la configuración común de las pruebas: `findBy` y `waitFor` esperan hasta 5 s (`src/pruebas/preparacion.js`) y cada prueba tiene hasta 20 s (`vite.config.js`). Una prueba que pasa no espera más.
+      - Con la misma carga, 0 fallas en 6 corridas, antes y después del código de los rangos. La más lenta tardó 8,0 s.
+    - **El nombre de una prueba del paso 3 decía algo que no puede pasar:** «como cuando otra persona cambió los rangos al mismo tiempo». La API revisa el bloque que le llega, no lo que hay guardado. Se quitó en el paso 4.
+    - **La demostración no podía copiar el frontend dentro de sí mismo.** La primera corrida falló, porque `cpSync` no copia una carpeta dentro de sí misma, aunque esté excluida. Ahora la copia en espejo copia entrada por entrada del primer nivel. La copia va en `frontend/.demostracion`, y no en la raíz del repositorio, porque allí el backend de la copia encontraría `infra/.env`, con las contraseñas de desarrollo.
+    - **Vite reescribe `new URL(…, import.meta.url)` en las pruebas.** Lo convierte en una dirección de su servidor (`http://localhost:3000/@fs/…`), y la prueba de la demostración no cargaba. `entorno.js` y la demostración ahora sacan sus rutas con `dirname(fileURLToPath(import.meta.url))`.
+  - **Mutantes que quedan vivos** (Stryker, sobre los `.js` nuevos o cambiados):
+    - `limites.js`, `decimales.js` y `reglas.js`: 100 %. En la primera corrida sobrevivían 4. Tres eran equivalentes y se quitaron simplificando el código; el cuarto pedía dos casos más del resumen.
+    - `otra-tematica.js`: 100 %, sin contar la parte que enciende la copia (Docker, Maven y la consola), que se prueba corriéndola.
+    - `espejo.js`: 3 vivos, equivalentes, que ya sobrevivían antes de este PR: `force` al borrar algo que existe, el valor por defecto de `excluir` y `preserveTimestamps`, porque en Windows copiar un archivo ya conserva su fecha.
+  - **Mejora posible:** la regla del orden de los límites va escrita a mano, en el backend y en el frontend. Podría volverse declarativa en el JSON, y otra temática no necesitaría código propio para ella. Decisión de Cristhian: queda anotada aquí, sin pendiente.
+  - **Resultado:**
+    - Generador: 117 pruebas en verde, y lo generado, al día (63 archivos).
+    - Vitest: 563 pruebas en verde, y ESLint, limpio.
+    - Backend: 119 pruebas unitarias y 401 de integración en verde, en la copia del entorno aislado.
+    - Playwright, en el entorno aislado sobre `12265be`: 236 en verde y 4 omitidas (iniciar sesión solo con el teclado y la de 1250 px, en el celular). Firefox se saltó en este equipo. Las de rangos pasaron también 3 veces seguidas en los 4 proyectos.
+    - Selenium: 24 en verde.
+    - La demostración, con `--con-pruebas`: encendida en unos 50 s. El recorrido salió bien: «Productos» al final del menú; registrar, editar y pasar a Inactivo; Swagger con `/api/v1/productos`; y `\d producto` en psql.
+    - Casos de prueba: 707 pruebas; de los 143 criterios de las fichas, 55 tienen prueba. RF-13 tiene prueba en C1, C3, C4 y C5, y sigue en «Aprobado»: C2, que un análisis nuevo use los rangos nuevos, llega con RF-12 (D-29).
+- Por qué: RF-13 necesitaba su pantalla para funcionar de punta a punta (D-29). Es la tercera pantalla generada (RP-23) y la primera en bloque. La demostración muestra en la sustentación que, cambiando solo los JSON, sale otro CRUD completo.
+- Cómo se pidió: Cristhian pidió primero el plan, sin código, y lo aprobó con seis decisiones:
+  1. El formulario también revisa el orden de los límites, con el mensaje del JSON, y marca los dos límites de cada par que no baja. Sus pruebas usan los mismos bordes que las del backend.
+  2. Números con coma en español y con punto en inglés; al escribir se aceptan los dos.
+  3. Sin los subtítulos de las categorías, porque el resumen ya dice qué abarca cada una.
+  4. La recomendación en varias líneas, con `varias_lineas: true` en el JSON.
+  5. La demostración: InspectIA más producto, en una copia.
+  6. La regla del orden se queda escrita a mano, con la mejora posible anotada aquí, sin pendiente.
+
+  Sumó dos cosas: los casos que fallan por dos validaciones, 100,55 y −0,55, y el junction de Windows. Las diferencias con el prototipo van en D-38. En el camino pidió:
+  - En el README de las entidades, decir que la prueba generada de la API no puede armar un bloque válido sin conocer la regla del orden, y que los bordes aceptados del lado de la API ya los prueba `RangosRecomendacionIT`, escrito a mano en el PR #5.
+  - Antes del commit del paso 4, buscar la causa de las fallas con carga, corriendo la suite con carga a propósito, y llevarlas a «Problemas encontrados» del PR y a esta bitácora. Aprobó el diagnóstico y los cinco puntos del paso 4: el aviso de éxito junto a los botones, el nombre corregido de la prueba, «Restaurar» en el color de error, las marcas hasta el siguiente intento de guardar y la recomendación que crece con el texto.
+  - Probar él mismo el Ctrl+C de la demostración en su recorrido, e incluir la demostración en «Para probarlo» del PR.
+  - Anotar en la entrada de Usuarios que hizo el recorrido en su PC y estuvo bien.
+- Archivos o PR: la rama `feature/RF-13-pantalla-rangos`; el PR lo abre Cristhian.
 
 ## Plantilla para nuevas entradas
 
