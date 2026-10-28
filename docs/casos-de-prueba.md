@@ -22,7 +22,7 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 ## Resumen
 
 - **143 criterios de aceptación** en 26 fichas: 55 con prueba y 88 pendientes.
-- **707 pruebas:** 237 de Java (33 generadas), 353 de JavaScript (73 generadas) y 117 de Python. Una prueba parametrizada cuenta una vez.
+- **724 pruebas:** 237 de Java (33 generadas), 366 de JavaScript (73 generadas) y 121 de Python. Una prueba parametrizada cuenta una vez.
 
 | Ficha | Criterios | Con prueba | Pendientes |
 |---|---:|---:|---:|
@@ -702,13 +702,26 @@ Pruebas que no cubren un criterio de una ficha, sino una pauta del docente (RP) 
 - [`DecimalesTest`](../backend/src/test/java/co/edu/usco/inspectia/comun/numero/DecimalesTest.java) · un dato que no llegó sigue sin valor
 - [`MaximoDecimalesValidadorTest`](../backend/src/test/java/co/edu/usco/inspectia/comun/validacion/MaximoDecimalesValidadorTest.java) · @MaximoDecimales responde en el campo con el mensaje general de los decimales
 - [`MaximoDecimalesValidadorTest`](../backend/src/test/java/co/edu/usco/inspectia/comun/validacion/MaximoDecimalesValidadorTest.java) · @MaximoDecimales usa el máximo de su anotación, que sale de la escala del JSON (parametrizada)
-- [`otra-tematica.test.js`](../frontend/herramientas/otra-tematica.test.js) · el alcance de la demostración agrega producto al final de la API y de las pantallas, y deja lo demás igual
+- [`otra-tematica.test.js`](../frontend/herramientas/otra-tematica.test.js) · --entidad recibe la ruta del JSON, relativa a la carpeta donde se corrió el comando, y --con-pruebas va antes o después
+- [`otra-tematica.test.js`](../frontend/herramientas/otra-tematica.test.js) · --entidad sin la ruta del JSON detiene la demostración y dice cómo se escribe
+- [`otra-tematica.test.js`](../frontend/herramientas/otra-tematica.test.js) · con cafe.json, los textos y las pruebas de la demostración salen de su JSON: su nombre, su clase, su ruta y su rol
+- [`otra-tematica.test.js`](../frontend/herramientas/otra-tematica.test.js) · el alcance de la demostración agrega la entidad al final de la API y de las pantallas, y deja lo demás igual
 - [`otra-tematica.test.js`](../frontend/herramientas/otra-tematica.test.js) · en Windows el enlace a node_modules es un junction, que no pide permisos de administrador; en los demás, un enlace simbólico
 - [`otra-tematica.test.js`](../frontend/herramientas/otra-tematica.test.js) · la copia del frontend usa el node_modules del original por un enlace, sin copiarlo; si ya lo tiene, lo deja
+- [`otra-tematica.test.js`](../frontend/herramientas/otra-tematica.test.js) · la demostración dice con quién entrar según el rol de la entidad: el administrador de la plataforma, el de la empresa o el usuario final
+- [`otra-tematica.test.js`](../frontend/herramientas/otra-tematica.test.js) · la demostración entra con el primer rol que registra en la entidad o, si nadie registra, con el primero que la lista
+- [`otra-tematica.test.js`](../frontend/herramientas/otra-tematica.test.js) · la demostración lee el JSON de la entidad; si no existe o no es un JSON, se detiene y lo dice
 - [`otra-tematica.test.js`](../frontend/herramientas/otra-tematica.test.js) · lo que escribió el generador para producto se lista por capa, en orden: de la base a las pruebas de la pantalla
+- [`otra-tematica.test.js`](../frontend/herramientas/otra-tematica.test.js) · si nadie del entorno de la demostración tiene el rol de la entidad, se detiene y dice con qué roles se entra
+- [`otra-tematica.test.js`](../frontend/herramientas/otra-tematica.test.js) · si npm se quedó con las opciones porque faltó «--» antes de ellas, la demostración se detiene en vez de seguir sin ellas
+- [`otra-tematica.test.js`](../frontend/herramientas/otra-tematica.test.js) · sin --entidad, los textos y las pruebas de la demostración salen de producto.json
+- [`otra-tematica.test.js`](../frontend/herramientas/otra-tematica.test.js) · sin opciones, la demostración agrega producto.json y no corre las pruebas generadas
+- [`otra-tematica.test.js`](../frontend/herramientas/otra-tematica.test.js) · un JSON con el nombre de una entidad de InspectIA, como empresa.json, detiene la demostración: reemplazaría la de la app
 - [`otra-tematica.test.js`](../frontend/herramientas/otra-tematica.test.js) · una capa en la que el generador no escribió nada no se lista
+- [`otra-tematica.test.js`](../frontend/herramientas/otra-tematica.test.js) · una opción que la demostración no entiende, como --con-prueba mal escrito, la detiene en vez de ignorarla
 - [`CampoDeTexto.test.jsx`](../frontend/src/componentes/CampoDeTexto.test.jsx) · con variasLineas, el campo de texto va en varias líneas, como la recomendación de un rango
 - [`CampoDeLista.test.jsx`](../frontend/src/crud/CampoDeLista.test.jsx) · el campo de lista muestra los valores de la lista del JSON con su etiqueta y guarda el código del elegido
+- [`CampoDeLista.test.jsx`](../frontend/src/crud/CampoDeLista.test.jsx) · una lista que empieza sin valor muestra «Elige una opción» en vez de aparentar que ya se eligió el primero, y al elegir deja de verse
 - [`PantallaDeRegistros.test.jsx`](../frontend/src/crud/PantallaDeRegistros.test.jsx) · con más de 20 registros, la lista va en páginas fijas de 20, pasa a la siguiente y la pide a la API
 - [`PantallaDeRegistros.test.jsx`](../frontend/src/crud/PantallaDeRegistros.test.jsx) · después de registrar, el formulario se cierra y la lista y su resumen se vuelven a pedir, con el registro nuevo
 - [`PantallaDeRegistros.test.jsx`](../frontend/src/crud/PantallaDeRegistros.test.jsx) · las notas del JSON se ven donde van: la del formulario solo al registrar, y la de la lista debajo de ella
@@ -787,8 +800,12 @@ Pruebas que no cubren un criterio de una ficha, sino una pauta del docente (RP) 
 - [`test_java.py`](../generador/pruebas/test_java.py) · una entidad por empresa no puede dar operaciones al administrador de la plataforma, que no tiene empresa
 - [`test_java.py`](../generador/pruebas/test_java.py) · valores_en_formulario se valida con @ValorPermitido, que responde 403 antes que los demás errores
 - [`test_otra_tematica.py`](../generador/pruebas/test_otra_tematica.py) · el JSON de producto de la pauta del docente pasa la validación
+- [`test_otra_tematica.py`](../generador/pruebas/test_otra_tematica.py) · el JSON del café especial del Huila pasa la validación
 - [`test_otra_tematica.py`](../generador/pruebas/test_otra_tematica.py) · el generador produce la API de producto, otra temática, con las mismas plantillas
+- [`test_otra_tematica.py`](../generador/pruebas/test_otra_tematica.py) · el generador produce la API del café especial, por empresa, con sus pruebas de RNF-03
 - [`test_otra_tematica.py`](../generador/pruebas/test_otra_tematica.py) · el generador produce la pantalla de producto, otra temática, con las mismas plantillas del frontend
+- [`test_otra_tematica.py`](../generador/pruebas/test_otra_tematica.py) · el generador produce la pantalla del café especial: sus listas sin valor por defecto empiezan vacías
+- [`test_otra_tematica.py`](../generador/pruebas/test_otra_tematica.py) · el generador produce la tabla del café especial: por empresa y con los valores de sus listas
 - [`test_otra_tematica.py`](../generador/pruebas/test_otra_tematica.py) · el generador produce los archivos de otra temática: producto de la pauta del docente
 - [`test_salida.py`](../generador/pruebas/test_salida.py) · comprobar detecta archivos que faltan o que sobran en las carpetas generadas
 - [`test_salida.py`](../generador/pruebas/test_salida.py) · comprobar detecta un archivo generado editado a mano
