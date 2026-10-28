@@ -28,8 +28,9 @@ export default {
     '!**/*.test.js',
   ],
   // Lo que no hace falta para las pruebas unitarias no se copia a su carpeta de trabajo (.stryker-tmp), como
-  // el entorno de punta a punta, que guarda una copia compilada del backend.
-  ignorePatterns: ['e2e/.entorno', 'test-results', 'playwright-report', 'dist'],
+  // el entorno de punta a punta, que guarda una copia compilada del backend, y la demostración de otra temática,
+  // con su copia del proyecto.
+  ignorePatterns: ['e2e/.entorno', '.demostracion', 'test-results', 'playwright-report', 'dist'],
   // Con un proceso por procesador, las pruebas de componentes se vuelven lentas y Stryker corta por tiempo
   // mutantes que no dejan un bucle infinito: los cuenta como detectados y el puntaje sube sin razón. Con la
   // mitad de los procesadores y 15 s de margen, solo se cortan los bucles infinitos de verdad.

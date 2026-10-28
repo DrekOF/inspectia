@@ -2,10 +2,11 @@
  * Nombre: eslint.config.js
  * Descripción: Reglas de ESLint del frontend: JavaScript moderno, las reglas de los hooks de React, JSDoc en
  *              cada función y componente exportados (RP-09) y los colores solo en los tokens del tema (RP-08).
+ *              No revisa lo compilado, los reportes ni la copia de la demostración de otra temática.
  * Fecha de creación: 20/10/2026
- * Actualización: 20/10/2026
+ * Actualización: 28/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 import js from '@eslint/js';
 import jsdoc from 'eslint-plugin-jsdoc';
@@ -19,7 +20,8 @@ const COLOR_A_MANO = {
 };
 
 export default [
-  { ignores: ['dist/', 'coverage/', 'reports/', 'test-results/', 'playwright-report/', 'blob-report/', '.stryker-tmp/'] },
+  { ignores: ['dist/', 'coverage/', 'reports/', 'test-results/', 'playwright-report/', 'blob-report/', '.stryker-tmp/',
+    '.demostracion/'] },
   js.configs.recommended,
   jsdoc.configs['flat/recommended-error'],
   {

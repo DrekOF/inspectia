@@ -3,13 +3,14 @@
  * Descripción: Copia en espejo de una carpeta (RP-14): deja la copia igual al original, con lo nuevo y lo
  *              cambiado con sus fechas, y borra de la copia lo que ya no está en el original. El entorno
  *              aislado de las pruebas de punta a punta la usa para compilar su propia copia del backend, que
- *              lleva también los scripts de infra/bd y nunca infra/.env.
+ *              lleva también los scripts de infra/bd y nunca infra/.env; la demostración de otra temática, también
+ *              para su copia del frontend, que está dentro de frontend/.demostracion y no lleva e2e/.entorno.
  * Fecha de creación: 20/10/2026
- * Actualización: 26/10/2026
+ * Actualización: 28/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
-import { cpSync, existsSync, readdirSync, rmSync, statSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 /**
@@ -18,13 +19,13 @@ import { join } from 'node:path';
  * @param {string} origen la carpeta original
  * @param {string} copia la copia
  * @param {string} relativa la carpeta que se revisa, relativa a las dos
- * @param {string[]} excluir los nombres del primer nivel que no se revisan
+ * @param {string[]} excluir las rutas que no se revisan, relativas a las dos, con el separador del sistema
  * @param {string[]} borradas donde se anota cada ruta borrada, relativa a la copia
  */
 function borrarLoQueSobra(origen, copia, relativa, excluir, borradas) {
   for (const entrada of readdirSync(join(copia, relativa), { withFileTypes: true })) {
     const ruta = join(relativa, entrada.name);
-    if (relativa === '' && excluir.includes(entrada.name)) {
+    if (excluir.includes(ruta)) {
       continue;
     }
     const original = join(origen, ruta);
@@ -42,21 +43,30 @@ function borrarLoQueSobra(origen, copia, relativa, excluir, borradas) {
  *
  * @param {string} origen la carpeta original
  * @param {string} copia la copia; si no existe, se crea
- * @param {{ excluir?: string[] }} [opciones] nombres del primer nivel que ni se copian ni se borran, como target
+ * @param {{ excluir?: string[] }} [opciones] rutas relativas a la carpeta que ni se copian ni se borran, como
+ *   target o e2e/.entorno; cada una excluye solo esa ruta, no otra con el mismo nombre más adentro
  * @returns {string[]} lo que se borró de la copia, relativo a ella: un archivo o una carpeta que se borró o
  *   se renombró en el original
  */
 export function espejar(origen, copia, { excluir = [] } = {}) {
   const borradas = [];
+  // join deja cada ruta con el separador del sistema, como las que se comparan con ella.
+  const relativas = excluir.map((ruta) => join(ruta));
   if (existsSync(copia)) {
-    borrarLoQueSobra(origen, copia, '', excluir, borradas);
+    borrarLoQueSobra(origen, copia, '', relativas, borradas);
   }
-  const excluidas = excluir.map((nombre) => join(origen, nombre));
-  cpSync(origen, copia, {
-    recursive: true,
-    preserveTimestamps: true,
-    filter: (ruta) => !excluidas.includes(ruta),
-  });
+  const excluidas = relativas.map((ruta) => join(origen, ruta));
+  // Entrada por entrada del primer nivel, y no la carpeta entera: cpSync no copia una carpeta dentro de sí misma, y
+  // la copia puede estar dentro del original, en una carpeta excluida, como frontend/.demostracion/frontend. El
+  // filtro deja fuera esa carpeta antes de que cpSync lo revise.
+  mkdirSync(copia, { recursive: true });
+  for (const entrada of readdirSync(origen)) {
+    cpSync(join(origen, entrada), join(copia, entrada), {
+      recursive: true,
+      preserveTimestamps: true,
+      filter: (ruta) => !excluidas.includes(ruta),
+    });
+  }
   return borradas;
 }
 

@@ -1,11 +1,11 @@
 {
   "_header": {
     "nombre": "package.json (frontend)",
-    "descripcion": "Proyecto del frontend de InspectIA: dependencias con su versión exacta y los comandos de compilación y de prueba (RP-16).",
+    "descripcion": "Proyecto del frontend de InspectIA: dependencias con su versión exacta, los comandos de compilación y de prueba (RP-16) y el de la demostración de otra temática (RP-23).",
     "fecha_creacion": "20/10/2026",
-    "actualizacion": "20/10/2026",
+    "actualizacion": "28/10/2026",
     "autor": "Equipo InspectIA",
-    "version": "1.0"
+    "version": "1.1"
   },
   "name": "inspectia-frontend",
   "version": "0.1.0",
@@ -26,7 +26,8 @@
     "test:mutacion": "stryker run",
     "e2e:entorno": "node e2e/entorno/entorno.js",
     "e2e:playwright": "playwright test",
-    "e2e:selenium": "vitest run --config vitest.selenium.config.js"
+    "e2e:selenium": "vitest run --config vitest.selenium.config.js",
+    "demo:otra-tematica": "node herramientas/otra-tematica.js"
   },
   "dependencies": {
     "@emotion/react": "11.14.0",

@@ -22,7 +22,7 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 ## Resumen
 
 - **143 criterios de aceptación** en 26 fichas: 55 con prueba y 88 pendientes.
-- **696 pruebas:** 237 de Java (33 generadas), 342 de JavaScript (73 generadas) y 117 de Python. Una prueba parametrizada cuenta una vez.
+- **703 pruebas:** 237 de Java (33 generadas), 349 de JavaScript (73 generadas) y 117 de Python. Una prueba parametrizada cuenta una vez.
 
 | Ficha | Criterios | Con prueba | Pendientes |
 |---|---:|---:|---:|
@@ -672,14 +672,16 @@ Pruebas que no cubren un criterio de una ficha, sino una pauta del docente (RP) 
 - [`espejo.test.js`](../frontend/herramientas/espejo.test.js) · la carpeta excluida de la copia no se toca al espejar: lo que se hace con ella lo decide quien llama
 - [`espejo.test.js`](../frontend/herramientas/espejo.test.js) · la copia del backend lleva también infra/bd, para que las pruebas que leen ../infra/bd pasen en la copia
 - [`espejo.test.js`](../frontend/herramientas/espejo.test.js) · la copia del backend nunca lleva infra/.env, con las contraseñas locales, ni lo demás de infra
+- [`espejo.test.js`](../frontend/herramientas/espejo.test.js) · la copia puede estar dentro del original, en una carpeta excluida, como frontend/.demostracion/frontend
 - [`espejo.test.js`](../frontend/herramientas/espejo.test.js) · la primera vez copia todo, menos las carpetas excluidas, como target
 - [`espejo.test.js`](../frontend/herramientas/espejo.test.js) · lo que se borra del backend o de infra/bd desaparece de la copia, y se informa por separado
+- [`espejo.test.js`](../frontend/herramientas/espejo.test.js) · se excluye la ruta exacta: con target, una carpeta target más adentro se espeja como las demás
 - [`espejo.test.js`](../frontend/herramientas/espejo.test.js) · sin carpetas excluidas, lo copia todo
-- [`espejo.test.js`](../frontend/herramientas/espejo.test.js) · solo se excluyen las carpetas del primer nivel: una carpeta target más adentro se espeja como las demás
 - [`espejo.test.js`](../frontend/herramientas/espejo.test.js) · un archivo borrado o renombrado en el original desaparece de la copia, y se informa
 - [`espejo.test.js`](../frontend/herramientas/espejo.test.js) · un archivo cambiado se copia con su contenido nuevo y su fecha, para que Maven compile solo lo cambiado
 - [`espejo.test.js`](../frontend/herramientas/espejo.test.js) · un archivo que pasó a ser carpeta se reemplaza en la copia
 - [`espejo.test.js`](../frontend/herramientas/espejo.test.js) · una carpeta borrada en el original desaparece entera de la copia
+- [`espejo.test.js`](../frontend/herramientas/espejo.test.js) · una carpeta excluida dentro de otra, como e2e/.entorno, ni se copia ni se borra de la copia
 
 ### RP-15 · Scripts de creación e inicialización de la base de datos
 
@@ -699,6 +701,11 @@ Pruebas que no cubren un criterio de una ficha, sino una pauta del docente (RP) 
 - [`DecimalesTest`](../backend/src/test/java/co/edu/usco/inspectia/comun/numero/DecimalesTest.java) · un dato que no llegó sigue sin valor
 - [`MaximoDecimalesValidadorTest`](../backend/src/test/java/co/edu/usco/inspectia/comun/validacion/MaximoDecimalesValidadorTest.java) · @MaximoDecimales responde en el campo con el mensaje general de los decimales
 - [`MaximoDecimalesValidadorTest`](../backend/src/test/java/co/edu/usco/inspectia/comun/validacion/MaximoDecimalesValidadorTest.java) · @MaximoDecimales usa el máximo de su anotación, que sale de la escala del JSON (parametrizada)
+- [`otra-tematica.test.js`](../frontend/herramientas/otra-tematica.test.js) · el alcance de la demostración agrega producto al final de la API y de las pantallas, y deja lo demás igual
+- [`otra-tematica.test.js`](../frontend/herramientas/otra-tematica.test.js) · en Windows el enlace a node_modules es un junction, que no pide permisos de administrador; en los demás, un enlace simbólico
+- [`otra-tematica.test.js`](../frontend/herramientas/otra-tematica.test.js) · la copia del frontend usa el node_modules del original por un enlace, sin copiarlo; si ya lo tiene, lo deja
+- [`otra-tematica.test.js`](../frontend/herramientas/otra-tematica.test.js) · lo que escribió el generador para producto se lista por capa, en orden: de la base a las pruebas de la pantalla
+- [`otra-tematica.test.js`](../frontend/herramientas/otra-tematica.test.js) · una capa en la que el generador no escribió nada no se lista
 - [`CampoDeTexto.test.jsx`](../frontend/src/componentes/CampoDeTexto.test.jsx) · con variasLineas, el campo de texto va en varias líneas, como la recomendación de un rango
 - [`CampoDeLista.test.jsx`](../frontend/src/crud/CampoDeLista.test.jsx) · el campo de lista muestra los valores de la lista del JSON con su etiqueta y guarda el código del elegido
 - [`PantallaDeRegistros.test.jsx`](../frontend/src/crud/PantallaDeRegistros.test.jsx) · con más de 20 registros, la lista va en páginas fijas de 20, pasa a la siguiente y la pide a la API
