@@ -4,9 +4,9 @@
  *              comparte con el backend no van aquí: salen de sus archivos .properties
  *              (herramientas/textos-del-backend.js). Los marcadores van entre llaves, como en el backend.
  * Fecha de creación: 20/10/2026
- * Actualización: 26/10/2026
+ * Actualización: 28/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 
 /** Textos en inglés, por clave. Tiene las mismas claves que es.js (i18n.test.js lo revisa). */
@@ -100,6 +100,9 @@ export default {
   'crud.rango': '{desde}–{hasta} of {total}',
   'crud.paginaSiguiente': 'Go to the next page',
   'crud.paginaAnterior': 'Go to the previous page',
+  'crud.restaurarPorDefecto': 'Restore default values',
+  'crud.confirmarRestaurar': 'Restore the default values?',
+  'crud.restaurar': 'Restore',
 
   // Administradores de una empresa, en la pantalla de empresas (RF-02 C12, D-30)
   'administradores.accion': 'Administrators',
@@ -115,6 +118,13 @@ export default {
   'administradores.ayuda': '8 to 64 characters; each accented letter or ñ takes 2 of the 72 bytes.',
   'administradores.aviso': 'When you reset it, their open sessions are closed and the lock for failed attempts is removed, if they had one. Share it with {nombre}: they can change it in “Change password”.',
   'administradores.listo': 'The password of {nombre} was reset.',
+
+  // Resumen de los rangos de recomendación: qué porcentajes abarca cada categoría (RF-13)
+  'rangos.resumen.titulo': 'How the ranges look',
+  'rangos.resumen.desde': '{limite}% or more',
+  'rangos.resumen.entre': '{desde} to {hasta}%',
+  'rangos.resumen.menosDe': 'less than {limite}%',
+  'rangos.resumen.revisar': 'check the limit',
 
   // Acerca de, con la cita del dataset (RNF-08 C1)
   'acercaDe.titulo': 'About InspectIA',

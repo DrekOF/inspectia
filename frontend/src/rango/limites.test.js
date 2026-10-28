@@ -59,6 +59,12 @@ describe('intervalos de los rangos', () => {
     expect(intervalosDeLosRangos([96, Number.NaN, 82, 0], 1)).toEqual([
       { tipo: 'desde', limite: 96 }, { tipo: 'revisar' }, { tipo: 'revisar' }, { tipo: 'menosDe', limite: 82 },
     ]);
+    expect(intervalosDeLosRangos([Number.NaN, 90, 82, 0], 1)).toEqual([
+      { tipo: 'revisar' }, { tipo: 'revisar' }, { tipo: 'entre', desde: 82, hasta: 89.9 }, { tipo: 'menosDe', limite: 82 },
+    ]);
+    expect(intervalosDeLosRangos([96, 90, Number.NaN, 0], 1)).toEqual([
+      { tipo: 'desde', limite: 96 }, { tipo: 'entre', desde: 90, hasta: 95.9 }, { tipo: 'revisar' }, { tipo: 'revisar' },
+    ]);
   });
 
   it('RF-13 · el final de cada categoría queda un paso de la escala antes del límite de arriba, sin errores de redondeo', () => {

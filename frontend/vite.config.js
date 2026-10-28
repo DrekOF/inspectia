@@ -4,9 +4,9 @@
  *              unitarias y de componentes) del frontend de InspectIA. Los textos que comparte con el
  *              backend llegan por el plugin de herramientas/textos-del-backend.js (RP-11).
  * Fecha de creación: 20/10/2026
- * Actualización: 20/10/2026
+ * Actualización: 28/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
@@ -53,6 +53,10 @@ export default defineConfig({
     setupFiles: ['./src/pruebas/preparacion.js'],
     include: ['src/**/*.test.{js,jsx}', 'herramientas/**/*.test.js'],
     restoreMocks: true,
+    // Cada prueba tiene hasta 20 s, no los 5 de Vitest: con la máquina ocupada, las que llenan un formulario entero
+    // tardan más de 5 s. Además, Vitest corta la prueba pero no lo que ella seguía escribiendo, que cae en el campo
+    // con el foco de la prueba siguiente y la hace fallar también.
+    testTimeout: 20_000,
     coverage: {
       include: ['src/**/*.{js,jsx}', 'herramientas/**/*.js'],
       exclude: ['src/**/*.test.{js,jsx}', 'src/pruebas/**', 'src/main.jsx'],

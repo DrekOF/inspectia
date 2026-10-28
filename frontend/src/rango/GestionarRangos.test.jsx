@@ -126,7 +126,7 @@ describe('configurar los rangos de la empresa (RF-13)', () => {
     expect(enviadas(simulada)[0][CATEGORIAS.indexOf(categoria)].limiteInferior).toBe(numero);
   });
 
-  it('RF-13 · C1 · si la API responde la regla del orden, como cuando otra persona cambió los rangos al mismo tiempo, su mensaje se ve arriba del formulario', async () => {
+  it('RF-13 · C1 · si la API responde la regla del orden, su mensaje se ve arriba del formulario, en lugar del mensaje general', async () => {
     const { usuario } = abrirRangos();
     servidor.use(http.put(API_RANGOS, () => problema(400, 'Revisa los datos marcados.', {
       errores: [{ campo: null, mensaje: MENSAJES.orden }],
