@@ -2,9 +2,9 @@
 # Descripción: Textos en español e inglés de las entidades (etiquetas, valores y mensajes) y mensajes
 #              generales de las validaciones (RP-11).
 # Fecha de creación: 13/10/2026
-# Actualización: 20/10/2026
+# Actualización: 27/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.2
+# Versión: 1.3
 """Textos en español e inglés que van a ``i18n/generado.properties`` y ``generado_en.properties``.
 
 Las claves siguen la forma ``entidad.atributo.algo``. Los mensajes del JSON llevan ``{nombre}`` con
@@ -34,6 +34,8 @@ MENSAJES_GENERALES = (
     ('validacion.maximo', 'Debe ser menor o igual a {value}.', 'It must be less than or equal to {value}.'),
     ('validacion.decimales_uno', 'Usa como máximo 1 decimal.', 'Use at most 1 decimal place.'),
     ('validacion.decimales', 'Usa como máximo {value} decimales.', 'Use at most {value} decimal places.'),
+    # Solo lo usa el formulario: la API recibe números de JSON. Un decimal se escribe con coma o con punto.
+    ('validacion.numero', 'Escribe un número, como 90,5.', 'Enter a number, like 90.5.'),
     ('validacion.unico', 'Ya existe un registro con este dato.', 'A record with this value already exists.'),
     ('validacion.valor_no_permitido', 'No puedes asignar este valor.', 'You cannot assign this value.'),
     ('validacion.solo_lectura', 'Este dato no se puede cambiar.', 'This value cannot be changed.'),

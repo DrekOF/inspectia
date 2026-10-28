@@ -1,20 +1,21 @@
 /*
  * Nombre: ayudas.js (selenium)
  * Descripción: Ayudas de las pruebas con Selenium (RP-14): abrir Chrome o Edge en tamaño de PC o de celular,
- *              buscar campos por su etiqueta, también dentro de un grupo, y botones por su texto, crear
- *              usuarios y empresas propios por la API y, si una prueba falla, guardar una captura de la
- *              pantalla y la consola del navegador en reports/selenium, que no se sube al repositorio.
+ *              buscar campos por su etiqueta, también dentro de un grupo, y botones por su texto, escribir en
+ *              un campo en lugar de lo que tenía, crear usuarios y empresas propios por la API y, si una prueba
+ *              falla, guardar una captura de la pantalla y la consola del navegador en reports/selenium, que no
+ *              se sube al repositorio.
  * Fecha de creación: 20/10/2026
- * Actualización: 27/10/2026
+ * Actualización: 28/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.2
+ * Versión: 1.3
  */
 import { randomUUID } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { EOL } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Browser, Builder, By, logging, until } from 'selenium-webdriver';
+import { Browser, Builder, By, Key, logging, until } from 'selenium-webdriver';
 import chrome from 'selenium-webdriver/chrome.js';
 import edge from 'selenium-webdriver/edge.js';
 import { datos, empresaNueva } from '../e2e/entorno/datos.js';
@@ -114,6 +115,17 @@ export async function campoDelGrupo(driver, grupo, etiqueta) {
 export function boton(driver, texto) {
   return esperar(driver, By.xpath(`//*[(self::button or self::a or @role='menuitem')
     and (normalize-space()='${texto}' or @aria-label='${texto}')]`));
+}
+
+/**
+ * Escribe un texto en un campo en lugar del que tenía: lo selecciona todo y lo borra con el teclado, como una
+ * persona. clear() de Selenium cambia el valor sin el evento que escucha React, y el formulario no se entera.
+ *
+ * @param {import('selenium-webdriver').WebElement} elemento el campo
+ * @param {string} texto lo que se escribe
+ */
+export async function escribirEn(elemento, texto) {
+  await elemento.sendKeys(Key.chord(Key.CONTROL, 'a'), Key.BACK_SPACE, texto);
 }
 
 /**

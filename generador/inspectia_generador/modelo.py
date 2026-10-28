@@ -3,7 +3,7 @@
 # Fecha de creación: 13/10/2026
 # Actualización: 27/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.3
+# Versión: 1.4
 """Consultas sobre las entidades ya cargadas (los JSON como diccionarios).
 
 Las usan la validación y la generación, para que las dos lean el formato de la misma manera
@@ -32,7 +32,8 @@ MAXIMO = 'maximo'
 FILA = 'fila'
 
 #: Los textos de ``pantalla.textos``: si se cuentan, y entonces van en singular y en plural, y qué marcadores
-#: pueden usar. Cuáles son obligatorios lo dicen las operaciones de la entidad (``frontend.py``).
+#: pueden usar. Cuáles son obligatorios lo dicen las operaciones de la entidad (``frontend.py``). Los de restaurar
+#: son de una pantalla en bloque y no usan los valores de una fila: hablan de todas.
 TEXTOS_DE_PANTALLA = {
     'descripcion': (False, ()),
     'resumen': (False, ('total', 'activos', 'inactivos', MAXIMO)),
@@ -64,6 +65,9 @@ TEXTOS_DE_PANTALLA = {
     'al_desactivar': (False, FILA),
     'al_reactivar': (False, FILA),
     'nota_lista': (False, ()),
+    'nota_restaurar': (False, ()),
+    'confirmar_restaurar_detalle': (False, ()),
+    'al_restaurar': (False, ()),
 }
 
 

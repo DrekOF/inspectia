@@ -1,11 +1,12 @@
 /*
  * Nombre: CampoDeTexto.test.jsx
  * Descripción: Pruebas del campo de texto de los formularios: su ayuda, como la del NIT, queda debajo y unida al
- *              campo para los lectores de pantalla, también cuando el campo tiene un error (RNF-06).
+ *              campo para los lectores de pantalla, también cuando el campo tiene un error (RNF-06); y, con
+ *              variasLineas, va en varias líneas, como la recomendación de un rango (RF-13).
  * Fecha de creación: 26/10/2026
- * Actualización: 26/10/2026
+ * Actualización: 28/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 import { render, screen } from '@testing-library/react';
 import { Formik } from 'formik';
@@ -53,5 +54,17 @@ describe('campo de texto', () => {
     );
 
     expect(screen.getByLabelText('Ciudad')).not.toHaveAttribute('aria-describedby');
+  });
+
+  it('RP-23 · con variasLineas, el campo de texto va en varias líneas, como la recomendación de un rango', () => {
+    render(
+      <Formik initialValues={{ recomendacion: 'Apto para venta estándar.' }} onSubmit={() => {}}>
+        <CampoDeTexto nombre="recomendacion" etiqueta="Recomendación" variasLineas />
+      </Formik>,
+    );
+
+    const campo = screen.getByLabelText('Recomendación');
+    expect(campo.tagName).toBe('TEXTAREA');
+    expect(campo).toHaveValue('Apto para venta estándar.');
   });
 });

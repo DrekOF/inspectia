@@ -1,23 +1,25 @@
 # Nombre: test_frontend.py
 # Descripción: Pruebas de la generación del frontend: la pantalla de cada entidad de «pantallas» en
-#              alcance.json, con su cliente de la API, sus esquemas de Yup, sus textos y sus pruebas.
+#              alcance.json, con su cliente de la API, sus esquemas de Yup, sus textos y sus pruebas, también la
+#              de una entidad que se edita en bloque, como los rangos (RF-13).
 # Fecha de creación: 26/10/2026
 # Actualización: 27/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.1
+# Versión: 1.2
 """Pruebas de lo que genera el generador para el frontend (RP-23).
 
 De cada entidad de ``pantallas`` en ``alcance.json`` sale su pantalla (lista, formulario y acciones), con su
 cliente de la API, sus esquemas de Yup y sus pruebas. Las validaciones de Yup salen del mismo modelo que las de
 Bean Validation, con las mismas claves de mensaje, y su prueba generada revisa los mismos casos de límite que
-la prueba generada de la API.
+la prueba generada de la API. Una entidad con ``edicion_en_bloque`` tiene otra pantalla: una fila por cada valor
+de la lista que identifica las filas, todas en un solo formulario.
 """
 
 import re
 
 import pytest
 
-from conftest import GENERADOR, cadena_yup, casos_java, compacto
+from conftest import GENERADOR, atributo, cadena_yup, casos_java, compacto
 from inspectia_generador.carga import cargar_alcance, revisar_alcance
 from inspectia_generador.casos import pruebas_javascript
 from inspectia_generador.generacion import generar_archivos
@@ -33,6 +35,13 @@ ARCHIVOS_DE_USUARIO = ('usuarioApi.js', 'usuarioApi.test.js', 'usuarioEsquemas.j
                        'UsuarioPantalla.jsx', 'UsuarioPantalla.test.jsx')
 #: La API y las pantallas con la de usuario (RF-03).
 CON_USUARIO = {'api': ('empresa', 'usuario'), 'pantallas': ('empresa', 'usuario')}
+#: Lo que genera la pantalla en bloque de los rangos en frontend/src/generated/rango/ (RF-13).
+ARCHIVOS_DE_RANGOS = ('rangoRecomendacionApi.js', 'rangoRecomendacionApi.test.js', 'rangoRecomendacionEsquemas.js',
+                      'rangoRecomendacionEsquemas.test.js', 'RangoRecomendacionPantalla.jsx',
+                      'RangoRecomendacionPantalla.test.jsx')
+#: La API y las pantallas con la de los rangos, que se editan en bloque (RF-13).
+CON_RANGOS = {'api': ('empresa', 'usuario', 'rango_recomendacion'),
+              'pantallas': ('empresa', 'usuario', 'rango_recomendacion')}
 
 
 def generar(entidades, api=('empresa',), pantallas=('empresa',)):
@@ -73,6 +82,22 @@ def como_en_javascript(casos):
     return [(campo, "''" if valor == 'null' else valor.replace('"', "'"), mensaje) for campo, valor, mensaje in casos]
 
 
+def como_en_el_formulario(casos):
+    """Los casos de la prueba de Java como los escribe la prueba de Yup de una pantalla en bloque: el dato que falta
+    es el campo vacío, los textos van entre comillas sencillas y un número va como texto, como se escribe en el
+    formulario en español: 100.55 es '100,55'."""
+    convertidos = []
+    for campo, valor, mensaje in casos:
+        if valor == 'null':
+            valor = "''"
+        elif re.fullmatch(r'-?\d+(\.\d+)?', valor):
+            valor = "'" + valor.replace('.', ',') + "'"
+        else:
+            valor = valor.replace('"', "'")
+        convertidos.append((campo, valor, mensaje))
+    return convertidos
+
+
 @pytest.mark.caso('RP-23 · cada entidad de pantallas en alcance.json tiene su pantalla, su cliente de la API, sus esquemas de Yup y sus pruebas; las demás, no')
 def test_archivos_de_las_pantallas_del_alcance(entidades):
     archivos = generar(entidades, api=('empresa', 'usuario'))
@@ -94,14 +119,14 @@ def test_pantalla_necesita_su_api(entidades):
     assert 'alcance.json: la entidad no_existe no existe' in errores
 
 
-@pytest.mark.caso('RP-23 · alcance.json dice qué entidades tienen pantalla: empresa (RF-02), usuario (RF-03) y solo entidades con API')
+@pytest.mark.caso('RP-23 · alcance.json dice qué entidades tienen pantalla: empresa (RF-02), usuario (RF-03), rango_recomendacion (RF-13) y solo entidades con API')
 def test_alcance_de_las_pantallas():
     from inspectia_generador.carga import cargar_pantallas
 
     pantallas = cargar_pantallas(GENERADOR / 'alcance.json')
 
-    assert 'empresa' in pantallas
-    assert 'usuario' in pantallas
+    for entidad in ('empresa', 'usuario', 'rango_recomendacion'):
+        assert entidad in pantallas
     assert set(pantallas) <= set(cargar_alcance(GENERADOR / 'alcance.json'))
 
 
@@ -278,11 +303,15 @@ def test_mensajes_de_resultado(entidades):
 
 @pytest.mark.caso('RP-23 · el generador se detiene con una pantalla que todavía no sabe generar o a la que le faltan textos, y dice qué falta')
 def test_pantalla_que_no_sabe_generar(entidades):
+    entidades['rango_recomendacion']['atributos'].append({
+        'nombre': 'orden', 'tipo': 'entero', 'obligatorio': False, 'en_lista': False, 'en_formulario': True,
+        'etiquetas': {'es': 'Orden', 'en': 'Order'}, 'fichas': ['RF-13']})
+
     with pytest.raises(ErrorGeneracion) as error:
-        generar(entidades, api=('empresa', 'usuario', 'rango_recomendacion'), pantallas=('rango_recomendacion',))
+        generar(entidades, **CON_RANGOS)
 
     assert 'No se puede generar la pantalla de rango_recomendacion' in str(error.value)
-    assert 'edicion_en_bloque' in str(error.value)
+    assert 'orden, de tipo entero, en el formulario' in str(error.value), 'una pantalla en bloque tampoco lo sabe'
 
     textos = entidades['empresa']['pantalla']['textos']
     del textos['nuevo'], textos['activo'], textos['al_guardar']
@@ -316,6 +345,12 @@ def test_marcas_de_las_pruebas_generadas(entidades):
         pruebas, errores = pruebas_javascript(con_usuario[ruta], ruta)
         assert not errores and pruebas, ruta
         assert all(p.marca.startswith(('RF-03 · ', 'RNF-04 · ', 'RNF-05 · C1 · ', 'RNF-06 · ')) for p in pruebas), ruta
+    con_rangos = generar(entidades, **CON_RANGOS)
+    for ruta in [f'{FRONTEND}/rango/{nombre}' for nombre in ARCHIVOS_DE_RANGOS if '.test.' in nombre] + [
+            f'{E2E}/rango_recomendacion.spec.js']:
+        pruebas, errores = pruebas_javascript(con_rangos[ruta], ruta)
+        assert not errores and pruebas, ruta
+        assert all(p.marca.startswith(('RF-13 · ', 'RNF-04 · ', 'RNF-05 · C1 · ', 'RNF-06 · ')) for p in pruebas), ruta
     marcas = [p.marca for p in pruebas_javascript(archivos[f'{E2E}/empresa.spec.js'], f'{E2E}/empresa.spec.js')[0]]
     assert any(m.startswith('RNF-06 · C4 · ') for m in marcas), 'axe en la pantalla generada'
     assert any(m.startswith('RNF-05 · C1 · ') for m in marcas), 'sin desplazarse a los lados en un celular'
@@ -460,3 +495,167 @@ def test_textos_que_pide_la_pantalla_de_usuario(entidades):
                   'pantalla.textos.contrasena_al_editar, que pide la contraseña opcional al editar',
                   'pantalla.textos.nota_contrasena_de_otro, que pide la contraseña opcional al editar'):
         assert falta in str(error.value)
+
+
+@pytest.mark.caso('RP-23 · una entidad con edicion_en_bloque tiene su pantalla: una fila por cada valor de la lista que identifica las filas, en su orden, con los campos del formulario, su tipo y la regla de solo lectura (RF-13)')
+def test_pantalla_en_bloque(entidades):
+    archivos = generar(entidades, **CON_RANGOS)
+
+    for nombre in ARCHIVOS_DE_RANGOS:
+        assert f'{FRONTEND}/rango/{nombre}' in archivos
+    assert f'{E2E}/rango_recomendacion.spec.js' in archivos
+    pantalla = compacto(archivos[f'{FRONTEND}/rango/RangoRecomendacionPantalla.jsx'])
+    assert "import { PantallaEnBloque } from '../../crud/PantallaEnBloque.jsx';" in pantalla
+    assert "import { esquemaDelBloque } from './rangoRecomendacionEsquemas.js';" in pantalla
+    assert "operaciones: { editar: ['ADMIN_EMPRESA'], restaurarPorDefecto: ['ADMIN_EMPRESA'] }" in pantalla
+    assert "clave: { atributo: 'categoria', valores: [" in pantalla
+    assert re.findall(r"\{ codigo: '(\w+)', etiqueta: 'rango_recomendacion\.categoria\.\1' \}", pantalla) == [
+        'PREMIUM', 'ESTANDAR', 'CORRIENTE', 'FUERA_DE_NORMA'], 'una fila por categoría, en el orden de la lista'
+    assert ("{ nombre: 'limiteInferior', tipo: 'decimal', etiqueta: 'rango_recomendacion.limite_inferior.etiqueta', "
+            "escala: 1, soloLecturaSi: { codigo: 'FUERA_DE_NORMA', "
+            "mensaje: 'rango_recomendacion.limite_inferior.solo_lectura_si' } }") in pantalla
+    assert "{ nombre: 'recomendacion', tipo: 'texto', etiqueta: 'rango_recomendacion.recomendacion.etiqueta'" in pantalla
+    for js, clave in (('descripcion', 'descripcion'), ('tituloEditar', 'titulo_editar'),
+                      ('notaFormulario', 'nota_formulario'), ('alGuardar', 'al_guardar'),
+                      ('notaRestaurar', 'nota_restaurar'), ('confirmarRestaurarDetalle', 'confirmar_restaurar_detalle'),
+                      ('alRestaurar', 'al_restaurar')):
+        assert f"{js}: 'rango_recomendacion.pantalla.{clave}'" in pantalla
+    pantallas = archivos[f'{FRONTEND}/pantallas.js']
+    for propiedad in ("entidad: 'rango_recomendacion'", "ruta: '/rangos-recomendacion'",
+                      "etiqueta: 'rango_recomendacion.etiqueta.plural'", "icono: 'rangos'",
+                      "Pantalla: lazy(() => import('./rango/RangoRecomendacionPantalla.jsx'))"):
+        assert propiedad in pantallas
+
+
+@pytest.mark.caso('RP-23 · el cliente de la API de una pantalla en bloque lista las filas sin páginas, las edita todas juntas y restaura los valores por defecto (RF-13)')
+def test_cliente_de_la_api_en_bloque(entidades):
+    api = generar(entidades, **CON_RANGOS)[f'{FRONTEND}/rango/rangoRecomendacionApi.js']
+
+    assert "const RUTA = '/rangos-recomendacion';" in api
+    assert 'export function listar(pedir) {' in api and "return pedir('GET', RUTA);" in api
+    assert 'export function editar(pedir, filas) {' in api and "return pedir('PUT', RUTA, { filas });" in api
+    assert 'export function restaurarPorDefecto(pedir) {' in api
+    assert "return pedir('POST', `${RUTA}/restaurar-por-defecto`);" in api
+    for sobra in ('crear', 'desactivar', 'reactivar', 'pagina'):
+        assert sobra not in api, 'en bloque no hay registros sueltos ni páginas'
+
+
+@pytest.mark.caso('RP-23 · un decimal del formulario pasa a Yup como número: lee el texto con coma o con punto, el vacío es el dato que falta y sus validaciones van en el orden en que la API escoge el error, DecimalMax, DecimalMin y MaximoDecimales')
+def test_decimal_a_yup(entidades):
+    archivos = generar(entidades, **CON_RANGOS)
+    esquemas = archivos[f'{FRONTEND}/rango/rangoRecomendacionEsquemas.js']
+
+    assert "import { array, number, object, string } from 'yup';" in esquemas
+    assert "import { lleno, maximoDecimales, numeroDecimal, recortar } from '../../validacion/reglas.js';" in esquemas
+    assert 'export function esquemaDelBloque(t) {' in esquemas
+    assert 'filas: array().of(object({' in compacto(esquemas)
+    assert 'limiteInferior: number()' in esquemas
+    assert cadena_yup(esquemas, 'esquemaDelBloque', 'limiteInferior') == [
+        '.transform(numeroDecimal)', ".typeError(t('validacion.numero'))",
+        ".test('obligatorio', t('validacion.obligatorio'), lleno)",
+        ".max(100, t('validacion.maximo', { value: 100 }))", ".min(0, t('validacion.minimo', { value: 0 }))",
+        ".test('decimales', t('validacion.decimales_uno'), maximoDecimales(1))"]
+    assert cadena_yup(esquemas, 'esquemaDelBloque', 'recomendacion') == [
+        '.transform(recortar)', ".test('obligatorio', t('validacion.obligatorio'), lleno)",
+        ".max(300, t('validacion.longitud_max', { max: 300 }))"]
+    assert ('validacion.numero=Escribe un número, como 90,5.'
+            in archivos['backend/src/generated/resources/i18n/generado.properties'])
+    assert ('validacion.numero=Enter a number, like 90.5.'
+            in archivos['backend/src/generated/resources/i18n/generado_en.properties'])
+
+    atributo(entidades['rango_recomendacion'], 'limite_inferior')['escala'] = 2
+    esquemas = generar(entidades, **CON_RANGOS)[f'{FRONTEND}/rango/rangoRecomendacionEsquemas.js']
+
+    assert ".test('decimales', t('validacion.decimales', { value: 2 }), maximoDecimales(2))" in esquemas
+
+
+@pytest.mark.caso('RP-23 · la prueba generada de Yup de una pantalla en bloque revisa en una fila los mismos casos que la prueba generada de la API, con los números escritos como en el formulario, con coma, y los valores del borde que acepta cada campo')
+def test_casos_de_limite_en_bloque(entidades):
+    archivos = generar(entidades, **CON_RANGOS)
+    prueba_api = archivos[f'{PRUEBAS_JAVA}/rango/RangoRecomendacionApiGeneradaIT.java']
+    prueba_yup = archivos[f'{FRONTEND}/rango/rangoRecomendacionEsquemas.test.js']
+
+    de_la_api = [c for c in casos_java(prueba_api, 'validaciones') if c[0] != 'categoria']
+    assert casos_js(prueba_yup, 'CASOS') == como_en_el_formulario(de_la_api), \
+        'la categoría identifica la fila y no está en el formulario'
+    assert casos_js(prueba_yup, 'BORDES') == [('limiteInferior', "'0'", None), ('limiteInferior', "'100'", None),
+                                             ('recomendacion', "'x'.repeat(300)", None)]
+
+
+@pytest.mark.caso('RP-23 · un decimal que falla por dos validaciones da en Yup el mismo error que en la API: 100,55, el del máximo, y −0,55, el del mínimo, que van antes que el de los decimales')
+def test_decimal_que_falla_por_dos_validaciones(entidades):
+    archivos = generar(entidades, **CON_RANGOS)
+    prueba_api = archivos[f'{PRUEBAS_JAVA}/rango/RangoRecomendacionApiGeneradaIT.java']
+    casos = casos_js(archivos[f'{FRONTEND}/rango/rangoRecomendacionEsquemas.test.js'], 'CASOS')
+
+    for valor, mensaje in (('100.55', 'Debe ser menor o igual a 100.'), ('-0.55', 'Debe ser mayor o igual a 0.')):
+        assert f'Arguments.of("limiteInferior", {valor}, "{mensaje}")' in prueba_api, valor
+        assert ('limiteInferior', "'" + valor.replace('.', ',') + "'", mensaje) in casos, valor
+
+
+@pytest.mark.caso('RP-23 · varias_lineas: true hace de un texto del formulario un campo de varias líneas, en una pantalla en bloque y en una con lista, como la recomendación de un rango (RF-13)')
+def test_varias_lineas(entidades):
+    pantalla = compacto(generar(entidades, **CON_RANGOS)[f'{FRONTEND}/rango/RangoRecomendacionPantalla.jsx'])
+    assert ("{ nombre: 'recomendacion', tipo: 'texto', etiqueta: 'rango_recomendacion.recomendacion.etiqueta', "
+            "variasLineas: true }") in pantalla
+
+    del atributo(entidades['rango_recomendacion'], 'recomendacion')['varias_lineas']
+    atributo(entidades['empresa'], 'ciudad')['varias_lineas'] = True
+    archivos = generar(entidades, **CON_RANGOS)
+
+    assert ("{ nombre: 'recomendacion', tipo: 'texto', etiqueta: 'rango_recomendacion.recomendacion.etiqueta' }"
+            in compacto(archivos[f'{FRONTEND}/rango/RangoRecomendacionPantalla.jsx']))
+    assert ("<CampoDeTexto nombre=\"ciudad\" etiqueta={t('empresa.ciudad.etiqueta')} autoComplete=\"off\" "
+            "variasLineas />") in compacto(archivos[f'{FRONTEND}/empresa/EmpresaPantalla.jsx'])
+
+
+@pytest.mark.caso('RP-23 · la pantalla en bloque pide sus textos: titulo_editar y al_guardar con editar, y confirmar_restaurar_detalle y al_restaurar con restaurar_por_defecto; no tiene lista vacía, y el generador dice cuál falta')
+def test_textos_que_pide_la_pantalla_en_bloque(entidades):
+    espanol = generar(entidades, **CON_RANGOS)[f'{FRONTEND}/textos.js'].split('  en: {')[0]
+    assert "'rango_recomendacion.pantalla.al_restaurar': 'Se restauraron los valores por defecto.'," in espanol
+
+    textos = entidades['rango_recomendacion']['pantalla']['textos']
+    for clave in ('titulo_editar', 'al_guardar', 'confirmar_restaurar_detalle', 'al_restaurar'):
+        del textos[clave]
+
+    with pytest.raises(ErrorGeneracion) as error:
+        generar(entidades, **CON_RANGOS)
+
+    for falta in ('pantalla.textos.titulo_editar', 'pantalla.textos.al_guardar',
+                  'pantalla.textos.confirmar_restaurar_detalle', 'pantalla.textos.al_restaurar'):
+        assert falta in str(error.value)
+    assert 'pantalla.textos.vacia' not in str(error.value), 'una pantalla en bloque no tiene lista vacía'
+
+
+@pytest.mark.caso('RP-23 · la prueba generada de la pantalla en bloque revisa las filas en su orden, el campo de solo lectura, guardar todas las filas juntas, los errores de una fila y del bloque, y restaurar con su confirmación')
+def test_pruebas_generadas_de_la_pantalla_en_bloque(entidades):
+    prueba = generar(entidades, **CON_RANGOS)[f'{FRONTEND}/rango/RangoRecomendacionPantalla.test.jsx']
+
+    for titulo in ('RF-13 · la pantalla de rango_recomendacion muestra una fila por cada valor de categoria, en su '
+                   'orden, con sus datos',
+                   'RF-13 · en la fila de FUERA_DE_NORMA, limiteInferior es de solo lectura, con el mensaje de su regla',
+                   'RF-13 · guardar envía todas las filas juntas, con los números escritos en el formulario, y muestra '
+                   'el mensaje del JSON',
+                   'RF-13 · un dato que no cumple su validación se marca en su campo y no se envía nada',
+                   'RF-13 · un error de la API en el campo de una fila queda en ese campo',
+                   'RF-13 · un error de la API del bloque, sin campo o en filas, va arriba del formulario con su mensaje',
+                   'RF-13 · restaurar pide confirmación con el texto del JSON y, al confirmar, vuelve a los valores por '
+                   'defecto',
+                   'RF-13 · al cancelar la confirmación de restaurar no cambia nada'):
+        assert titulo in prueba
+    prueba = compacto(prueba)
+    for linea in ('apiEnBloqueSimulada(API, FILAS)',
+                  "toEqual(['Premium o Especial', 'Estándar', 'Corriente', 'Fuera de norma'])",
+                  ".toHaveValue('96,0')",
+                  "{ metodo: 'PUT', ruta: API, cuerpo: { filas: ",
+                  "{ campo: 'filas[1].recomendacion', mensaje: ",
+                  "{ campo: null, mensaje: 'Los límites deben bajar en orden: Premium o Especial > Estándar > "
+                  "Corriente > 0 %.' }",
+                  "{ campo: 'filas', mensaje: 'Envía una fila por cada categoría, sin repetir: Premium o Especial, "
+                  "Estándar, Corriente y Fuera de norma.' }",
+                  "'Se pierden los límites y los textos propios de la empresa.'",
+                  "screen.findByText('Se guardaron los rangos.')",
+                  "screen.findByText('Se restauraron los valores por defecto.')",
+                  "{ metodo: 'POST', ruta: `${API}/restaurar-por-defecto`, cuerpo: null }"):
+        assert linea in prueba, linea
+

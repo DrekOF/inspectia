@@ -1,19 +1,19 @@
 /*
  * Nombre: flujos.test.js
  * Descripción: Pruebas con Selenium de los flujos principales (RP-14): entrar con el menú del rol, los datos
- *              errados, cambiar la contraseña, registrar una empresa y crear un usuario que entra, en Chrome y
- *              en Edge, en tamaño de PC y de celular (RNF-05). Si una falla, guarda su captura y la consola del
- *              navegador en reports/selenium.
+ *              errados, cambiar la contraseña, registrar una empresa, crear un usuario que entra y guardar unos
+ *              rangos propios y restaurar los de D-10, en Chrome y en Edge, en tamaño de PC y de celular
+ *              (RNF-05). Si una falla, guarda su captura y la consola del navegador en reports/selenium.
  * Fecha de creación: 20/10/2026
- * Actualización: 27/10/2026
+ * Actualización: 28/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.2
+ * Versión: 1.3
  */
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   abrirNavegador, APP, boton, Browser, By, campo, campoDelGrupo, CELULAR, CONTRASENA, crearEmpresa, crearUsuario,
-  datos, descartarConsola, desactivarUsuario, empresaNueva, entrar, esperar, esperarTexto, guardarFalla,
+  datos, descartarConsola, desactivarUsuario, empresaNueva, entrar, escribirEn, esperar, esperarTexto, guardarFalla,
 } from './ayudas.js';
 
 const COMBINACIONES = [
@@ -136,6 +136,46 @@ describe.each(COMBINACIONES)('%s en %s', (_, navegador, __, celular) => {
       await driver.executeScript('localStorage.clear()');
       await entrar(driver, pedro);
       await esperarTexto(driver, 'Hola, Pedro');
+    } finally {
+      await driver.executeScript('localStorage.clear()');
+    }
+  });
+
+  it('RF-13 · C4 · el administrador de empresa guarda unos rangos propios y «Restaurar valores por defecto» los devuelve a los de D-10 (Selenium)', async () => {
+    // En una empresa propia: guardar cambia los rangos de la empresa.
+    const empresa = await crearEmpresa();
+    const limite = 'Límite inferior (% de granos sanos)';
+    /**
+     * El valor de un campo de una categoría, después de cargar la pantalla.
+     *
+     * @param {string} categoria el nombre de la categoría
+     * @param {string} [etiqueta] la etiqueta del campo; por defecto, el límite inferior
+     * @returns {Promise<string>} el valor
+     */
+    const valorDe = async (categoria, etiqueta = limite) => (await campoDelGrupo(driver, categoria, etiqueta)).getAttribute('value');
+    try {
+      await entrar(driver, empresa.administrador);
+      await esperarTexto(driver, 'Hola, Laura');
+      await driver.get(`${APP}/rangos-recomendacion`);
+      await escribirEn(await campoDelGrupo(driver, 'Premium o Especial', limite), '97,5');
+      await escribirEn(await campoDelGrupo(driver, 'Premium o Especial', 'Recomendación'), 'Para el comprador de exportación.');
+      await (await boton(driver, 'Guardar cambios')).click();
+      await esperarTexto(driver, 'Se guardaron los rangos.');
+      await driver.navigate().refresh();
+      expect(await valorDe('Premium o Especial')).toBe('97,5');
+      expect(await valorDe('Premium o Especial', 'Recomendación')).toBe('Para el comprador de exportación.');
+
+      await (await boton(driver, 'Restaurar valores por defecto')).click();
+      await esperarTexto(driver, 'Se pierden los límites y los textos propios de la empresa.');
+      await (await boton(driver, 'Restaurar')).click();
+      await esperarTexto(driver, 'Se restauraron los valores por defecto.');
+      await driver.navigate().refresh();
+      const limites = [];
+      for (const categoria of ['Premium o Especial', 'Estándar', 'Corriente', 'Fuera de norma']) {
+        limites.push(await valorDe(categoria));
+      }
+      expect(limites).toEqual(['96,0', '90,0', '82,0', '0,0']);
+      expect(await valorDe('Premium o Especial', 'Recomendación')).toBe('Apto para mercado especial o de exportación.');
     } finally {
       await driver.executeScript('localStorage.clear()');
     }

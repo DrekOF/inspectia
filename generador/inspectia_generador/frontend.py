@@ -1,10 +1,11 @@
 # Nombre: frontend.py
 # Descripción: Arma los datos de las plantillas del frontend: la pantalla de cada entidad de «pantallas» en
-#              alcance.json, con su cliente de la API, sus esquemas de Yup, sus textos y sus pruebas (RP-23).
+#              alcance.json, con su cliente de la API, sus esquemas de Yup, sus textos y sus pruebas (RP-23),
+#              también la de una entidad que se edita en bloque, como los rangos (RF-13).
 # Fecha de creación: 26/10/2026
 # Actualización: 27/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.1
+# Versión: 1.2
 """Datos de las plantillas del frontend (React, Material UI, Formik y Yup).
 
 - ``pantallas.js``: la ruta, la entrada del menú y los roles de cada pantalla, que son los de ``listar``.
@@ -14,6 +15,10 @@
   los mismos casos de límite que la prueba generada de la API. También revisa los valores de una lista que existen
   pero el formulario no ofrece, como ADMIN_PLATAFORMA en el rol, con el mensaje del 403 de la API, que en la prueba
   de la API van en la de permisos.
+- Una entidad con ``edicion_en_bloque``, como los rangos (RF-13), tiene otra pantalla: una fila por cada valor de la
+  lista que identifica las filas, en su orden, todas en un solo formulario, que se guarda junto y puede volver a
+  los valores por defecto. Sus campos pueden ser textos o decimales; un decimal se escribe como texto, con coma o
+  con punto, y Yup lo lee como número.
 
 Lo que el JSON no puede declarar se escribe a mano: las piezas comunes de ``frontend/src/crud`` y las extensiones
 de cada pantalla, que le pasa ``Rutas.jsx``. Las pantallas todavía no soportan todo el formato: si una entidad de
@@ -21,15 +26,16 @@ de cada pantalla, que le pasa ``Rutas.jsx``. Las pantallas todavía no soportan 
 """
 
 import json
+from decimal import Decimal
 
 from inspectia_generador import campos
 from inspectia_generador.encabezado import datos_header
 from inspectia_generador.java import consultas_unicas, ejemplo
-from inspectia_generador.modelo import (atributo, contrasena_opcional_al_editar, regla, reglas_de_la_fila_propia,
-                                        valores_lista)
-from inspectia_generador.nombres import camel, patron_js, texto_js
+from inspectia_generador.modelo import (atributo, clave_en_bloque, contrasena_opcional_al_editar, regla,
+                                        reglas_de_la_fila_propia, valores_lista)
+from inspectia_generador.nombres import camel, en_frase, patron_js, texto_js
 from inspectia_generador.sql import ErrorGeneracion
-from inspectia_generador.textos import mensaje_esperado, reemplazar
+from inspectia_generador.textos import clave_mensaje, mensaje_esperado, mensaje_filas_completas, reemplazar
 
 CARPETA = 'frontend/src/generated'
 CARPETA_E2E = 'frontend/e2e/generated'
@@ -37,6 +43,8 @@ CARPETA_E2E = 'frontend/e2e/generated'
 #: Tipos que la pantalla sabe poner en el formulario y en la lista; los demás llegan cuando una ficha los pida.
 TIPOS_EN_FORMULARIO = ('texto', 'contrasena', 'lista')
 TIPOS_EN_LISTA = ('texto', 'lista')
+#: Tipos que una pantalla en bloque sabe poner en cada fila (RF-13).
+TIPOS_EN_BLOQUE = ('texto', 'decimal')
 #: El control del formulario de cada tipo.
 COMPONENTES = {'texto': 'CampoDeTexto', 'contrasena': 'CampoContrasena', 'lista': 'CampoDeLista'}
 #: Ícono del menú de una pantalla cuyo JSON no dice cuál usar.
@@ -50,6 +58,13 @@ TEXTOS_JS = (('descripcion', 'descripcion'), ('vacia', 'vacia'), ('nuevo', 'nuev
              ('editarFila', 'editar_fila'), ('desactivarFila', 'desactivar_fila'),
              ('reactivarFila', 'reactivar_fila'), ('alGuardar', 'al_guardar'), ('alDesactivar', 'al_desactivar'),
              ('alReactivar', 'al_reactivar'), ('notaLista', 'nota_lista'))
+#: Los textos de una pantalla en bloque, con su nombre en JavaScript.
+TEXTOS_EN_BLOQUE_JS = (('descripcion', 'descripcion'), ('tituloEditar', 'titulo_editar'),
+                       ('notaFormulario', 'nota_formulario'), ('alGuardar', 'al_guardar'),
+                       ('notaRestaurar', 'nota_restaurar'),
+                       ('confirmarRestaurarDetalle', 'confirmar_restaurar_detalle'), ('alRestaurar', 'al_restaurar'))
+#: El texto que escribe la prueba generada de una pantalla en bloque en el campo de texto de una fila.
+TEXTO_DE_PRUEBA = 'Texto propio de la empresa.'
 #: Lo que cuenta el resumen: cada parte que usa su frase, como {activos}, tiene su texto contado (resumen_activos).
 PARTES_DEL_RESUMEN = ('total', 'activos', 'inactivos')
 #: Los límites de un campo que exportan los esquemas generados, con los nombres que usa el frontend.
@@ -70,7 +85,8 @@ def valor_js(valor):
     if valor.tipo == 'texto':
         return texto_js(valor.texto)
     if valor.tipo == 'numero':
-        return valor.texto
+        # Como se escribe en el formulario en español: 100.55 es '100,55'.
+        return texto_js(valor.texto.replace('.', ','))
     return f'correoDeLargo({valor.veces})'
 
 
@@ -115,7 +131,9 @@ def _formulario(entidades, e):
 def textos_obligatorios(e):
     """Los textos de ``pantalla.textos`` que necesita la pantalla, con lo que los pide: cada operación pide los
     suyos; el resumen, los textos contados que usa su frase; la confirmación de desactivar, si está, va completa; la
-    fila propia pide su marca, y la contraseña opcional al editar, sus textos y la nota de D-30.
+    fila propia pide su marca, y la contraseña opcional al editar, sus textos y la nota de D-30. Una pantalla en
+    bloque no tiene lista ni registros sueltos: editar pide el nombre de su formulario y el mensaje al guardar, y
+    restaurar, el detalle de su confirmación y su mensaje.
 
     Returns:
         list: ``(texto, quién lo pide)``.
@@ -123,6 +141,13 @@ def textos_obligatorios(e):
     operaciones = e.get('operaciones', {})
     textos = e.get('pantalla', {}).get('textos', {})
     pedidos = []
+    if e.get('edicion_en_bloque'):
+        if 'editar' in operaciones:
+            pedidos += [('titulo_editar', 'editar'), ('al_guardar', 'editar')]
+        if 'restaurar_por_defecto' in operaciones:
+            pedidos += [('confirmar_restaurar_detalle', 'restaurar_por_defecto'),
+                        ('al_restaurar', 'restaurar_por_defecto')]
+        return pedidos
     if 'listar' in operaciones:
         pedidos += [('vacia', 'listar'), ('titulo_lista', 'listar')]
     if 'crear' in operaciones:
@@ -160,8 +185,7 @@ def verificar_pantalla(entidades, e):
     """
     problemas = []
     operaciones = e.get('operaciones', {})
-    if e.get('edicion_en_bloque'):
-        problemas.append('la edición en bloque (edicion_en_bloque) todavía no tiene plantilla de pantalla')
+    en_bloque = bool(e.get('edicion_en_bloque'))
     if 'listar' not in operaciones:
         problemas.append('una pantalla necesita la operación listar')
     if 'pantalla' not in e:
@@ -172,9 +196,9 @@ def verificar_pantalla(entidades, e):
             problemas.append(f'falta pantalla.textos.{clave}, que pide {quien}')
     for duena, a, campo, grupo in _formulario(entidades, e):
         donde = campo if grupo else a['nombre']
-        if a['tipo'] not in TIPOS_EN_FORMULARIO:
+        if a['tipo'] not in (TIPOS_EN_BLOQUE if en_bloque else TIPOS_EN_FORMULARIO):
             problemas.append(f"{donde}, de tipo {a['tipo']}, en el formulario")
-    for a in e['atributos']:
+    for a in [] if en_bloque else e['atributos']:
         if a.get('en_lista') and a['nombre'] != e.get('atributo_activo') and a['tipo'] not in TIPOS_EN_LISTA:
             problemas.append(f"{a['nombre']}, de tipo {a['tipo']}, en la lista")
     if problemas:
@@ -191,10 +215,13 @@ def _mensaje_js(validacion):
     return f"t('{validacion.clave}')"
 
 
-def lineas_yup(datos):
+def lineas_yup(datos, numero=False):
     """Las validaciones de Yup de un campo, una por línea, en el orden en que la API escoge el error de un campo
     (``campos.orden_de_la_api``): Yup dice el error de la primera que falla, así un valor que falla por dos da el
     mismo mensaje en el formulario y en la API.
+
+    Un número, como un decimal, se escribe como texto: primero se lee, con coma o con punto, y el vacío es el dato
+    que falta. Lo que no es un número da su propio error, que la API no tiene, porque recibe números de JSON.
 
     Primero se normaliza el texto, como lo hace la solicitud de la API antes de validar. Un campo opcional, como la
     contraseña al editar, vacío no se revisa: no llega a la API y queda el valor que había. En un campo obligatorio
@@ -204,8 +231,9 @@ def lineas_yup(datos):
 
     Args:
         datos: el campo, de ``campos.del_atributo``.
+        numero: si el campo es un número, como un decimal.
     """
-    lineas = []
+    lineas = ['.transform(numeroDecimal)', ".typeError(t('validacion.numero'))"] if numero else []
     if datos.recortar:
         lineas.append('.transform(recortar)')
     if datos.minusculas:
@@ -231,6 +259,12 @@ def lineas_yup(datos):
             lineas.append(f".test('bytes_max', {mensaje}, cabeEnBytes({v.valor}))")
         elif v.tipo == 'patron':
             lineas.append(f'.matches({patron_js(v.valor)}, {mensaje})')
+        elif v.tipo == 'maximo':
+            lineas.append(f'.max({v.valor}, {mensaje})')
+        elif v.tipo == 'minimo':
+            lineas.append(f'.min({v.valor}, {mensaje})')
+        elif v.tipo == 'decimales':
+            lineas.append(f".test('decimales', {mensaje}, maximoDecimales({v.valor}))")
         else:
             raise ErrorGeneracion(f'La validación {v.tipo} todavía no tiene su prueba de Yup')
     return lineas
@@ -304,6 +338,7 @@ def _campo(entidades, e, duena, a, campo, grupo, al_editar=False):
         'nombre': a['nombre'],
         'limites': _limites(datos),
         'opcional': a['tipo'] == 'contrasena' and not obligatorio,
+        'varias_lineas': bool(a.get('varias_lineas')),
     }
 
 
@@ -646,8 +681,148 @@ def _localizador(c, grupos):
 def _ayudantes(lineas):
     """Las funciones de ``src/validacion/reglas.js`` que usan las validaciones de Yup de un campo."""
     texto = '\n'.join(lineas)
-    return [nombre for nombre in ('cabeEnBytes', 'lleno', 'minusculas', 'noEnBlanco', 'recortar', 'vacioComoAusente')
+    return [nombre for nombre in ('cabeEnBytes', 'lleno', 'maximoDecimales', 'minusculas', 'noEnBlanco', 'numeroDecimal',
+                                  'recortar', 'vacioComoAusente')
             if nombre in texto]
+
+
+# --- Pantalla en bloque ---------------------------------------------------------------------------
+
+
+def _valores_de_la_lista(entidades, a):
+    """Los valores de una lista, con su etiqueta en español: los suyos o, con ``valores_de``, los de la lista
+    original."""
+    if 'valores' in a:
+        return [(v['codigo'], v['etiquetas']['es']) for v in a['valores']]
+    nombre_entidad, _, nombre_atributo = a['valores_de'].partition('.')
+    return _valores_de_la_lista(entidades, atributo(entidades[nombre_entidad], nombre_atributo))
+
+
+def _texto_del_decimal(valor, escala):
+    """Un decimal como lo muestra el formulario en español: con su escala y con coma, como 96,0."""
+    return f'{Decimal(str(valor)):.{escala}f}'.replace('.', ',')
+
+
+def _campo_en_bloque(e, a):
+    """Un campo de cada fila de una pantalla en bloque: cómo lo describe la pantalla (su tipo, su escala, si va en
+    varias líneas y en qué fila es de solo lectura), sus validaciones de Yup y sus casos de límite, del mismo modelo
+    que la fila de la API."""
+    datos = campos.del_atributo(e, a)
+    nombre = camel(a['nombre'])
+    descripcion = {'nombre': nombre, 'tipo': a['tipo'], 'etiqueta': f"{e['entidad']}.{a['nombre']}.etiqueta"}
+    if a['tipo'] == 'decimal':
+        descripcion['escala'] = a['escala']
+    if a.get('varias_lineas'):
+        descripcion['variasLineas'] = True
+    solo_lectura = a.get('solo_lectura_si')
+    if solo_lectura:
+        descripcion['soloLecturaSi'] = {'codigo': solo_lectura['igual_a'],
+                                        'mensaje': clave_mensaje(e, a, 'solo_lectura_si')}
+    return {
+        'nombre': nombre, 'atributo': a['nombre'], 'tipo': a['tipo'], 'escala': a.get('escala'),
+        'etiqueta_es': a['etiquetas']['es'], 'descripcion': literal_js(descripcion),
+        'base': 'number()' if a['tipo'] == 'decimal' else 'string()',
+        'yup': lineas_yup(datos, numero=a['tipo'] == 'decimal'),
+        'casos': [(texto_js(nombre), valor_js(c.valor), texto_js(c.mensaje)) for c in datos.casos if not c.solo_backend],
+        'bordes': [(texto_js(nombre), valor_js(valor)) for valor in datos.bordes],
+        # Para la prueba de la pantalla: el mensaje del dato que falta y el de otro valor que se rechaza.
+        'falta': next((c.mensaje for c in datos.casos if c.valor.tipo == 'falta'), None),
+        'rechazo': next((c.mensaje for c in datos.casos if c.valor.tipo != 'falta' and not c.solo_backend), None),
+        'solo_lectura': ({'codigo': solo_lectura['igual_a'], 'mensaje': mensaje_esperado(e, a, 'solo_lectura_si')}
+                         if solo_lectura else None),
+    }
+
+
+def modelo_pantalla_en_bloque(entidades, e):
+    """Todo lo que necesitan las plantillas de la pantalla de una entidad con ``edicion_en_bloque``, como los rangos
+    (RF-13): una fila por cada valor de la lista que identifica las filas, en su orden, todas en un solo
+    formulario, que se guarda junto y vuelve a los valores por defecto si ``operaciones`` lo dice."""
+    verificar_pantalla(entidades, e)
+    n, operaciones, textos = e['entidad'], e['operaciones'], e['pantalla'].get('textos', {})
+    atr_clave = clave_en_bloque(e)
+    clave_js = camel(atr_clave['nombre'])
+    prefijo = _prefijo_de_valores(entidades, e, atr_clave)
+    valores = _valores_de_la_lista(entidades, atr_clave)
+    formulario = [a for a in e['atributos'] if a.get('en_formulario')]
+    campos_de_fila = [_campo_en_bloque(e, a) for a in formulario]
+    acciones = {js: operaciones[o] for o, js in (('editar', 'editar'), ('restaurar_por_defecto', 'restaurarPorDefecto'))
+                if o in operaciones}
+    roles = [v['codigo'] for v in atributo(entidades['usuario'], 'rol')['valores']]
+
+    # Las filas de las pruebas generadas: las de valores_iniciales, en el orden de la lista, como las responde la API
+    # y como las muestra el formulario, con cada decimal en español.
+    orden = [codigo for codigo, _ in valores]
+    iniciales = sorted(e['valores_iniciales']['filas'], key=lambda f: orden.index(f[atr_clave['nombre']]))
+
+    def fila(inicial, como):
+        return {clave_js: inicial[atr_clave['nombre']]} | {camel(a['nombre']): como(a, inicial.get(a['nombre']))
+                                                           for a in formulario}
+
+    de_la_api = [fila(f, lambda a, valor: valor) for f in iniciales]
+    del_formulario = [fila(f, lambda a, valor: _texto_del_decimal(valor, a['escala']) if a['tipo'] == 'decimal'
+                           else valor) for f in iniciales]
+    etiquetas_de_filas = [etiqueta for _, etiqueta in valores]
+    decimal = next((c for c in campos_de_fila if c['tipo'] == 'decimal'), None)
+    texto = next((c for c in campos_de_fila if c['tipo'] == 'texto'), None)
+    solo_lectura = next((c for c in campos_de_fila if c['solo_lectura']), None)
+    # Al guardar, la prueba vuelve a escribir el decimal de la primera fila como lo muestra el formulario y cambia su
+    # texto: así revisa que los números vayan como números, sin mover ningún dato que revise una regla del bloque
+    # escrita a mano, como el orden de los rangos. Al restaurar, la empresa tiene ese texto propio en cada fila.
+    con_texto_propio = [dict(f, **({texto['nombre']: TEXTO_DE_PRUEBA} if texto else {})) for f in de_la_api]
+    guardadas = [con_texto_propio[0]] + de_la_api[1:]
+    reglas_del_bloque = [reemplazar(r['mensaje']['es'], r.get('parametros', {})) for r in e.get('reglas', [])
+                         if r['tipo'] == 'validacion' and not r.get('atributo')]
+    errores_del_bloque = ([{'campo': None, 'mensaje': mensaje} for mensaje in reglas_del_bloque[:1]]
+                          + [{'campo': 'filas', 'mensaje': mensaje_filas_completas(e, 'es')}])
+    rol = operaciones['listar'][0]
+    prueba = {
+        'rol': rol,
+        'roles_sin_permiso': [r for r in roles if r not in operaciones['listar']],
+        'puede': {'editar': rol in operaciones.get('editar', []),
+                  'restaurar': rol in operaciones.get('restaurar_por_defecto', [])},
+        'filas': [literal_js(f) for f in de_la_api],
+        'etiquetas_de_filas': literal_js(etiquetas_de_filas),
+        'titulo_editar': textos['titulo_editar']['es'] if 'titulo_editar' in textos else None,
+        'primera': etiquetas_de_filas[0],
+        'segunda': etiquetas_de_filas[1] if len(etiquetas_de_filas) > 1 else None,
+        'decimal': ({'etiqueta': decimal['etiqueta_es'], 'valor': del_formulario[0][decimal['nombre']]}
+                    if decimal else None),
+        'texto': ({'nombre': texto['nombre'], 'etiqueta': texto['etiqueta_es'],
+                   'valor': de_la_api[0][texto['nombre']], 'falta': texto['falta'], 'rechazo': texto['rechazo']}
+                  if texto else None),
+        'texto_de_prueba': TEXTO_DE_PRUEBA,
+        'solo_lectura': ({'codigo': solo_lectura['solo_lectura']['codigo'], 'campo': solo_lectura['nombre'],
+                          'fila': dict(valores)[solo_lectura['solo_lectura']['codigo']],
+                          'etiqueta': solo_lectura['etiqueta_es'], 'mensaje': solo_lectura['solo_lectura']['mensaje']}
+                         if solo_lectura else None),
+        'guardadas': [literal_js(f) for f in guardadas],
+        'con_texto_propio': [literal_js(f) for f in con_texto_propio],
+        'al_guardar': textos['al_guardar']['es'] if 'al_guardar' in textos else None,
+        'al_restaurar': textos['al_restaurar']['es'] if 'al_restaurar' in textos else None,
+        'confirmar_detalle': (textos['confirmar_restaurar_detalle']['es']
+                              if 'confirmar_restaurar_detalle' in textos else None),
+        'errores_del_bloque': [literal_js(error) for error in errores_del_bloque],
+    }
+    return {
+        'entidad': n, 'clase': e['clase'], 'var': camel(n), 'modulo': e['modulo'], 'ficha': e['fichas'][0],
+        'singular': e['etiquetas']['es']['singular'].lower(), 'plural': e['etiquetas']['es']['plural'].lower(),
+        'titulo_es': e['etiquetas']['es']['plural'], 'ruta': f"/{e['ruta']}", 'operaciones': operaciones,
+        'roles_listar': literal_js(operaciones['listar']), 'icono': e['pantalla'].get('icono', ICONO_POR_DEFECTO),
+        'en_bloque': True, 'acciones': literal_js(acciones),
+        'clave': {'atributo': clave_js, 'en_frase': en_frase(atr_clave['etiquetas']['es']),
+                  'valores': [literal_js({'codigo': codigo, 'etiqueta': f'{prefijo}.{codigo}'})
+                              for codigo, _ in valores]},
+        'campos': campos_de_fila,
+        'textos': [(js, literal_js(f'{n}.pantalla.{clave}' if clave in textos else None))
+                   for js, clave in TEXTOS_EN_BLOQUE_JS],
+        'usa': sorted({ayudante for c in campos_de_fila for ayudante in _ayudantes(c['yup'])}),
+        'de_yup': sorted({'array', 'object'} | {c['base'].removesuffix('()') for c in campos_de_fila}),
+        'casos': [caso for c in campos_de_fila for caso in c['casos']],
+        'bordes': [borde for c in campos_de_fila for borde in c['bordes']],
+        'filas_del_formulario': [literal_js(f) for f in del_formulario],
+        'decimales': [c for c in campos_de_fila if c['tipo'] == 'decimal'],
+        'prueba': prueba,
+    }
 
 
 # --- Archivos -------------------------------------------------------------------------------------
@@ -662,7 +837,8 @@ def archivos_frontend(entidades, pantallas):
     """Archivos del frontend: las listas de pantallas y de textos, que la app lee siempre, y los de cada entidad
     de ``pantallas``. Devuelve ``(ruta, plantilla, contexto)``."""
     todas = list(entidades.values())
-    modelos = [modelo_pantalla(entidades, entidades[nombre]) for nombre in pantallas]
+    modelos = [modelo_pantalla_en_bloque(entidades, entidades[nombre]) if entidades[nombre].get('edicion_en_bloque')
+               else modelo_pantalla(entidades, entidades[nombre]) for nombre in pantallas]
     textos = []
     for nombre in pantallas:
         for clave, texto in entidades[nombre]['pantalla'].get('textos', {}).items():
@@ -690,6 +866,30 @@ def archivos_frontend(entidades, pantallas):
             return (ruta, plantilla, dict(m, header=_header(entidades, involucradas, ruta.rsplit('/', 1)[1],
                                                             descripcion)))
 
+        if m.get('en_bloque'):
+            archivos += [
+                archivo(f'{carpeta}/{var}Api.js', 'frontend/api_en_bloque.js.j2',
+                        f"Cliente de la API de {m['entidad']} en /api/v1{m['ruta']}, que se edita en bloque ({ficha})."),
+                archivo(f'{carpeta}/{var}Api.test.js', 'frontend/api_en_bloque.test.js.j2',
+                        f"Pruebas generadas del cliente de la API de {m['entidad']}: la ruta y el método de cada "
+                        'operación.'),
+                archivo(f'{carpeta}/{var}Esquemas.js', 'frontend/esquemas_en_bloque.js.j2',
+                        f"Validaciones de Yup de las filas de {m['entidad']}: las del JSON, con los mensajes de la API "
+                        f'({ficha}).'),
+                archivo(f'{carpeta}/{var}Esquemas.test.js', 'frontend/esquemas_en_bloque.test.js.j2',
+                        f"Pruebas generadas de las validaciones de las filas de {m['entidad']}: los mismos casos de "
+                        'límite que la prueba generada de la API.'),
+                archivo(f'{carpeta}/{clase}Pantalla.jsx', 'frontend/pantalla_en_bloque.jsx.j2',
+                        f"Pantalla de {m['entidad']} ({ficha}): una fila por cada valor de {m['clave']['en_frase']}, "
+                        'editadas juntas.'),
+                archivo(f'{carpeta}/{clase}Pantalla.test.jsx', 'frontend/pantalla_en_bloque.test.jsx.j2',
+                        f"Pruebas generadas de la pantalla de {m['entidad']}: las filas, la solo lectura, guardar, los "
+                        'errores de la API, restaurar y permisos.'),
+                archivo(f"{CARPETA_E2E}/{m['entidad']}.spec.js", 'frontend/pantalla.spec.js.j2',
+                        f"Pruebas generadas de punta a punta de la pantalla de {m['entidad']}: permisos, accesibilidad "
+                        'y ancho de celular.'),
+            ]
+            continue
         archivos += [
             archivo(f'{carpeta}/{var}Api.js', 'frontend/api.js.j2',
                     f"Cliente de la API de {m['entidad']} en /api/v1{m['ruta']} ({ficha})."),

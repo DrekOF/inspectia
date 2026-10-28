@@ -2,12 +2,13 @@
  * Nombre: espejo.test.js
  * Descripción: Pruebas de la copia en espejo de una carpeta (RP-14), con la que el entorno aislado de las
  *              pruebas de punta a punta compila su propia copia del backend: copia lo nuevo y lo cambiado, y
- *              borra de la copia lo que se borró o se renombró en el original. La copia del backend lleva
- *              también los scripts de infra/bd, nunca infra/.env.
+ *              borra de la copia lo que se borró o se renombró en el original. Lo excluido, también una carpeta
+ *              dentro de otra, como e2e/.entorno en la copia del frontend de la demostración de otra temática, ni
+ *              se copia ni se borra. La copia del backend lleva también los scripts de infra/bd, nunca infra/.env.
  * Fecha de creación: 20/10/2026
- * Actualización: 26/10/2026
+ * Actualización: 28/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -59,13 +60,36 @@ describe('copia en espejo', () => {
     expect(existsSync(join(copia, 'target', 'A.class'))).toBe(true);
   });
 
-  it('RP-14 · solo se excluyen las carpetas del primer nivel: una carpeta target más adentro se espeja como las demás', () => {
+  it('RP-14 · se excluye la ruta exacta: con target, una carpeta target más adentro se espeja como las demás', () => {
     escribir(origen, join('src', 'target', 'D.java'));
     espejar(origen, copia, { excluir: ['target'] });
     rmSync(join(origen, 'src', 'target'), { recursive: true });
 
     expect(espejar(origen, copia, { excluir: ['target'] })).toEqual([join('src', 'target')]);
     expect(existsSync(join(copia, 'src', 'target'))).toBe(false);
+  });
+
+  it('RP-14 · una carpeta excluida dentro de otra, como e2e/.entorno, ni se copia ni se borra de la copia', () => {
+    escribir(origen, join('e2e', '.entorno', 'datos.json'));
+    escribir(origen, join('e2e', 'prueba.spec.js'));
+    escribir(copia, join('e2e', '.entorno', 'propio.txt'));
+
+    expect(espejar(origen, copia, { excluir: ['target', 'e2e/.entorno'] })).toEqual([]);
+
+    expect(existsSync(join(copia, 'e2e', 'prueba.spec.js'))).toBe(true);
+    expect(existsSync(join(copia, 'e2e', '.entorno', 'datos.json'))).toBe(false);
+    expect(existsSync(join(copia, 'e2e', '.entorno', 'propio.txt'))).toBe(true);
+  });
+
+  it('RP-14 · la copia puede estar dentro del original, en una carpeta excluida, como frontend/.demostracion/frontend', () => {
+    const adentro = join(origen, '.demostracion', 'frontend');
+
+    espejar(origen, adentro, { excluir: ['target', '.demostracion'] });
+    espejar(origen, adentro, { excluir: ['target', '.demostracion'] });
+
+    expect(readFileSync(join(adentro, 'src', 'paquete', 'B.java'), 'utf8')).toBe(join('src', 'paquete', 'B.java'));
+    expect(existsSync(join(adentro, '.demostracion'))).toBe(false);
+    expect(existsSync(join(adentro, 'target'))).toBe(false);
   });
 
   it('RP-14 · un archivo borrado o renombrado en el original desaparece de la copia, y se informa', () => {

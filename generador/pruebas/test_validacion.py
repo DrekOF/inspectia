@@ -3,7 +3,7 @@
 # Fecha de creación: 13/10/2026
 # Actualización: 27/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.5
+# Versión: 1.6
 """Pruebas de la validación de los JSON de entidades contra su formato y contra specs/."""
 
 import pytest
@@ -244,3 +244,31 @@ def test_textos_de_la_fila_propia_y_de_la_contrasena(entidades, codigos):
     errores = [e for e in validar(entidades, codigos) if e.startswith('usuario.pantalla')]
 
     assert errores == ['usuario.pantalla.textos.nota_contrasena_de_otro: usa {jefe}, que no existe en este texto']
+
+
+@pytest.mark.caso('RP-23 · varias_lineas va solo en un texto del formulario, y solo con true')
+def test_varias_lineas(entidades, codigos):
+    atributo(entidades['rango_recomendacion'], 'limite_inferior')['varias_lineas'] = True
+    atributo(entidades['lote'], 'observaciones')['varias_lineas'] = True
+    atributo(entidades['usuario'], 'nombre')['varias_lineas'] = 'si'
+
+    errores = validar(entidades, codigos)
+
+    for error in ('rango_recomendacion.limite_inferior: varias_lineas va solo en un texto del formulario',
+                  'lote.observaciones: varias_lineas va solo en un texto del formulario',
+                  'usuario.nombre: varias_lineas solo puede ser true'):
+        assert error in errores
+    assert not [e for e in errores if e.startswith('rango_recomendacion.recomendacion')]
+
+
+@pytest.mark.caso('RP-23 · la validación conoce los textos de la pantalla en bloque: la nota y el detalle de restaurar y el mensaje al restaurar, sin los valores de una fila')
+def test_textos_de_la_pantalla_en_bloque(entidades, codigos):
+    entidades['rango_recomendacion']['pantalla'] = {'icono': 'rangos', 'textos': {
+        'nota_restaurar': {'es': 'Vuelve a los de la NTC 1252:2021.', 'en': 'Back to the NTC 1252:2021 ones.'},
+        'confirmar_restaurar_detalle': {'es': 'Se pierden los textos propios.', 'en': 'Your own texts are lost.'},
+        'al_restaurar': {'es': 'Se restauraron los de {categoria}.', 'en': '{categoria} were restored.'}}}
+
+    errores = [e for e in validar(entidades, codigos) if e.startswith('rango_recomendacion.pantalla')]
+
+    assert errores == ['rango_recomendacion.pantalla.textos.al_restaurar: usa {categoria}, que no existe en este texto']
+

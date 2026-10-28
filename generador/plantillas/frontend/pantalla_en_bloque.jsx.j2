@@ -1,0 +1,60 @@
+{#
+  Nombre: pantalla_en_bloque.jsx.j2
+  Descripción: Plantilla de la pantalla de una entidad que se edita en bloque, como los rangos (RF-13): lo que dice
+               su JSON (la lista que identifica cada fila, los campos de cada una, los roles y las claves de sus
+               textos) sobre PantallaEnBloque, la pieza común de src/crud, escrita a mano. Lo que el JSON no puede
+               declarar, como el orden de los límites, llega en extensiones, desde Rutas.jsx (RP-23).
+  Fecha de creación: 27/10/2026
+  Actualización: 27/10/2026
+  Autor: Equipo InspectIA
+  Versión: 1.0
+#}
+{% from 'frontend/_macros.j2' import encabezado %}
+{{ encabezado(header) }}
+import { PantallaEnBloque } from '../../crud/PantallaEnBloque.jsx';
+import * as api from './{{ var }}Api.js';
+import { esquemaDelBloque } from './{{ var }}Esquemas.js';
+
+/**
+ * Lo que dice de la pantalla specs/entidades/{{ entidad }}.json: los roles de cada acción, la lista que identifica
+ * cada fila, con sus valores en orden, los campos de cada fila y las claves de sus textos, o null los que el JSON no
+ * trae.
+ *
+ * @type {import('../../crud/PantallaEnBloque.jsx').DescripcionDelBloque}
+ */
+const PANTALLA = {
+  entidad: '{{ entidad }}',
+  titulo: '{{ entidad }}.etiqueta.plural',
+  operaciones: {{ acciones }},
+  clave: {
+    atributo: '{{ clave.atributo }}',
+    valores: [
+{% for valor in clave.valores %}
+      {{ valor }},
+{% endfor %}
+    ],
+  },
+  campos: [
+{% for c in campos %}
+    {{ c.descripcion }},
+{% endfor %}
+  ],
+  textos: {
+{% for clave_js, valor in textos %}
+    {{ clave_js }}: {{ valor }},
+{% endfor %}
+  },
+};
+
+/**
+ * La pantalla de {{ plural }} ({{ ficha }}): una fila por cada {{ clave.en_frase }}, todas en un solo formulario. Lo
+ * que su JSON no puede declarar llega en extensiones, desde Rutas.jsx.
+ *
+ * @param {object} props las propiedades
+ * @param {import('../../crud/PantallaEnBloque.jsx').ExtensionesDelBloque} [props.extensiones] lo escrito a mano
+ *   para esta pantalla
+ * @returns {import('react').ReactElement} la pantalla
+ */
+export default function {{ clase }}Pantalla({ extensiones }) {
+  return <PantallaEnBloque pantalla={PANTALLA} api={api} esquema={esquemaDelBloque} extensiones={extensiones} />;
+}

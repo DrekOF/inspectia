@@ -2,16 +2,16 @@
 Nombre: README.md
 Descripción: Presentación del monorepo de InspectIA: estructura, versiones, requisitos del entorno de desarrollo, base de datos local, frontend y cita del dataset.
 Fecha de creación: 12/10/2026
-Actualización: 27/10/2026
+Actualización: 28/10/2026
 Autor: Equipo InspectIA
-Versión: 1.8
+Versión: 1.9
 -->
 
 # InspectIA
 
 Aplicación web multiempresa que estima el porcentaje de granos de cacao sanos de un lote a partir de 2 o 3 fotos de una muestra (100 a 150 granos), y entrega una categoría probable, una recomendación y un reporte en PDF.
 
-Proyecto final de Inteligencia Artificial, Universidad Surcolombiana. Docente: Juan Antonio Castro Silva. Equipo: Cristhian Sánchez, Julián Silvas y Jhon Perdomo.
+Proyecto final de Inteligencia Artificial, Universidad Surcolombiana. Docente: Juan Antonio Castro Silva. Equipo: Cristhian Sánchez, Julián Silva y Jhon Perdomo.
 
 ## Estructura
 
@@ -144,8 +144,8 @@ Los comandos están en la sección Comandos de `CLAUDE.md`. En resumen:
 - **Primer administrador de la plataforma:** lo crea un script de la base de datos; los pasos están en `infra/README.md`.
 - **Inicio de sesión:** `POST /api/v1/sesion` entrega un token que vence a las 8 horas; las demás rutas lo piden en el encabezado `Authorization: Bearer` (D-28). En Swagger UI, el botón «Authorize» recibe ese token. Los pasos para probarlo están en `infra/README.md`.
 - **Contraseñas:** cada usuario cambia la suya con `PUT /api/v1/sesion/contrasena` (RF-18). Si el administrador de la plataforma olvida la suya, el equipo la restablece con un script de la base de datos (D-30); los pasos están en `infra/README.md`.
-- **Rangos de recomendación:** el administrador de empresa lista, edita en bloque y restaura los 4 rangos de su empresa en `/api/v1/rangos-recomendacion` (RF-13); los pasos para probarlo están en `infra/README.md`.
-- **Generador:** los CRUD (tablas, backend y pantallas) salen de `specs/entidades/*.json` y no se editan a mano (RP-23). Hoy tienen pantalla las empresas y los usuarios; los rangos llegan con su PR. Ver `generador/README.md`.
+- **Rangos de recomendación:** el administrador de empresa lista, edita en bloque y restaura los 4 rangos de su empresa en la pantalla «Rangos de recomendación» o en `/api/v1/rangos-recomendacion` (RF-13); los pasos para probar la API están en `infra/README.md`.
+- **Generador:** los CRUD (tablas, backend y pantallas) salen de `specs/entidades/*.json` y no se editan a mano (RP-23). Hoy tienen pantalla las empresas, los usuarios y los rangos. Ver `generador/README.md`.
 - **Casos de prueba:** `docs/casos-de-prueba.md` lista cada criterio de aceptación con sus pruebas y los que aún no tienen ninguna (RP-13). Lo arma `generador/casos_de_prueba.py` desde las marcas de las pruebas.
 
 ## Frontend
@@ -156,6 +156,7 @@ Desde `frontend/`, la primera vez `npm ci`. Los detalles están en `frontend/REA
 - **Pruebas unitarias y de componentes:** `npm test`, con la API simulada (MSW): no necesitan el backend. `npm run lint` corre ESLint y `npm run test:mutacion`, las pruebas de mutación con Stryker (RP-12).
 - **Pruebas de punta a punta (RP-14):** `npm run e2e:playwright` y `npm run e2e:selenium`, con Docker Desktop abierto. La primera vez, `npx playwright install chromium firefox webkit`. Cada corrida enciende su propio entorno: una base en otro proyecto de Docker Compose, el backend compilado en una copia y la página compilada, con contraseñas nuevas. No usa `infra/.env` ni tu base, y lo borra al terminar.
 - **Firefox en Windows 11 25H2:** el Firefox de Playwright 1.64.1 no abre (Windows rechaza cargar su `mozglue.dll`). En esos equipos, `INSPECTIA_E2E_SIN_FIREFOX=1` lo salta; en CI corre siempre.
+- **Demostración de otra temática (RP-23):** `npm run demo:otra-tematica`, con Docker Desktop abierto. En una copia del proyecto agrega el producto de la pauta del docente, saca su tabla, su API y su pantalla, y la enciende; Ctrl+C la apaga y borra su base. El repositorio no cambia. Ver `frontend/README.md`.
 
 ## Dataset y licencia (RNF-08)
 

@@ -6,8 +6,8 @@
  *              o la plantilla, y se regenera.
  * Fecha de creación: 13/10/2026
  * Actualización: 27/10/2026
- * Autor: Equipo InspectIA (generado por generador/ v1.9)
- * Versión: 1.9
+ * Autor: Equipo InspectIA (generado por generador/ v1.10)
+ * Versión: 1.10
  * Entidades: empresa 1.3, usuario 1.8
  */
 import { object, string } from 'yup';

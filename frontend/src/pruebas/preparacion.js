@@ -1,15 +1,15 @@
 /*
  * Nombre: preparacion.js
  * Descripción: Preparación de las pruebas unitarias y de componentes (Vitest con jsdom): comparaciones de
- *              jest-dom, la API simulada con MSW, lo que jsdom no trae, como matchMedia, y cada prueba en
- *              español y sin nada guardado en el navegador.
+ *              jest-dom, la API simulada con MSW, lo que jsdom no trae, como matchMedia, cuánto esperan findBy y
+ *              waitFor, y cada prueba en español y sin nada guardado en el navegador.
  * Fecha de creación: 20/10/2026
- * Actualización: 20/10/2026
+ * Actualización: 28/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 import '@testing-library/jest-dom/vitest';
-import { cleanup } from '@testing-library/react';
+import { cleanup, configure } from '@testing-library/react';
 import { afterAll, afterEach, beforeAll, vi } from 'vitest';
 import i18n from '../i18n/i18n.js';
 import { servidor } from './servidor.js';
@@ -47,6 +47,14 @@ Object.defineProperty(window, 'matchMedia', {
     };
   }),
 });
+
+/*
+ * findBy y waitFor esperan hasta 5 s, no el segundo de Testing Library. Con la máquina ocupada, como con dos corridas
+ * a la vez o con Stryker, una pantalla que se carga la primera vez que se abre (lazy) tarda más de un segundo en
+ * aparecer, y la prueba fallaba sin un error de verdad. Una prueba que pasa no espera más por esto: sigue apenas
+ * aparece lo que busca.
+ */
+configure({ asyncUtilTimeout: 5000 });
 
 beforeAll(() => servidor.listen({ onUnhandledRequest: 'error' }));
 

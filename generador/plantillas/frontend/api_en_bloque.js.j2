@@ -1,0 +1,53 @@
+{#
+  Nombre: api_en_bloque.js.j2
+  Descripción: Plantilla del cliente de la API de una entidad que se edita en bloque, como los rangos (RF-13):
+               las filas de la empresa de la sesión, sin páginas, todas juntas al editar, y la vuelta a los valores
+               por defecto (RP-23).
+  Fecha de creación: 27/10/2026
+  Actualización: 27/10/2026
+  Autor: Equipo InspectIA
+  Versión: 1.0
+#}
+{% from 'frontend/_macros.j2' import encabezado %}
+{{ encabezado(header) }}
+
+/** La ruta de {{ entidad }} en la API, después de /api/v1. */
+const RUTA = '{{ ruta }}';
+{% if 'listar' in operaciones %}
+
+/**
+ * Las filas de {{ plural }} de la empresa de la sesión, una por cada {{ clave.en_frase }}, en el orden de su lista
+ * ({{ ficha }}).
+ *
+ * @param {import('../../api/cliente.js').Pedir} pedir la función para pedir a la API
+ * @returns {Promise<object[]>} las filas
+ */
+export function listar(pedir) {
+  return pedir('GET', RUTA);
+}
+{% endif %}
+{% if 'editar' in operaciones %}
+
+/**
+ * Edita todas las filas juntas ({{ ficha }}): si una no cumple, la API no guarda ninguna.
+ *
+ * @param {import('../../api/cliente.js').Pedir} pedir la función para pedir a la API
+ * @param {object[]} filas las filas, con los nombres de la API
+ * @returns {Promise<object[]>} las filas como quedaron
+ */
+export function editar(pedir, filas) {
+  return pedir('PUT', RUTA, { filas });
+}
+{% endif %}
+{% if 'restaurar_por_defecto' in operaciones %}
+
+/**
+ * Vuelve a los valores por defecto ({{ ficha }}): los mismos que recibe cada empresa nueva.
+ *
+ * @param {import('../../api/cliente.js').Pedir} pedir la función para pedir a la API
+ * @returns {Promise<object[]>} las filas como quedaron
+ */
+export function restaurarPorDefecto(pedir) {
+  return pedir('POST', `${RUTA}/restaurar-por-defecto`);
+}
+{% endif %}

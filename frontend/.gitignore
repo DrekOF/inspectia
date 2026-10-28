@@ -1,9 +1,10 @@
 # Nombre: .gitignore (frontend)
-# Descripción: Lo que el frontend genera al compilar y al probar, y que no va al repositorio.
+# Descripción: Lo que el frontend genera al compilar, al probar y en la demostración de otra temática, y que no va
+#              al repositorio.
 # Fecha de creación: 20/10/2026
-# Actualización: 20/10/2026
+# Actualización: 28/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.0
+# Versión: 1.1
 
 node_modules/
 dist/
@@ -19,3 +20,7 @@ reports/
 # Entorno aislado de las pruebas de punta a punta: usuarios y contraseñas de cada corrida (datos.json),
 # sus registros y la copia del backend que compila
 e2e/.entorno/
+
+# Demostración de otra temática (npm run demo:otra-tematica): la copia del proyecto con producto, sus registros y
+# los datos de cada corrida
+.demostracion/

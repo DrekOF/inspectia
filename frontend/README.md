@@ -1,41 +1,42 @@
 <!--
 Nombre: README.md (frontend)
 Descripción: La página web de InspectIA: qué hay en frontend/, cómo arrancarla junto con el backend, sus textos,
-             sus pruebas y el entorno aislado de las pruebas de punta a punta.
+             sus pruebas, el entorno aislado de las pruebas de punta a punta y la demostración de otra temática.
 Fecha de creación: 12/10/2026
-Actualización: 27/10/2026
+Actualización: 28/10/2026
 Autor: Equipo InspectIA
-Versión: 1.4
+Versión: 1.5
 -->
 
 # frontend
 
 Página web de InspectIA, para PC y celular (RNF-05). Hecha con React 19, Material UI 9 y Vite 8, con Node 24.22.0 (la de `.node-version`). Las versiones de cada librería están en `package.json` y en la tabla de versiones del README principal.
 
-Esta versión tiene el marco (barra superior, menú según el rol, idioma y tema), Iniciar sesión (RF-01), Cambiar contraseña (RF-18), Acerca de, con la cita del dataset (RNF-08), y las pantallas de Empresas (RF-02) y Usuarios (RF-03), generadas desde su JSON (RP-23). Las demás secciones del menú dicen «Esta sección estará disponible pronto.» hasta que llegue su función. La referencia visual es el prototipo de `02_Analisis_Diseno/Prototipo_Frontend`, fuera del repositorio.
+Esta versión tiene el marco (barra superior, menú según el rol, idioma y tema), Iniciar sesión (RF-01), Cambiar contraseña (RF-18), Acerca de, con la cita del dataset (RNF-08), y las pantallas de Empresas (RF-02), Usuarios (RF-03) y Rangos de recomendación (RF-13), generadas desde su JSON (RP-23). Las demás secciones del menú dicen «Esta sección estará disponible pronto.» hasta que llegue su función. La referencia visual es el prototipo de `02_Analisis_Diseno/Prototipo_Frontend`, fuera del repositorio.
 
 ## Qué hay
 
 | Carpeta | Qué va ahí |
 |---|---|
 | `src/generated/` | Lo que sale de `generador/` (RP-23): las pantallas, los clientes de su API, sus validaciones de Yup, sus textos y sus pruebas. No se edita a mano. |
-| `src/crud/` | Lo común de las pantallas generadas: la lista en páginas de 20 (tabla en el PC y tarjetas en el celular), el formulario, encima de la lista o a su lado en el PC (D-37), la confirmación al desactivar, el máximo de activos, la fila de quien tiene la sesión y el foco al abrir y cerrar un panel. |
+| `src/crud/` | Lo común de las pantallas generadas: la lista en páginas de 20 (tabla en el PC y tarjetas en el celular), el formulario, encima de la lista o a su lado en el PC (D-37), la confirmación al desactivar, el máximo de activos, la fila de quien tiene la sesión y el foco al abrir y cerrar un panel. También la pantalla en bloque (`PantallaEnBloque`), con todas las filas en un formulario, como los rangos, y los decimales con el separador del idioma (`decimales.js`). |
 | `src/empresa/` | Lo escrito a mano para la pantalla de empresas: el panel de administradores, que restablece la contraseña de uno (RF-02 C12). |
+| `src/rango/` | Lo escrito a mano para la pantalla de rangos (RF-13): el resumen «Así quedan los rangos» y la regla del orden de los límites (`limites.js`), la misma del backend. |
 | `src/extensiones.js` | Lo escrito a mano de cada pantalla generada, por entidad. Las rutas se lo pasan a la pantalla, así lo generado no importa código escrito a mano. |
 | `src/paginas/` | Las pantallas: Iniciar sesión, el inicio de cada rol, Cambiar contraseña, Acerca de, las secciones pendientes y las direcciones que no existen. |
 | `src/navegacion/` | El marco de las pantallas con sesión (barra, menú y «Saltar al contenido»), las rutas y el menú de cada rol (`menu.js`). |
 | `src/sesion/` | La sesión (D-28, D-31): se guarda en el navegador, vence a las 8 horas, se cierra con un 401 y vuelve a la pantalla anterior si entra el mismo usuario. |
 | `src/api/` | El cliente de la API: el token, el idioma y los errores `application/problem+json` del backend. |
 | `src/componentes/` | Piezas comunes: campos, avisos, tarjetas, títulos, la marca y los selectores de idioma y tema. |
-| `src/validacion/` | Los esquemas de Yup de las páginas escritas a mano (RP-07), con los mismos límites y mensajes del backend. La contraseña nueva de Cambiar contraseña usa la validación generada de la contraseña de un usuario, en el orden en que la API escoge el error. |
+| `src/validacion/` | Los esquemas de Yup de las páginas escritas a mano (RP-07), con los mismos límites y mensajes del backend. La contraseña nueva de Cambiar contraseña usa la validación generada de la contraseña de un usuario, en el orden en que la API escoge el error. En `reglas.js` va también lo que usan las validaciones generadas, como leer un número escrito con coma o con punto. |
 | `src/i18n/` | Los idiomas (RP-11): español por defecto e inglés. |
 | `src/tema/` | Los tokens de color, letra y medidas (`tokens.js`) y el tema de Material UI, claro y oscuro (RP-08). |
-| `herramientas/` | La lectura de los `.properties` del backend (plugin de Vite) y la copia en espejo que usa el entorno de punta a punta. |
+| `herramientas/` | La lectura de los `.properties` del backend (plugin de Vite), la copia en espejo que usan el entorno de punta a punta y la demostración, y la demostración de otra temática (`otra-tematica.js`). |
 | `e2e/` | Las pruebas de punta a punta con Playwright, su entorno aislado (`e2e/entorno/`) y las generadas de cada pantalla (`e2e/generated/`). |
 | `selenium/` | Las pruebas con Selenium, en Chrome y en Edge. |
 | `reports/` | Lo que dejan las pruebas y no se sube: el informe de mutación y, si una prueba de Selenium falla, su captura y la consola del navegador. |
 
-Las pantallas CRUD salen de `generador/` y no se editan a mano (RP-23): hoy las de empresas y usuarios; la de rangos llega con su PR. Para cambiar una, se cambia su JSON o la plantilla y se vuelve a generar. Lo que su JSON no puede declarar va en `src/extensiones.js`.
+Las pantallas CRUD salen de `generador/` y no se editan a mano (RP-23): hoy las de empresas, usuarios y rangos. Para cambiar una, se cambia su JSON o la plantilla y se vuelve a generar. Lo que su JSON no puede declarar va en `src/extensiones.js`.
 
 ## Textos
 
@@ -56,6 +57,9 @@ Desde `frontend/`. La primera vez, `npm ci`.
 | `npm run e2e:playwright` | Pruebas de punta a punta con Playwright (RP-14), en su entorno aislado. |
 | `npm run e2e:selenium` | Pruebas con Selenium en Chrome y Edge, en su entorno aislado. |
 | `npm run e2e:entorno` | Enciende el entorno aislado y lo deja encendido hasta Ctrl+C. |
+| `npm run demo:otra-tematica` | La demostración de otra temática (RP-23), en una copia del proyecto (ver abajo). Con `-- --con-pruebas`, antes de encenderla corre las pruebas generadas de producto. |
+
+En Vitest, `findBy` y `waitFor` esperan hasta 5 s y cada prueba tiene hasta 20 s (`src/pruebas/preparacion.js` y `vite.config.js`). Con la máquina ocupada, como con dos corridas a la vez o con Stryker, una pantalla que se carga la primera vez que se abre tarda más de un segundo, y las pruebas que llenan un formulario entero pasan de 5 s. Si Vitest corta una prueba, lo que ella seguía escribiendo cae en el campo con el foco de la prueba siguiente, que falla también. Una prueba que pasa no espera más por esto.
 
 ## Pruebas de punta a punta
 
@@ -79,11 +83,31 @@ Las contraseñas y la clave de los tokens son nuevas en cada corrida. Quedan en 
 
 En PowerShell, por ejemplo: `$env:INSPECTIA_E2E_SIN_FIREFOX = '1'; npm run e2e:playwright`.
 
-Las pruebas que solo miran, como las generadas de los permisos de una pantalla, entran con `personaDelRol`, que da la persona fija del entorno para cada rol. Las que cambian datos crean los suyos por la API, así no chocan entre navegadores: usuarios con `crearUsuario` y empresas con `crearEmpresa`, con un NIT válido nuevo. Las de la pantalla de usuarios registran cada una su propia empresa y entran con su administrador, para no llenar los 25 activos de Cacaos del Huila. Como la lista va de 20 en 20, `botonDeLaFila` pasa de página hasta encontrar la fila; en cada página espera que cambien las filas, porque el rango cambia antes de que lleguen.
+Las pruebas que solo miran, como las generadas de los permisos de una pantalla, entran con `personaDelRol`, que da la persona fija del entorno para cada rol. Las que cambian datos crean los suyos por la API, así no chocan entre navegadores: usuarios con `crearUsuario` y empresas con `crearEmpresa`, con un NIT válido nuevo. Las de la pantalla de usuarios registran cada una su propia empresa y entran con su administrador, para no llenar los 25 activos de Cacaos del Huila; las de rangos, también, porque guardar cambia los rangos de la empresa. En Selenium, `escribirEn` reemplaza el texto de un campo con el teclado: `clear()` cambia el valor sin el evento que escucha React. Como la lista va de 20 en 20, `botonDeLaFila` pasa de página hasta encontrar la fila; en cada página espera que cambien las filas, porque el rango cambia antes de que lleguen.
 
 Si una prueba de Selenium falla, su captura (`.png`) y la consola del navegador (`.consola.log`, que empieza con la prueba, el error, la dirección y la hora) quedan en `reports/selenium/`. No van en `test-results/` porque Playwright vacía esa carpeta en cada corrida.
 
 Playwright corre cada prueba en Chrome, Firefox y Safari en tamaño de PC (1280 × 800) y en Chrome (Pixel 7) y Safari (iPhone 13) de celular (RNF-05 C3). axe revisa las pautas WCAG 2.2 AA en cada pantalla, en los temas claro y oscuro (RNF-06 C4).
+
+## Demostración de otra temática
+
+Para la sustentación: muestra que, cambiando solo los JSON, el generador saca otro CRUD completo (RP-23). Desde `frontend/`, con Docker Desktop abierto y el entorno del generador creado (ver `generador/README.md`):
+
+```bash
+npm run demo:otra-tematica
+```
+
+1. Copia en espejo el backend, el frontend, `specs/` e `infra/bd` en `frontend/.demostracion`, que está en `.gitignore`. El `node_modules` del frontend no se copia: se enlaza; en Windows, con un junction, que no pide permisos de administrador.
+2. Agrega a la copia el producto de la pauta del docente (`generador/pruebas/ejemplos/producto.json`) y lo suma a la API y a las pantallas del alcance. Es lo único que cambia.
+3. Corre el generador en la copia y lista por capa lo que escribió: la tabla en V1, la API con su prueba de integración, los textos y la pantalla con sus pruebas.
+4. Enciende la copia como el entorno aislado de las pruebas, en su propio proyecto de Docker Compose (`inspectia-demo`), con el backend y la página compilados en la copia.
+5. Escribe la dirección, el correo y la contraseña del administrador de la plataforma, solo de esa corrida, y cómo ver la API en Swagger UI y la tabla en psql.
+
+En la página, «Productos» queda al final del menú del administrador de la plataforma, con el ícono genérico: se registra un producto, se edita y se pasa a Inactivo, con las validaciones y los mensajes de la API. Ctrl+C apaga la copia y borra su base; después, `docker compose ls` ya no muestra `inspectia-demo`. La copia queda y la vez siguiente se pone al día con el repositorio, así que compila solo lo cambiado. El repositorio no cambia: `git status` queda limpio y `generar.py comprobar` sigue pasando.
+
+Con `npm run demo:otra-tematica -- --con-pruebas`, antes de encender la copia corre allí las pruebas generadas de producto: las de Vitest y `ProductoApiGeneradaIT`, con PostgreSQL en Testcontainers.
+
+La copia va dentro de `frontend/` y no en la raíz del repositorio: el backend de la copia corre desde `.demostracion` y busca `../infra/.env`, que en la raíz sería el de desarrollo, con sus contraseñas.
 
 ## Producción
 

@@ -3,7 +3,7 @@
 # Fecha de creación: 13/10/2026
 # Actualización: 27/10/2026
 # Autor: Equipo InspectIA
-# Versión: 1.5
+# Versión: 1.6
 """Validación de los JSON de entidades.
 
 Revisa el formato de ``specs/entidades/README.md`` y que cada ficha, decisión o requisito citado
@@ -192,7 +192,17 @@ class _Revision:
                 self.error(donde, 'solo_lectura_si va solo en una entidad con edicion_en_bloque')
         if a.get('solo_lo_cambian_las_reglas'):
             self.solo_lo_cambian_las_reglas(donde, e, a)
+        if 'varias_lineas' in a:
+            self.varias_lineas(donde, a)
         self.fichas(donde, a.get('fichas'))
+
+    def varias_lineas(self, donde, a):
+        """Un texto del formulario que va en un campo de varias líneas, como la recomendación de un rango (RF-13).
+        En otro atributo no serviría: la validación lo rechaza, en vez de ignorarlo."""
+        if a['varias_lineas'] is not True:
+            self.error(donde, 'varias_lineas solo puede ser true')
+        elif a.get('tipo') != 'texto' or not a.get('en_formulario'):
+            self.error(donde, 'varias_lineas va solo en un texto del formulario')
 
     def solo_lo_cambian_las_reglas(self, donde, e, a):
         """Un atributo que JPA lee pero no escribe: solo lo cambian las reglas, con SQL. Va en una entidad con

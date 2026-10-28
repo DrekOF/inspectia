@@ -1,0 +1,37 @@
+{#
+  Nombre: esquemas_en_bloque.js.j2
+  Descripción: Plantilla de las validaciones de Yup de una entidad que se edita en bloque, como los rangos (RF-13):
+               las de cada fila, del mismo modelo que la fila de la API, con sus mensajes y en el orden en que la
+               API escoge el error de un campo (RP-23).
+  Fecha de creación: 27/10/2026
+  Actualización: 27/10/2026
+  Autor: Equipo InspectIA
+  Versión: 1.0
+#}
+{% from 'frontend/_macros.j2' import encabezado %}
+{{ encabezado(header) }}
+import { {{ de_yup | join(', ') }} } from 'yup';
+{% if usa %}
+import { {{ usa | join(', ') }} } from '../../validacion/reglas.js';
+{% endif %}
+
+/**
+ * Las validaciones de las filas de {{ plural }}: las de la API en cada fila, con sus mensajes ({{ ficha }}).
+ * Antes de validar, los textos se normalizan como en la API y los números se leen como se escriben, con coma o con
+ * punto. Las reglas de todo el bloque, como el orden de los límites, no van aquí: se programan a mano.
+ *
+ * @param {(clave: string, valores?: object) => string} t la función de traducción de i18next
+ * @returns {import('yup').ObjectSchema} el esquema
+ */
+export function esquemaDelBloque(t) {
+  return object({
+    filas: array().of(object({
+{% for c in campos %}
+      {{ c.nombre }}: {{ c.base }}{{ '' if c.yup else ',' }}
+{% for linea in c.yup %}
+        {{ linea }}{{ ',' if loop.last else '' }}
+{% endfor %}
+{% endfor %}
+    })),
+  });
+}

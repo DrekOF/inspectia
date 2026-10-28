@@ -1,0 +1,225 @@
+{#
+  Nombre: pantalla_en_bloque.test.jsx.j2
+  Descripción: Plantilla de la prueba generada de la pantalla de una entidad que se edita en bloque, con la API
+               simulada (MSW): las filas en su orden, el campo de solo lectura, guardar todas las filas juntas, los
+               errores de una fila y del bloque, restaurar con su confirmación, quién la abre y sin conexión (RP-12,
+               RP-13, RP-23).
+  Fecha de creación: 27/10/2026
+  Actualización: 27/10/2026
+  Autor: Equipo InspectIA
+  Versión: 1.0
+#}
+{% from 'frontend/_macros.j2' import encabezado %}
+{% set p = prueba %}
+{{ encabezado(header) }}
+import { screen, waitFor, within } from '@testing-library/react';
+import { http, HttpResponse } from 'msw';
+import { describe, expect, it } from 'vitest';
+import { abrirApp, conSesion, USUARIOS } from '../../pruebas/ayudas.jsx';
+import { apiEnBloqueSimulada } from '../../pruebas/crud.js';
+import { problema, servidor } from '../../pruebas/servidor.js';
+
+/** La pantalla en la app y su ruta en la API. */
+const RUTA = '{{ ruta }}';
+const API = '/api/v1{{ ruta }}';
+
+/** Las filas como las responde la API: las de los valores por defecto del JSON, en el orden de su lista. */
+const FILAS = [
+{% for fila in p.filas %}
+  {{ fila }},
+{% endfor %}
+];
+{% if p.texto %}
+
+/** Las mismas filas, con un texto propio de la empresa en cada una. */
+const CON_TEXTO_PROPIO = [
+{% for fila in p.con_texto_propio %}
+  {{ fila }},
+{% endfor %}
+];
+{% endif %}
+
+/** Los errores de la API que son de todo el bloque: los de sus reglas, que no tienen campo, y el de las filas. */
+const ERRORES_DEL_BLOQUE = [
+{% for error in p.errores_del_bloque %}
+  {{ error }},
+{% endfor %}
+];
+
+/**
+ * El formulario, cuando terminan de cargar las filas.
+ *
+ * @returns {Promise<HTMLElement>} el formulario
+ */
+const formulario = () => screen.findByRole('form', { name: {{ p.titulo_editar | js }} });
+
+/**
+ * La fila de un valor de {{ clave.en_frase }}, por su nombre.
+ *
+ * @param {string} nombre el nombre del valor
+ * @returns {Promise<HTMLElement>} la fila
+ */
+const filaDe = (nombre) => screen.findByRole('group', { name: nombre });
+
+describe('pantalla de {{ entidad }} (generada)', () => {
+  it('{{ ficha }} · la pantalla de {{ entidad }} muestra una fila por cada valor de {{ clave.atributo }}, en su orden, con sus datos', async () => {
+    conSesion(USUARIOS.{{ p.rol }});
+    apiEnBloqueSimulada(API, FILAS);
+    abrirApp(RUTA);
+
+    const filas = within(await formulario()).getAllByRole('group');
+    expect(filas.map((fila) => fila.querySelector('legend').textContent))
+      .toEqual({{ p.etiquetas_de_filas }});
+{% if p.decimal %}
+    expect(within(filas[0]).getByLabelText({{ p.decimal.etiqueta | js }})).toHaveValue({{ p.decimal.valor | js }});
+{% endif %}
+{% if p.texto %}
+    expect(within(filas[0]).getByLabelText({{ p.texto.etiqueta | js }})).toHaveValue({{ p.texto.valor | js }});
+{% endif %}
+  });
+{% if p.solo_lectura %}
+
+  it('{{ ficha }} · en la fila de {{ p.solo_lectura.codigo }}, {{ p.solo_lectura.campo }} es de solo lectura, con el mensaje de su regla', async () => {
+    conSesion(USUARIOS.{{ p.rol }});
+    apiEnBloqueSimulada(API, FILAS);
+    abrirApp(RUTA);
+
+    const campo = within(await filaDe({{ p.solo_lectura.fila | js }})).getByLabelText({{ p.solo_lectura.etiqueta | js }});
+    expect(campo).toHaveAttribute('readonly');
+    expect(campo).toHaveAccessibleDescription(expect.stringContaining({{ p.solo_lectura.mensaje | js }}));
+  });
+{% endif %}
+{% if p.puede.editar %}
+
+  it('{{ ficha }} · guardar envía todas las filas juntas, con los números escritos en el formulario, y muestra el mensaje del JSON', async () => {
+    conSesion(USUARIOS.{{ p.rol }});
+    const simulada = apiEnBloqueSimulada(API, FILAS);
+    const { usuario } = abrirApp(RUTA);
+
+    const primera = await filaDe({{ p.primera | js }});
+{% if p.decimal %}
+    const numero = within(primera).getByLabelText({{ p.decimal.etiqueta | js }});
+    await usuario.clear(numero);
+    await usuario.type(numero, {{ p.decimal.valor | js }});
+{% endif %}
+{% if p.texto %}
+    const texto = within(primera).getByLabelText({{ p.texto.etiqueta | js }});
+    await usuario.clear(texto);
+    await usuario.type(texto, {{ p.texto_de_prueba | js }});
+{% endif %}
+    await usuario.click(screen.getByRole('button', { name: 'Guardar cambios' }));
+
+    expect(await screen.findByText({{ p.al_guardar | js }})).toBeInTheDocument();
+    expect(simulada.peticiones).toContainEqual({ metodo: 'PUT', ruta: API, cuerpo: { filas: [
+{% for fila in p.guardadas %}
+      {{ fila }},
+{% endfor %}
+    ] } });
+  });
+{% if p.texto and p.texto.falta %}
+
+  it('{{ ficha }} · un dato que no cumple su validación se marca en su campo y no se envía nada', async () => {
+    conSesion(USUARIOS.{{ p.rol }});
+    const simulada = apiEnBloqueSimulada(API, FILAS);
+    const { usuario } = abrirApp(RUTA);
+
+    const primera = await filaDe({{ p.primera | js }});
+    const texto = within(primera).getByLabelText({{ p.texto.etiqueta | js }});
+    await usuario.clear(texto);
+    await usuario.click(screen.getByRole('button', { name: 'Guardar cambios' }));
+
+    expect(await within(primera).findByText({{ p.texto.falta | js }})).toBeInTheDocument();
+    expect(texto).toHaveAttribute('aria-invalid', 'true');
+    expect(simulada.peticiones.filter(({ metodo }) => metodo === 'PUT')).toEqual([]);
+  });
+{% endif %}
+{% if p.texto and p.segunda and p.texto.rechazo %}
+
+  it('{{ ficha }} · un error de la API en el campo de una fila queda en ese campo', async () => {
+    conSesion(USUARIOS.{{ p.rol }});
+    apiEnBloqueSimulada(API, FILAS);
+    servidor.use(http.put(API, () => problema(400, 'Revisa los datos marcados.', {
+      errores: [{ campo: 'filas[1].{{ p.texto.nombre }}', mensaje: {{ p.texto.rechazo | js }} }],
+    })));
+    const { usuario } = abrirApp(RUTA);
+
+    await formulario();
+    await usuario.click(screen.getByRole('button', { name: 'Guardar cambios' }));
+
+    const segunda = await filaDe({{ p.segunda | js }});
+    expect(await within(segunda).findByText({{ p.texto.rechazo | js }})).toBeInTheDocument();
+    expect(within(segunda).getByLabelText({{ p.texto.etiqueta | js }})).toHaveAttribute('aria-invalid', 'true');
+  });
+{% endif %}
+
+  it.each(ERRORES_DEL_BLOQUE)('{{ ficha }} · un error de la API del bloque, sin campo o en filas, va arriba del formulario con su mensaje: $campo',
+    async (error) => {
+      conSesion(USUARIOS.{{ p.rol }});
+      apiEnBloqueSimulada(API, FILAS);
+      servidor.use(http.put(API, () => problema(400, 'Revisa los datos marcados.', { errores: [error] })));
+      const { usuario } = abrirApp(RUTA);
+
+      await formulario();
+      await usuario.click(screen.getByRole('button', { name: 'Guardar cambios' }));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(error.mensaje);
+    });
+{% endif %}
+{% if p.puede.restaurar %}
+
+  it('{{ ficha }} · restaurar pide confirmación con el texto del JSON y, al confirmar, vuelve a los valores por defecto', async () => {
+    conSesion(USUARIOS.{{ p.rol }});
+    const simulada = apiEnBloqueSimulada(API, {{ 'CON_TEXTO_PROPIO' if p.texto else 'FILAS' }}, FILAS);
+    const { usuario } = abrirApp(RUTA);
+
+    await formulario();
+    await usuario.click(screen.getByRole('button', { name: 'Restaurar valores por defecto' }));
+    const dialogo = screen.getByRole('dialog', { name: '¿Restaurar los valores por defecto?' });
+    expect(dialogo).toHaveTextContent({{ p.confirmar_detalle | js }});
+    await usuario.click(within(dialogo).getByRole('button', { name: 'Restaurar' }));
+
+    expect(await screen.findByText({{ p.al_restaurar | js }})).toBeInTheDocument();
+    expect(simulada.peticiones).toContainEqual({ metodo: 'POST', ruta: `${API}/restaurar-por-defecto`, cuerpo: null });
+{% if p.texto %}
+    expect(within(await filaDe({{ p.primera | js }})).getByLabelText({{ p.texto.etiqueta | js }}))
+      .toHaveValue({{ p.texto.valor | js }});
+{% endif %}
+  });
+
+  it('{{ ficha }} · al cancelar la confirmación de restaurar no cambia nada', async () => {
+    conSesion(USUARIOS.{{ p.rol }});
+    const simulada = apiEnBloqueSimulada(API, FILAS);
+    const { usuario } = abrirApp(RUTA);
+
+    await formulario();
+    await usuario.click(screen.getByRole('button', { name: 'Restaurar valores por defecto' }));
+    await usuario.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Cancelar' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(simulada.peticiones.filter(({ metodo }) => metodo === 'POST')).toEqual([]);
+  });
+{% endif %}
+{% if p.roles_sin_permiso %}
+
+  it.each([{{ p.roles_sin_permiso | map('js') | join(', ') }}])(
+    'RNF-04 · la pantalla de {{ entidad }} solo la abren los roles de listar: %s ve que no tiene permiso', async (rol) => {
+      conSesion(USUARIOS[rol]);
+      abrirApp(RUTA);
+
+      expect(await screen.findByRole('heading', { name: 'Sin permiso' })).toBeInTheDocument();
+    });
+{% endif %}
+
+  it('RNF-06 · sin conexión, la pantalla de {{ entidad }} dice qué pasó y qué hacer, y se puede reintentar', async () => {
+    conSesion(USUARIOS.{{ p.rol }});
+    servidor.use(http.get(API, () => HttpResponse.error()));
+    const { usuario } = abrirApp(RUTA);
+
+    expect(await screen.findByText('No se pudo conectar con el servidor. Revisa tu conexión a internet e intenta de nuevo.'))
+      .toBeInTheDocument();
+    apiEnBloqueSimulada(API, FILAS);
+    await usuario.click(screen.getByRole('button', { name: 'Reintentar' }));
+
+    expect(await formulario()).toBeInTheDocument();
+  });
+});

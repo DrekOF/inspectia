@@ -4,9 +4,9 @@
  *              comparte con el backend no van aquí: salen de sus archivos .properties
  *              (herramientas/textos-del-backend.js). Los marcadores van entre llaves, como en el backend.
  * Fecha de creación: 20/10/2026
- * Actualización: 26/10/2026
+ * Actualización: 28/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 
 /** Textos en español, por clave. en.js tiene las mismas claves (i18n.test.js lo revisa). */
@@ -100,6 +100,9 @@ export default {
   'crud.rango': '{desde}–{hasta} de {total}',
   'crud.paginaSiguiente': 'Ir a la página siguiente',
   'crud.paginaAnterior': 'Ir a la página anterior',
+  'crud.restaurarPorDefecto': 'Restaurar valores por defecto',
+  'crud.confirmarRestaurar': '¿Restaurar los valores por defecto?',
+  'crud.restaurar': 'Restaurar',
 
   // Administradores de una empresa, en la pantalla de empresas (RF-02 C12, D-30)
   'administradores.accion': 'Administradores',
@@ -115,6 +118,13 @@ export default {
   'administradores.ayuda': 'De 8 a 64 caracteres; cada tilde o eñe ocupa 2 de los 72 bytes.',
   'administradores.aviso': 'Al restablecerla, se cierran sus sesiones abiertas y se quita el bloqueo por intentos fallidos, si lo tenía. Compártela con {nombre}: podrá cambiarla en «Cambiar contraseña».',
   'administradores.listo': 'Se restableció la contraseña de {nombre}.',
+
+  // Resumen de los rangos de recomendación: qué porcentajes abarca cada categoría (RF-13)
+  'rangos.resumen.titulo': 'Así quedan los rangos',
+  'rangos.resumen.desde': '{limite} % o más',
+  'rangos.resumen.entre': 'de {desde} a {hasta} %',
+  'rangos.resumen.menosDe': 'menos de {limite} %',
+  'rangos.resumen.revisar': 'revisa el límite',
 
   // Acerca de, con la cita del dataset (RNF-08 C1)
   'acercaDe.titulo': 'Acerca de InspectIA',
@@ -133,7 +143,7 @@ export default {
   'acercaDe.kaggle': 'Ver el dataset en Kaggle',
   'acercaDe.nota': 'Por esa licencia, InspectIA no se cobra mientras use modelos entrenados con estos datos.',
   'acercaDe.proyectoTitulo': 'El proyecto',
-  'acercaDe.proyectoTexto': 'Proyecto final del curso de Inteligencia Artificial, Programa de Ingeniería de Software, Universidad Surcolombiana. Equipo: Cristhian Eduardo Sánchez Mosquera, Julián Andrés Silvas Morales y Jhon Jairo Perdomo Perdomo. Docente: Juan Antonio Castro Silva.',
+  'acercaDe.proyectoTexto': 'Proyecto final del curso de Inteligencia Artificial, Programa de Ingeniería de Software, Universidad Surcolombiana. Equipo: Cristhian Eduardo Sánchez Mosquera, Julián Andrés Silva Morales y Jhon Jairo Perdomo Perdomo. Docente: Juan Antonio Castro Silva.',
   'acercaDe.version': 'Versión {version}',
   'acercaDe.volver': 'Volver a Iniciar sesión',
 };

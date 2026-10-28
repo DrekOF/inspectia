@@ -1,10 +1,10 @@
 <!--
 Nombre: README.md (infra)
-Descripción: Qué va en la carpeta infra/ de InspectIA, cómo reiniciar la base local, cómo crear el administrador de la plataforma y restablecer su contraseña, cómo probar la sesión en local y cómo usan infra/ las pruebas de punta a punta.
+Descripción: Qué va en la carpeta infra/ de InspectIA, cómo reiniciar la base local, cómo crear el administrador de la plataforma y restablecer su contraseña, cómo probar la sesión en local y cómo usan infra/ las pruebas de punta a punta y la demostración de otra temática.
 Fecha de creación: 12/10/2026
-Actualización: 27/10/2026
+Actualización: 28/10/2026
 Autor: Equipo InspectIA
-Versión: 1.8
+Versión: 1.9
 -->
 
 # infra
@@ -32,7 +32,7 @@ La EC2 t4g es ARM (Graviton), así que toda imagen debe funcionar en amd64 y en 
 
 Desde la raíz del repositorio, la base se enciende con `docker compose -f infra/docker-compose.yml up -d` y se apaga con `docker compose -f infra/docker-compose.yml down`. Los demás comandos están en la sección Comandos de `CLAUDE.md`.
 
-Si cambia `V1__esquema_inicial.sql`, quien ya tenga la base local debe reiniciarla: Flyway no arranca si una migración ya aplicada cambió (P-16), aunque sea solo su header. Pasó cuando RF-03 agregó la columna `usuario.sesiones_desde`, cuando RF-13 subió el generador a la 1.6, cuando P-18 la cambió por `usuario.version_sesion` (D-35) y cuando la pantalla de usuarios (RF-03) lo subió a la 1.9; con la 1.6 y la 1.9 solo cambió el header. Esto borra los datos locales:
+Si cambia `V1__esquema_inicial.sql`, quien ya tenga la base local debe reiniciarla: Flyway no arranca si una migración ya aplicada cambió (P-16), aunque sea solo su header. Pasó cuando RF-03 agregó la columna `usuario.sesiones_desde`, cuando RF-13 subió el generador a la 1.6, cuando P-18 la cambió por `usuario.version_sesion` (D-35), cuando la pantalla de usuarios (RF-03) lo subió a la 1.9 y cuando la de rangos (RF-13) lo subió a la 1.10; con la 1.6, la 1.9 y la 1.10 solo cambió el header. Esto borra los datos locales:
 
 1. `docker compose -f infra/docker-compose.yml down -v`
 2. `docker compose -f infra/docker-compose.yml up -d`
@@ -41,6 +41,8 @@ Si cambia `V1__esquema_inicial.sql`, quien ya tenga la base local debe reiniciar
 ## Base de las pruebas de punta a punta
 
 Las pruebas de punta a punta del frontend (`npm run e2e:playwright` y `npm run e2e:selenium`) encienden su propia base con este `docker-compose.yml`, pero en otro proyecto (`inspectia-e2e`), con su propio volumen, un puerto libre y una contraseña nueva en cada corrida. No leen `infra/.env` ni tocan la base local. El administrador de la plataforma lo crea el mismo script de `infra/bd`, apuntado a ese proyecto con `COMPOSE_PROJECT_NAME` y `COMPOSE_ENV_FILES`; antes de correrlo, el entorno revisa que docker compose llegue a esa base y no a la local. Al terminar se borra con `down -v`, y si una corrida se interrumpe, la siguiente borra lo que haya quedado. Ver `frontend/README.md`.
+
+La demostración de otra temática (`npm run demo:otra-tematica`, desde `frontend/`) enciende la suya igual, en el proyecto `inspectia-demo`. Ctrl+C la borra con `down -v`; después, `docker compose ls` ya no lo muestra. Si queda encendido, por ejemplo porque se cerró la terminal, la próxima corrida lo borra al empezar.
 
 ## Clave de los tokens
 

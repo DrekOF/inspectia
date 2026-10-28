@@ -6,11 +6,13 @@
  *              script de infra/bd y los datos de prueba por la API, entre ellos un usuario final fijo para las
  *              pruebas que solo miran, como los permisos de una pantalla, y al apagarse lo borra todo. No usa
  *              infra/.env, la base de desarrollo ni backend/target: compila una copia del backend, que lleva
- *              al lado los scripts de infra/bd para que también pasen allí sus pruebas.
+ *              al lado los scripts de infra/bd para que también pasen allí sus pruebas. La demostración de otra
+ *              temática (herramientas/otra-tematica.js) lo enciende en su propia carpeta y su propio proyecto, con
+ *              un paso de preparación que genera su entidad en la copia antes de compilarla.
  * Fecha de creación: 20/10/2026
- * Actualización: 26/10/2026
+ * Actualización: 28/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  *
  * Uso: lo encienden y lo apagan las pruebas (e2e/entorno/global.js). Para correr las pruebas varias veces
  * sobre el mismo entorno: «npm run e2e:entorno» en una terminal y, en otra, INSPECTIA_E2E_URL con la
@@ -22,12 +24,15 @@ import {
   closeSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, rmSync, writeFileSync,
 } from 'node:fs';
 import { createServer } from 'node:net';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { espejarBackend } from '../../herramientas/espejo.js';
 
-const FRONTEND = fileURLToPath(new URL('../../', import.meta.url));
-const RAIZ = fileURLToPath(new URL('../../../', import.meta.url));
+// Sin new URL(…, import.meta.url): en las pruebas de Vitest, Vite lo cambia por una dirección de su servidor, y la
+// demostración de otra temática, que tiene pruebas, importa este archivo.
+const AQUI = dirname(fileURLToPath(import.meta.url));
+const FRONTEND = join(AQUI, '..', '..');
+const RAIZ = join(AQUI, '..', '..', '..');
 
 /** Carpeta de cada corrida: datos, variables y registros. Está en .gitignore. */
 export const CARPETA = join(FRONTEND, 'e2e', '.entorno');
@@ -76,7 +81,7 @@ function puertoLibre() {
  * @param {import('node:child_process').SpawnOptions} [opciones] la carpeta, las variables y si usa la consola
  * @returns {Promise<string>} lo que escribió
  */
-function ejecutar(programa, argumentos, opciones = {}) {
+export function ejecutar(programa, argumentos, opciones = {}) {
   return new Promise((resolver, rechazar) => {
     const proceso = spawn(programa, argumentos, { cwd: RAIZ, ...opciones, stdio: ['ignore', 'pipe', 'pipe'] });
     let salida = '';
@@ -94,14 +99,15 @@ function ejecutar(programa, argumentos, opciones = {}) {
 }
 
 /**
- * Los argumentos de docker compose para el proyecto aislado.
+ * Los argumentos de docker compose para un proyecto aislado.
  *
+ * @param {string} proyecto el proyecto de Docker Compose, como inspectia-e2e
  * @param {string} archivoDeVariables el archivo con las variables de la base de esta corrida
  * @param {...string} comando el comando, como «up -d»
  * @returns {string[]} los argumentos
  */
-function compose(archivoDeVariables, ...comando) {
-  return ['compose', '-p', PROYECTO, '-f', COMPOSE, '--env-file', archivoDeVariables, ...comando];
+function compose(proyecto, archivoDeVariables, ...comando) {
+  return ['compose', '-p', proyecto, '-f', COMPOSE, '--env-file', archivoDeVariables, ...comando];
 }
 
 /**
@@ -150,27 +156,34 @@ function arrancar(programa, argumentos, registro, opciones) {
 }
 
 /**
- * El jar del backend: el de INSPECTIA_E2E_JAR o, si no se da, el que compila Maven en una copia en espejo del
- * backend dentro de e2e/.entorno. Nunca compila en backend/target, que puede estar usando el backend de
- * desarrollo (./mvnw spring-boot:run).
+ * El jar del backend y la carpeta del frontend que se compila. El jar es el de INSPECTIA_E2E_JAR o, si no se da, el
+ * que compila Maven en una copia en espejo del backend dentro de la carpeta del entorno. Nunca compila en
+ * backend/target, que puede estar usando el backend de desarrollo (./mvnw spring-boot:run).
  *
- * @returns {Promise<string>} la ruta del jar
+ * Con un paso de preparación, como el de la demostración de otra temática, ese paso corre con la copia ya hecha y
+ * antes de compilarla, y devuelve el frontend que se compila. Entonces no se usa INSPECTIA_E2E_JAR, que es un jar sin
+ * lo que el paso agregó.
+ *
+ * @param {string} carpeta la carpeta del entorno
+ * @param {(carpeta: string) => Promise<string>} [preparar] el paso de preparación
+ * @returns {Promise<{ jar: string, frontend: string }>} la ruta del jar y la carpeta del frontend
  */
-export async function jarDelBackend() {
-  if (process.env.INSPECTIA_E2E_JAR) {
+async function compilarCopias(carpeta, preparar) {
+  if (process.env.INSPECTIA_E2E_JAR && !preparar) {
     if (!existsSync(process.env.INSPECTIA_E2E_JAR)) {
       throw new Error(`INSPECTIA_E2E_JAR apunta a ${process.env.INSPECTIA_E2E_JAR}, que no existe.`);
     }
-    return process.env.INSPECTIA_E2E_JAR;
+    return { jar: process.env.INSPECTIA_E2E_JAR, frontend: FRONTEND };
   }
-  const copia = join(CARPETA, 'backend');
+  const copia = join(carpeta, 'backend');
   // La copia queda igual a backend/, sin su target: lo nuevo y lo cambiado se copian con sus fechas, así Maven
   // solo compila lo cambiado. Si algo se borró o se renombró, su target se borra entero, porque Maven no
   // quita las clases ni los recursos que dejó, como una migración vieja de Flyway. Al lado queda infra/bd, sin
   // infra/.env, para que las pruebas del backend también pasen en la copia.
-  if (espejarBackend(RAIZ, CARPETA).backend.length > 0) {
+  if (espejarBackend(RAIZ, carpeta).backend.length > 0) {
     rmSync(join(copia, 'target'), { recursive: true, force: true });
   }
+  const frontend = preparar ? await preparar(carpeta) : FRONTEND;
   // Con la ruta («.\» o «./»): la consola de Windows no siempre busca programas en la carpeta actual.
   await ejecutar(WINDOWS ? '.\\mvnw.cmd -q -Dmaven.test.skip=true package' : './mvnw', WINDOWS ? [] :
     ['-q', '-Dmaven.test.skip=true', 'package'], { cwd: copia, shell: WINDOWS });
@@ -179,7 +192,7 @@ export async function jarDelBackend() {
   if (!jar) {
     throw new Error(`Maven no dejó el jar del backend en ${target}.`);
   }
-  return join(target, jar);
+  return { jar: join(target, jar), frontend };
 }
 
 /**
@@ -187,19 +200,20 @@ export async function jarDelBackend() {
  * los demás. Antes revisa que docker compose, con las variables que recibe el script, apunte a la base del
  * entorno y no a la de desarrollo.
  *
+ * @param {string} proyecto el proyecto de Docker Compose del entorno
  * @param {string} archivoDeVariables el archivo con las variables de la base de esta corrida
  * @param {{ nombre: string, correo: string, contrasena: string }} admin el administrador
  */
-async function crearAdministradorDeLaPlataforma(archivoDeVariables, admin) {
+async function crearAdministradorDeLaPlataforma(proyecto, archivoDeVariables, admin) {
   const variables = {
     ...process.env,
-    COMPOSE_PROJECT_NAME: PROYECTO,
+    COMPOSE_PROJECT_NAME: proyecto,
     COMPOSE_ENV_FILES: archivoDeVariables,
     INSPECTIA_ADMIN_NOMBRE: admin.nombre,
     INSPECTIA_ADMIN_CORREO: admin.correo,
     INSPECTIA_ADMIN_CONTRASENA: admin.contrasena,
   };
-  const delEntorno = await ejecutar('docker', compose(archivoDeVariables, 'ps', '-q', 'postgres'));
+  const delEntorno = await ejecutar('docker', compose(proyecto, archivoDeVariables, 'ps', '-q', 'postgres'));
   const delScript = await ejecutar('docker', ['compose', '-f', COMPOSE, 'ps', '-q', 'postgres'], { env: variables });
   if (!delEntorno.trim() || delScript.trim() !== delEntorno.trim()) {
     throw new Error('El script del administrador no apuntaría a la base del entorno aislado: no se corre.');
@@ -250,13 +264,22 @@ function personas() {
 }
 
 /**
- * Enciende el entorno aislado y deja sus datos en e2e/.entorno/datos.json.
+ * Enciende un entorno aislado y deja sus datos en datos.json, en su carpeta. Las pruebas de punta a punta lo
+ * encienden sin opciones; la demostración de otra temática, con las suyas.
  *
- * @returns {Promise<{ app: string, apagar: () => Promise<void> }>} la dirección de la app y cómo apagarlo
+ * @param {object} [opciones] lo que cambia de un entorno a otro
+ * @param {string} [opciones.carpeta] dónde quedan la copia del backend, las variables, los registros y los datos;
+ *   por defecto, e2e/.entorno
+ * @param {string} [opciones.proyecto] su proyecto de Docker Compose; por defecto, inspectia-e2e
+ * @param {(carpeta: string) => Promise<string>} [opciones.preparar] un paso de preparación, que corre con la copia
+ *   del backend ya hecha y antes de compilarla, como generar otra temática en ella; devuelve la carpeta del frontend
+ *   que se compila. Sin él, se compila el frontend del repositorio
+ * @returns {Promise<{ app: string, api: string, datos: object, apagar: () => Promise<void> }>} la dirección de la
+ *   app, la de la API, los datos de prueba y cómo apagarlo
  */
-export async function encenderEntorno() {
-  mkdirSync(CARPETA, { recursive: true });
-  const archivoDeVariables = join(CARPETA, 'base.env');
+export async function encenderEntorno({ carpeta = CARPETA, proyecto = PROYECTO, preparar } = {}) {
+  mkdirSync(carpeta, { recursive: true });
+  const archivoDeVariables = join(carpeta, 'base.env');
   const [puertoBase, puertoBackend, puertoApp] = [await puertoLibre(), await puertoLibre(), await puertoLibre()];
   const base = { POSTGRES_DB: 'inspectia', POSTGRES_USER: 'inspectia', POSTGRES_PASSWORD: claveAlAzar(24), POSTGRES_PORT: String(puertoBase) };
   writeFileSync(archivoDeVariables, Object.entries(base).map(([nombre, valor]) => `${nombre}=${valor}\n`).join(''));
@@ -266,20 +289,23 @@ export async function encenderEntorno() {
     for (const proceso of procesos) {
       proceso.kill();
     }
-    await ejecutar('docker', compose(archivoDeVariables, 'down', '-v', '--remove-orphans')).catch(() => {});
-    rmSync(join(CARPETA, 'datos.json'), { force: true });
+    await ejecutar('docker', compose(proyecto, archivoDeVariables, 'down', '-v', '--remove-orphans')).catch(() => {});
+    rmSync(join(carpeta, 'datos.json'), { force: true });
     rmSync(archivoDeVariables, { force: true });
   };
 
   try {
     // Si una corrida anterior quedó a medias, su base se borra: la contraseña es otra.
-    await ejecutar('docker', compose(archivoDeVariables, 'down', '-v', '--remove-orphans'));
-    await ejecutar('docker', compose(archivoDeVariables, 'up', '-d', '--wait', '--wait-timeout', String(ESPERA.base / 1000)));
+    await ejecutar('docker', compose(proyecto, archivoDeVariables, 'down', '-v', '--remove-orphans'));
+    await ejecutar('docker', compose(proyecto, archivoDeVariables, 'up', '-d', '--wait', '--wait-timeout',
+      String(ESPERA.base / 1000)));
 
-    const registroBackend = join(CARPETA, 'backend.log');
-    // Corre desde e2e/.entorno: así no encuentra infra/.env (application.yml lo busca en ../infra y ./infra).
-    const backend = arrancar('java', ['-jar', await jarDelBackend()], registroBackend, {
-      cwd: CARPETA,
+    const { jar, frontend } = await compilarCopias(carpeta, preparar);
+    const registroBackend = join(carpeta, 'backend.log');
+    // Corre desde la carpeta del entorno: así no encuentra infra/.env (application.yml lo busca en ../infra y
+    // ./infra, y allí solo está la copia de infra/bd).
+    const backend = arrancar('java', ['-jar', jar], registroBackend, {
+      cwd: carpeta,
       env: {
         ...process.env,
         ...base,
@@ -293,7 +319,7 @@ export async function encenderEntorno() {
     await esperarServicio(`${api}/sesion`, (respuesta) => respuesta.status === 401, ESPERA.backend, backend, registroBackend);
 
     const { plataforma, adminEmpresa, adminDesactivada, usuarioFinal } = personas();
-    await crearAdministradorDeLaPlataforma(archivoDeVariables, plataforma);
+    await crearAdministradorDeLaPlataforma(proyecto, archivoDeVariables, plataforma);
     const { token } = await pedir(api, 'POST', '/sesion', { correo: plataforma.correo, contrasena: plataforma.contrasena });
     const empresa = await pedir(api, 'POST', '/empresas',
       { nombre: 'Cacaos del Huila', nit: '900123456-8', ciudad: 'Neiva', administrador: adminEmpresa }, token);
@@ -306,25 +332,26 @@ export async function encenderEntorno() {
     await pedir(api, 'POST', '/usuarios', { ...usuarioFinal, rol: 'USUARIO_FINAL' }, sesionDeLaEmpresa.token);
 
     const vite = join(FRONTEND, 'node_modules', 'vite', 'bin', 'vite.js');
-    await ejecutar(process.execPath, [vite, 'build'], { cwd: FRONTEND });
-    const registroApp = join(CARPETA, 'app.log');
+    await ejecutar(process.execPath, [vite, 'build'], { cwd: frontend });
+    const registroApp = join(carpeta, 'app.log');
     const app = arrancar(process.execPath, [vite, 'preview', '--port', String(puertoApp), '--strictPort'], registroApp, {
-      cwd: FRONTEND,
+      cwd: frontend,
       env: { ...process.env, INSPECTIA_API_URL: `http://127.0.0.1:${puertoBackend}` },
     });
     procesos.push(app);
     const direccion = `http://localhost:${puertoApp}`;
     await esperarServicio(direccion, (respuesta) => respuesta.ok, ESPERA.app, app, registroApp);
 
-    writeFileSync(join(CARPETA, 'datos.json'), JSON.stringify({
+    const datos = {
       app: direccion,
       plataforma,
       empresa: { id: empresa.id, nombre: empresa.nombre },
       adminEmpresa,
       usuarioFinal,
       empresaDesactivada: { id: desactivada.id, nombre: desactivada.nombre, usuario: adminDesactivada },
-    }, null, 2));
-    return { app: direccion, apagar };
+    };
+    writeFileSync(join(carpeta, 'datos.json'), JSON.stringify(datos, null, 2));
+    return { app: direccion, api, datos, apagar };
   } catch (error) {
     await apagar();
     throw error;
