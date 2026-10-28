@@ -143,7 +143,7 @@ export default {
   'acercaDe.kaggle': 'Ver el dataset en Kaggle',
   'acercaDe.nota': 'Por esa licencia, InspectIA no se cobra mientras use modelos entrenados con estos datos.',
   'acercaDe.proyectoTitulo': 'El proyecto',
-  'acercaDe.proyectoTexto': 'Proyecto final del curso de Inteligencia Artificial, Programa de Ingeniería de Software, Universidad Surcolombiana. Equipo: Cristhian Eduardo Sánchez Mosquera, Julián Andrés Silvas Morales y Jhon Jairo Perdomo Perdomo. Docente: Juan Antonio Castro Silva.',
+  'acercaDe.proyectoTexto': 'Proyecto final del curso de Inteligencia Artificial, Programa de Ingeniería de Software, Universidad Surcolombiana. Equipo: Cristhian Eduardo Sánchez Mosquera, Julián Andrés Silva Morales y Jhon Jairo Perdomo Perdomo. Docente: Juan Antonio Castro Silva.',
   'acercaDe.version': 'Versión {version}',
   'acercaDe.volver': 'Volver a Iniciar sesión',
 };

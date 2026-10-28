@@ -9,7 +9,7 @@ Versión: 1.12
 
 # InspectIA
 
-App web multiempresa que estima el % de granos de cacao sanos de un lote a partir de 2 o 3 fotos de una muestra (100 a 150 granos) y entrega una categoría probable, una recomendación y un reporte PDF. Proyecto final de Inteligencia Artificial, Universidad Surcolombiana. Docente: Juan Antonio Castro Silva. Equipo, con su usuario de GitHub: Cristhian Sánchez (`DrekOF`), Julián Silvas (modelos de IA) y Jhon Perdomo. Los usuarios de Julián y Jhon se agregan cuando entren al repositorio.
+App web multiempresa que estima el % de granos de cacao sanos de un lote a partir de 2 o 3 fotos de una muestra (100 a 150 granos) y entrega una categoría probable, una recomendación y un reporte PDF. Proyecto final de Inteligencia Artificial, Universidad Surcolombiana. Docente: Juan Antonio Castro Silva. Equipo, con su usuario de GitHub: Cristhian Sánchez (`DrekOF`), Julián Silva (modelos de IA) y Jhon Perdomo. Los usuarios de Julián y Jhon se agregan cuando entren al repositorio.
 
 ## Antes de cada tarea
 

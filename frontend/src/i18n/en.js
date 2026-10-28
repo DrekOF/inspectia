@@ -143,7 +143,7 @@ export default {
   'acercaDe.kaggle': 'See the dataset on Kaggle',
   'acercaDe.nota': 'Because of that license, InspectIA is free of charge while it uses models trained with this data.',
   'acercaDe.proyectoTitulo': 'The project',
-  'acercaDe.proyectoTexto': 'Final project of the Artificial Intelligence course, Software Engineering Program, Universidad Surcolombiana. Team: Cristhian Eduardo Sánchez Mosquera, Julián Andrés Silvas Morales and Jhon Jairo Perdomo Perdomo. Professor: Juan Antonio Castro Silva.',
+  'acercaDe.proyectoTexto': 'Final project of the Artificial Intelligence course, Software Engineering Program, Universidad Surcolombiana. Team: Cristhian Eduardo Sánchez Mosquera, Julián Andrés Silva Morales and Jhon Jairo Perdomo Perdomo. Professor: Juan Antonio Castro Silva.',
   'acercaDe.version': 'Version {version}',
   'acercaDe.volver': 'Back to Sign in',
 };

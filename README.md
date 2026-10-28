@@ -11,7 +11,7 @@ Versión: 1.9
 
 Aplicación web multiempresa que estima el porcentaje de granos de cacao sanos de un lote a partir de 2 o 3 fotos de una muestra (100 a 150 granos), y entrega una categoría probable, una recomendación y un reporte en PDF.
 
-Proyecto final de Inteligencia Artificial, Universidad Surcolombiana. Docente: Juan Antonio Castro Silva. Equipo: Cristhian Sánchez, Julián Silvas y Jhon Perdomo.
+Proyecto final de Inteligencia Artificial, Universidad Surcolombiana. Docente: Juan Antonio Castro Silva. Equipo: Cristhian Sánchez, Julián Silva y Jhon Perdomo.
 
 ## Estructura
 
