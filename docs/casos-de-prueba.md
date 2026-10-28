@@ -4,7 +4,7 @@ Descripción: Casos de prueba de InspectIA por ficha y criterio de aceptación, 
              tienen prueba (RP-13). Archivo generado por generador/casos_de_prueba.py: no se edita a mano;
              sale de specs/fichas.json y de las marcas de las pruebas.
 Fecha de creación: 12/10/2026
-Actualización: 27/10/2026
+Actualización: 28/10/2026
 Autor: Equipo InspectIA (generado por generador/casos_de_prueba.py v1.2)
 Versión: 1.2
 -->
@@ -22,7 +22,7 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 ## Resumen
 
 - **143 criterios de aceptación** en 26 fichas: 55 con prueba y 88 pendientes.
-- **664 pruebas:** 237 de Java (33 generadas), 310 de JavaScript (73 generadas) y 117 de Python. Una prueba parametrizada cuenta una vez.
+- **696 pruebas:** 237 de Java (33 generadas), 342 de JavaScript (73 generadas) y 117 de Python. Una prueba parametrizada cuenta una vez.
 
 | Ficha | Criterios | Con prueba | Pendientes |
 |---|---:|---:|---:|
@@ -323,11 +323,11 @@ Otras pruebas de RF-03, que no cubren un criterio:
 
 | Criterio | Pruebas |
 |---|---|
-| C1. Si los límites no bajan en orden (por ejemplo, Estándar 97 % y Premium 96 %), el sistema no guarda y explica el error. | [`RangosRecomendacionIT`](../backend/src/test/java/co/edu/usco/inspectia/rango/RangosRecomendacionIT.java) · los límites deben bajar estrictamente: un empate o Corriente en 0 % tampoco se guardan (parametrizada)<br>[`RangosRecomendacionIT`](../backend/src/test/java/co/edu/usco/inspectia/rango/RangosRecomendacionIT.java) · si los límites no bajan en orden (Estándar 97 % y Premium 96 %), el sistema no guarda y explica el error<br>[`ReglasRangoRecomendacionImplTest`](../backend/src/test/java/co/edu/usco/inspectia/rango/reglas/ReglasRangoRecomendacionImplTest.java) · los límites deben bajar estrictamente de Premium o Especial a Fuera de norma: un empate o un límite mayor que el anterior no cumplen (prueba de límite) (parametrizada) |
+| C1. Si los límites no bajan en orden (por ejemplo, Estándar 97 % y Premium 96 %), el sistema no guarda y explica el error. | [`RangosRecomendacionIT`](../backend/src/test/java/co/edu/usco/inspectia/rango/RangosRecomendacionIT.java) · los límites deben bajar estrictamente: un empate o Corriente en 0 % tampoco se guardan (parametrizada)<br>[`RangosRecomendacionIT`](../backend/src/test/java/co/edu/usco/inspectia/rango/RangosRecomendacionIT.java) · si los límites no bajan en orden (Estándar 97 % y Premium 96 %), el sistema no guarda y explica el error<br>[`ReglasRangoRecomendacionImplTest`](../backend/src/test/java/co/edu/usco/inspectia/rango/reglas/ReglasRangoRecomendacionImplTest.java) · los límites deben bajar estrictamente de Premium o Especial a Fuera de norma: un empate o un límite mayor que el anterior no cumplen (prueba de límite) (parametrizada)<br>[`GestionarRangos.test.jsx`](../frontend/src/rango/GestionarRangos.test.jsx) · %s no baja en orden: no guarda (prueba de límite) (parametrizada)<br>[`GestionarRangos.test.jsx`](../frontend/src/rango/GestionarRangos.test.jsx) · %s sí baja en orden: guarda (prueba de límite) (parametrizada)<br>[`GestionarRangos.test.jsx`](../frontend/src/rango/GestionarRangos.test.jsx) · al no guardar por el orden, el foco va al primer límite marcado<br>[`GestionarRangos.test.jsx`](../frontend/src/rango/GestionarRangos.test.jsx) · si la API responde la regla del orden, como cuando otra persona cambió los rangos al mismo tiempo, su mensaje se ve arriba del formulario<br>[`GestionarRangos.test.jsx`](../frontend/src/rango/GestionarRangos.test.jsx) · si los límites no bajan en orden (Estándar 97 % y Premium 96 %), no guarda, explica el error y marca los dos límites<br>[`limites.test.js`](../frontend/src/rango/limites.test.js) · con los límites en orden, la regla deja guardar<br>[`limites.test.js`](../frontend/src/rango/limites.test.js) · la regla del orden da el mensaje de la regla del JSON y los límites de cada par que no baja<br>[`limites.test.js`](../frontend/src/rango/limites.test.js) · los límites bajan estrictamente, como los revisa el backend: %s (parametrizada) |
 | C2. Un análisis hecho después del cambio usa los rangos nuevos. | **Pendiente** |
 | C3. Los análisis anteriores no cambian. | [`RangosRecomendacionIT`](../backend/src/test/java/co/edu/usco/inspectia/rango/RangosRecomendacionIT.java) · los análisis anteriores no cambian: un lote ya analizado conserva su categoría y su recomendación al editar y al restaurar los rangos |
-| C4. «Restaurar valores por defecto» vuelve a los rangos de D-10. | [`RangosRecomendacionIT`](../backend/src/test/java/co/edu/usco/inspectia/rango/RangosRecomendacionIT.java) · restaurar deja lo mismo que recibe una empresa nueva (RF-02): los valores por defecto salen de una sola fuente<br>[`RangosRecomendacionIT`](../backend/src/test/java/co/edu/usco/inspectia/rango/RangosRecomendacionIT.java) · «Restaurar valores por defecto» vuelve a los rangos de D-10, también si se repite |
-| C5. Un usuario final no puede entrar a esta pantalla (RNF-04). | [`RangosRecomendacionIT`](../backend/src/test/java/co/edu/usco/inspectia/rango/RangosRecomendacionIT.java) · un usuario final no puede entrar a los rangos: listar, editar y restaurar responden 403 y no cambian nada (RNF-04) |
+| C4. «Restaurar valores por defecto» vuelve a los rangos de D-10. | [`RangosRecomendacionIT`](../backend/src/test/java/co/edu/usco/inspectia/rango/RangosRecomendacionIT.java) · restaurar deja lo mismo que recibe una empresa nueva (RF-02): los valores por defecto salen de una sola fuente<br>[`RangosRecomendacionIT`](../backend/src/test/java/co/edu/usco/inspectia/rango/RangosRecomendacionIT.java) · «Restaurar valores por defecto» vuelve a los rangos de D-10, también si se repite<br>[`GestionarRangos.test.jsx`](../frontend/src/rango/GestionarRangos.test.jsx) · al cancelar la confirmación, los rangos propios de la empresa quedan como estaban<br>[`GestionarRangos.test.jsx`](../frontend/src/rango/GestionarRangos.test.jsx) · «Restaurar valores por defecto» pide confirmación, dice qué se pierde y vuelve a los rangos de D-10 |
+| C5. Un usuario final no puede entrar a esta pantalla (RNF-04). | [`RangosRecomendacionIT`](../backend/src/test/java/co/edu/usco/inspectia/rango/RangosRecomendacionIT.java) · un usuario final no puede entrar a los rangos: listar, editar y restaurar responden 403 y no cambian nada (RNF-04)<br>[`GestionarRangos.test.jsx`](../frontend/src/rango/GestionarRangos.test.jsx) · un usuario final no ve «Rangos de recomendación» en el menú<br>[`GestionarRangos.test.jsx`](../frontend/src/rango/GestionarRangos.test.jsx) · un usuario final que escribe la dirección de los rangos ve que no tiene permiso, y la pantalla no pide nada a la API |
 
 Otras pruebas de RF-13, que no cubren un criterio:
 
@@ -367,6 +367,15 @@ Otras pruebas de RF-13, que no cubren un criterio:
 - [`rangoRecomendacionEsquemas.test.js`](../frontend/src/generated/rango/rangoRecomendacionEsquemas.test.js) · limiteInferior se escribe con coma o con punto, y lo que no es un número tiene su mensaje (generada)
 - [`rangoRecomendacionEsquemas.test.js`](../frontend/src/generated/rango/rangoRecomendacionEsquemas.test.js) · los mensajes de las validaciones de rango_recomendacion salen en el idioma de la app (generada)
 - [`rangoRecomendacionEsquemas.test.js`](../frontend/src/generated/rango/rangoRecomendacionEsquemas.test.js) · los valores por defecto de rango_recomendacion, como los muestra el formulario, cumplen las validaciones (generada)
+- [`GestionarRangos.test.jsx`](../frontend/src/rango/GestionarRangos.test.jsx) · el administrador de la empresa abre «Rangos de recomendación» desde el menú y ve las 4 categorías, con sus límites, sus recomendaciones y las notas
+- [`GestionarRangos.test.jsx`](../frontend/src/rango/GestionarRangos.test.jsx) · el límite de Fuera de norma no se puede cambiar y dice por qué
+- [`GestionarRangos.test.jsx`](../frontend/src/rango/GestionarRangos.test.jsx) · el resumen «Así quedan los rangos» dice qué porcentajes abarca cada categoría y cambia mientras se escriben los límites
+- [`GestionarRangos.test.jsx`](../frontend/src/rango/GestionarRangos.test.jsx) · en español los límites se ven con coma, se escriben con coma o con punto y van a la API como números; al guardar quedan como los responde
+- [`GestionarRangos.test.jsx`](../frontend/src/rango/GestionarRangos.test.jsx) · en inglés, los límites y el resumen van con punto
+- [`GestionarRangos.test.jsx`](../frontend/src/rango/GestionarRangos.test.jsx) · un límite que no es un número dice cómo escribirlo, y no se envía nada
+- [`limites.test.js`](../frontend/src/rango/limites.test.js) · con los límites de D-10, cada categoría abarca desde su límite hasta un decimal antes del de la categoría de arriba
+- [`limites.test.js`](../frontend/src/rango/limites.test.js) · el final de cada categoría queda un paso de la escala antes del límite de arriba, sin errores de redondeo
+- [`limites.test.js`](../frontend/src/rango/limites.test.js) · las categorías de un par que no baja, o las que dependen de un límite que no es un número, dicen que hay que revisar el límite
 
 ## RF-14 · Consultar el historial de lotes evaluados
 
@@ -534,6 +543,7 @@ Otras pruebas de RNF-04, que no cubren un criterio:
 
 Otras pruebas de RNF-05, que no cubren un criterio:
 
+- [`CampoDeNumero.test.jsx`](../frontend/src/componentes/CampoDeNumero.test.jsx) · el campo de un número abre el teclado decimal del celular y guarda lo que se escribe, con coma o con punto
 - [`PantallaDeRegistros.test.jsx`](../frontend/src/crud/PantallaDeRegistros.test.jsx) · en el celular, la lista se ve en tarjetas, cada una con sus datos y sus acciones, sin tabla
 - [`Marco.test.jsx`](../frontend/src/navegacion/Marco.test.jsx) · en el celular el menú se esconde detrás del botón «Abrir el menú»
 
@@ -549,6 +559,7 @@ Otras pruebas de RNF-05, que no cubren un criterio:
 Otras pruebas de RNF-06, que no cubren un criterio:
 
 - [`cliente.test.js`](../frontend/src/api/cliente.test.js) · una respuesta de error que no es JSON, como la de un proxy caído, llega sin mensaje del backend
+- [`CampoDeNumero.test.jsx`](../frontend/src/componentes/CampoDeNumero.test.jsx) · un campo de número de solo lectura no se puede cambiar y dice por qué, unido al campo para los lectores de pantalla
 - [`CampoDeTexto.test.jsx`](../frontend/src/componentes/CampoDeTexto.test.jsx) · la ayuda de un campo se ve debajo de él y queda unida al campo para los lectores de pantalla
 - [`CampoDeTexto.test.jsx`](../frontend/src/componentes/CampoDeTexto.test.jsx) · un campo sin ayuda no la anuncia
 - [`EmpresaPantalla.test.jsx`](../frontend/src/generated/empresa/EmpresaPantalla.test.jsx) · sin conexión, la pantalla de empresa dice qué pasó y qué hacer, y se puede reintentar (generada)
@@ -598,8 +609,14 @@ Pruebas que no cubren un criterio de una ficha, sino una pauta del docente (RP) 
 
 - [`reglas.test.js`](../frontend/src/validacion/reglas.test.js) · cabeEnBytes cuenta los bytes en UTF-8, como @MaximoBytes en la API: %s (parametrizada)
 - [`reglas.test.js`](../frontend/src/validacion/reglas.test.js) · cabeEnBytes deja pasar el dato que falta aunque el máximo sea pequeño: lo revisa obligatorio
+- [`reglas.test.js`](../frontend/src/validacion/reglas.test.js) · maximoDecimales deja pasar el dato que falta y lo que no es un número: los revisan obligatorio y el tipo
+- [`reglas.test.js`](../frontend/src/validacion/reglas.test.js) · maximoDecimales(%i) cuenta los decimales sin los ceros del final, como @MaximoDecimales en la API: %s (parametrizada)
 - [`reglas.test.js`](../frontend/src/validacion/reglas.test.js) · minusculas deja igual lo que no es un texto
 - [`reglas.test.js`](../frontend/src/validacion/reglas.test.js) · minusculas pasa un texto a minúsculas, también las letras con tilde y la eñe, como la API
+- [`reglas.test.js`](../frontend/src/validacion/reglas.test.js) · numeroDecimal deja sin valor un campo %s: es el dato que falta, que revisa obligatorio (parametrizada)
+- [`reglas.test.js`](../frontend/src/validacion/reglas.test.js) · numeroDecimal deja un número como llegó, y sin valor lo que no llegó
+- [`reglas.test.js`](../frontend/src/validacion/reglas.test.js) · numeroDecimal lee un número escrito con coma o con punto: %s (parametrizada)
+- [`reglas.test.js`](../frontend/src/validacion/reglas.test.js) · numeroDecimal no lee como número lo que no se escribe así en el formulario: %s (parametrizada)
 - [`reglas.test.js`](../frontend/src/validacion/reglas.test.js) · recortar deja igual lo que no es un texto
 - [`reglas.test.js`](../frontend/src/validacion/reglas.test.js) · recortar quita los mismos espacios del inicio y del final que String.strip() en la API: %s (parametrizada)
 - [`reglas.test.js`](../frontend/src/validacion/reglas.test.js) · un dato está lleno con la misma regla de @NotBlank en la API: %s (parametrizada)
@@ -624,6 +641,8 @@ Pruebas que no cubren un criterio de una ficha, sino una pauta del docente (RP) 
 - [`textos-del-backend.test.js`](../frontend/herramientas/textos-del-backend.test.js) · se leen los .properties del backend: comentarios, escapes y letras con tilde en UTF-8
 - [`textos-del-backend.test.js`](../frontend/herramientas/textos-del-backend.test.js) · si no encuentra los .properties del backend, lo dice en vez de dejar la app sin textos
 - [`errores.test.js`](../frontend/src/api/errores.test.js) · sin conexión, el aviso sale en el idioma de la app
+- [`decimales.test.js`](../frontend/src/crud/decimales.test.js) · un decimal que no llegó se muestra vacío
+- [`decimales.test.js`](../frontend/src/crud/decimales.test.js) · un decimal se muestra con su escala y el separador del idioma, sin separar los miles: %s con escala %i en %s (parametrizada)
 - [`i18n.test.js`](../frontend/src/i18n/i18n.test.js) · cada texto propio del frontend existe en español y en inglés, y ninguno está vacío
 - [`i18n.test.js`](../frontend/src/i18n/i18n.test.js) · la app está en español si la persona no eligió otro idioma
 - [`i18n.test.js`](../frontend/src/i18n/i18n.test.js) · los marcadores del backend, como {0} y {1}, se reemplazan igual que en el backend
@@ -680,6 +699,7 @@ Pruebas que no cubren un criterio de una ficha, sino una pauta del docente (RP) 
 - [`DecimalesTest`](../backend/src/test/java/co/edu/usco/inspectia/comun/numero/DecimalesTest.java) · un dato que no llegó sigue sin valor
 - [`MaximoDecimalesValidadorTest`](../backend/src/test/java/co/edu/usco/inspectia/comun/validacion/MaximoDecimalesValidadorTest.java) · @MaximoDecimales responde en el campo con el mensaje general de los decimales
 - [`MaximoDecimalesValidadorTest`](../backend/src/test/java/co/edu/usco/inspectia/comun/validacion/MaximoDecimalesValidadorTest.java) · @MaximoDecimales usa el máximo de su anotación, que sale de la escala del JSON (parametrizada)
+- [`CampoDeTexto.test.jsx`](../frontend/src/componentes/CampoDeTexto.test.jsx) · con variasLineas, el campo de texto va en varias líneas, como la recomendación de un rango
 - [`CampoDeLista.test.jsx`](../frontend/src/crud/CampoDeLista.test.jsx) · el campo de lista muestra los valores de la lista del JSON con su etiqueta y guarda el código del elegido
 - [`PantallaDeRegistros.test.jsx`](../frontend/src/crud/PantallaDeRegistros.test.jsx) · con más de 20 registros, la lista va en páginas fijas de 20, pasa a la siguiente y la pide a la API
 - [`PantallaDeRegistros.test.jsx`](../frontend/src/crud/PantallaDeRegistros.test.jsx) · después de registrar, el formulario se cierra y la lista y su resumen se vuelven a pedir, con el registro nuevo

@@ -2,11 +2,12 @@
  * Nombre: crud.js
  * Descripción: API simulada (MSW) de una entidad con pantalla generada, para las pruebas: guarda los registros en
  *              memoria y responde como la API generada: el listado por páginas y con el filtro activo (D-33),
- *              registrar, editar, desactivar y reactivar. Anota cada petición.
+ *              registrar, editar, desactivar y reactivar. La de una entidad que se edita en bloque, como los rangos
+ *              (RF-13), lista sus filas, las edita todas juntas y vuelve a las de por defecto. Anota cada petición.
  * Fecha de creación: 26/10/2026
- * Actualización: 26/10/2026
+ * Actualización: 28/10/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 import { http, HttpResponse } from 'msw';
 import { servidor } from './servidor.js';
@@ -24,8 +25,27 @@ import { servidor } from './servidor.js';
  * @property {Peticion[]} peticiones las peticiones, en orden
  */
 
+/**
+ * @typedef {object} ApiEnBloqueSimulada lo que tiene la API simulada de una entidad en bloque y lo que le pidieron
+ * @property {object[]} filas las filas, como quedan después de cada petición
+ * @property {Peticion[]} peticiones las peticiones, en orden
+ */
+
 /** Cuántos registros ha creado la API simulada, para darle a cada uno un identificador distinto. */
 let creados = 0;
+
+/**
+ * Anota una petición en una API simulada, con su cuerpo.
+ *
+ * @param {{ peticiones: Peticion[] }} simulada la API simulada
+ * @param {Request} peticion la petición
+ */
+async function anotar(simulada, peticion) {
+  const direccion = new URL(peticion.url);
+  const texto = await peticion.clone().text();
+  simulada.peticiones.push({ metodo: peticion.method, ruta: direccion.pathname + direccion.search,
+    cuerpo: texto ? JSON.parse(texto) : null });
+}
 
 /**
  * Los datos de un registro, sin los grupos de crear_con, como el primer administrador: la API no los responde.
@@ -50,18 +70,6 @@ export function apiSimulada(ruta, registros, { atributoActivo = null } = {}) {
   const simulada = { registros: structuredClone(registros), peticiones: [] };
 
   /**
-   * Anota una petición, con su cuerpo.
-   *
-   * @param {Request} peticion la petición
-   */
-  const anotar = async (peticion) => {
-    const direccion = new URL(peticion.url);
-    const texto = await peticion.clone().text();
-    simulada.peticiones.push({ metodo: peticion.method, ruta: direccion.pathname + direccion.search,
-      cuerpo: texto ? JSON.parse(texto) : null });
-  };
-
-  /**
    * La respuesta de un registro que no existe, como la de la API.
    *
    * @returns {Response} la respuesta 404
@@ -70,7 +78,7 @@ export function apiSimulada(ruta, registros, { atributoActivo = null } = {}) {
 
   servidor.use(
     http.get(ruta, async ({ request }) => {
-      await anotar(request);
+      await anotar(simulada, request);
       const parametros = new URL(request.url).searchParams;
       const pagina = Number(parametros.get('pagina') ?? 0);
       const tamano = Number(parametros.get('tamano') ?? 20);
@@ -86,7 +94,7 @@ export function apiSimulada(ruta, registros, { atributoActivo = null } = {}) {
       });
     }),
     http.post(ruta, async ({ request }) => {
-      await anotar(request);
+      await anotar(simulada, request);
       creados += 1;
       const nuevo = { id: `0199e2a0-0000-7000-8000-${String(creados).padStart(12, '0')}`, ...sinGrupos(await request.json()) };
       if (atributoActivo) {
@@ -96,7 +104,7 @@ export function apiSimulada(ruta, registros, { atributoActivo = null } = {}) {
       return HttpResponse.json(nuevo, { status: 201 });
     }),
     http.put(`${ruta}/:id`, async ({ request, params }) => {
-      await anotar(request);
+      await anotar(simulada, request);
       const registro = simulada.registros.find(({ id }) => id === params.id);
       if (!registro) {
         return noExiste();
@@ -105,13 +113,44 @@ export function apiSimulada(ruta, registros, { atributoActivo = null } = {}) {
       return HttpResponse.json(registro);
     }),
     http.post(`${ruta}/:id/:accion`, async ({ request, params }) => {
-      await anotar(request);
+      await anotar(simulada, request);
       const registro = simulada.registros.find(({ id }) => id === params.id);
       if (!registro || !['desactivar', 'reactivar'].includes(params.accion)) {
         return noExiste();
       }
       registro[atributoActivo] = params.accion === 'reactivar';
       return HttpResponse.json(registro);
+    }),
+  );
+  return simulada;
+}
+
+/**
+ * Simula en memoria la API generada de una entidad que se edita en bloque, como los rangos (RF-13): lista sus filas,
+ * las edita todas juntas y vuelve a las de por defecto. Responde las filas como quedan, igual que el backend.
+ *
+ * @param {string} ruta la ruta de la API, como /api/v1/rangos-recomendacion
+ * @param {object[]} filas las filas iniciales, como las responde la API
+ * @param {object[]} [porDefecto] las filas a las que vuelve al restaurar; por defecto, las iniciales
+ * @returns {ApiEnBloqueSimulada} sus filas y las peticiones que recibe
+ */
+export function apiEnBloqueSimulada(ruta, filas, porDefecto = filas) {
+  const simulada = { filas: structuredClone(filas), peticiones: [] };
+
+  servidor.use(
+    http.get(ruta, async ({ request }) => {
+      await anotar(simulada, request);
+      return HttpResponse.json(simulada.filas);
+    }),
+    http.put(ruta, async ({ request }) => {
+      await anotar(simulada, request);
+      simulada.filas = (await request.json()).filas;
+      return HttpResponse.json(simulada.filas);
+    }),
+    http.post(`${ruta}/restaurar-por-defecto`, async ({ request }) => {
+      await anotar(simulada, request);
+      simulada.filas = structuredClone(porDefecto);
+      return HttpResponse.json(simulada.filas);
     }),
   );
   return simulada;
