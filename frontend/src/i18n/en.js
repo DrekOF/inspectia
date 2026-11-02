@@ -4,9 +4,9 @@
  *              comparte con el backend no van aquí: salen de sus archivos .properties
  *              (herramientas/textos-del-backend.js). Los marcadores van entre llaves, como en el backend.
  * Fecha de creación: 20/10/2026
- * Actualización: 28/10/2026
+ * Actualización: 02/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.2
+ * Versión: 1.3
  */
 
 /** Textos en inglés, por clave. Tiene las mismas claves que es.js (i18n.test.js lo revisa). */
@@ -103,6 +103,7 @@ export default {
   'crud.restaurarPorDefecto': 'Restore default values',
   'crud.confirmarRestaurar': 'Restore the default values?',
   'crud.restaurar': 'Restore',
+  'crud.eligeUnaOpcion': 'Choose an option',
 
   // Administradores de una empresa, en la pantalla de empresas (RF-02 C12, D-30)
   'administradores.accion': 'Administrators',

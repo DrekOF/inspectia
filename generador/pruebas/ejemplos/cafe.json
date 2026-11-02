@@ -1,0 +1,112 @@
+{
+  "_header": {
+    "nombre": "cafe.json",
+    "descripcion": "Entidad de ejemplo de otra temática (RP-23): un café especial del Huila, por empresa, con su pantalla. Solo la usan las pruebas del generador y la demostración (npm run demo:otra-tematica -- --entidad ../generador/pruebas/ejemplos/cafe.json); no entra a la app.",
+    "fecha_creacion": "02/11/2026",
+    "actualizacion": "02/11/2026",
+    "autor": "Equipo InspectIA",
+    "version": "1.0"
+  },
+  "entidad": "cafe",
+  "clase": "Cafe",
+  "modulo": "cafe",
+  "ruta": "cafes",
+  "descripcion": "Café especial del Huila de una empresa: un CRUD con nombre, variedad, región, proceso y estado. No se borra: se pasa a estado INACTIVO.",
+  "etiquetas": {
+    "es": { "singular": "Café especial", "plural": "Cafés especiales" },
+    "en": { "singular": "Specialty coffee", "plural": "Specialty coffees" }
+  },
+  "fichas": ["RP-23"],
+  "crud": true,
+  "por_empresa": "si",
+  "operaciones": {
+    "listar": ["ADMIN_EMPRESA"],
+    "ver": ["ADMIN_EMPRESA"],
+    "crear": ["ADMIN_EMPRESA"],
+    "editar": ["ADMIN_EMPRESA"]
+  },
+  "atributos": [
+    {
+      "nombre": "nombre",
+      "tipo": "texto",
+      "longitud": 120,
+      "obligatorio": true,
+      "validaciones": { "recortar": true },
+      "en_lista": true,
+      "en_formulario": true,
+      "etiquetas": { "es": "Nombre", "en": "Name" },
+      "fichas": ["RP-23"]
+    },
+    {
+      "nombre": "variedad",
+      "tipo": "lista",
+      "obligatorio": true,
+      "valores": [
+        { "codigo": "CASTILLO", "etiquetas": { "es": "Castillo", "en": "Castillo" } },
+        { "codigo": "CATURRA", "etiquetas": { "es": "Caturra", "en": "Caturra" } },
+        { "codigo": "GEISHA", "etiquetas": { "es": "Geisha", "en": "Geisha" } }
+      ],
+      "en_lista": true,
+      "en_formulario": true,
+      "etiquetas": { "es": "Variedad", "en": "Variety" },
+      "fichas": ["RP-23"]
+    },
+    {
+      "nombre": "region",
+      "tipo": "texto",
+      "longitud": 80,
+      "obligatorio": true,
+      "validaciones": { "recortar": true },
+      "en_lista": true,
+      "en_formulario": true,
+      "etiquetas": { "es": "Región", "en": "Region" },
+      "fichas": ["RP-23"]
+    },
+    {
+      "nombre": "proceso",
+      "tipo": "lista",
+      "obligatorio": true,
+      "valores": [
+        { "codigo": "LAVADO", "etiquetas": { "es": "Lavado", "en": "Washed" } },
+        { "codigo": "NATURAL", "etiquetas": { "es": "Natural", "en": "Natural" } },
+        { "codigo": "HONEY", "etiquetas": { "es": "Honey", "en": "Honey" } }
+      ],
+      "en_lista": true,
+      "en_formulario": true,
+      "etiquetas": { "es": "Proceso", "en": "Process" },
+      "fichas": ["RP-23"]
+    },
+    {
+      "nombre": "estado",
+      "tipo": "lista",
+      "obligatorio": true,
+      "por_defecto": "ACTIVO",
+      "valores": [
+        { "codigo": "ACTIVO", "etiquetas": { "es": "Activo", "en": "Active" } },
+        { "codigo": "INACTIVO", "etiquetas": { "es": "Inactivo", "en": "Inactive" } }
+      ],
+      "en_lista": true,
+      "en_formulario": true,
+      "etiquetas": { "es": "Estado", "en": "Status" },
+      "fichas": ["RP-23"]
+    }
+  ],
+  "pantalla": {
+    "icono": "cafe",
+    "debajo_del_nombre": "region",
+    "textos": {
+      "resumen": { "es": "{total}.", "en": "{total}." },
+      "resumen_total": {
+        "es": { "singular": "{cantidad} café especial registrado", "plural": "{cantidad} cafés especiales registrados" },
+        "en": { "singular": "{cantidad} registered specialty coffee", "plural": "{cantidad} registered specialty coffees" }
+      },
+      "vacia": { "es": "Todavía no hay cafés especiales registrados.", "en": "There are no registered specialty coffees yet." },
+      "nuevo": { "es": "Nuevo café especial", "en": "New specialty coffee" },
+      "crear": { "es": "Registrar café especial", "en": "Register specialty coffee" },
+      "titulo_editar": { "es": "Editar café especial", "en": "Edit specialty coffee" },
+      "titulo_lista": { "es": "Cafés especiales registrados", "en": "Registered specialty coffees" },
+      "editar_fila": { "es": "Editar {nombre}", "en": "Edit {nombre}" },
+      "al_guardar": { "es": "Se guardó {nombre}.", "en": "{nombre} was saved." }
+    }
+  }
+}

@@ -7,7 +7,7 @@
  *              frontend, que en Windows es un junction. Encender la copia (Docker, Maven y la página) se prueba
  *              corriendo la demostración.
  * Fecha de creación: 28/10/2026
- * Actualización: 28/10/2026
+ * Actualización: 02/11/2026
  * Autor: Equipo InspectIA
  * Versión: 1.1
  */
@@ -19,10 +19,13 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   alcanceCon, conQuienEntrar, datosDeLaEntidad, enlazarModulos, leerEntidad, leerOpciones, porCapa, tipoDeEnlace,
 } from './otra-tematica.js';
+import { raizDelRepositorio } from './textos-del-backend.js';
 
-// Sin new URL(…, import.meta.url): en las pruebas de Vitest, Vite lo cambia por una dirección de su servidor.
-const FRONTEND = join(dirname(fileURLToPath(import.meta.url)), '..');
-const RAIZ = join(FRONTEND, '..');
+// Sin new URL(…, import.meta.url): en las pruebas de Vitest, Vite lo cambia por una dirección de su servidor. Y
+// subiendo hasta la raíz: Stryker corre las pruebas en una copia del frontend (.stryker-tmp), sin el resto del
+// repositorio, y los JSON de los ejemplos están en generador/.
+const RAIZ = raizDelRepositorio(dirname(fileURLToPath(import.meta.url)));
+const FRONTEND = join(RAIZ, 'frontend');
 const CAFE = join(RAIZ, 'generador', 'pruebas', 'ejemplos', 'cafe.json');
 const PRODUCTO = join(RAIZ, 'generador', 'pruebas', 'ejemplos', 'producto.json');
 
@@ -85,6 +88,7 @@ describe('el JSON de la entidad', () => {
     expect(leerEntidad(CAFE)).toMatchObject({ entidad: 'cafe', clase: 'Cafe', ruta: 'cafes' });
     expect(() => leerEntidad(join(base, 'te.json'))).toThrow(`No encuentro ${join(base, 'te.json')}.`);
     expect(() => leerEntidad(roto)).toThrow(`${roto} no es un JSON válido: `);
+    expect(() => leerEntidad(roto)).toThrow(expect.objectContaining({ cause: expect.any(SyntaxError) }));
   });
 
   it('RP-23 · un JSON con el nombre de una entidad de InspectIA, como empresa.json, detiene la demostración: reemplazaría la de la app', () => {
