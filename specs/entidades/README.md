@@ -2,9 +2,9 @@
 Nombre: README.md (specs/entidades)
 Descripción: Qué hay en specs/entidades/ y formato de los JSON de entidades que lee el generador (RP-23).
 Fecha de creación: 12/10/2026
-Actualización: 28/10/2026
+Actualización: 02/11/2026
 Autor: Equipo InspectIA
-Versión: 1.13
+Versión: 1.14
 -->
 
 # specs/entidades
@@ -75,7 +75,7 @@ La pantalla de una entidad de `pantallas` se arma con lo que dice su JSON:
 
 - **Lista:** páginas fijas de 20 registros, como en el prototipo. En el PC es una tabla, y en el celular, una tarjeta por registro (D-34). Muestra los atributos con `en_lista`, el de `debajo_del_nombre` bajo el nombre y, si la entidad tiene `atributo_activo`, su estado. Arriba va el resumen, como «7 empresas registradas: 6 activas y 1 desactivada.», que cuenta los activos con el filtro del listado (D-33). Con `limite_de_activos`, el resumen cuenta los activos contra el máximo de esa regla, como «5 de 25 usuarios activos, contándote a ti.», y al llegar a él «Nuevo» y «Reactivar» se deshabilitan, con un aviso que dice por qué: el mensaje de la regla.
 - **Acciones:** cada rol ve solo las de sus `operaciones`; la API lo revisa igual (RNF-04). Desactivar pide confirmación si `textos` trae `confirmar_desactivar`. Después de guardar, desactivar o reactivar, un mensaje dice qué pasó, con el nombre del registro, como «Se guardó Cacaos del Huila.».
-- **Formulario:** los atributos con `en_formulario` y, al registrar, los de `crear_con`, cada grupo con su título. Yup valida lo mismo que la API (ver «Validaciones»). Los errores que responde la API van a su campo, y los que no son de un campo, arriba del formulario. En el PC va encima de la lista o, con `formulario: "al_lado"`, a su lado; en el celular, siempre encima (D-37). Al registrar, un campo empieza con el valor de `inicial`, como el rol Usuario final. Una contraseña opcional al editar, como la de un usuario, vacía va como `null` y queda la que había; al escribir la de otra persona aparece `nota_contrasena_de_otro`, con lo que pasa al guardarla (D-30).
+- **Formulario:** los atributos con `en_formulario` y, al registrar, los de `crear_con`, cada grupo con su título. Yup valida lo mismo que la API (ver «Validaciones»). Los errores que responde la API van a su campo, y los que no son de un campo, arriba del formulario. En el PC va encima de la lista o, con `formulario: "al_lado"`, a su lado; en el celular, siempre encima (D-37). Al registrar, un campo empieza con el valor de `inicial`, como el rol Usuario final; una lista sin él, con su `por_defecto`, y sin ninguno de los dos, en «Elige una opción», sin valor, como la variedad del café de `generador/pruebas/ejemplos/cafe.json`. Una contraseña opcional al editar, como la de un usuario, vacía va como `null` y queda la que había; al escribir la de otra persona aparece `nota_contrasena_de_otro`, con lo que pasa al guardarla (D-30).
 - **Fila propia:** las reglas con `en_la_fila_propia` (ver «Reglas») se cumplen en la fila de quien tiene la sesión antes de llamar a la API, que las sigue revisando. Esa fila lleva la marca de `fila_propia`, como «Tú», y no tiene la acción que impide una regla sin `atributo`, como «Desactivar». Al editarla, el campo de una regla con `atributo` se ve deshabilitado, con el mensaje de la regla, como el rol; si es una contraseña, en su lugar va el mensaje, y si nombra «Cambiar contraseña», ese nombre es un enlace a esa página.
 - **Teclado (RNF-06 C4):** al abrir un panel, el foco va a su título; al cerrarlo, vuelve al botón que lo abrió.
 - **Menú y rutas:** la sección sale con su `icono` y con los roles de `listar`. Un ícono que el menú no conoce, como el de otra temática, sale genérico.
@@ -282,4 +282,4 @@ En una entidad con `edicion_en_bloque`, una regla de `validacion` recibe todas l
 
 Para otro producto se cambian solo estos JSON: etiquetas, listas (categorías, clases y motivos), valores iniciales, mensajes, los textos de `pantalla` y, si hace falta, atributos. Después se vuelve a generar. Si cambia el código de una lista, revisa los `checks` que lo usan.
 
-`npm run demo:otra-tematica`, desde `frontend/`, lo muestra en una copia del proyecto: agrega a InspectIA el producto de la pauta del docente (`generador/pruebas/ejemplos/producto.json`) y saca su tabla, su API y su pantalla, sin tocar el repositorio. Ver `frontend/README.md`.
+`npm run demo:otra-tematica`, desde `frontend/`, lo muestra en una copia del proyecto, sin tocar el repositorio: agrega a InspectIA una entidad de otra temática y saca su tabla, su API y su pantalla. Por defecto es el producto de la pauta del docente (`generador/pruebas/ejemplos/producto.json`); con `-- --entidad <ruta del JSON>`, otra, como el café especial del Huila (`cafe.json`, en la misma carpeta). El paso a paso para la sustentación está en `docs/demostracion-otra-tematica.md`.

@@ -2,9 +2,9 @@
 Nombre: README.md (generador)
 Descripción: Qué hace el generador de InspectIA (RP-23), cómo se usa y cómo se prueba.
 Fecha de creación: 12/10/2026
-Actualización: 28/10/2026
+Actualización: 02/11/2026
 Autor: Equipo InspectIA
-Versión: 1.10
+Versión: 1.11
 -->
 
 # generador
@@ -57,13 +57,16 @@ Si una entidad de `alcance.json` usa algo que la API todavía no soporta, `gener
 
 ## Demostración de otra temática
 
-`npm run demo:otra-tematica`, desde `frontend/` y con Docker Desktop abierto, muestra que cambiando solo los JSON sale otro CRUD completo (RP-23):
+`npm run demo:otra-tematica`, desde `frontend/` y con Docker Desktop abierto, muestra que cambiando solo los JSON sale otro CRUD completo (RP-23). Hay dos ejemplos en `pruebas/ejemplos/`:
 
-1. En una copia del proyecto, en `frontend/.demostracion` (Git la ignora), agrega a las entidades de InspectIA el producto de la pauta del docente, `pruebas/ejemplos/producto.json`, y lo suma a la API y a las pantallas del alcance.
-2. Corre `generar.py generar` en la copia, con `--entidades`, `--alcance` y `--raiz`, y lista por capa lo que escribió: la tabla en V1, la API con su prueba de integración, los textos y la pantalla con sus pruebas.
-3. Enciende la copia como el entorno aislado de las pruebas, con su propia base, y escribe cómo entrar, cómo ver la API en Swagger UI y la tabla en psql. Ctrl+C la apaga y borra su base.
+- `producto.json`, el de la pauta del docente, que usa si no se pide otro;
+- `cafe.json`, un café especial del Huila, por empresa, con `-- --entidad ../generador/pruebas/ejemplos/cafe.json`.
 
-Con `-- --con-pruebas`, antes de encenderla corre en la copia las pruebas generadas de producto. El repositorio no cambia. Los detalles están en `frontend/README.md`; `pruebas/test_otra_tematica.py` revisa lo mismo sin encender nada.
+1. En una copia del proyecto, en `frontend/.demostracion` (Git la ignora), agrega el JSON a las entidades de InspectIA y suma la entidad a la API y a las pantallas del alcance.
+2. Corre `generar.py generar` en la copia, con `--entidades`, `--alcance` y `--raiz`, y lista por capa lo que escribió: la tabla en V1, la API con su prueba de integración, los textos y la pantalla con sus pruebas. Si al JSON le falta algo, el generador se detiene ahí y dice qué.
+3. Enciende la copia como el entorno aislado de las pruebas, con su propia base, y escribe con quién entrar, cómo ver la API en Swagger UI y la tabla en psql. Ctrl+C la apaga y borra su base.
+
+Con `-- --con-pruebas`, antes de encenderla corre en la copia las pruebas generadas de la entidad. El repositorio no cambia. Los detalles están en `frontend/README.md`, y el paso a paso para la sustentación, en `docs/demostracion-otra-tematica.md`. `pruebas/test_otra_tematica.py` revisa lo mismo con los dos ejemplos, sin encender nada.
 
 ## Casos de prueba (RP-13)
 

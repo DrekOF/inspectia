@@ -2,9 +2,9 @@
 Nombre: bitacora.md
 Descripción: Registro paso a paso de cómo se construyó InspectIA, para la sustentación (RP-24).
 Fecha de creación: 12/10/2026
-Actualización: 28/10/2026
+Actualización: 02/11/2026
 Autor: Equipo InspectIA
-Versión: 1.19
+Versión: 1.20
 -->
 
 # Bitácora de construcción (RP-24)
@@ -762,6 +762,72 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
   - Anotar en la entrada de Usuarios que hizo el recorrido en su PC y estuvo bien.
   - Después de su recorrido y antes de subir la rama, corregir el apellido de Julián en un commit aparte, ajustar las pruebas que revisaran ese texto (no había ninguna) y sumarlo a «Fichas y documentación» del PR.
 - Archivos o PR: la rama `feature/RF-13-pantalla-rangos`; el PR lo abre Cristhian.
+
+## 02/11/2026 · RP-23: la demostración de otra temática con cualquier entidad
+
+- Quién: Cristhian Sánchez (`DrekOF`), con Claude Code.
+- Qué se hizo:
+  - **En la rama `feature/RP-23-demostracion-cualquier-entidad`, commit por commit, cada uno revisado por Cristhian antes del siguiente:**
+    1. **Las pruebas, en rojo** (`e3c6eb2`):
+       - las del generador: `cafe.json` pasa la validación y genera su tabla por empresa, su API con las tres pruebas de RNF-03 de `CafeApiGeneradaIT` y su pantalla, donde variedad y proceso empiezan sin elegir;
+       - las de la demostración: sus opciones, el JSON de la entidad, lo que saca de él con café y con producto, con quién entrar según el rol y el alcance con cualquier entidad;
+       - la de `CampoDeLista`: una lista que empieza sin valor muestra «Elige una opción».
+    2. **`cafe.json`, la demostración con `--entidad` y «Elige una opción»** (`a83e63d`):
+       - `generador/pruebas/ejemplos/cafe.json`: un café especial del Huila, por empresa, para el administrador de empresa. Tiene nombre (hasta 120), variedad (Castillo, Caturra o Geisha), región (hasta 80), proceso (Lavado, Natural o Honey) y estado (Activo o Inactivo), con sus textos en español y en inglés.
+       - `npm run demo:otra-tematica -- --entidad <ruta del JSON>`. Una ruta relativa se lee desde la carpeta donde se corrió el comando; sin `--entidad`, agrega producto, como antes. Los textos de la consola y las pruebas de `--con-pruebas` salen del JSON: su nombre en el menú, su ruta, sus pruebas y el rol con que se entra.
+       - La demostración se detiene y dice qué pasó en estos casos:
+         - una opción que no entiende, como `--con-prueba`;
+         - `--entidad` sin ruta;
+         - un JSON que no existe o que no es un JSON;
+         - un JSON que se llama como una entidad de InspectIA, que la reemplazaría en la copia.
+       - **Comportamiento no pedido:** también se detiene si npm se quedó con las opciones porque faltó `--` antes de ellas. npm no se las pasa al script, solo avisa, y la demostración seguía sin ellas. Sin `--con-pruebas`, por ejemplo, encendía sin correr las pruebas. Es justo el error que se puede cometer en la sustentación. Cristhian lo aprobó.
+       - `CampoDeLista`: una lista que empieza sin valor muestra «Elige una opción» hasta que se elige una.
+         - Antes, el navegador mostraba la primera opción como elegida mientras el valor seguía vacío, y al guardar salía «Este dato es obligatorio.».
+         - No se notaba porque las listas de la app siempre empiezan con un valor: el rol, con `inicial`, y los estados, con `por_defecto`.
+         - Variedad y proceso no tienen ninguno de los dos, así que lo habrían mostrado en la sustentación.
+    3. **La guía y la documentación:**
+       - `docs/demostracion-otra-tematica.md`:
+         - qué preparar antes de la sustentación;
+         - el paso a paso con café y dónde se ve la separación por empresa;
+         - qué produce cada campo del JSON y lo que el JSON no decide: los números y el ícono;
+         - un experimento con un campo nuevo;
+         - qué hacer si algo falla.
+       - La consola pone el rol entre paréntesis, así no choca con el género de la persona: «Entra como Ana Pérez (administrador de empresa de Cacaos del Huila)».
+       - Los README del frontend, del generador, de las entidades y el principal, y los Comandos de `CLAUDE.md`. En el del frontend se corrigió que la copia «compila solo lo cambiado»: el backend se compila entero en cada corrida, porque el espejo borra lo que se generó en la anterior y, con eso, su `target`.
+  - **Problemas encontrados:**
+    - **Stryker no arrancaba con las pruebas nuevas de la demostración.** Corre las pruebas en una copia del frontend (`.stryker-tmp`), donde la carpeta de arriba no tiene `generador/` ni `specs/`, y la prueba que lee `cafe.json` fallaba antes de empezar. La raíz del repositorio ahora se busca subiendo, con `raizDelRepositorio`, como en el plugin de los textos del backend.
+    - **ESLint pide conservar el error original al relanzarlo** (`preserve-caught-error`): el error de un JSON roto lleva su `cause`, y la prueba lo revisa.
+    - **Docker Desktop no abrió al primer intento** el 02/11. Mostró «An unexpected error occurred», porque no pudo apartar el socket de su motor de secretos, que quedó de la sesión anterior; después arrancó. La guía dice qué hacer si pasa en la sustentación: no usar «Reset to factory defaults», que borra todos los contenedores y volúmenes.
+  - **Mutantes que quedan vivos:** ninguno. `otra-tematica.js` queda en 100 %: 157 muertos y 2 por tiempo. No cuenta la parte que enciende la copia, que se prueba corriéndola.
+  - **Resultado:**
+    - Generador: 121 pruebas en verde, y lo generado, al día (63 archivos).
+    - Vitest: 576 pruebas en verde, y ESLint, limpio.
+    - Playwright, en el entorno aislado y con el código final del PR: 236 en verde y 4 omitidas, las mismas de antes (iniciar sesión solo con el teclado y la de 1250 px, en el celular). Firefox se saltó en este equipo.
+    - Selenium: 24 en verde.
+    - La demostración:
+      - **Con café y `--con-pruebas`:** las pruebas generadas pasan, 27 de Vitest y 40 de `CafeApiGeneradaIT`, y queda encendida en 160 s. En el recorrido:
+        - Ana Pérez ve «Cafés especiales» al final de su menú;
+        - variedad y proceso empiezan en «Elige una opción», y registrar sin llenar marca 4 campos;
+        - se registra un café, se edita y pasa a Inactivo;
+        - en inglés sale «Specialty coffees», y Swagger tiene `/api/v1/cafes`;
+        - en la base, el `empresa_id` del café es el de Cacaos del Huila.
+      - **Con producto, sin opciones:** como antes, encendida en 31 s.
+      - **El experimento de la guía,** con una copia de `cafe.json` fuera del repositorio y notas de cata en `varias_lineas`: el campo aparece en el formulario, en varias líneas, y en la base, donde las notas se guardan con su salto de línea.
+      - **Ocho errores en la consola,** cada uno con su mensaje. El de un JSON al que le falta una coma dice en qué línea está.
+    - Casos de prueba: 724 pruebas; de los 143 criterios de las fichas, 55 tienen prueba.
+- Por qué: para la sustentación, la demostración de RP-23 tenía que servir con cualquier entidad, no solo con producto, y tener un paso a paso.
+- Cómo se pidió: Cristhian pidió primero el plan, sin código, y lo aprobó con cuatro decisiones:
+  1. Café por empresa, entrando como Ana Pérez. En el entorno hay una sola empresa activa, así que la guía dice dónde se ve la separación: en `\d cafe`, con la columna `empresa_id`, y en las tres pruebas de RNF-03 de `CafeApiGeneradaIT`.
+  2. «Elige una opción» en `CampoDeLista`.
+  3. 120 para el nombre y 80 para la región.
+  4. La guía en `docs/demostracion-otra-tematica.md`.
+
+  Sumó dos cosas al plan:
+  - que la demostración se detenga con una opción que no conoce, en vez de ignorarla;
+  - en la guía, una tabla de qué produce cada campo del JSON y lo que el JSON no decide.
+
+  Al revisar el commit 2 pidió dos más: el rol entre paréntesis en la consola y, en la guía, el experimento con un campo nuevo.
+- Archivos o PR: la rama `feature/RP-23-demostracion-cualquier-entidad`; el PR lo abre Cristhian.
 
 ## Plantilla para nuevas entradas
 
