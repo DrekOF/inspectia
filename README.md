@@ -2,9 +2,9 @@
 Nombre: README.md
 Descripción: Presentación del monorepo de InspectIA: estructura, versiones, requisitos del entorno de desarrollo, base de datos local, frontend y cita del dataset.
 Fecha de creación: 12/10/2026
-Actualización: 28/10/2026
+Actualización: 02/11/2026
 Autor: Equipo InspectIA
-Versión: 1.9
+Versión: 1.10
 -->
 
 # InspectIA
@@ -23,7 +23,7 @@ Proyecto final de Inteligencia Artificial, Universidad Surcolombiana. Docente: J
 | `generador/` | Scripts de Python que generan los CRUD a partir de `specs/entidades/` (RP-23) y la lista de casos de prueba (RP-13). |
 | `infra/` | Docker Compose, scripts de base de datos, de compilación y de despliegue. |
 | `specs/` | Especificación: fichas RF y RNF, decisiones, arquitectura, pautas del docente y entidades. |
-| `docs/` | Bitácora de construcción (RP-24), casos de prueba (RP-13) y documentación. |
+| `docs/` | Bitácora de construcción (RP-24), casos de prueba (RP-13), la guía de la demostración de otra temática (RP-23) y documentación. |
 
 ## Versiones
 
@@ -156,7 +156,7 @@ Desde `frontend/`, la primera vez `npm ci`. Los detalles están en `frontend/REA
 - **Pruebas unitarias y de componentes:** `npm test`, con la API simulada (MSW): no necesitan el backend. `npm run lint` corre ESLint y `npm run test:mutacion`, las pruebas de mutación con Stryker (RP-12).
 - **Pruebas de punta a punta (RP-14):** `npm run e2e:playwright` y `npm run e2e:selenium`, con Docker Desktop abierto. La primera vez, `npx playwright install chromium firefox webkit`. Cada corrida enciende su propio entorno: una base en otro proyecto de Docker Compose, el backend compilado en una copia y la página compilada, con contraseñas nuevas. No usa `infra/.env` ni tu base, y lo borra al terminar.
 - **Firefox en Windows 11 25H2:** el Firefox de Playwright 1.64.1 no abre (Windows rechaza cargar su `mozglue.dll`). En esos equipos, `INSPECTIA_E2E_SIN_FIREFOX=1` lo salta; en CI corre siempre.
-- **Demostración de otra temática (RP-23):** `npm run demo:otra-tematica`, con Docker Desktop abierto. En una copia del proyecto agrega el producto de la pauta del docente, saca su tabla, su API y su pantalla, y la enciende; Ctrl+C la apaga y borra su base. El repositorio no cambia. Ver `frontend/README.md`.
+- **Demostración de otra temática (RP-23):** `npm run demo:otra-tematica`, con Docker Desktop abierto. En una copia del proyecto agrega una entidad de otra temática, saca su tabla, su API y su pantalla, y la enciende; Ctrl+C la apaga y borra su base. El repositorio no cambia. Por defecto es el producto de la pauta del docente; con `-- --entidad ../generador/pruebas/ejemplos/cafe.json`, un café especial del Huila. Ver `docs/demostracion-otra-tematica.md`.
 
 ## Dataset y licencia (RNF-08)
 
@@ -176,4 +176,5 @@ Artículo de los autores:
 - Formato de las entidades y de la API generada: `specs/entidades/README.md`.
 - Casos de prueba por criterio de aceptación (RP-13): `docs/casos-de-prueba.md`.
 - Bitácora de construcción: `docs/bitacora.md`.
+- Demostración de otra temática, para la sustentación (RP-23): `docs/demostracion-otra-tematica.md`.
 - Frontend: `frontend/README.md`.

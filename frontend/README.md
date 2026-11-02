@@ -3,9 +3,9 @@ Nombre: README.md (frontend)
 Descripción: La página web de InspectIA: qué hay en frontend/, cómo arrancarla junto con el backend, sus textos,
              sus pruebas, el entorno aislado de las pruebas de punta a punta y la demostración de otra temática.
 Fecha de creación: 12/10/2026
-Actualización: 28/10/2026
+Actualización: 02/11/2026
 Autor: Equipo InspectIA
-Versión: 1.5
+Versión: 1.6
 -->
 
 # frontend
@@ -57,7 +57,7 @@ Desde `frontend/`. La primera vez, `npm ci`.
 | `npm run e2e:playwright` | Pruebas de punta a punta con Playwright (RP-14), en su entorno aislado. |
 | `npm run e2e:selenium` | Pruebas con Selenium en Chrome y Edge, en su entorno aislado. |
 | `npm run e2e:entorno` | Enciende el entorno aislado y lo deja encendido hasta Ctrl+C. |
-| `npm run demo:otra-tematica` | La demostración de otra temática (RP-23), en una copia del proyecto (ver abajo). Con `-- --con-pruebas`, antes de encenderla corre las pruebas generadas de producto. |
+| `npm run demo:otra-tematica` | La demostración de otra temática (RP-23), en una copia del proyecto (ver abajo). Con `-- --entidad <ruta del JSON>`, agrega esa entidad en vez de producto; con `-- --con-pruebas`, antes de encenderla corre sus pruebas generadas. |
 
 En Vitest, `findBy` y `waitFor` esperan hasta 5 s y cada prueba tiene hasta 20 s (`src/pruebas/preparacion.js` y `vite.config.js`). Con la máquina ocupada, como con dos corridas a la vez o con Stryker, una pantalla que se carga la primera vez que se abre tarda más de un segundo, y las pruebas que llenan un formulario entero pasan de 5 s. Si Vitest corta una prueba, lo que ella seguía escribiendo cae en el campo con el foco de la prueba siguiente, que falla también. Una prueba que pasa no espera más por esto.
 
@@ -91,21 +91,30 @@ Playwright corre cada prueba en Chrome, Firefox y Safari en tamaño de PC (1280 
 
 ## Demostración de otra temática
 
-Para la sustentación: muestra que, cambiando solo los JSON, el generador saca otro CRUD completo (RP-23). Desde `frontend/`, con Docker Desktop abierto y el entorno del generador creado (ver `generador/README.md`):
+Para la sustentación: muestra que, cambiando solo los JSON, el generador saca otro CRUD completo (RP-23). El paso a paso, con qué produce cada campo del JSON, está en `docs/demostracion-otra-tematica.md`. Desde `frontend/`, con Docker Desktop abierto y el entorno del generador creado (ver `generador/README.md`):
 
 ```bash
-npm run demo:otra-tematica
+npm run demo:otra-tematica -- --entidad ../generador/pruebas/ejemplos/cafe.json
 ```
 
-1. Copia en espejo el backend, el frontend, `specs/` e `infra/bd` en `frontend/.demostracion`, que está en `.gitignore`. El `node_modules` del frontend no se copia: se enlaza; en Windows, con un junction, que no pide permisos de administrador.
-2. Agrega a la copia el producto de la pauta del docente (`generador/pruebas/ejemplos/producto.json`) y lo suma a la API y a las pantallas del alcance. Es lo único que cambia.
-3. Corre el generador en la copia y lista por capa lo que escribió: la tabla en V1, la API con su prueba de integración, los textos y la pantalla con sus pruebas.
-4. Enciende la copia como el entorno aislado de las pruebas, en su propio proyecto de Docker Compose (`inspectia-demo`), con el backend y la página compilados en la copia.
-5. Escribe la dirección, el correo y la contraseña del administrador de la plataforma, solo de esa corrida, y cómo ver la API en Swagger UI y la tabla en psql.
+1. Lee sus opciones y el JSON de la entidad. Una ruta relativa se lee desde la carpeta donde se corrió el comando. Sin `--entidad`, usa el producto de la pauta del docente (`generador/pruebas/ejemplos/producto.json`). Se detiene y dice qué pasó con:
+   - una opción que no entiende, como `--con-prueba`, o `--entidad` sin ruta;
+   - las opciones sin `--` antes, porque npm se queda con ellas;
+   - un archivo que no existe o que no es un JSON;
+   - un JSON que se llama como una entidad de InspectIA, que la reemplazaría en la copia.
+2. Copia en espejo el backend, el frontend, `specs/` e `infra/bd` en `frontend/.demostracion`, que está en `.gitignore`. El `node_modules` del frontend no se copia: se enlaza; en Windows, con un junction, que no pide permisos de administrador.
+3. Agrega el JSON a las entidades de la copia y suma la entidad a la API y a las pantallas del alcance. Es lo único que cambia.
+4. Corre el generador en la copia, que revisa el JSON, y lista por capa lo que escribió: la tabla en V1, la API con su prueba de integración, los textos y la pantalla con sus pruebas.
+5. Enciende la copia como el entorno aislado de las pruebas, en su propio proyecto de Docker Compose (`inspectia-demo`), con el backend y la página compilados en la copia.
+6. Escribe la dirección; con quién entrar, con una contraseña solo de esa corrida; dónde está la sección en el menú; y cómo ver la API en Swagger UI y la tabla en psql.
 
-En la página, «Productos» queda al final del menú del administrador de la plataforma, con el ícono genérico: se registra un producto, se edita y se pasa a Inactivo, con las validaciones y los mensajes de la API. Ctrl+C apaga la copia y borra su base; después, `docker compose ls` ya no muestra `inspectia-demo`. La copia queda y la vez siguiente se pone al día con el repositorio, así que compila solo lo cambiado. El repositorio no cambia: `git status` queda limpio y `generar.py comprobar` sigue pasando.
+Los textos de la consola y las pruebas de `--con-pruebas` salen del JSON: el nombre de la sección (`etiquetas`), la ruta de la API (`/api/v1/<ruta>`), las pruebas de Vitest (`src/generated/<modulo>`) y la de integración (`<clase>ApiGeneradaIT`). Se entra con la persona del entorno que tiene el primer rol de `crear` o, si no hay, el de `listar`: con café, Ana Pérez (administrador de empresa de Cacaos del Huila); con producto, el administrador de la plataforma.
 
-Con `npm run demo:otra-tematica -- --con-pruebas`, antes de encender la copia corre allí las pruebas generadas de producto: las de Vitest y `ProductoApiGeneradaIT`, con PostgreSQL en Testcontainers.
+La sección queda al final del menú de ese rol, con el ícono genérico, porque el menú no conoce el de los ejemplos. Ctrl+C apaga la copia y borra su base; después, `docker compose ls` ya no muestra `inspectia-demo`. El repositorio no cambia: `git status` queda limpio y `generar.py comprobar` sigue pasando.
+
+Con `-- --con-pruebas`, antes de encender la copia corre allí las pruebas generadas de la entidad, con PostgreSQL en Testcontainers.
+
+La copia queda, y la vez siguiente se pone al día con el repositorio. El backend se compila entero en cada corrida: el espejo borra lo que se generó en la anterior y, con eso, su `target`, así no quedan clases de otra entidad.
 
 La copia va dentro de `frontend/` y no en la raíz del repositorio: el backend de la copia corre desde `.demostracion` y busca `../infra/.env`, que en la raíz sería el de desarrollo, con sus contraseñas.
 

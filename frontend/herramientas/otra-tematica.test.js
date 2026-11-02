@@ -146,11 +146,11 @@ describe('con quién entrar', () => {
 
   it('RP-23 · la demostración dice con quién entrar según el rol de la entidad: el administrador de la plataforma, el de la empresa o el usuario final', () => {
     expect(conQuienEntrar('ADMIN_PLATAFORMA', datos))
-      .toBe('Andrés Gómez, administrador de la plataforma: andres.gomez@inspectia.test, contraseña Clave-1');
+      .toBe('Andrés Gómez (administrador de la plataforma): andres.gomez@inspectia.test, contraseña Clave-1');
     expect(conQuienEntrar('ADMIN_EMPRESA', datos))
-      .toBe('Ana Pérez, administrador de empresa de Cacaos del Huila: ana.perez@cacaosdelhuila.test, contraseña Clave-2');
+      .toBe('Ana Pérez (administrador de empresa de Cacaos del Huila): ana.perez@cacaosdelhuila.test, contraseña Clave-2');
     expect(conQuienEntrar('USUARIO_FINAL', datos))
-      .toBe('Carlos Ramírez, usuario final de Cacaos del Huila: carlos.ramirez@cacaosdelhuila.test, contraseña Clave-3');
+      .toBe('Carlos Ramírez (usuario final de Cacaos del Huila): carlos.ramirez@cacaosdelhuila.test, contraseña Clave-3');
   });
 });
 

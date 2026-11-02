@@ -176,18 +176,19 @@ export function datosDeLaEntidad(json) {
 }
 
 /**
- * Con quién entrar a la copia según el rol: su nombre, su rol, su empresa si es de una, su correo y su contraseña,
- * que solo sirve en esta corrida.
+ * Con quién entrar a la copia según el rol: su nombre; entre paréntesis, su rol y su empresa, si es de una, así el
+ * nombre del rol no tiene que concordar con el de la persona; su correo; y su contraseña, que solo sirve en esta
+ * corrida.
  *
  * @param {string} rol el rol, como ADMIN_EMPRESA
  * @param {object} datos los datos de prueba del entorno
- * @returns {string} como «Ana Pérez, administrador de empresa de Cacaos del Huila: ana.perez@…, contraseña …»
+ * @returns {string} como «Ana Pérez (administrador de empresa de Cacaos del Huila): ana.perez@…, contraseña …»
  */
 export function conQuienEntrar(rol, datos) {
   const { persona, rol: nombreDelRol, deLaEmpresa } = PERSONAS[rol];
   const { nombre, correo, contrasena } = datos[persona];
   const empresa = deLaEmpresa ? ` de ${datos.empresa.nombre}` : '';
-  return `${nombre}, ${nombreDelRol}${empresa}: ${correo}, contraseña ${contrasena}`;
+  return `${nombre} (${nombreDelRol}${empresa}): ${correo}, contraseña ${contrasena}`;
 }
 
 /**
