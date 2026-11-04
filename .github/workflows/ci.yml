@@ -1,0 +1,229 @@
+# Nombre: ci.yml
+# Descripción: Integración continua de InspectIA (RP-18 y RP-19). En cada PR hacia main, en cada push a main y a
+#              mano, compila y prueba el generador, el backend y el frontend, y corre las pruebas de punta a punta
+#              (Playwright y Selenium) en el entorno aislado. Si un job falla en main, abre un issue asignado a quien
+#              hizo el push, o comenta en el que ya está abierto por esa falla; cuando el job vuelve a pasar en main,
+#              lo cierra. Stryker no corre aquí: tarda mucho y se corre a mano.
+# Fecha de creación: 04/11/2026
+# Actualización: 04/11/2026
+# Autor: Equipo InspectIA
+# Versión: 1.0
+
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Un push nuevo a la rama de un PR cancela la corrida anterior de ese PR, que ya no sirve. En main cada corrida tiene
+# su propio grupo: ninguna se cancela ni espera a otra, así se prueba cada push.
+concurrency:
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  generador:
+    name: Generador
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: generador/requirements*.txt
+      - name: Dependencias
+        run: python -m pip install -r generador/requirements-dev.txt
+      - name: Pruebas
+        working-directory: generador
+        run: python -m pytest
+      - name: Lo generado está al día
+        run: python generador/generar.py comprobar
+      - name: docs/casos-de-prueba.md está al día
+        run: python generador/casos_de_prueba.py comprobar
+
+  backend:
+    name: Backend
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+      # Las de integración usan PostgreSQL 18 en Testcontainers, con el Docker que trae el runner.
+      - name: Pruebas unitarias y de integración
+        working-directory: backend
+        run: ./mvnw -B -ntp verify
+      - name: Reportes de las pruebas, si algo falló
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: reportes-backend
+          path: |
+            backend/target/surefire-reports/
+            backend/target/failsafe-reports/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: frontend/.node-version
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Dependencias
+        run: npm ci
+      - name: ESLint
+        run: npm run lint
+      - name: Vitest
+        run: npm test
+      - name: Build
+        run: npm run build
+
+  punta-a-punta:
+    name: De punta a punta
+    # Empieza solo si los otros pasan: así no se gastan sus minutos cuando ya falló algo más barato.
+    needs: [generador, backend, frontend]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: frontend/.node-version
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Dependencias
+        run: npm ci
+      # Sin caché: Playwright recomienda descargarlos, porque restaurarlos tarda casi lo mismo, y sus dependencias de
+      # Linux se instalan igual. Chrome y Edge, para Selenium, ya vienen en el runner.
+      - name: Navegadores de Playwright
+        run: npx playwright install --with-deps chromium firefox webkit
+      # Un solo entorno para Playwright y Selenium: la base, el backend compilado en una copia y la página compilada.
+      # Queda encendido hasta que termina el job, y el runner se borra con él.
+      - name: Encender el entorno aislado
+        run: |
+          nohup npm run e2e:entorno > "$RUNNER_TEMP/entorno.log" 2>&1 &
+          proceso=$!
+          for intento in $(seq 1 120); do
+            if grep -q 'Entorno listo en' "$RUNNER_TEMP/entorno.log"; then
+              break
+            fi
+            if ! kill -0 "$proceso" 2>/dev/null; then
+              break
+            fi
+            sleep 5
+          done
+          cat "$RUNNER_TEMP/entorno.log"
+          direccion=$(grep -o 'Entorno listo en http://localhost:[0-9]*' "$RUNNER_TEMP/entorno.log" | sed 's/Entorno listo en //')
+          if [ -z "$direccion" ]; then
+            echo "::error::El entorno aislado no encendió. Su registro está arriba y en los reportes."
+            exit 1
+          fi
+          echo "INSPECTIA_E2E_URL=$direccion" >> "$GITHUB_ENV"
+      - name: Playwright, con Firefox
+        run: npx playwright test
+      - name: Selenium, con Chrome y Edge
+        if: ${{ !cancelled() && env.INSPECTIA_E2E_URL != '' }}
+        run: npm run e2e:selenium
+      - name: Reportes, si algo falló
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: reportes-de-punta-a-punta
+          path: |
+            frontend/playwright-report/
+            frontend/test-results/
+            frontend/reports/selenium/
+            frontend/e2e/.entorno/*.log
+            ${{ runner.temp }}/entorno.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+  aviso:
+    name: Aviso de fallas
+    needs: [generador, backend, frontend, punta-a-punta]
+    # Solo en main, también cuando algo falló; no si alguien canceló la corrida.
+    if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    # Todo lo que viene del push, como el mensaje del commit, entra por variables de entorno y nunca dentro del script.
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      RESULTADOS: ${{ toJSON(needs) }}
+      RAMA: ${{ github.ref_name }}
+      CORRIDA: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      COMMIT: ${{ github.sha }}
+      MENSAJE: ${{ github.event.head_commit.message }}
+      AUTOR: ${{ github.actor }}
+    steps:
+      - name: Abrir, comentar o cerrar el issue de cada job
+        run: |
+          # Cada job, con el nombre que se ve en GitHub. Hay un issue por job: así una falla repetida es la misma.
+          declare -A NOMBRES=([generador]='Generador' [backend]='Backend' [frontend]='Frontend' [punta-a-punta]='De punta a punta')
+          commit="${COMMIT:0:7} «${MENSAJE%%$'\n'*}»"
+          gh label create ci --color B60205 --description 'Falla de la integración continua' --force
+          for job in generador backend frontend punta-a-punta; do
+            resultado=$(jq -r --arg job "$job" '.[$job].result' <<< "$RESULTADOS")
+            titulo="La CI falla en $RAMA: ${NOMBRES[$job]}"
+            abierto=$(gh issue list --state open --label ci --limit 100 --json number,title \
+              | jq -r --arg titulo "$titulo" '[.[] | select(.title == $titulo) | .number][0] // empty')
+            case "$resultado" in
+              # Un job que pasa de su tiempo máximo queda como cancelado: también es una falla.
+              failure|cancelled)
+                if [ -n "$abierto" ]; then
+                  gh issue comment "$abierto" --body "Volvió a fallar en $CORRIDA, con el commit $commit, de @$AUTOR."
+                  echo "${NOMBRES[$job]}: comentado en el issue #$abierto."
+                else
+                  cuerpo=$(printf '%s\n' \
+                    "El job «${NOMBRES[$job]}» falló en \`$RAMA\`." \
+                    '' \
+                    "- Corrida: $CORRIDA" \
+                    "- Commit: $commit" \
+                    "- Push: @$AUTOR" \
+                    '' \
+                    "Si vuelve a fallar, la CI comenta aquí. Cuando vuelva a pasar en \`$RAMA\`, cierra este issue.")
+                  # Si no se puede asignar a quien hizo el push, como un bot, el issue se abre igual, sin asignar.
+                  gh issue create --title "$titulo" --label ci --assignee "$AUTOR" --body "$cuerpo" \
+                    || gh issue create --title "$titulo" --label ci --body "$cuerpo"
+                  echo "${NOMBRES[$job]}: issue abierto."
+                fi
+                ;;
+              success)
+                if [ -n "$abierto" ]; then
+                  gh issue close "$abierto" --comment "Volvió a pasar en $CORRIDA, con el commit $commit."
+                  echo "${NOMBRES[$job]}: issue #$abierto cerrado."
+                fi
+                ;;
+              # skipped: el job no corrió, porque falló uno anterior; su issue queda como estaba.
+            esac
+          done
