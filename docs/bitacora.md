@@ -2,9 +2,9 @@
 Nombre: bitacora.md
 Descripción: Registro paso a paso de cómo se construyó InspectIA, para la sustentación (RP-24).
 Fecha de creación: 12/10/2026
-Actualización: 02/11/2026
+Actualización: 09/11/2026
 Autor: Equipo InspectIA
-Versión: 1.20
+Versión: 1.21
 -->
 
 # Bitácora de construcción (RP-24)
@@ -828,6 +828,85 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
 
   Al revisar el commit 2 pidió dos más: el rol entre paréntesis en la consola y, en la guía, el experimento con un campo nuevo.
 - Archivos o PR: la rama `feature/RP-23-demostracion-cualquier-entidad`; el PR lo abre Cristhian.
+
+## 09/11/2026 · RP-18 y RP-19: la integración continua con GitHub Actions
+
+- Quién: Cristhian Sánchez (`DrekOF`), con Claude Code.
+- Qué se hizo:
+  - **En la rama `feature/RP-18-integracion-continua`, commit por commit, cada uno revisado por Cristhian antes del siguiente:**
+    1. **El flujo** (`ddcd904`): `.github/workflows/ci.yml`, en la carpeta donde GitHub busca los flujos.
+       - Corre en cada PR hacia `main`, en cada push a `main` y a mano. Un push nuevo a la rama de un PR cancela la corrida anterior; en `main` no se cancela ninguna.
+       - **Generador:** sus pruebas, `generar.py comprobar` y `casos_de_prueba.py comprobar`.
+       - **Backend:** `./mvnw verify`, con Testcontainers.
+       - **Frontend:** ESLint, Vitest y el build.
+       - **De punta a punta:** si los tres pasan, enciende un solo entorno aislado y corre Playwright, con Firefox, y Selenium.
+       - **Aviso de fallas, solo en `main`:**
+         - abre un issue por cada job que falla, con la etiqueta `ci`, asignado a quien hizo el push;
+         - si ya hay uno abierto por esa falla, comenta ahí;
+         - cuando el job vuelve a pasar, lo cierra.
+
+         Lo que viene del push entra por variables de entorno, nunca dentro del script.
+       - Versiones del proyecto, con caché de pip, Maven y npm; permisos de solo lectura, salvo el aviso; tiempo máximo en cada job; reportes como artefactos por 7 días si algo falla.
+    2. **Selenium sin Edge en la CI** (`affeade`): con `INSPECTIA_E2E_SIN_EDGE=1` salta Edge, como Playwright salta Firefox con `INSPECTIA_E2E_SIN_FIREFOX`, y el flujo la usa (ver «Problemas encontrados»).
+    3. **La documentación:**
+       - en el README, la sección «Integración continua», con los pasos en GitHub, la fila de versiones de las acciones, `.github/workflows/` en la estructura y la nota de Edge;
+       - la variable `INSPECTIA_E2E_SIN_EDGE` en el README del frontend;
+       - el README de infra;
+       - la línea de `CLAUDE.md`, que decía que GitHub Actions va en `infra/`;
+       - esta bitácora.
+  - **La prueba del aviso,** en `prueba/aviso-ci`, una rama de usar y botar con el mismo script y Generador fallando a propósito. Costó unos 13 minutos:
+    1. El primer push abrió el issue #12, «La CI falla en prueba/aviso-ci: Generador», asignado a DrekOF y con la etiqueta `ci`.
+    2. El segundo, con Generador fallando todavía, comentó en el mismo issue.
+    3. El tercero, con Generador pasando, lo cerró.
+
+    Después se borró la rama.
+  - **La medida, en las dos corridas del PR #13.** GitHub cobra cada job redondeado hacia arriba al minuto entero:
+
+    | Job | Primera corrida | Segunda corrida |
+    |---|---|---|
+    | Generador | 20 s (1 min) | 29 s (1 min) |
+    | Backend | 1 min 57 s (2 min) | 2 min 12 s (3 min) |
+    | Frontend | 2 min 58 s (3 min) | 2 min 12 s (3 min) |
+    | De punta a punta | 10 min 31 s (11 min), con Edge sin abrir | 13 min 10 s (14 min) |
+    | Total cobrado | 17 min | 21 min |
+
+    - Lo que más varía es Playwright: 7,8 min en una corrida y 10,3 en la otra, con 1 worker.
+    - En `main` se suma 1 minuto, por el aviso.
+    - Con 21 minutos, caben unas 95 corridas completas al mes en los 2.000 minutos del plan gratis.
+    - Eso está por debajo de la regla de los 30 minutos, así que las de punta a punta quedaron en cada PR.
+  - **Problemas encontrados:**
+    - **Edge no abre en la CI.** El error fue «SessionNotCreatedError: session not created: Chrome instance exited».
+      - En Ubuntu 24.04, AppArmor no deja que un navegador sin perfil propio cree los espacios de nombres de su sandbox, y Edge se cierra al abrir. Chrome sí abre, y Playwright no lo sufre, porque abre sus navegadores sin sandbox.
+      - La primera opción fue quitar esa restricción en el runner, como hace el CI de Playwright. El control de seguridad del modo automático de Claude Code la bloqueó, porque debilita una protección del sistema, y no se intentó por otro camino.
+      - Cristhian escogió no correr Edge en la CI. Edge se sigue probando en Windows, en el PC de cada integrante.
+    - **Exigir que la CI pase antes de fusionar no se puede en un repositorio privado del plan gratis:** las reglas de rama y los rulesets piden GitHub Pro. Cristhian lo pidió con GitHub Education; mientras tanto, nadie fusiona un PR en rojo. Los pasos para configurarlo quedaron en el README.
+    - **`gh` no estaba instalado.** Claude Code lo instaló con winget, a pedido de Cristhian, y él hizo `gh auth login`. Se usa solo para leer corridas y registros; lo que escribe en GitHub necesita su permiso.
+    - **La API de tiempos cobrados devuelve 0,** porque GitHub la está retirando. Los minutos se calcularon con la duración de cada job, redondeada como cobra GitHub. La página de cada corrida los muestra en «Usage».
+  - **Resultado:**
+    - En las dos corridas del PR, Generador, Backend y Frontend pasaron. El Backend corrió sus 119 pruebas unitarias y 401 de integración, y el Frontend, los 38 archivos de Vitest.
+    - Playwright, en Linux y con Firefox incluido: 296 en verde y 4 omitidas, las de siempre (iniciar sesión solo con el teclado y la de 1250 px, en el celular).
+    - Selenium, con Chrome, en PC y en celular: 12 en verde.
+    - Casos de prueba: 724 pruebas; de los 143 criterios de las fichas, 55 tienen prueba. Este PR no agrega pruebas.
+- Por qué: la fase 6 de la pauta pide que la CI «detecte los cambios en el repositorio y compile y pruebe; […] al probar si hay errores cree los issues, tareas y notifique a los integrantes» (RP-18 y RP-19). El despliegue a AWS va en otro PR.
+- Cómo se pidió:
+  - **Lo que pidió:** Cristhian pidió primero el plan, sin código:
+    - la CI en cada PR y en cada push a `main`;
+    - el generador, el backend, el frontend y las de punta a punta en Linux, con Firefox;
+    - Stryker fuera de la CI;
+    - las versiones del proyecto, con cachés;
+    - un issue por cada falla en `main`, asignado a quien hizo el push, o un comentario si ya hay uno;
+    - la medida de los minutos;
+    - los pasos en GitHub.
+
+    También pidió que le explicara de forma sencilla qué es la CI y cuándo corre.
+  - **Las cinco decisiones con que aprobó el plan:**
+    1. GitHub Pro con GitHub Education; mientras lo aprueban, nadie fusiona un PR en rojo.
+    2. Las de punta a punta solo en `main` y a mano, con una regla: si una corrida completa cobra 30 minutos o menos, correrlas también en cada PR.
+    3. Que el aviso cierre el issue cuando el job vuelva a pasar en `main`.
+    4. `gh` solo para leer; para escribir en GitHub, pedirle permiso.
+    5. Permiso para subir la rama y para la prueba del aviso en `prueba/aviso-ci`.
+  - **Lo que decidió después:** con la medida, dejar las de punta a punta en cada PR. Para Edge, la opción de no correrlo en la CI, con `INSPECTIA_E2E_SIN_EDGE`, anotada en el README y en esta bitácora.
+- Archivos o PR: la rama `feature/RP-18-integracion-continua` y el PR #13, que Cristhian abrió como borrador.
 
 ## Plantilla para nuevas entradas
 

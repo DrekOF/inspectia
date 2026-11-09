@@ -3,9 +3,9 @@ Nombre: README.md (frontend)
 Descripción: La página web de InspectIA: qué hay en frontend/, cómo arrancarla junto con el backend, sus textos,
              sus pruebas, el entorno aislado de las pruebas de punta a punta y la demostración de otra temática.
 Fecha de creación: 12/10/2026
-Actualización: 02/11/2026
+Actualización: 09/11/2026
 Autor: Equipo InspectIA
-Versión: 1.6
+Versión: 1.7
 -->
 
 # frontend
@@ -79,6 +79,7 @@ Las contraseñas y la clave de los tokens son nuevas en cada corrida. Quedan en 
 | `INSPECTIA_E2E_URL` | La dirección de un entorno encendido con `npm run e2e:entorno`: las pruebas lo usan en vez de encender otro. |
 | `INSPECTIA_E2E_JAR` | Un jar del backend ya compilado: el entorno lo usa en vez de compilar su copia. |
 | `INSPECTIA_E2E_SIN_FIREFOX` | Con `1`, Playwright salta Firefox. En Windows 11 25H2, el Firefox de Playwright 1.64.1 no abre: Windows rechaza cargar su `mozglue.dll`. En CI corre siempre. |
+| `INSPECTIA_E2E_SIN_EDGE` | Con `1`, Selenium salta Edge. La usa la CI: en Ubuntu 24.04, AppArmor no deja que Edge cree su sandbox y se cierra al abrir. Edge se prueba en Windows. |
 | `INSPECTIA_E2E_VER` | Con cualquier valor, Selenium abre los navegadores a la vista en vez de ocultos. |
 
 En PowerShell, por ejemplo: `$env:INSPECTIA_E2E_SIN_FIREFOX = '1'; npm run e2e:playwright`.
