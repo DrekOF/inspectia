@@ -2,9 +2,9 @@
 Nombre: README.md (infra)
 Descripción: Qué va en la carpeta infra/ de InspectIA, cómo reiniciar la base local, cómo crear el administrador de la plataforma y restablecer su contraseña, cómo probar la sesión en local y cómo usan infra/ las pruebas de punta a punta y la demostración de otra temática.
 Fecha de creación: 12/10/2026
-Actualización: 28/10/2026
+Actualización: 09/11/2026
 Autor: Equipo InspectIA
-Versión: 1.9
+Versión: 1.10
 -->
 
 # infra
@@ -24,7 +24,7 @@ Qué irá aquí:
 - Scripts de compilación y prueba del frontend y del backend (RP-16), y de gestión del repositorio en GitHub (RP-17).
 - Configuración del despliegue en AWS: una EC2 t4g con Docker Compose (D-16).
 
-Los flujos de GitHub Actions (RP-18 y RP-19) tienen que estar en `.github/workflows/`, en la raíz del repositorio, porque GitHub solo los busca ahí. Llaman a los scripts de esta carpeta. GitHub Actions se conecta a AWS por OIDC, sin claves guardadas.
+Los flujos de GitHub Actions (RP-18 y RP-19) tienen que estar en `.github/workflows/`, en la raíz del repositorio, porque GitHub solo los busca ahí. La integración continua ya está: `.github/workflows/ci.yml` (ver el README principal); sus pruebas de punta a punta encienden el entorno aislado, que usa `infra/docker-compose.yml` y el script del administrador de la plataforma. El despliegue, cuando llegue, se conectará a AWS por OIDC, sin claves guardadas.
 
 La EC2 t4g es ARM (Graviton), así que toda imagen debe funcionar en amd64 y en arm64.
 

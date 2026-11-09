@@ -3,11 +3,12 @@
  * Descripción: Pruebas con Selenium de los flujos principales (RP-14): entrar con el menú del rol, los datos
  *              errados, cambiar la contraseña, registrar una empresa, crear un usuario que entra y guardar unos
  *              rangos propios y restaurar los de D-10, en Chrome y en Edge, en tamaño de PC y de celular
- *              (RNF-05). Si una falla, guarda su captura y la consola del navegador en reports/selenium.
+ *              (RNF-05). Con INSPECTIA_E2E_SIN_EDGE=1 salta Edge, como en la CI. Si una falla, guarda su captura y
+ *              la consola del navegador en reports/selenium.
  * Fecha de creación: 20/10/2026
- * Actualización: 28/10/2026
+ * Actualización: 09/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.3
+ * Versión: 1.4
  */
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -16,12 +17,17 @@ import {
   datos, descartarConsola, desactivarUsuario, empresaNueva, entrar, escribirEn, esperar, esperarTexto, guardarFalla,
 } from './ayudas.js';
 
+/**
+ * Los navegadores, cada uno en tamaño de PC y de celular. Con INSPECTIA_E2E_SIN_EDGE=1 se salta Edge, como en la CI:
+ * en Ubuntu 24.04, AppArmor no deja que Edge cree el sandbox y se cierra al abrir. Edge se sigue probando en Windows
+ * (ver docs/bitacora.md).
+ */
 const COMBINACIONES = [
   ['Chrome', Browser.CHROME, 'PC', null],
   ['Chrome', Browser.CHROME, 'celular', CELULAR],
   ['Edge', Browser.EDGE, 'PC', null],
   ['Edge', Browser.EDGE, 'celular', CELULAR],
-];
+].filter(([, navegador]) => !(navegador === Browser.EDGE && process.env.INSPECTIA_E2E_SIN_EDGE === '1'));
 
 describe.each(COMBINACIONES)('%s en %s', (_, navegador, __, celular) => {
   let driver;

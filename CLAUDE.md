@@ -35,7 +35,7 @@ App web multiempresa que estima el % de granos de cacao sanos de un lote a parti
 
 ## Arquitectura (D-21)
 
-- Monorepo: `frontend/` (React + Material UI), `backend/` (Spring Boot), `ia-servicio/` (Python, OpenCV y ONNX), `generador/` (Python), `specs/`, `infra/` (Docker Compose, GitHub Actions y scripts de base de datos) y `docs/`.
+- Monorepo: `frontend/` (React + Material UI), `backend/` (Spring Boot), `ia-servicio/` (Python, OpenCV y ONNX), `generador/` (Python), `specs/`, `infra/` (Docker Compose y scripts de base de datos), `.github/workflows/` (GitHub Actions) y `docs/`.
 - El backend es un solo programa dividido en módulos:
   - `analisis` es hexagonal. Las reglas (% de granos sanos, categoría y sugerencia) van en `dominio/`, sin depender de Spring. El caso de uso `AnalizarLote` habla con el servicio de IA, S3, el PDF y la base de datos solo a través de interfaces (puertos).
   - `empresa`, `usuario` y `rango` van por capas y los genera `generador/`.
@@ -104,4 +104,5 @@ Desde la raíz del repositorio. Las versiones y cómo instalarlas están en `REA
   - En Windows 11 25H2 el Firefox de Playwright no abre: `INSPECTIA_E2E_SIN_FIREFOX=1` lo salta (en PowerShell, `$env:INSPECTIA_E2E_SIN_FIREFOX = '1'`).
   - Demostración de otra temática (RP-23), con Docker Desktop abierto y el entorno del generador creado: `npm run demo:otra-tematica` genera producto en una copia (`frontend/.demostracion`, en `.gitignore`), la enciende en el proyecto `inspectia-demo` y Ctrl+C la apaga y borra su base. Con `-- --entidad ../generador/pruebas/ejemplos/cafe.json`, otra entidad, como el café; con `-- --con-pruebas`, antes corre sus pruebas generadas. Las opciones van después de `--`. Guía para la sustentación: `docs/demostracion-otra-tematica.md`.
   - Si una prueba de Selenium falla, su captura y la consola del navegador quedan en `frontend/reports/selenium/`.
+- Integración continua (RP-18 y RP-19): `.github/workflows/ci.yml` corre sola en cada PR hacia `main`, en cada push a `main` y a mano, desde la pestaña Actions. En `main`, si un job falla, abre un issue con la etiqueta `ci`. Ver el README.
 - Servicio de IA: se agrega aquí cuando se cree el proyecto.

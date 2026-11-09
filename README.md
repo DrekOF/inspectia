@@ -1,10 +1,10 @@
 <!--
 Nombre: README.md
-Descripción: Presentación del monorepo de InspectIA: estructura, versiones, requisitos del entorno de desarrollo, base de datos local, frontend y cita del dataset.
+Descripción: Presentación del monorepo de InspectIA: estructura, versiones, requisitos del entorno de desarrollo, base de datos local, frontend, integración continua y cita del dataset.
 Fecha de creación: 12/10/2026
-Actualización: 02/11/2026
+Actualización: 09/11/2026
 Autor: Equipo InspectIA
-Versión: 1.10
+Versión: 1.11
 -->
 
 # InspectIA
@@ -22,6 +22,7 @@ Proyecto final de Inteligencia Artificial, Universidad Surcolombiana. Docente: J
 | `ia-servicio/` | Servicio de IA: Python, OpenCV y ONNX. |
 | `generador/` | Scripts de Python que generan los CRUD a partir de `specs/entidades/` (RP-23) y la lista de casos de prueba (RP-13). |
 | `infra/` | Docker Compose, scripts de base de datos, de compilación y de despliegue. |
+| `.github/workflows/` | La integración continua con GitHub Actions (RP-18 y RP-19). |
 | `specs/` | Especificación: fichas RF y RNF, decisiones, arquitectura, pautas del docente y entidades. |
 | `docs/` | Bitácora de construcción (RP-24), casos de prueba (RP-13), la guía de la demostración de otra temática (RP-23) y documentación. |
 
@@ -45,6 +46,7 @@ Fijadas el 12/10/2026; las del frontend, el 20/10/2026. La versión exacta de ca
 | Calidad del frontend | ESLint 10.13.0 y Stryker 10.0.0 | |
 | Python | 3.13 | Para `ia-servicio/` y `generador/`. El generador usa Jinja2 3.1.6 y pytest 9.1.1 (`generador/requirements*.txt`). |
 | PostgreSQL | 18 | Corre en Docker; no hace falta instalarlo. |
+| GitHub Actions | `checkout` v7, `setup-java` v6, `setup-python` v7, `setup-node` v7 y `upload-artifact` v7, en Ubuntu 24.04 | Las acciones oficiales de GitHub, en su versión mayor; fijadas el 04/11/2026. |
 
 ### Imágenes de Docker
 
@@ -156,7 +158,41 @@ Desde `frontend/`, la primera vez `npm ci`. Los detalles están en `frontend/REA
 - **Pruebas unitarias y de componentes:** `npm test`, con la API simulada (MSW): no necesitan el backend. `npm run lint` corre ESLint y `npm run test:mutacion`, las pruebas de mutación con Stryker (RP-12).
 - **Pruebas de punta a punta (RP-14):** `npm run e2e:playwright` y `npm run e2e:selenium`, con Docker Desktop abierto. La primera vez, `npx playwright install chromium firefox webkit`. Cada corrida enciende su propio entorno: una base en otro proyecto de Docker Compose, el backend compilado en una copia y la página compilada, con contraseñas nuevas. No usa `infra/.env` ni tu base, y lo borra al terminar.
 - **Firefox en Windows 11 25H2:** el Firefox de Playwright 1.64.1 no abre (Windows rechaza cargar su `mozglue.dll`). En esos equipos, `INSPECTIA_E2E_SIN_FIREFOX=1` lo salta; en CI corre siempre.
+- **Edge en la CI:** Selenium lo salta con `INSPECTIA_E2E_SIN_EDGE=1`, porque en Ubuntu 24.04 AppArmor no deja que cree su sandbox y se cierra al abrir. Edge se prueba en Windows, en el PC de cada integrante.
 - **Demostración de otra temática (RP-23):** `npm run demo:otra-tematica`, con Docker Desktop abierto. En una copia del proyecto agrega una entidad de otra temática, saca su tabla, su API y su pantalla, y la enciende; Ctrl+C la apaga y borra su base. El repositorio no cambia. Por defecto es el producto de la pauta del docente; con `-- --entidad ../generador/pruebas/ejemplos/cafe.json`, un café especial del Huila. Ver `docs/demostracion-otra-tematica.md`.
+
+## Integración continua (RP-18 y RP-19)
+
+GitHub Actions corre `.github/workflows/ci.yml` en cada PR hacia `main`, en cada push a `main` y a mano, con «Run workflow» en la pestaña Actions. Cada job corre en una máquina de Linux (Ubuntu 24.04) que empieza vacía y se borra al terminar, con las versiones del proyecto y caché de pip, Maven y npm. Si llega un push nuevo a la rama de un PR, la corrida anterior de ese PR se cancela.
+
+| Job | Qué revisa | Tarda |
+|---|---|---|
+| Generador | Sus pruebas, que lo generado esté al día (`generar.py comprobar`) y que `docs/casos-de-prueba.md` también lo esté | 30 s |
+| Backend | `./mvnw verify`: las pruebas unitarias y las de integración, con PostgreSQL en Testcontainers | 2 min |
+| Frontend | `npm ci`, ESLint, Vitest y el build | 2 min |
+| De punta a punta | Si pasan los tres anteriores, contra un solo entorno aislado: Playwright, en Chrome, Firefox y Safari, de PC y de celular, y Selenium, en Chrome | 13 min, 10 de ellos de Playwright |
+| Aviso de fallas | Solo en `main`: abre, comenta o cierra el issue de cada job | Segundos |
+
+- **Si un job falla en `main`:**
+  - el aviso abre un issue «La CI falla en main: …», con el nombre del job y la etiqueta `ci`;
+  - lo asigna a quien hizo el push, que al fusionar un PR es quien lo fusionó, y GitHub le avisa por correo y en la campana;
+  - si ya hay uno abierto por ese job, comenta ahí;
+  - cuando el job vuelve a pasar en `main`, comenta y cierra el issue.
+- **Edge no corre en la CI:** ver «Edge en la CI», en «Frontend».
+- **Si algo falla:** el reporte de Playwright, las capturas de Selenium y los reportes de Maven quedan como artefactos de la corrida, por 7 días.
+- **Stryker no corre en la CI,** porque tarda mucho: se sigue corriendo a mano, con `npm run test:mutacion`.
+- **Minutos:** el repositorio es privado, y el plan gratis trae unos 2.000 minutos de Linux al mes. GitHub cobra cada job redondeado hacia arriba al minuto entero. Las dos corridas medidas en el PR #13 cobraron 17 y 21 minutos; en `main` se suma 1, por el aviso. Con 21, caben unas 95 corridas al mes. La página de cada corrida muestra lo cobrado en «Usage».
+
+### Lo que se configura en GitHub
+
+- **Exigir que la CI pase antes de fusionar:** en un repositorio privado hace falta GitHub Pro, que GitHub Education da gratis a los estudiantes. Mientras tanto, el equipo no fusiona un PR en rojo. Con Pro:
+  1. Settings → Rules → Rulesets → New ruleset → New branch ruleset.
+  2. Nombre «main», Enforcement status en «Active» y, en Target branches, «Include default branch».
+  3. Marca «Require a pull request before merging» y «Require status checks to pass».
+  4. En «Add checks», elige Generador, Backend, Frontend y De punta a punta.
+  5. Deja marcado «Block force pushes» y guarda con «Create».
+- **Los avisos:** cada integrante, en la página del repositorio, Watch → Custom → Issues. Así se entera de los issues de la CI aunque no estén asignados a su nombre.
+- **El gasto:** sin un método de pago en la cuenta, al llegar al cupo Actions se detiene hasta el mes siguiente; no cobra.
 
 ## Dataset y licencia (RNF-08)
 
@@ -176,5 +212,6 @@ Artículo de los autores:
 - Formato de las entidades y de la API generada: `specs/entidades/README.md`.
 - Casos de prueba por criterio de aceptación (RP-13): `docs/casos-de-prueba.md`.
 - Bitácora de construcción: `docs/bitacora.md`.
+- Integración continua: `.github/workflows/ci.yml` (ver «Integración continua»).
 - Demostración de otra temática, para la sustentación (RP-23): `docs/demostracion-otra-tematica.md`.
 - Frontend: `frontend/README.md`.
