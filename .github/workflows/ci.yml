@@ -1,11 +1,12 @@
 # Nombre: ci.yml
 # Descripción: Integración continua de InspectIA (RP-18 y RP-19). En cada PR hacia main, en cada push a main y a
 #              mano, compila y prueba el generador, el backend y el frontend, y corre las pruebas de punta a punta
-#              (Playwright y Selenium) en el entorno aislado. Si un job falla en main, abre un issue asignado a quien
-#              hizo el push, o comenta en el que ya está abierto por esa falla; cuando el job vuelve a pasar en main,
-#              lo cierra. Stryker no corre aquí: tarda mucho y se corre a mano.
+#              (Playwright y Selenium) en el entorno aislado; Selenium, sin Edge, que se prueba en Windows. Si un job
+#              falla en main, abre un issue asignado a quien hizo el push, o comenta en el que ya está abierto por esa
+#              falla; cuando el job vuelve a pasar en main, lo cierra. Stryker no corre aquí: tarda mucho y se corre a
+#              mano.
 # Fecha de creación: 04/11/2026
-# Actualización: 04/11/2026
+# Actualización: 09/11/2026
 # Autor: Equipo InspectIA
 # Versión: 1.0
 
@@ -122,7 +123,7 @@ jobs:
       - name: Dependencias
         run: npm ci
       # Sin caché: Playwright recomienda descargarlos, porque restaurarlos tarda casi lo mismo, y sus dependencias de
-      # Linux se instalan igual. Chrome y Edge, para Selenium, ya vienen en el runner.
+      # Linux se instalan igual. Chrome, para Selenium, ya viene en el runner.
       - name: Navegadores de Playwright
         run: npx playwright install --with-deps chromium firefox webkit
       # Un solo entorno para Playwright y Selenium: la base, el backend compilado en una copia y la página compilada.
@@ -149,8 +150,12 @@ jobs:
           echo "INSPECTIA_E2E_URL=$direccion" >> "$GITHUB_ENV"
       - name: Playwright, con Firefox
         run: npx playwright test
-      - name: Selenium, con Chrome y Edge
+      # Sin Edge: en Ubuntu 24.04, AppArmor no deja que un navegador sin perfil propio cree los espacios de nombres de
+      # su sandbox, y Edge se cierra al abrir («Chrome instance exited»). Edge se sigue probando en Windows.
+      - name: Selenium, con Chrome
         if: ${{ !cancelled() && env.INSPECTIA_E2E_URL != '' }}
+        env:
+          INSPECTIA_E2E_SIN_EDGE: '1'
         run: npm run e2e:selenium
       - name: Reportes, si algo falló
         if: failure()
