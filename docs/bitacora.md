@@ -2,9 +2,9 @@
 Nombre: bitacora.md
 Descripción: Registro paso a paso de cómo se construyó InspectIA, para la sustentación (RP-24).
 Fecha de creación: 12/10/2026
-Actualización: 09/11/2026
+Actualización: 10/11/2026
 Autor: Equipo InspectIA
-Versión: 1.21
+Versión: 1.22
 -->
 
 # Bitácora de construcción (RP-24)
@@ -907,6 +907,67 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
     5. Permiso para subir la rama y para la prueba del aviso en `prueba/aviso-ci`.
   - **Lo que decidió después:** con la medida, dejar las de punta a punta en cada PR. Para Edge, la opción de no correrlo en la CI, con `INSPECTIA_E2E_SIN_EDGE`, anotada en el README y en esta bitácora.
 - Archivos o PR: la rama `feature/RP-18-integracion-continua` y el PR #13, que Cristhian abrió como borrador.
+
+## 10/11/2026 · D-39 y D-40: el modelo de Julián (modelos-v1.0) en las especificaciones
+
+- Quién: Cristhian Sánchez (`DrekOF`), con Claude Code.
+- Qué se hizo:
+  - **En la rama `feature/D-39-modelos-v1.0`, commit por commit, cada uno revisado por Cristhian antes del siguiente.** Es un PR de especificaciones y documentación: no cambia código ni agrega pruebas.
+    1. **D-39 y P-19: el porcentaje corregido** (`54d87ef`):
+       - D-39: el porcentaje que cuenta el modelo se corrige con los recall del modelo que analizó la muestra, `p_real = (p_obs − (1 − recall_mala)) / (recall_sana − (1 − recall_mala))`, limitado a [0, 1]; con EfficientNet-B0, `(p_obs − 0,466) / 0,446`. Se corrige con los conteos y se redondea al final, y con 2 muestras de modelos distintos la suma se corrige con los recall de cada una. El resultado del lote es el porcentaje corregido, con su margen, y junto a la foto marcada se ve lo que contó el modelo.
+       - P-19, nuevo: cómo se calcula el margen y cuándo se sugiere otra muestra, con Julián.
+       - Notas en D-23, D-24 y D-25.
+       - RF-10 1.2: C1 a C6 reescritos y C8 a C14 nuevos.
+       - RF-11 1.1: la frase «El porcentaje corrige los errores conocidos del modelo» y C6 nuevo.
+       - RF-12 1.2: C6 y C7 quedan «Eliminado (D-39)», y los reemplazan C11 y C12.
+       - RF-15 1.2: el reporte, con el porcentaje corregido y lo contado.
+    2. **D-40, P-01 y P-02: el modelo de Julián** (`606bdde`):
+       - D-40: el servicio de IA usa el SavedModel de TensorFlow 2.21 de Julián, no ONNX; nota en D-21.
+       - P-01 y P-02, resueltos; P-12, con el riesgo de la resolución; P-14 sigue abierto, con una frase de estado.
+       - Los nombres de los conjuntos: los 334 granos son el conjunto de prueba (D-14, RF-17 y una nota en D-18), y el umbral de confianza baja sale del `val` de Julián (P-15, RF-08 y RF-09).
+       - RF-08 1.1 (sigue en «Propuesto»), RNF-07 1.1 (C1 y C3 reescritos y C5 nuevo), RF-09 1.2 y RF-17 1.1.
+       - `specs/arquitectura.md` 1.4 y dos líneas de `CLAUDE.md`: TensorFlow en lugar de ONNX, y el modelo ya entregado.
+    3. **Esta bitácora.**
+  - **Lo que se leyó:** el release `modelos-v1.0` y el README de Julián, con `gh` y solo leyendo, sin descargar los archivos del release. Se usó el README 4.3, de la rama `main` y del 26/10/2026. El tag apunta a la 4.2, que todavía no traía la decisión de P-02 ni las «Notas para el equipo»; las cifras son las mismas en las dos.
+  - **Las cifras de los criterios nuevos se recalcularon con un script** antes de escribirlas, con los recall de tres decimales que publica Julián: 0,912 y 0,534 para EfficientNet-B0, y 0,874 y 0,521 para ResNet-50.
+  - **Lo que se encontró al leer:**
+    - Sin corregir, un lote 100 % sano daría en promedio 91,2 %; por azar, con 100 granos, llega a 96 % unas 5 de cada 100 veces. Por eso D-39 dice «en promedio» y «casi nunca».
+    - Con los recall de la matriz de confusión (238/261 y 39/73), en lugar de los de tres decimales, el primer decimal del resultado cambia en 1 de cada 5 conteos. Los criterios valen con 0,912 y 0,534.
+    - Corregir el porcentaje contado ya redondeado cambia el primer decimal en algunos conteos; de ahí el criterio 12 de RF-10.
+    - El límite de 4 s por 100 granos es la forma en que Julián aplicó D-18. Quedó en P-01, en la nota de D-18 y en RF-08.
+    - TensorFlow 2.21.0 publica paquetes para Linux ARM con Python 3.13: D-40 encaja con la t4g.medium y con `python:3.13-slim`.
+    - D-21 no nombraba ONNX: estaba en `specs/arquitectura.md`, `CLAUDE.md`, el README, `ia-servicio/README.md` y `.gitignore`.
+    - La tabla `modelo` guarda `recall_macro` y no el recall de cada clase, que D-39 necesita. Sale de `specs/entidades/modelo.json`, así que cambiarla regenera la migración.
+  - **Un error del plan, corregido en el commit 1:** el plan decía que `casos_de_prueba.py` no distinguía los criterios «Eliminado». Sí lo hace, en `generador/inspectia_generador/casos.py`: los marca, no los cuenta como pendientes y falla si una prueba cita uno. Claude Code solo había buscado en el script de entrada.
+  - **Lo que queda para otros PR:**
+    - el del servicio de IA: el README, `ia-servicio/README.md` y `.gitignore`, que todavía dicen ONNX;
+    - el de RF-10: los recall por clase en `specs/entidades/modelo.json` y la línea de `specs/modelo-datos.md` que dice «Mientras llegan los modelos (P-01)»;
+    - con Julián, P-14 y P-19; RF-08 sigue en «Propuesto» hasta que Julián lo lea;
+    - Julián tiene pendiente confirmar con el profesor la partición (≈ 68/12/20). Si el profesor exige 70/15/15, cambian la prueba y RNF-07.
+  - **Resultado:** `docs/casos-de-prueba.md` queda con 154 criterios: 55 con prueba, 97 pendientes y 2 eliminados. Pasan `casos_de_prueba.py comprobar`, `generar.py comprobar` y las 121 pruebas del generador.
+- Por qué: Julián entregó los modelos en su release `modelos-v1.0` (26/10/2026). En su README pide registrar la decisión de P-02, actualizar RF-08 y RNF-07 con lo medido, aclarar los nombres de los conjuntos y corregir el porcentaje del lote: sin la corrección, la app casi nunca daría Premium.
+- Cómo se pidió:
+  - **Lo que pidió:** Cristhian pidió un PR pequeño, solo de especificaciones, con lo que entregó Julián y sus números exactos:
+    - D-39, la corrección del porcentaje, con su fórmula y su motivo, en RF-10 y RF-12;
+    - D-40, TensorFlow en el servicio de IA;
+    - P-01 y P-02, resueltos;
+    - RF-08 y RNF-07 con lo medido, aclarando que los 334 granos son el test de Julián y que él eligió el modelo con su `val`;
+    - P-19, nuevo, para el margen y la segunda muestra;
+    - P-12, con el riesgo de la resolución.
+
+    Primero el plan, sin cambios.
+  - **Sus respuestas al plan:**
+    1. En este PR, D-40 con una nota en D-21, `specs/arquitectura.md` y las dos líneas de `CLAUDE.md`. El README, `ia-servicio/README.md`, `.gitignore` y los recall por clase de `modelo.json` van en los PR del servicio de IA y de RF-10.
+    2. Las notas en D-18, D-23, D-24 y D-25; «prueba» donde son los 334 granos (D-14 y RF-17), y el `val` de Julián en P-15, RF-08 y RF-09.
+    3. El resultado del lote es el porcentaje corregido con su margen, y junto a la foto marcada se ve lo contado. En RF-11, una frase corta que explique la diferencia.
+    4. Con 2 muestras de modelos distintos, la suma se corrige con los recall de cada muestra.
+    5. P-14 queda abierto y RF-08 en «Propuesto» hasta que Julián lo lea.
+  - **Lo que aceptó en la revisión, fuera del plan:**
+    - el C6 de RF-11, para que la frase tenga prueba;
+    - las entradas de RF-10, RF-11 y RF-12, y la fuente de RF-11 y RF-15;
+    - la frase de estado de P-14;
+    - en `specs/arquitectura.md`, la sección 4 con los conjuntos de Julián y la línea del adaptador falso.
+- Archivos o PR: la rama `feature/D-39-modelos-v1.0`; el PR lo abre Cristhian.
 
 ## Plantilla para nuevas entradas
 
