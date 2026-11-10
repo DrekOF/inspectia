@@ -21,8 +21,8 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 
 ## Resumen
 
-- **154 criterios de aceptación** en 26 fichas: 61 con prueba y 91 pendientes (2 eliminados).
-- **760 pruebas:** 273 de Java (33 generadas), 366 de JavaScript (73 generadas) y 121 de Python. Una prueba parametrizada cuenta una vez.
+- **154 criterios de aceptación** en 26 fichas: 62 con prueba y 90 pendientes (2 eliminados).
+- **778 pruebas:** 273 de Java (33 generadas), 384 de JavaScript (73 generadas) y 121 de Python. Una prueba parametrizada cuenta una vez.
 
 | Ficha | Criterios | Con prueba | Pendientes |
 |---|---:|---:|---:|
@@ -30,7 +30,7 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 | RF-02 · Registrar empresas y su primer administrador | 12 | 12 | 0 |
 | RF-03 · Gestionar los usuarios de la empresa | 11 | 11 | 0 |
 | RF-04 · Registrar un lote | 4 | 4 | 0 |
-| RF-05 · Tomar o subir las fotos de la muestra del lote, con guía de captura | 5 | 0 | 5 |
+| RF-05 · Tomar o subir las fotos de la muestra del lote, con guía de captura | 5 | 1 | 4 |
 | RF-06 · Validar la calidad de cada foto (nitidez y luz) y pedir repetirla si no sirve | 3 | 0 | 3 |
 | RF-07 · Separar y recortar los granos de cada foto, con control de granos pegados | 5 | 0 | 5 |
 | RF-08 · Clasificar cada grano como sano o no sano con el modelo de IA | 6 | 0 | 6 |
@@ -227,10 +227,10 @@ Otras pruebas de RF-03, que no cubren un criterio:
 
 | Criterio | Pruebas |
 |---|---|
-| C1. Con datos válidos, el lote queda registrado y el sistema pasa a la captura de fotos. | [`RegistroDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/RegistroDeLotesIT.java) · con datos válidos, el lote queda registrado como pendiente de análisis, con la empresa y el usuario de la sesión<br>[`LoteTest`](../backend/src/test/java/co/edu/usco/inspectia/analisis/dominio/LoteTest.java) · un lote recién registrado queda pendiente de análisis, con la empresa y el usuario que lo registra |
-| C2. Si el código ya existe en la empresa, el sistema lo avisa y no registra el lote. | [`RegistroDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/RegistroDeLotesIT.java) · si el código ya existe en la empresa, el sistema lo avisa y no registra el lote, aunque lo registre otro usuario |
+| C1. Con datos válidos, el lote queda registrado y el sistema pasa a la captura de fotos. | [`RegistroDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/RegistroDeLotesIT.java) · con datos válidos, el lote queda registrado como pendiente de análisis, con la empresa y el usuario de la sesión<br>[`LoteTest`](../backend/src/test/java/co/edu/usco/inspectia/analisis/dominio/LoteTest.java) · un lote recién registrado queda pendiente de análisis, con la empresa y el usuario que lo registra<br>[`FotosDeLaMuestra.test.jsx`](../frontend/src/lote/FotosDeLaMuestra.test.jsx) · la página de las fotos nombra el lote: su código y su finca o proveedor<br>[`NuevoLote.test.jsx`](../frontend/src/lote/NuevoLote.test.jsx) · con datos válidos registra el lote y pasa a las fotos de la muestra |
+| C2. Si el código ya existe en la empresa, el sistema lo avisa y no registra el lote. | [`RegistroDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/RegistroDeLotesIT.java) · si el código ya existe en la empresa, el sistema lo avisa y no registra el lote, aunque lo registre otro usuario<br>[`NuevoLote.test.jsx`](../frontend/src/lote/NuevoLote.test.jsx) · si el código ya existe en la empresa, lo marca con el aviso del prototipo y no pasa a las fotos |
 | C3. El código «l-001 » cuenta como repetido si ya existe «L-001». | [`EsquemaIT`](../backend/src/test/java/co/edu/usco/inspectia/EsquemaIT.java) · la base trata «l-001 » y «L-001» como el mismo código de la empresa<br>[`RegistroDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/RegistroDeLotesIT.java) · el código «l-001 » cuenta como repetido si ya existe «L-001»<br>[`LoteTest`](../backend/src/test/java/co/edu/usco/inspectia/analisis/dominio/LoteTest.java) · «l-001 » y «L-001» tienen la misma clave de código; «L-0001» tiene otra |
-| C4. La fecha de recepción no puede ser posterior a hoy. | [`FechaDeRecepcionIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/FechaDeRecepcionIT.java) · la fecha de recepción no puede ser posterior a hoy: con hoy en Colombia, el día siguiente se rechaza y hoy pasa (prueba de límite)<br>[`FechaDeRecepcionIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/FechaDeRecepcionIT.java) · una fecha de recepción de varias semanas después también se rechaza<br>[`LoteTest`](../backend/src/test/java/co/edu/usco/inspectia/analisis/dominio/LoteTest.java) · el dominio rechaza una fecha de recepción posterior a hoy y acepta la de hoy (prueba de límite) |
+| C4. La fecha de recepción no puede ser posterior a hoy. | [`FechaDeRecepcionIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/FechaDeRecepcionIT.java) · la fecha de recepción no puede ser posterior a hoy: con hoy en Colombia, el día siguiente se rechaza y hoy pasa (prueba de límite)<br>[`FechaDeRecepcionIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/FechaDeRecepcionIT.java) · una fecha de recepción de varias semanas después también se rechaza<br>[`LoteTest`](../backend/src/test/java/co/edu/usco/inspectia/analisis/dominio/LoteTest.java) · el dominio rechaza una fecha de recepción posterior a hoy y acepta la de hoy (prueba de límite)<br>[`NuevoLote.test.jsx`](../frontend/src/lote/NuevoLote.test.jsx) · la fecha de hoy en Colombia sí se acepta (prueba de límite)<br>[`NuevoLote.test.jsx`](../frontend/src/lote/NuevoLote.test.jsx) · una fecha de recepción posterior a hoy se marca antes de enviar, y el campo no ofrece fechas después de hoy |
 
 Otras pruebas de RF-04, que no cubren un criterio:
 
@@ -247,6 +247,12 @@ Otras pruebas de RF-04, que no cubren un criterio:
 - [`TextosTest`](../backend/src/test/java/co/edu/usco/inspectia/comun/texto/TextosTest.java) · la clave de búsqueda no distingue mayúsculas, tildes ni los espacios del inicio y del final
 - [`TextosTest`](../backend/src/test/java/co/edu/usco/inspectia/comun/texto/TextosTest.java) · sin tildes y la clave de búsqueda dejan un texto vacío como llega
 - [`TextosTest`](../backend/src/test/java/co/edu/usco/inspectia/comun/texto/TextosTest.java) · sin tildes: «Paraíso» queda «Paraiso», «Peña» queda «Pena» y «Güiza» queda «Guiza»
+- [`FotosDeLaMuestra.test.jsx`](../frontend/src/lote/FotosDeLaMuestra.test.jsx) · los pasos del análisis muestran el primero listo y el segundo en curso
+- [`NuevoLote.test.jsx`](../frontend/src/lote/NuevoLote.test.jsx) · Cancelar vuelve al inicio sin registrar nada
+- [`NuevoLote.test.jsx`](../frontend/src/lote/NuevoLote.test.jsx) · al escribir la finca o el proveedor sugiere los que ya usó la empresa, y al elegir uno lo escribe
+- [`NuevoLote.test.jsx`](../frontend/src/lote/NuevoLote.test.jsx) · el código tiene como máximo 30 caracteres
+- [`NuevoLote.test.jsx`](../frontend/src/lote/NuevoLote.test.jsx) · el código, la fecha y la finca o el proveedor son obligatorios; las observaciones no
+- [`NuevoLote.test.jsx`](../frontend/src/lote/NuevoLote.test.jsx) · los pasos del análisis muestran que el lote va en el primero
 
 ## RF-05 · Tomar o subir las fotos de la muestra del lote, con guía de captura
 
@@ -255,7 +261,7 @@ Otras pruebas de RF-04, que no cubren un criterio:
 | C1. En el celular, el botón abre la cámara; en el PC, permite elegir archivos. | **Pendiente** |
 | C2. El sistema exige al menos 2 fotos y acepta como máximo 3. | **Pendiente** |
 | C3. Rechaza archivos que no sean JPG o PNG o que pasen de 10 MB, con un mensaje claro. | **Pendiente** |
-| C4. La guía de captura se puede consultar antes de cada foto. | **Pendiente** |
+| C4. La guía de captura se puede consultar antes de cada foto. | [`FotosDeLaMuestra.test.jsx`](../frontend/src/lote/FotosDeLaMuestra.test.jsx) · la guía de captura se ve en la página de las fotos, con la foto de ejemplo y sus reglas |
 | C5. Cuando una foto se reemplaza, la anterior se borra de S3 y de la base de datos. | **Pendiente** |
 
 ## RF-06 · Validar la calidad de cada foto (nitidez y luz) y pedir repetirla si no sirve
@@ -411,7 +417,7 @@ Otras pruebas de RF-13, que no cubren un criterio:
 | C1. La lista muestra solo lotes de la empresa del usuario. | [`HistorialDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/HistorialDeLotesIT.java) · la lista muestra solo lotes de la empresa del usuario, también los que registraron sus compañeros |
 | C2. Los filtros por fecha del resultado, estado, categoría, código y usuario funcionan solos o combinados. | **Pendiente** |
 | C3. El detalle muestra las mismas cifras del resultado guardado y las de cada muestra. | **Pendiente** |
-| C4. Con más de 20 lotes, la lista se divide en páginas. | [`HistorialDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/HistorialDeLotesIT.java) · con más de 20 lotes, la lista se divide en páginas de 20, del lote más reciente al más antiguo |
+| C4. Con más de 20 lotes, la lista se divide en páginas. | [`HistorialDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/HistorialDeLotesIT.java) · con más de 20 lotes, la lista se divide en páginas de 20, del lote más reciente al más antiguo<br>[`Historial.test.jsx`](../frontend/src/lote/Historial.test.jsx) · con más de 20 lotes, la lista se divide en páginas de 20 y se pasa a la siguiente |
 | C5. Un lote pendiente se puede retomar desde la captura de fotos. | **Pendiente** |
 | C6. Un lote con otra muestra sugerida permite analizarla desde el detalle (D-25). | **Pendiente** |
 
@@ -422,6 +428,9 @@ Otras pruebas de RF-14, que no cubren un criterio:
 - [`HistorialDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/HistorialDeLotesIT.java) · la administradora de la empresa también ve el historial de su empresa
 - [`HistorialDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/HistorialDeLotesIT.java) · la lista va del último movimiento al más antiguo: la fecha del resultado si el lote se analizó, o la de registro si está pendiente, y trae la fecha del resultado
 - [`HistorialDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/HistorialDeLotesIT.java) · las páginas empiezan en 0 y traen de 1 a 100 lotes, como los demás listados
+- [`Historial.test.jsx`](../frontend/src/lote/Historial.test.jsx) · la administradora de la empresa también ve el historial
+- [`Historial.test.jsx`](../frontend/src/lote/Historial.test.jsx) · la lista trae las columnas del prototipo: un lote analizado con su resultado y uno pendiente sin él
+- [`Historial.test.jsx`](../frontend/src/lote/Historial.test.jsx) · sin lotes, la lista lo dice y no muestra páginas
 
 ## RF-15 · Descargar el reporte del lote en PDF
 
@@ -519,6 +528,7 @@ Otras pruebas de RNF-03, que no cubren un criterio:
 - [`UsuarioApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/usuario/UsuarioApiGeneradaIT.java) · un registro de usuario de otra empresa responde 404 en cada operación que lo usa (parametrizada, generada)
 - [`EsquemaIT`](../backend/src/test/java/co/edu/usco/inspectia/EsquemaIT.java) · un lote no puede apuntar a un usuario de otra empresa
 - [`LotesPorEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/LotesPorEmpresaIT.java) · las sugerencias de finca o proveedor no traen las de otra empresa
+- [`FotosDeLaMuestra.test.jsx`](../frontend/src/lote/FotosDeLaMuestra.test.jsx) · si el lote no existe o es de otra empresa, lo dice con el mensaje del backend
 
 ## RNF-04 · Exigir autenticación y restringir cada función según el rol
 
@@ -581,6 +591,7 @@ Otras pruebas de RNF-05, que no cubren un criterio:
 
 - [`CampoDeNumero.test.jsx`](../frontend/src/componentes/CampoDeNumero.test.jsx) · el campo de un número abre el teclado decimal del celular y guarda lo que se escribe, con coma o con punto
 - [`PantallaDeRegistros.test.jsx`](../frontend/src/crud/PantallaDeRegistros.test.jsx) · en el celular, la lista se ve en tarjetas, cada una con sus datos y sus acciones, sin tabla
+- [`Historial.test.jsx`](../frontend/src/lote/Historial.test.jsx) · en el celular cada lote va en una tarjeta, con su código, su estado y su resultado
 - [`Marco.test.jsx`](../frontend/src/navegacion/Marco.test.jsx) · en el celular el menú se esconde detrás del botón «Abrir el menú»
 
 ## RNF-06 · Ser sencilla de usar para el usuario final
