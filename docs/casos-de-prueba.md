@@ -22,7 +22,7 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 ## Resumen
 
 - **154 criterios de aceptación** en 26 fichas: 61 con prueba y 91 pendientes (2 eliminados).
-- **759 pruebas:** 272 de Java (33 generadas), 366 de JavaScript (73 generadas) y 121 de Python. Una prueba parametrizada cuenta una vez.
+- **760 pruebas:** 273 de Java (33 generadas), 366 de JavaScript (73 generadas) y 121 de Python. Una prueba parametrizada cuenta una vez.
 
 | Ficha | Criterios | Con prueba | Pendientes |
 |---|---:|---:|---:|
@@ -240,8 +240,9 @@ Otras pruebas de RF-04, que no cubren un criterio:
 - [`RegistroDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/RegistroDeLotesIT.java) · el mismo código se puede usar en otra empresa
 - [`RegistroDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/RegistroDeLotesIT.java) · las sugerencias de finca o proveedor tampoco distinguen tildes: «paraiso» sugiere «Finca El Paraíso» y «unión», «Finca La Union»
 - [`RegistroDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/RegistroDeLotesIT.java) · los datos obligatorios y sus longitudes máximas: código de 30 caracteres, finca o proveedor de 120 y observaciones de 500 (parametrizada)
+- [`RegistroDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/RegistroDeLotesIT.java) · se sugiere la forma más usada de cada finca, aunque otra sea más reciente: «Finca El Paraíso», escrita bien 3 veces, gana a «finca el paraiso», escrita después una vez
 - [`RegistroDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/RegistroDeLotesIT.java) · se sugieren como máximo 10 fincas o proveedores
-- [`RegistroDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/RegistroDeLotesIT.java) · si la misma finca se escribió con tilde y sin ella, se sugiere una sola vez, con la última forma
+- [`RegistroDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/RegistroDeLotesIT.java) · si la misma finca se escribió con tilde y sin ella el mismo número de veces, se sugiere una sola vez, con la forma más reciente
 - [`RegistroDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/RegistroDeLotesIT.java) · una fecha de recepción que no tiene el formato aaaa-mm-dd se rechaza en su campo
 - [`TextosTest`](../backend/src/test/java/co/edu/usco/inspectia/comun/texto/TextosTest.java) · la clave de búsqueda no distingue mayúsculas, tildes ni los espacios del inicio y del final
 - [`TextosTest`](../backend/src/test/java/co/edu/usco/inspectia/comun/texto/TextosTest.java) · sin tildes y la clave de búsqueda dejan un texto vacío como llega

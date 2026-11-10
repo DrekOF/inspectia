@@ -59,7 +59,8 @@ public interface RepositorioDeLotes {
     Page<VistaDeLote> historial(UUID empresaId, Pageable pagina);
 
     /**
-     * Las formas en que la empresa escribió sus fincas y proveedores, cada una con la última vez que la usó.
+     * Las formas en que la empresa escribió sus fincas y proveedores, cada una con cuántos lotes la usan y la
+     * última vez que se usó.
      *
      * @param empresaId la empresa
      * @return las formas, sin orden

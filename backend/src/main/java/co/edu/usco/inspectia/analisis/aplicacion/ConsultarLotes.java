@@ -70,8 +70,10 @@ public class ConsultarLotes {
 
     /**
      * Las fincas y los proveedores de la empresa que contienen el texto, sin distinguir mayúsculas, tildes
-     * ni los espacios del inicio y del final. Cada uno aparece una vez: si se escribió de varias formas,
-     * con la última que se usó. Van en orden alfabético y son como máximo {@value #MAXIMO_DE_SUGERENCIAS}.
+     * ni los espacios del inicio y del final. Cada uno aparece una vez: si se escribió de varias formas, con
+     * la más usada y, si empatan, con la más reciente. Así, una forma mal escrita una vez no reemplaza a la
+     * que se usó bien muchas veces. Van en orden alfabético y son como máximo
+     * {@value #MAXIMO_DE_SUGERENCIAS}.
      *
      * @param empresaId la empresa de la sesión
      * @param texto lo que el usuario lleva escrito; vacío para no filtrar
@@ -79,12 +81,12 @@ public class ConsultarLotes {
      */
     public List<String> origenes(UUID empresaId, String texto) {
         String buscado = Textos.claveDeBusqueda(texto == null ? "" : texto);
-        Map<String, OrigenUsado> ultimaFormaPorClave = new HashMap<>();
+        Map<String, OrigenUsado> formaPorClave = new HashMap<>();
         for (OrigenUsado usado : repositorio.origenesUsados(empresaId)) {
-            ultimaFormaPorClave.merge(Textos.claveDeBusqueda(usado.origen()), usado,
-                    (una, otra) -> otra.ultimaVez().isAfter(una.ultimaVez()) ? otra : una);
+            formaPorClave.merge(Textos.claveDeBusqueda(usado.origen()), usado,
+                    (una, otra) -> otra.preferidaSobre(una) ? otra : una);
         }
-        return ultimaFormaPorClave.entrySet().stream()
+        return formaPorClave.entrySet().stream()
                 .filter(entrada -> entrada.getKey().contains(buscado))
                 .sorted(Map.Entry.comparingByKey())
                 .limit(MAXIMO_DE_SUGERENCIAS)

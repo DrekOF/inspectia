@@ -67,12 +67,13 @@ public interface LotesJpa extends JpaRepository<LoteEntidad, UUID> {
     Page<VistaDeLote> historial(@Param("empresa") UUID empresa, Pageable pagina);
 
     /**
-     * Las formas en que la empresa escribió sus fincas y proveedores, con la última vez que usó cada una.
+     * Las formas en que la empresa escribió sus fincas y proveedores, con cuántos lotes usan cada una y la
+     * última vez que se usó.
      *
      * @param empresa la empresa
      * @return las formas
      */
-    @Query("select new co.edu.usco.inspectia.analisis.aplicacion.OrigenUsado(l.origen, max(l.fechaCreacion)) "
-            + "from LoteEntidad l where l.empresaId = :empresa group by l.origen")
+    @Query("select new co.edu.usco.inspectia.analisis.aplicacion.OrigenUsado(l.origen, count(l), "
+            + "max(l.fechaCreacion)) from LoteEntidad l where l.empresaId = :empresa group by l.origen")
     List<OrigenUsado> origenesUsados(@Param("empresa") UUID empresa);
 }

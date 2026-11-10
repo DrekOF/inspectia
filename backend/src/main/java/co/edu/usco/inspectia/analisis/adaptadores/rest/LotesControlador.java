@@ -117,8 +117,8 @@ public class LotesControlador {
     @PreAuthorize("hasAnyRole('USUARIO_FINAL', 'ADMIN_EMPRESA')")
     @Operation(summary = "Sugerir fincas o proveedores", description = "Las fincas y los proveedores de la empresa "
             + "que contienen el texto, sin distinguir mayúsculas, tildes ni los espacios del inicio y del final. Cada "
-            + "uno aparece una vez, con la última forma en que se escribió, en orden alfabético y como máximo 10 "
-            + "(RF-04). Roles: USUARIO_FINAL y ADMIN_EMPRESA.")
+            + "uno aparece una vez, con la forma más usada y, si empatan, la más reciente; en orden alfabético y como "
+            + "máximo 10 (RF-04). Roles: USUARIO_FINAL y ADMIN_EMPRESA.")
     public List<String> origenes(
             @Parameter(description = "Lo que el usuario lleva escrito; vacío para no filtrar.")
             @RequestParam(name = "texto", defaultValue = "")

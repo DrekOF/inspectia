@@ -207,8 +207,8 @@ class RegistroDeLotesIT {
         MvcTestResult cooperativa = lotes.origenes(token, "AGRO");
 
         assertThat(fincas).hasStatus(HttpStatus.OK);
-        assertThat(textos(fincas)).as("una sola vez cada finca, con la última forma en que se escribió y en orden "
-                + "alfabético").containsExactly("Finca El Paraíso", "FINCA LA ESPERANZA");
+        assertThat(textos(fincas)).as("una sola vez cada finca, en orden alfabético; las dos formas de La Esperanza "
+                + "se usaron una vez, así que gana la más reciente").containsExactly("Finca El Paraíso", "FINCA LA ESPERANZA");
         assertThat(textos(cooperativa)).as("el texto puede estar en cualquier parte del nombre")
                 .containsExactly("Cooperativa Agrosur");
     }
@@ -227,7 +227,7 @@ class RegistroDeLotesIT {
     }
 
     @Test
-    @DisplayName("RF-04 · si la misma finca se escribió con tilde y sin ella, se sugiere una sola vez, con la última forma")
+    @DisplayName("RF-04 · si la misma finca se escribió con tilde y sin ella el mismo número de veces, se sugiere una sola vez, con la forma más reciente")
     void unaSolaFormaConYSinTilde() {
         lotes.registrarOk(token, "L-001", "Finca El Paraíso");
         lotes.registrarOk(token, "L-002", "Finca el paraiso");
@@ -235,6 +235,19 @@ class RegistroDeLotesIT {
         MvcTestResult sugeridas = lotes.origenes(token, "PARAÍSO");
 
         assertThat(textos(sugeridas)).containsExactly("Finca el paraiso");
+    }
+
+    @Test
+    @DisplayName("RF-04 · se sugiere la forma más usada de cada finca, aunque otra sea más reciente: «Finca El Paraíso», escrita bien 3 veces, gana a «finca el paraiso», escrita después una vez")
+    void laFormaMasUsada() {
+        lotes.registrarOk(token, "L-001", "Finca El Paraíso");
+        lotes.registrarOk(token, "L-002", "Finca El Paraíso");
+        lotes.registrarOk(token, "L-003", "Finca El Paraíso");
+        lotes.registrarOk(token, "L-004", "finca el paraiso");
+
+        MvcTestResult sugeridas = lotes.origenes(token, "paraiso");
+
+        assertThat(textos(sugeridas)).containsExactly("Finca El Paraíso");
     }
 
     @Test
