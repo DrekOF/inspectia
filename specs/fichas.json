@@ -3,9 +3,9 @@
     "nombre": "fichas.json",
     "descripcion": "Fichas de los requerimientos funcionales (formato largo) y no funcionales (formato corto) de InspectIA. Fuente única para las secciones 5 y 6 del documento de requerimientos y, más adelante, para el listado de casos de prueba (RP-13).",
     "fecha_creacion": "12/10/2026",
-    "actualizacion": "26/10/2026",
+    "actualizacion": "09/11/2026",
     "autor": "Equipo InspectIA",
-    "version": "1.17"
+    "version": "1.18"
   },
   "rf": [
     {
@@ -454,70 +454,82 @@
       "encabezado": "Calcular el % de granos sanos",
       "titulo": "Calcular el porcentaje de granos sanos del lote",
       "codigo": "RF-10",
-      "version": "1.1",
-      "fuente": "D-02 (el resultado del lote se expresa como porcentaje de granos sanos) y D-25 (suma de 2 muestras).",
-      "descripcion": "El sistema calcula el porcentaje de granos sanos del lote: granos sanos dividido por el total de granos clasificados, por 100. Si el lote tiene 2 muestras, suma los granos de las dos (D-25).",
+      "version": "1.2",
+      "fuente": "D-02 (el resultado del lote se expresa como porcentaje de granos sanos), D-25 (suma de 2 muestras) y D-39 (corrección con los recall del modelo).",
+      "descripcion": "El sistema calcula el porcentaje de granos sanos del lote. Primero cuenta lo que clasificó el modelo: granos sanos dividido por el total de granos clasificados, por 100 (el porcentaje contado). Después lo corrige con los recall del modelo que analizó la muestra, porque sus errores sesgan el porcentaje (D-39). Si el lote tiene 2 muestras, suma los granos de las dos (D-25).",
       "justificacion": "Es el resultado principal con el que la empresa decide qué hacer con el lote (D-02).",
       "precondiciones": "Todos los granos de la muestra están clasificados (RF-08).",
       "restricciones": {
         "b": [
-          "Se redondea a un decimal.",
+          "Los dos porcentajes, el contado y el corregido, se redondean a un decimal. El corregido se calcula con los conteos, no con el contado ya redondeado (D-39).",
           "Las manchas y los granos cortados por el borde, descartados en RF-07, no cuentan.",
-          "Con 2 muestras se suman los granos; no se promedian los porcentajes (D-25)."
+          "Con 2 muestras se suman los granos; no se promedian los porcentajes (D-25).",
+          "El porcentaje contado se corrige con `p_real = (p_obs − (1 − recall_mala)) / (recall_sana − (1 − recall_mala))`, limitado a [0, 1], con los recall del modelo que analizó la muestra; mala es la clase no sano (D-39). Con EfficientNet-B0 (recall sana 0,912 y mala 0,534) queda `(p_obs − 0,466) / 0,446`.",
+          "Si las 2 muestras las analizaron modelos distintos, la suma se corrige con los recall de cada muestra: `(S − Σ nᵢ·(1 − recall_malaᵢ)) / Σ nᵢ·(recall_sanaᵢ − (1 − recall_malaᵢ))`, limitado a [0, 1], donde S es el total de granos sanos y nᵢ el total de granos de cada muestra. Con un solo modelo es la misma fórmula (D-39).",
+          "El porcentaje corregido se muestra con su margen; cómo se calcula lo define P-19."
         ]
       },
       "prioridad": "Alta",
       "dificultad": "Baja",
       "dependencia": "Depende de RF-08 y, cuando está disponible, va después de RF-09. De este requerimiento dependen RF-11, RF-12 y RF-15.",
       "actores": "Usuario final (recibe el resultado).",
-      "entradas": "La clase de cada grano de las muestras del lote.",
+      "entradas": "La clase de cada grano de las muestras del lote y los recall del modelo que analizó cada muestra.",
       "proceso": {
         "n": [
           "El sistema cuenta los granos sanos y el total de granos de la muestra, y los guarda con ella.",
-          "Suma los conteos de las muestras del lote y calcula sanos ÷ total × 100.",
-          "Guarda el porcentaje con el lote."
+          "Suma los conteos de las muestras del lote y calcula sanos ÷ total × 100: el porcentaje contado.",
+          "Corrige el porcentaje con los recall del modelo de cada muestra y lo limita a 0–100 % (D-39).",
+          "Guarda con el lote el porcentaje corregido."
         ]
       },
-      "salida": "El porcentaje de granos sanos, por ejemplo 93,0 %.",
-      "postcondiciones": "El porcentaje queda guardado con el lote, listo para la recomendación (RF-12).",
+      "salida": "El porcentaje corregido de granos sanos, con su margen (P-19), y el porcentaje contado; por ejemplo, con 87 de 100 granos marcados como sanos (87,0 % contado), 90,6 %.",
+      "postcondiciones": "El porcentaje corregido queda guardado con el lote, listo para la recomendación (RF-12).",
       "criterios": {
         "b": [
-          "Con 93 granos sanos de 100, el resultado es 93,0 %.",
-          "Con 141 granos sanos de 150, el resultado es 94,0 %.",
-          "Con 100 granos sanos de 107, el resultado es 93,5 % (redondeo a un decimal).",
-          "Con 2 muestras, 107 sanos de 120 y 113 de 125 dan 220 de 245 = 89,8 % (D-25).",
-          "Con 2 muestras de distinto tamaño se suman los granos: 109 sanos de 120 (90,8 %) y 120 de 150 (80,0 %) dan 229 de 270 = 84,8 %, no el promedio de los porcentajes (85,4 %).",
-          "El porcentaje se guarda con el lote, y cada muestra guarda sus conteos y el modelo que la analizó (D-18, D-25).",
-          "El cálculo tiene pruebas unitarias y de mutación (RP-12) que no dependen del servicio de IA (D-21)."
+          "Con 93 granos sanos de 100, el porcentaje contado es 93,0 %.",
+          "Con 141 granos sanos de 150, el porcentaje contado es 94,0 %.",
+          "Con 100 granos sanos de 107, el porcentaje contado es 93,5 % (redondeo a un decimal).",
+          "Con 2 muestras, 107 sanos de 120 y 113 de 125 dan 220 de 245 = 89,8 % contado (D-25).",
+          "Con 2 muestras de distinto tamaño se suman los granos: 109 sanos de 120 (90,8 %) y 120 de 150 (80,0 %) dan 229 de 270 = 84,8 % contado, no el promedio de los porcentajes (85,4 %).",
+          "El porcentaje corregido se guarda con el lote, y cada muestra guarda sus conteos y el modelo que la analizó (D-18, D-25).",
+          "El cálculo tiene pruebas unitarias y de mutación (RP-12) que no dependen del servicio de IA (D-21).",
+          "Con EfficientNet-B0 (recall sana 0,912 y mala 0,534), 87 sanos de 100 (87,0 % contado) dan 90,6 % corregido (D-39).",
+          "Con EfficientNet-B0, 93 sanos de 100 dan 100,0 % corregido: el porcentaje se limita a 100 % (sin el límite serían 104,0 %).",
+          "Con EfficientNet-B0, 40 sanos de 100 dan 0,0 % corregido: el porcentaje se limita a 0 % (sin el límite serían −14,8 %).",
+          "Con EfficientNet-B0 y 2 muestras, 220 sanos de 245 (89,8 % contado) dan 96,9 % corregido (D-25).",
+          "Con EfficientNet-B0, 84 sanos de 101 (83,2 % contado) dan 82,0 % corregido: se corrige con los conteos y se redondea al final; corregir el 83,2 % ya redondeado daría 82,1 %.",
+          "La corrección usa los recall del modelo que analizó la muestra: si cambia el modelo en uso, los lotes ya analizados conservan su porcentaje.",
+          "Con 2 muestras de modelos distintos, 100 sanos de 120 con EfficientNet-B0 y 105 de 125 con ResNet-50 (recall sana 0,874 y mala 0,521) dan 86,7 % corregido; con los recall de EfficientNet-B0 en las dos darían 83,1 %."
         ]
       },
       "rnf": "RNF-01 (tiempo de respuesta).",
       "estado": "Aprobado",
-      "observaciones": "Es una regla del núcleo hexagonal del módulo de análisis (D-21)."
+      "observaciones": "Es una regla del núcleo hexagonal del módulo de análisis (D-21). El margen del porcentaje corregido y cuándo sugerir otra muestra se definen en P-19."
     },
     {
       "encabezado": "Mostrar la foto con cada grano marcado",
       "titulo": "Mostrar el resultado con la foto marcada (cada grano sano o no sano)",
       "codigo": "RF-11",
-      "version": "1.0",
-      "fuente": "Proceso propuesto (TO-BE).",
-      "descripcion": "El sistema muestra el porcentaje de granos sanos y cada foto con los granos marcados: en verde los sanos y en rojo los no sanos.",
+      "version": "1.1",
+      "fuente": "Proceso propuesto (TO-BE) y D-39 (porcentaje corregido).",
+      "descripcion": "El sistema muestra el porcentaje corregido de granos sanos, con su margen (RF-10, D-39), y cada foto con los granos marcados: en verde los sanos y en rojo los no sanos. Junto a las fotos se ve lo que contó el modelo, por ejemplo «93 de 100 marcados como sanos».",
       "justificacion": "Ver qué granos se marcaron da confianza en el resultado y ayuda a retirar a mano los defectuosos.",
       "precondiciones": "El porcentaje de granos sanos está calculado (RF-10).",
       "restricciones": {
         "b": [
-          "Además del color, cada grano lleva un símbolo, para quienes no distinguen colores (RP-08)."
+          "Además del color, cada grano lleva un símbolo, para quienes no distinguen colores (RP-08).",
+          "Como el porcentaje corregido no coincide con los granos marcados, una frase corta explica la diferencia: «El porcentaje corrige los errores conocidos del modelo» (D-39)."
         ]
       },
       "prioridad": "Media",
       "dificultad": "Media",
       "dependencia": "Depende de RF-07 (posiciones de los granos) y de RF-10.",
       "actores": "Usuario final.",
-      "entradas": "Las fotos del lote, la posición y la clase de cada grano, y el porcentaje.",
+      "entradas": "Las fotos del lote, la posición y la clase de cada grano, el porcentaje corregido con su margen y los conteos de cada muestra.",
       "proceso": {
         "n": [
           "El sistema dibuja sobre cada foto un recuadro por grano según su clase.",
-          "Muestra el porcentaje, el total de granos, los sanos y los no sanos.",
+          "Muestra el porcentaje corregido con su margen y, junto a las fotos, el total de granos, los marcados como sanos y los no sanos, con la frase que explica la diferencia (D-39).",
           "Al tocar un grano, muestra su clase; los granos de confianza baja aparecen marcados como «dudoso»."
         ]
       },
@@ -529,7 +541,8 @@
           "Los granos sanos y no sanos se distinguen también por un símbolo, no solo por el color.",
           "Las cifras de la pantalla coinciden con el cálculo de RF-10.",
           "Al tocar un grano, o al pasar el cursor sobre él, se ve su clase; el valor de la confianza no se muestra al usuario final (sección 1).",
-          "La pantalla se ve bien en celular y en PC (RNF-05)."
+          "La pantalla se ve bien en celular y en PC (RNF-05).",
+          "Junto a las fotos se ve lo que contó el modelo, por ejemplo «93 de 100 marcados como sanos», y la frase «El porcentaje corrige los errores conocidos del modelo» (D-39)."
         ]
       },
       "rnf": "RNF-05 (PC y celular) y RNF-06 (facilidad de uso).",
@@ -540,15 +553,15 @@
       "encabezado": "Generar la recomendación",
       "titulo": "Generar la recomendación según los rangos de la empresa",
       "codigo": "RF-12",
-      "version": "1.1",
-      "fuente": "D-10, D-24 y D-25 (criterios de la recomendación) y anexo A.3.",
-      "descripcion": "Según el porcentaje de granos sanos y los rangos de la empresa, el sistema asigna una categoría probable y una acción sugerida.",
+      "version": "1.2",
+      "fuente": "D-10, D-24 y D-25 (criterios de la recomendación), D-39 (porcentaje corregido) y anexo A.3.",
+      "descripcion": "Según el porcentaje corregido de granos sanos (RF-10, D-39) y los rangos de la empresa, el sistema asigna una categoría probable y una acción sugerida.",
       "justificacion": "Convierte el porcentaje en una decisión: vender, seleccionar a mano o revisar el proceso.",
       "precondiciones": "El porcentaje de granos sanos está calculado (RF-10).",
       "restricciones": {
         "b": [
           "Rangos por defecto: 96 % o más, Premium o Especial; de 90 a 95,9 %, Estándar; de 82 a 89,9 %, Corriente; menos de 82 %, Fuera de norma (A.3).",
-          "Usa el porcentaje ya redondeado a un decimal de RF-10.",
+          "Usa el porcentaje corregido de RF-10, ya redondeado a un decimal (D-39).",
           "La categoría se presenta como probable: la oficial se confirma con la prueba de corte (D-10).",
           "Si el porcentaje queda a menos de 1 punto de un límite de la empresa (por defecto, 96, 90 u 82 %), se sugiere analizar otra muestra (D-24).",
           "Un lote tiene como máximo 2 muestras: la segunda solo se habilita cuando la app la sugiere, y con 2 muestras ya no se sugiere otra (D-25)."
@@ -558,7 +571,7 @@
       "dificultad": "Baja",
       "dependencia": "Depende de RF-10 y de los rangos de la empresa: los de por defecto (RF-02) o los ajustados (RF-13). De este requerimiento dependen RF-14, RF-15 y RF-16.",
       "actores": "Usuario final.",
-      "entradas": "El porcentaje de granos sanos y los rangos de la empresa.",
+      "entradas": "El porcentaje corregido de granos sanos y los rangos de la empresa.",
       "proceso": {
         "n": [
           "El sistema busca el rango que contiene el porcentaje.",
@@ -576,16 +589,18 @@
           "Con 90,9 %, la categoría es Estándar y sugiere analizar otra muestra (está a 0,9 puntos de 90); con 91,0 % no la sugiere (está a 1 punto). Es la prueba de límite del margen (D-24).",
           "Con 90,0 % la categoría es Estándar y con 89,9 % es Corriente; ambos sugieren otra muestra (prueba de límite).",
           "Con 75 %, la categoría es Fuera de norma, sin sugerencia.",
-          "Con 143 granos sanos de 149 (95,97 %, redondeado a 96,0 %), la categoría es Premium o Especial.",
-          "Con 2 muestras, la categoría sale de la suma de sus granos: 220 sanos de 245 (89,8 %) es Corriente, y no se sugiere otra muestra aunque quede a 0,2 puntos de 90 (D-25).",
+          "Eliminado (D-39): «Con 143 granos sanos de 149 (95,97 %, redondeado a 96,0 %), la categoría es Premium o Especial.» Con la corrección, esos conteos dan 100,0 %; el límite del redondeo pasa al criterio 11.",
+          "Eliminado (D-39): «Con 2 muestras, la categoría sale de la suma de sus granos: 220 sanos de 245 (89,8 %) es Corriente, y no se sugiere otra muestra aunque quede a 0,2 puntos de 90 (D-25).» Con la corrección, esos conteos dan 96,9 %; lo reemplaza el criterio 12.",
           "Un lote sin sugerencia, o que ya tiene 2 muestras, no permite agregar otra (D-25).",
           "Si la empresa cambió sus rangos (RF-13), se usan los de la empresa.",
-          "La categoría siempre se muestra como probable."
+          "La categoría siempre se muestra como probable.",
+          "Con EfficientNet-B0, 118 granos sanos de 132 (89,4 % contado) dan 95,95 % corregido, que se redondea a 96,0 %: la categoría es Premium o Especial (prueba de límite del redondeo, D-39).",
+          "Con 2 muestras, la categoría sale de la suma de sus granos: con EfficientNet-B0, 220 sanos de 245 (96,9 % corregido) es Premium o Especial, y no se sugiere otra muestra aunque quede a 0,9 puntos de 96 (D-25)."
         ]
       },
       "rnf": "RNF-07 (F1-score mínimo).",
       "estado": "Aprobado",
-      "observaciones": "Es una regla del núcleo hexagonal del módulo de análisis (D-21)."
+      "observaciones": "Es una regla del núcleo hexagonal del módulo de análisis (D-21). El margen de 1 punto para sugerir otra muestra se revisa en P-19."
     },
     {
       "encabezado": "Configurar los rangos de la empresa",
@@ -681,8 +696,8 @@
       "encabezado": "Descargar el reporte en PDF",
       "titulo": "Descargar el reporte del lote en PDF",
       "codigo": "RF-15",
-      "version": "1.1",
-      "fuente": "D-15: el reporte de cada lote se descarga en PDF.",
+      "version": "1.2",
+      "fuente": "D-15 (el reporte de cada lote se descarga en PDF) y D-39 (porcentaje corregido).",
       "descripcion": "Desde el resultado o desde el historial, el usuario descarga un PDF con el resultado del lote.",
       "justificacion": "La empresa necesita un soporte para archivarlo o compartirlo con sus compradores.",
       "precondiciones": "El lote está analizado (RF-12).",
@@ -690,7 +705,8 @@
         "b": [
           "El reporte aclara que la categoría es probable y que la oficial se confirma con la prueba de corte (D-10).",
           "El reporte indica el modelo que analizó cada muestra (D-18).",
-          "Cuando termina la segunda muestra, el reporte se rehace con el resultado del lote (D-25)."
+          "Cuando termina la segunda muestra, el reporte se rehace con el resultado del lote (D-25).",
+          "El reporte muestra el porcentaje corregido con su margen y, por cada muestra, lo que contó el modelo («93 de 100 marcados como sanos»), con la frase de RF-11 que explica la diferencia (D-39)."
         ]
       },
       "prioridad": "Media",
@@ -705,7 +721,7 @@
           "Guarda el PDF en S3 y lo entrega al navegador."
         ]
       },
-      "salida": "Un PDF con: empresa, código y fecha del lote; el resultado del lote (total de granos, porcentaje de granos sanos, categoría probable, recomendación, aviso de confianza baja si lo tiene y fecha del resultado); y, por cada muestra, el usuario, las fotos marcadas, sus granos y el modelo usado.",
+      "salida": "Un PDF con: empresa, código y fecha del lote; el resultado del lote (total de granos, porcentaje corregido de granos sanos con su margen, categoría probable, recomendación, aviso de confianza baja si lo tiene y fecha del resultado); y, por cada muestra, el usuario, las fotos marcadas, sus granos, lo que contó el modelo y el modelo usado.",
       "postcondiciones": "El PDF queda guardado y se puede volver a descargar.",
       "criterios": {
         "b": [
