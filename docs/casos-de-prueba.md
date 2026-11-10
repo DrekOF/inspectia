@@ -21,15 +21,15 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 
 ## Resumen
 
-- **154 criterios de aceptación** en 26 fichas: 55 con prueba y 97 pendientes (2 eliminados).
-- **724 pruebas:** 237 de Java (33 generadas), 366 de JavaScript (73 generadas) y 121 de Python. Una prueba parametrizada cuenta una vez.
+- **154 criterios de aceptación** en 26 fichas: 61 con prueba y 91 pendientes (2 eliminados).
+- **749 pruebas:** 262 de Java (33 generadas), 366 de JavaScript (73 generadas) y 121 de Python. Una prueba parametrizada cuenta una vez.
 
 | Ficha | Criterios | Con prueba | Pendientes |
 |---|---:|---:|---:|
 | RF-01 · Iniciar sesión según el rol | 8 | 8 | 0 |
 | RF-02 · Registrar empresas y su primer administrador | 12 | 12 | 0 |
 | RF-03 · Gestionar los usuarios de la empresa | 11 | 11 | 0 |
-| RF-04 · Registrar un lote | 4 | 1 | 3 |
+| RF-04 · Registrar un lote | 4 | 4 | 0 |
 | RF-05 · Tomar o subir las fotos de la muestra del lote, con guía de captura | 5 | 0 | 5 |
 | RF-06 · Validar la calidad de cada foto (nitidez y luz) y pedir repetirla si no sirve | 3 | 0 | 3 |
 | RF-07 · Separar y recortar los granos de cada foto, con control de granos pegados | 5 | 0 | 5 |
@@ -39,14 +39,14 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 | RF-11 · Mostrar el resultado con la foto marcada (cada grano sano o no sano) | 6 | 0 | 6 |
 | RF-12 · Generar la recomendación según los rangos de la empresa | 12 | 0 | 10 |
 | RF-13 · Configurar los rangos de recomendación de la empresa | 5 | 4 | 1 |
-| RF-14 · Consultar el historial de lotes evaluados | 6 | 0 | 6 |
+| RF-14 · Consultar el historial de lotes evaluados | 6 | 2 | 4 |
 | RF-15 · Descargar el reporte del lote en PDF | 5 | 0 | 5 |
 | RF-16 · Consultar las estadísticas de la empresa | 4 | 0 | 4 |
 | RF-17 · Consultar las métricas del modelo | 3 | 0 | 3 |
 | RF-18 · Cambiar la propia contraseña | 5 | 5 | 0 |
 | RNF-01 · Entregar el resultado del análisis de un lote en 5 a 8 segundos | 4 | 0 | 4 |
 | RNF-02 · Soportar hasta 30 empresas con 25 usuarios cada una | 4 | 0 | 4 |
-| RNF-03 · Mantener separados los datos de cada empresa | 5 | 3 | 2 |
+| RNF-03 · Mantener separados los datos de cada empresa | 5 | 4 | 1 |
 | RNF-04 · Exigir autenticación y restringir cada función según el rol | 6 | 6 | 0 |
 | RNF-05 · Funcionar en PC y en celular desde el navegador | 3 | 2 | 1 |
 | RNF-06 · Ser sencilla de usar para el usuario final | 4 | 2 | 2 |
@@ -227,10 +227,19 @@ Otras pruebas de RF-03, que no cubren un criterio:
 
 | Criterio | Pruebas |
 |---|---|
-| C1. Con datos válidos, el lote queda registrado y el sistema pasa a la captura de fotos. | **Pendiente** |
-| C2. Si el código ya existe en la empresa, el sistema lo avisa y no registra el lote. | **Pendiente** |
-| C3. El código «l-001 » cuenta como repetido si ya existe «L-001». | [`EsquemaIT`](../backend/src/test/java/co/edu/usco/inspectia/EsquemaIT.java) · la base trata «l-001 » y «L-001» como el mismo código de la empresa |
-| C4. La fecha de recepción no puede ser posterior a hoy. | **Pendiente** |
+| C1. Con datos válidos, el lote queda registrado y el sistema pasa a la captura de fotos. | [`RegistroDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/RegistroDeLotesIT.java) · con datos válidos, el lote queda registrado como pendiente de análisis, con la empresa y el usuario de la sesión |
+| C2. Si el código ya existe en la empresa, el sistema lo avisa y no registra el lote. | [`RegistroDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/RegistroDeLotesIT.java) · si el código ya existe en la empresa, el sistema lo avisa y no registra el lote, aunque lo registre otro usuario |
+| C3. El código «l-001 » cuenta como repetido si ya existe «L-001». | [`EsquemaIT`](../backend/src/test/java/co/edu/usco/inspectia/EsquemaIT.java) · la base trata «l-001 » y «L-001» como el mismo código de la empresa<br>[`RegistroDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/RegistroDeLotesIT.java) · el código «l-001 » cuenta como repetido si ya existe «L-001» |
+| C4. La fecha de recepción no puede ser posterior a hoy. | [`FechaDeRecepcionIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/FechaDeRecepcionIT.java) · la fecha de recepción no puede ser posterior a hoy: con hoy en Colombia, el día siguiente se rechaza y hoy pasa (prueba de límite)<br>[`FechaDeRecepcionIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/FechaDeRecepcionIT.java) · una fecha de recepción de varias semanas después también se rechaza |
+
+Otras pruebas de RF-04, que no cubren un criterio:
+
+- [`RegistroDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/RegistroDeLotesIT.java) · al escribir la finca o el proveedor, el sistema sugiere los que ya usó la empresa, sin distinguir mayúsculas y sin repetirlos
+- [`RegistroDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/RegistroDeLotesIT.java) · con el código de 30 caracteres, la finca o el proveedor de 120 y las observaciones de 500, el lote se registra (prueba de límite)
+- [`RegistroDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/RegistroDeLotesIT.java) · el código, la finca o el proveedor y las observaciones se guardan sin los espacios del inicio y del final; unas observaciones en blanco quedan vacías
+- [`RegistroDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/RegistroDeLotesIT.java) · el mismo código se puede usar en otra empresa
+- [`RegistroDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/RegistroDeLotesIT.java) · los datos obligatorios y sus longitudes máximas: código de 30 caracteres, finca o proveedor de 120 y observaciones de 500 (parametrizada)
+- [`RegistroDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/RegistroDeLotesIT.java) · una fecha de recepción que no tiene el formato aaaa-mm-dd se rechaza en su campo
 
 ## RF-05 · Tomar o subir las fotos de la muestra del lote, con guía de captura
 
@@ -392,12 +401,19 @@ Otras pruebas de RF-13, que no cubren un criterio:
 
 | Criterio | Pruebas |
 |---|---|
-| C1. La lista muestra solo lotes de la empresa del usuario. | **Pendiente** |
+| C1. La lista muestra solo lotes de la empresa del usuario. | [`HistorialDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/HistorialDeLotesIT.java) · la lista muestra solo lotes de la empresa del usuario, también los que registraron sus compañeros |
 | C2. Los filtros por fecha del resultado, estado, categoría, código y usuario funcionan solos o combinados. | **Pendiente** |
 | C3. El detalle muestra las mismas cifras del resultado guardado y las de cada muestra. | **Pendiente** |
-| C4. Con más de 20 lotes, la lista se divide en páginas. | **Pendiente** |
+| C4. Con más de 20 lotes, la lista se divide en páginas. | [`HistorialDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/HistorialDeLotesIT.java) · con más de 20 lotes, la lista se divide en páginas de 20, del lote más reciente al más antiguo |
 | C5. Un lote pendiente se puede retomar desde la captura de fotos. | **Pendiente** |
 | C6. Un lote con otra muestra sugerida permite analizarla desde el detalle (D-25). | **Pendiente** |
+
+Otras pruebas de RF-14, que no cubren un criterio:
+
+- [`HistorialDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/HistorialDeLotesIT.java) · cada lote de la lista trae su fecha de recepción, código, estado, quién lo registró, porcentaje y categoría; los de un lote pendiente van vacíos
+- [`HistorialDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/HistorialDeLotesIT.java) · el detalle de un lote de la empresa se abre por su identificador
+- [`HistorialDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/HistorialDeLotesIT.java) · la administradora de la empresa también ve el historial de su empresa
+- [`HistorialDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/HistorialDeLotesIT.java) · las páginas empiezan en 0 y traen de 1 a 100 lotes, como los demás listados
 
 ## RF-15 · Descargar el reporte del lote en PDF
 
@@ -482,11 +498,11 @@ Otras pruebas de RF-18, que no cubren un criterio:
 
 | Criterio | Pruebas |
 |---|---|
-| C1. Si un usuario pide un lote de otra empresa por su identificador, el sistema responde que no existe. | **Pendiente** |
-| C2. Las listas y las estadísticas nunca mezclan datos de empresas distintas. | [`RangoRecomendacionApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/rango/RangoRecomendacionApiGeneradaIT.java) · el listado de rango_recomendacion solo trae las filas de la empresa de la sesión (generada)<br>[`UsuarioApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/usuario/UsuarioApiGeneradaIT.java) · el listado de usuario solo trae los registros de la empresa de la sesión (generada)<br>[`RangosRecomendacionIT`](../backend/src/test/java/co/edu/usco/inspectia/rango/RangosRecomendacionIT.java) · cada empresa lista solo sus 4 rangos<br>[`UsuariosPorEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/UsuariosPorEmpresaIT.java) · el listado de usuarios solo trae los de la empresa del administrador |
+| C1. Si un usuario pide un lote de otra empresa por su identificador, el sistema responde que no existe. | [`LotesPorEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/LotesPorEmpresaIT.java) · si un usuario pide un lote de otra empresa por su identificador, el sistema responde que no existe |
+| C2. Las listas y las estadísticas nunca mezclan datos de empresas distintas. | [`RangoRecomendacionApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/rango/RangoRecomendacionApiGeneradaIT.java) · el listado de rango_recomendacion solo trae las filas de la empresa de la sesión (generada)<br>[`UsuarioApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/usuario/UsuarioApiGeneradaIT.java) · el listado de usuario solo trae los registros de la empresa de la sesión (generada)<br>[`LotesPorEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/LotesPorEmpresaIT.java) · el historial de lotes nunca mezcla empresas: el administrador de Cacao del Sur solo ve los de su empresa<br>[`RangosRecomendacionIT`](../backend/src/test/java/co/edu/usco/inspectia/rango/RangosRecomendacionIT.java) · cada empresa lista solo sus 4 rangos<br>[`UsuariosPorEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/UsuariosPorEmpresaIT.java) · el listado de usuarios solo trae los de la empresa del administrador |
 | C3. Las fotos y los reportes en S3 solo se abren con enlaces temporales generados para la empresa dueña. | **Pendiente** |
 | C4. Solo el administrador de la plataforma puede no tener empresa: la base de datos rechaza un usuario de otro rol sin empresa. | [`EsquemaIT`](../backend/src/test/java/co/edu/usco/inspectia/EsquemaIT.java) · la base rechaza un usuario sin empresa que no sea ADMIN_PLATAFORMA |
-| C5. Hay pruebas de seguridad que lo verifican (RP-12). | [`RangosRecomendacionIT`](../backend/src/test/java/co/edu/usco/inspectia/rango/RangosRecomendacionIT.java) · editar y restaurar los rangos de una empresa no toca los de otra, aunque el cuerpo traiga sus identificadores y su empresa (prueba de seguridad)<br>[`UsuariosPorEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/UsuariosPorEmpresaIT.java) · la empresa del usuario nuevo sale de la sesión: si la petición trae otra, la API la ignora (prueba de seguridad) |
+| C5. Hay pruebas de seguridad que lo verifican (RP-12). | [`LotesPorEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/LotesPorEmpresaIT.java) · la empresa y el usuario del lote salen de la sesión: si la petición trae otros, la API los ignora (prueba de seguridad)<br>[`RangosRecomendacionIT`](../backend/src/test/java/co/edu/usco/inspectia/rango/RangosRecomendacionIT.java) · editar y restaurar los rangos de una empresa no toca los de otra, aunque el cuerpo traiga sus identificadores y su empresa (prueba de seguridad)<br>[`UsuariosPorEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/UsuariosPorEmpresaIT.java) · la empresa del usuario nuevo sale de la sesión: si la petición trae otra, la API la ignora (prueba de seguridad) |
 
 Otras pruebas de RNF-03, que no cubren un criterio:
 
@@ -494,13 +510,14 @@ Otras pruebas de RNF-03, que no cubren un criterio:
 - [`UsuarioApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/usuario/UsuarioApiGeneradaIT.java) · el registro nuevo de usuario queda en la empresa de la sesión (generada)
 - [`UsuarioApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/usuario/UsuarioApiGeneradaIT.java) · un registro de usuario de otra empresa responde 404 en cada operación que lo usa (parametrizada, generada)
 - [`EsquemaIT`](../backend/src/test/java/co/edu/usco/inspectia/EsquemaIT.java) · un lote no puede apuntar a un usuario de otra empresa
+- [`LotesPorEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/LotesPorEmpresaIT.java) · las sugerencias de finca o proveedor no traen las de otra empresa
 
 ## RNF-04 · Exigir autenticación y restringir cada función según el rol
 
 | Criterio | Pruebas |
 |---|---|
-| C1. Sin sesión, la API responde «no autorizado» (401). | [`EmpresaApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/empresa/EmpresaApiGeneradaIT.java) · sin sesión, cada operación de empresa responde 401 (parametrizada, generada)<br>[`RangoRecomendacionApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/rango/RangoRecomendacionApiGeneradaIT.java) · sin sesión, cada operación de rango_recomendacion responde 401 (parametrizada, generada)<br>[`UsuarioApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/usuario/UsuarioApiGeneradaIT.java) · sin sesión, cada operación de usuario responde 401 (parametrizada, generada)<br>[`SeguridadEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/SeguridadEmpresaIT.java) · sin sesión, cada operación de la API de empresas responde 401 en JSON (parametrizada)<br>[`RangosRecomendacionIT`](../backend/src/test/java/co/edu/usco/inspectia/rango/RangosRecomendacionIT.java) · sin sesión, las rutas de los rangos responden 401<br>[`CambioDeContrasenaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/CambioDeContrasenaIT.java) · sin sesión, cambiar la contraseña responde 401 y no cambia nada<br>[`SesionAbiertaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/SesionAbiertaIT.java) · sin token, la sesión actual responde 401 |
-| C2. Con un rol sin permiso, responde «prohibido» (403); por ejemplo, cuando un usuario final intenta gestionar usuarios. | [`EmpresaApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/empresa/EmpresaApiGeneradaIT.java) · cada operación de empresa solo la usan los roles de su JSON (parametrizada, generada)<br>[`RangoRecomendacionApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/rango/RangoRecomendacionApiGeneradaIT.java) · cada operación de rango_recomendacion solo la usan los roles de su JSON (parametrizada, generada)<br>[`UsuarioApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/usuario/UsuarioApiGeneradaIT.java) · cada operación de usuario solo la usan los roles de su JSON (parametrizada, generada)<br>[`SeguridadEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/SeguridadEmpresaIT.java) · el permiso se revisa antes que los datos: un usuario final recibe 403 aunque envíe datos inválidos<br>[`SeguridadEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/SeguridadEmpresaIT.java) · un administrador de empresa o un usuario final recibe 403 en cada operación de la API de empresas (parametrizada)<br>[`RangosRecomendacionIT`](../backend/src/test/java/co/edu/usco/inspectia/rango/RangosRecomendacionIT.java) · el administrador de la plataforma tampoco gestiona los rangos de una empresa: responde 403<br>[`RestablecerContrasenaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/administradores/RestablecerContrasenaIT.java) · solo el administrador de la plataforma lista y restablece a los administradores de empresa: los demás roles reciben 403<br>[`SesionAbiertaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/SesionAbiertaIT.java) · con el token de un administrador de empresa, la API de empresas responde 403; con el de la plataforma, 200 |
+| C1. Sin sesión, la API responde «no autorizado» (401). | [`EmpresaApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/empresa/EmpresaApiGeneradaIT.java) · sin sesión, cada operación de empresa responde 401 (parametrizada, generada)<br>[`RangoRecomendacionApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/rango/RangoRecomendacionApiGeneradaIT.java) · sin sesión, cada operación de rango_recomendacion responde 401 (parametrizada, generada)<br>[`UsuarioApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/usuario/UsuarioApiGeneradaIT.java) · sin sesión, cada operación de usuario responde 401 (parametrizada, generada)<br>[`SeguridadLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/SeguridadLotesIT.java) · sin sesión, cada operación de la API de lotes responde 401 en JSON (parametrizada)<br>[`SeguridadEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/SeguridadEmpresaIT.java) · sin sesión, cada operación de la API de empresas responde 401 en JSON (parametrizada)<br>[`RangosRecomendacionIT`](../backend/src/test/java/co/edu/usco/inspectia/rango/RangosRecomendacionIT.java) · sin sesión, las rutas de los rangos responden 401<br>[`CambioDeContrasenaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/CambioDeContrasenaIT.java) · sin sesión, cambiar la contraseña responde 401 y no cambia nada<br>[`SesionAbiertaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/SesionAbiertaIT.java) · sin token, la sesión actual responde 401 |
+| C2. Con un rol sin permiso, responde «prohibido» (403); por ejemplo, cuando un usuario final intenta gestionar usuarios. | [`EmpresaApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/empresa/EmpresaApiGeneradaIT.java) · cada operación de empresa solo la usan los roles de su JSON (parametrizada, generada)<br>[`RangoRecomendacionApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/rango/RangoRecomendacionApiGeneradaIT.java) · cada operación de rango_recomendacion solo la usan los roles de su JSON (parametrizada, generada)<br>[`UsuarioApiGeneradaIT`](../backend/src/test-generated/java/co/edu/usco/inspectia/usuario/UsuarioApiGeneradaIT.java) · cada operación de usuario solo la usan los roles de su JSON (parametrizada, generada)<br>[`SeguridadLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/SeguridadLotesIT.java) · el administrador de empresa no registra lotes: recibe 403 y no se guarda nada<br>[`SeguridadLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/SeguridadLotesIT.java) · el administrador de la plataforma recibe 403 en cada operación de la API de lotes (parametrizada)<br>[`SeguridadLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/SeguridadLotesIT.java) · el permiso se revisa antes que los datos: el administrador de empresa recibe 403 aunque envíe datos inválidos<br>[`SeguridadEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/SeguridadEmpresaIT.java) · el permiso se revisa antes que los datos: un usuario final recibe 403 aunque envíe datos inválidos<br>[`SeguridadEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/SeguridadEmpresaIT.java) · un administrador de empresa o un usuario final recibe 403 en cada operación de la API de empresas (parametrizada)<br>[`RangosRecomendacionIT`](../backend/src/test/java/co/edu/usco/inspectia/rango/RangosRecomendacionIT.java) · el administrador de la plataforma tampoco gestiona los rangos de una empresa: responde 403<br>[`RestablecerContrasenaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/administradores/RestablecerContrasenaIT.java) · solo el administrador de la plataforma lista y restablece a los administradores de empresa: los demás roles reciben 403<br>[`SesionAbiertaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/SesionAbiertaIT.java) · con el token de un administrador de empresa, la API de empresas responde 403; con el de la plataforma, 200 |
 | C3. Las contraseñas se guardan con hash (BCrypt), nunca en texto plano. | [`RegistroEmpresaIT`](../backend/src/test/java/co/edu/usco/inspectia/empresa/RegistroEmpresaIT.java) · la contraseña del administrador se guarda con hash BCrypt y no sale en la respuesta |
 | C4. La sesión vence a las 8 horas. | [`EmisorDeTokensTest`](../backend/src/test/java/co/edu/usco/inspectia/comun/seguridad/EmisorDeTokensTest.java) · el token vence 8 horas después de emitido, en segundos enteros, y solo lleva el emisor, el usuario, las fechas y la versión de sesión<br>[`SesionAbiertaIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/SesionAbiertaIT.java) · el token del inicio de sesión dura exactamente 8 horas y solo lleva el emisor, el usuario, las fechas y la versión de sesión, que empieza en 0 |
 | C5. Después de 5 intentos fallidos seguidos, la cuenta se bloquea 15 minutos. | [`InicioSesionIT`](../backend/src/test/java/co/edu/usco/inspectia/usuario/sesion/InicioSesionIT.java) · el bloqueo dura 15 minutos desde el quinto fallo y los intentos durante el bloqueo no lo alargan |
