@@ -4,7 +4,7 @@ Descripción: Casos de prueba de InspectIA por ficha y criterio de aceptación, 
              tienen prueba (RP-13). Archivo generado por generador/casos_de_prueba.py: no se edita a mano;
              sale de specs/fichas.json y de las marcas de las pruebas.
 Fecha de creación: 12/10/2026
-Actualización: 09/11/2026
+Actualización: 10/11/2026
 Autor: Equipo InspectIA (generado por generador/casos_de_prueba.py v1.2)
 Versión: 1.2
 -->
@@ -21,7 +21,7 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 
 ## Resumen
 
-- **143 criterios de aceptación** en 26 fichas: 55 con prueba y 88 pendientes.
+- **154 criterios de aceptación** en 26 fichas: 55 con prueba y 97 pendientes (2 eliminados).
 - **724 pruebas:** 237 de Java (33 generadas), 366 de JavaScript (73 generadas) y 121 de Python. Una prueba parametrizada cuenta una vez.
 
 | Ficha | Criterios | Con prueba | Pendientes |
@@ -35,9 +35,9 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 | RF-07 · Separar y recortar los granos de cada foto, con control de granos pegados | 5 | 0 | 5 |
 | RF-08 · Clasificar cada grano como sano o no sano con el modelo de IA | 6 | 0 | 6 |
 | RF-09 · Pedir una foto más clara o más fotos cuando la confianza del modelo es baja | 6 | 0 | 6 |
-| RF-10 · Calcular el porcentaje de granos sanos del lote | 7 | 0 | 7 |
-| RF-11 · Mostrar el resultado con la foto marcada (cada grano sano o no sano) | 5 | 0 | 5 |
-| RF-12 · Generar la recomendación según los rangos de la empresa | 10 | 0 | 10 |
+| RF-10 · Calcular el porcentaje de granos sanos del lote | 14 | 0 | 14 |
+| RF-11 · Mostrar el resultado con la foto marcada (cada grano sano o no sano) | 6 | 0 | 6 |
+| RF-12 · Generar la recomendación según los rangos de la empresa | 12 | 0 | 10 |
 | RF-13 · Configurar los rangos de recomendación de la empresa | 5 | 4 | 1 |
 | RF-14 · Consultar el historial de lotes evaluados | 6 | 0 | 6 |
 | RF-15 · Descargar el reporte del lote en PDF | 5 | 0 | 5 |
@@ -50,7 +50,7 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 | RNF-04 · Exigir autenticación y restringir cada función según el rol | 6 | 6 | 0 |
 | RNF-05 · Funcionar en PC y en celular desde el navegador | 3 | 2 | 1 |
 | RNF-06 · Ser sencilla de usar para el usuario final | 4 | 2 | 2 |
-| RNF-07 · Alcanzar el F1-score mínimo del modelo de IA | 4 | 0 | 4 |
+| RNF-07 · Alcanzar el F1-score mínimo del modelo de IA | 5 | 0 | 5 |
 | RNF-08 · Citar a los autores del dataset y no usarlo con fines comerciales | 3 | 1 | 2 |
 
 ## RF-01 · Iniciar sesión según el rol
@@ -267,7 +267,7 @@ Otras pruebas de RF-03, que no cubren un criterio:
 | C1. Cada grano detectado recibe una sola clase: sano o no sano. | **Pendiente** |
 | C2. Cada clasificación trae su confianza. | **Pendiente** |
 | C3. El análisis guarda qué modelo y qué versión lo hicieron. | **Pendiente** |
-| C4. El modelo cumple el F1-score mínimo de RNF-07 en el conjunto de validación. | **Pendiente** |
+| C4. El modelo cumple el F1-score mínimo de RNF-07 en el conjunto de prueba (334 granos). | **Pendiente** |
 | C5. La clasificación de toda la muestra cabe dentro del tiempo total del análisis, de 5 a 8 segundos (RNF-01). | **Pendiente** |
 | C6. Si el servicio de IA no responde, el sistema avisa al usuario y no guarda un resultado incompleto. | **Pendiente** |
 
@@ -286,13 +286,20 @@ Otras pruebas de RF-03, que no cubren un criterio:
 
 | Criterio | Pruebas |
 |---|---|
-| C1. Con 93 granos sanos de 100, el resultado es 93,0 %. | **Pendiente** |
-| C2. Con 141 granos sanos de 150, el resultado es 94,0 %. | **Pendiente** |
-| C3. Con 100 granos sanos de 107, el resultado es 93,5 % (redondeo a un decimal). | **Pendiente** |
-| C4. Con 2 muestras, 107 sanos de 120 y 113 de 125 dan 220 de 245 = 89,8 % (D-25). | **Pendiente** |
-| C5. Con 2 muestras de distinto tamaño se suman los granos: 109 sanos de 120 (90,8 %) y 120 de 150 (80,0 %) dan 229 de 270 = 84,8 %, no el promedio de los porcentajes (85,4 %). | **Pendiente** |
-| C6. El porcentaje se guarda con el lote, y cada muestra guarda sus conteos y el modelo que la analizó (D-18, D-25). | **Pendiente** |
+| C1. Con 93 granos sanos de 100, el porcentaje contado es 93,0 %. | **Pendiente** |
+| C2. Con 141 granos sanos de 150, el porcentaje contado es 94,0 %. | **Pendiente** |
+| C3. Con 100 granos sanos de 107, el porcentaje contado es 93,5 % (redondeo a un decimal). | **Pendiente** |
+| C4. Con 2 muestras, 107 sanos de 120 y 113 de 125 dan 220 de 245 = 89,8 % contado (D-25). | **Pendiente** |
+| C5. Con 2 muestras de distinto tamaño se suman los granos: 109 sanos de 120 (90,8 %) y 120 de 150 (80,0 %) dan 229 de 270 = 84,8 % contado, no el promedio de los porcentajes (85,4 %). | **Pendiente** |
+| C6. El porcentaje corregido se guarda con el lote, y cada muestra guarda sus conteos y el modelo que la analizó (D-18, D-25). | **Pendiente** |
 | C7. El cálculo tiene pruebas unitarias y de mutación (RP-12) que no dependen del servicio de IA (D-21). | **Pendiente** |
+| C8. Con EfficientNet-B0 (recall sana 0,912 y mala 0,534), 87 sanos de 100 (87,0 % contado) dan 90,6 % corregido (D-39). | **Pendiente** |
+| C9. Con EfficientNet-B0, 93 sanos de 100 dan 100,0 % corregido: el porcentaje se limita a 100 % (sin el límite serían 104,0 %). | **Pendiente** |
+| C10. Con EfficientNet-B0, 40 sanos de 100 dan 0,0 % corregido: el porcentaje se limita a 0 % (sin el límite serían −14,8 %). | **Pendiente** |
+| C11. Con EfficientNet-B0 y 2 muestras, 220 sanos de 245 (89,8 % contado) dan 96,9 % corregido (D-25). | **Pendiente** |
+| C12. Con EfficientNet-B0, 84 sanos de 101 (83,2 % contado) dan 82,0 % corregido: se corrige con los conteos y se redondea al final; corregir el 83,2 % ya redondeado daría 82,1 %. | **Pendiente** |
+| C13. La corrección usa los recall del modelo que analizó la muestra: si cambia el modelo en uso, los lotes ya analizados conservan su porcentaje. | **Pendiente** |
+| C14. Con 2 muestras de modelos distintos, 100 sanos de 120 con EfficientNet-B0 y 105 de 125 con ResNet-50 (recall sana 0,874 y mala 0,521) dan 86,7 % corregido; con los recall de EfficientNet-B0 en las dos darían 83,1 %. | **Pendiente** |
 
 ## RF-11 · Mostrar el resultado con la foto marcada (cada grano sano o no sano)
 
@@ -303,6 +310,7 @@ Otras pruebas de RF-03, que no cubren un criterio:
 | C3. Las cifras de la pantalla coinciden con el cálculo de RF-10. | **Pendiente** |
 | C4. Al tocar un grano, o al pasar el cursor sobre él, se ve su clase; el valor de la confianza no se muestra al usuario final (sección 1). | **Pendiente** |
 | C5. La pantalla se ve bien en celular y en PC (RNF-05). | **Pendiente** |
+| C6. Junto a las fotos se ve lo que contó el modelo, por ejemplo «93 de 100 marcados como sanos», y la frase «El porcentaje corrige los errores conocidos del modelo» (D-39). | **Pendiente** |
 
 ## RF-12 · Generar la recomendación según los rangos de la empresa
 
@@ -313,11 +321,13 @@ Otras pruebas de RF-03, que no cubren un criterio:
 | C3. Con 90,9 %, la categoría es Estándar y sugiere analizar otra muestra (está a 0,9 puntos de 90); con 91,0 % no la sugiere (está a 1 punto). Es la prueba de límite del margen (D-24). | **Pendiente** |
 | C4. Con 90,0 % la categoría es Estándar y con 89,9 % es Corriente; ambos sugieren otra muestra (prueba de límite). | **Pendiente** |
 | C5. Con 75 %, la categoría es Fuera de norma, sin sugerencia. | **Pendiente** |
-| C6. Con 143 granos sanos de 149 (95,97 %, redondeado a 96,0 %), la categoría es Premium o Especial. | **Pendiente** |
-| C7. Con 2 muestras, la categoría sale de la suma de sus granos: 220 sanos de 245 (89,8 %) es Corriente, y no se sugiere otra muestra aunque quede a 0,2 puntos de 90 (D-25). | **Pendiente** |
+| C6. Eliminado (D-39): «Con 143 granos sanos de 149 (95,97 %, redondeado a 96,0 %), la categoría es Premium o Especial.» Con la corrección, esos conteos dan 100,0 %; el límite del redondeo pasa al criterio 11. | Eliminado |
+| C7. Eliminado (D-39): «Con 2 muestras, la categoría sale de la suma de sus granos: 220 sanos de 245 (89,8 %) es Corriente, y no se sugiere otra muestra aunque quede a 0,2 puntos de 90 (D-25).» Con la corrección, esos conteos dan 96,9 %; lo reemplaza el criterio 12. | Eliminado |
 | C8. Un lote sin sugerencia, o que ya tiene 2 muestras, no permite agregar otra (D-25). | **Pendiente** |
 | C9. Si la empresa cambió sus rangos (RF-13), se usan los de la empresa. | **Pendiente** |
 | C10. La categoría siempre se muestra como probable. | **Pendiente** |
+| C11. Con EfficientNet-B0, 118 granos sanos de 132 (89,4 % contado) dan 95,95 % corregido, que se redondea a 96,0 %: la categoría es Premium o Especial (prueba de límite del redondeo, D-39). | **Pendiente** |
+| C12. Con 2 muestras, la categoría sale de la suma de sus granos: con EfficientNet-B0, 220 sanos de 245 (96,9 % corregido) es Premium o Especial, y no se sugiere otra muestra aunque quede a 0,9 puntos de 96 (D-25). | **Pendiente** |
 
 ## RF-13 · Configurar los rangos de recomendación de la empresa
 
@@ -571,10 +581,11 @@ Otras pruebas de RNF-06, que no cubren un criterio:
 
 | Criterio | Pruebas |
 |---|---|
-| C1. El F1-score macro del modelo elegido en validación es igual o mayor al mínimo de P-02. | **Pendiente** |
+| C1. El F1-score macro del modelo elegido en el conjunto de prueba es de 0,65 o más (P-02): EfficientNet-B0 logra 0,735 (IC 95 % 0,677–0,792). | **Pendiente** |
 | C2. Se reportan también la precisión, el recall y la matriz de confusión de cada clase. | **Pendiente** |
-| C3. Los 5 modelos se miden con el mismo conjunto de validación (D-18), sin imágenes repetidas del entrenamiento. | **Pendiente** |
+| C3. Los 5 modelos se miden con el mismo conjunto de prueba (D-18), sin imágenes repetidas del entrenamiento ni del `val`. | **Pendiente** |
 | C4. Los resultados de los 5 modelos quedan en la tabla comparativa (D-18). | **Pendiente** |
+| C5. El modelo se elige con el `val` de Julián, antes de medir la prueba, y la prueba se usa una sola vez. | **Pendiente** |
 
 ## RNF-08 · Citar a los autores del dataset y no usarlo con fines comerciales
 

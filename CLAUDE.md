@@ -35,12 +35,12 @@ App web multiempresa que estima el % de granos de cacao sanos de un lote a parti
 
 ## Arquitectura (D-21)
 
-- Monorepo: `frontend/` (React + Material UI), `backend/` (Spring Boot), `ia-servicio/` (Python, OpenCV y ONNX), `generador/` (Python), `specs/`, `infra/` (Docker Compose y scripts de base de datos), `.github/workflows/` (GitHub Actions) y `docs/`.
+- Monorepo: `frontend/` (React + Material UI), `backend/` (Spring Boot), `ia-servicio/` (Python, OpenCV y TensorFlow), `generador/` (Python), `specs/`, `infra/` (Docker Compose y scripts de base de datos), `.github/workflows/` (GitHub Actions) y `docs/`.
 - El backend es un solo programa dividido en módulos:
   - `analisis` es hexagonal. Las reglas (% de granos sanos, categoría y sugerencia) van en `dominio/`, sin depender de Spring. El caso de uso `AnalizarLote` habla con el servicio de IA, S3, el PDF y la base de datos solo a través de interfaces (puertos).
   - `empresa`, `usuario` y `rango` van por capas y los genera `generador/`.
   - `estadistica` va por capas, a mano. `comun` tiene seguridad (JWT y roles), i18n y manejo de errores.
-- Mientras Julián entrega el modelo, el puerto `ClasificadorDeGranos` usa un clasificador falso.
+- Julián ya entregó el modelo (release `modelos-v1.0`, D-40). Mientras el servicio de IA no lo use, el puerto `ClasificadorDeGranos` usa un clasificador falso.
 - Sin microservicios ni ECS: todo corre con Docker Compose en una sola instancia EC2 (D-16).
 - Nombres del dominio en español y sin tildes en el código (`Lote`, `Grano`, `Analisis`).
 - Usa versiones estables actuales (LTS cuando exista) y anótalas en el README.
