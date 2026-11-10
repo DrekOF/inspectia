@@ -207,11 +207,47 @@ class RegistroDeLotesIT {
         MvcTestResult cooperativa = lotes.origenes(token, "AGRO");
 
         assertThat(fincas).hasStatus(HttpStatus.OK);
-        List<String> sugeridas = textos(fincas);
-        assertThat(sugeridas).as("una sola vez cada finca, en orden alfabético").hasSize(2);
-        assertThat(sugeridas.get(0)).isEqualTo("Finca El Paraíso");
-        assertThat(sugeridas.get(1)).isEqualToIgnoringCase("Finca La Esperanza");
-        assertThat(textos(cooperativa)).containsExactly("Cooperativa Agrosur");
+        assertThat(textos(fincas)).as("una sola vez cada finca, con la última forma en que se escribió y en orden "
+                + "alfabético").containsExactly("Finca El Paraíso", "FINCA LA ESPERANZA");
+        assertThat(textos(cooperativa)).as("el texto puede estar en cualquier parte del nombre")
+                .containsExactly("Cooperativa Agrosur");
+    }
+
+    @Test
+    @DisplayName("RF-04 · las sugerencias de finca o proveedor tampoco distinguen tildes: «paraiso» sugiere «Finca El Paraíso» y «unión», «Finca La Union»")
+    void sugerenciasSinTildes() {
+        lotes.registrarOk(token, "L-001", "Finca El Paraíso");
+        lotes.registrarOk(token, "L-002", "Finca La Union");
+
+        MvcTestResult paraiso = lotes.origenes(token, "paraiso");
+        MvcTestResult union = lotes.origenes(token, "unión");
+
+        assertThat(textos(paraiso)).containsExactly("Finca El Paraíso");
+        assertThat(textos(union)).containsExactly("Finca La Union");
+    }
+
+    @Test
+    @DisplayName("RF-04 · si la misma finca se escribió con tilde y sin ella, se sugiere una sola vez, con la última forma")
+    void unaSolaFormaConYSinTilde() {
+        lotes.registrarOk(token, "L-001", "Finca El Paraíso");
+        lotes.registrarOk(token, "L-002", "Finca el paraiso");
+
+        MvcTestResult sugeridas = lotes.origenes(token, "PARAÍSO");
+
+        assertThat(textos(sugeridas)).containsExactly("Finca el paraiso");
+    }
+
+    @Test
+    @DisplayName("RF-04 · se sugieren como máximo 10 fincas o proveedores")
+    void comoMaximoDiez() {
+        for (int numero = 1; numero <= 12; numero++) {
+            lotes.registrarOk(token, "L-%03d".formatted(numero), "Finca %02d".formatted(numero));
+        }
+
+        MvcTestResult sugeridas = lotes.origenes(token, "finca");
+
+        assertThat(textos(sugeridas)).as("las 10 primeras en orden alfabético").hasSize(10)
+                .startsWith("Finca 01").endsWith("Finca 10");
     }
 
     static Stream<Arguments> datosInvalidos() {

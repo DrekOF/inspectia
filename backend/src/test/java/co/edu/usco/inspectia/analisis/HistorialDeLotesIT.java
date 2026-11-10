@@ -135,9 +135,35 @@ class HistorialDeLotesIT {
                 .containsEntry("origen", "Finca La Esperanza")
                 .containsEntry("estado", "PENDIENTE")
                 .containsEntry("usuario", Map.of("id", luis.toString(), "nombre", "Luis Gómez"))
-                .containsKey("fechaCreacion");
+                .containsKeys("fechaCreacion", "fechaResultado");
         assertThat(lote.get("porcentajeSanos")).isNull();
         assertThat(lote.get("categoria")).isNull();
+        assertThat(lote.get("fechaResultado")).isNull();
+    }
+
+    @Test
+    @DisplayName("RF-14 · la lista va del último movimiento al más antiguo: la fecha del resultado si el lote se analizó, o la de registro si está pendiente, y trae la fecha del resultado")
+    void ordenPorUltimoMovimiento() {
+        UUID primero = lotes.registrarOk(token, "L-001");
+        lotes.registrarOk(token, "L-002");
+        lotes.registrarOk(token, "L-003");
+        // L-001 se analiza justo después del registro de L-002 y antes del de L-003: sube por encima de L-002.
+        jdbc.update("""
+                UPDATE lote SET estado = 'ANALIZADO', porcentaje_sanos = 93.0, categoria = 'ESTANDAR',
+                    recomendacion = 'Apto para venta estándar.', sugerir_otra_muestra = false,
+                    aviso_confianza_baja = false,
+                    fecha_resultado = (SELECT fecha_creacion FROM lote WHERE codigo = 'L-002') + interval '1 microsecond'
+                WHERE id = ?""", primero);
+
+        MvcTestResult historial = lotes.listar(token, 0);
+
+        assertThat(codigos(historial)).containsExactly("L-003", "L-001", "L-002");
+        Map<String, Object> analizado = JsonPath.read(cuerpo(historial), "$.contenido[1]");
+        assertThat(analizado).containsEntry("codigo", "L-001")
+                .containsEntry("estado", "ANALIZADO")
+                .containsEntry("porcentajeSanos", 93.0)
+                .containsEntry("categoria", "ESTANDAR");
+        assertThat(analizado.get("fechaResultado")).as("la columna «Fecha del resultado» del prototipo").isNotNull();
     }
 
     @Test

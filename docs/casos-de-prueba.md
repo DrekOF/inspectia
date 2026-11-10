@@ -22,7 +22,7 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 ## Resumen
 
 - **154 criterios de aceptación** en 26 fichas: 61 con prueba y 91 pendientes (2 eliminados).
-- **749 pruebas:** 262 de Java (33 generadas), 366 de JavaScript (73 generadas) y 121 de Python. Una prueba parametrizada cuenta una vez.
+- **759 pruebas:** 272 de Java (33 generadas), 366 de JavaScript (73 generadas) y 121 de Python. Una prueba parametrizada cuenta una vez.
 
 | Ficha | Criterios | Con prueba | Pendientes |
 |---|---:|---:|---:|
@@ -227,10 +227,10 @@ Otras pruebas de RF-03, que no cubren un criterio:
 
 | Criterio | Pruebas |
 |---|---|
-| C1. Con datos válidos, el lote queda registrado y el sistema pasa a la captura de fotos. | [`RegistroDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/RegistroDeLotesIT.java) · con datos válidos, el lote queda registrado como pendiente de análisis, con la empresa y el usuario de la sesión |
+| C1. Con datos válidos, el lote queda registrado y el sistema pasa a la captura de fotos. | [`RegistroDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/RegistroDeLotesIT.java) · con datos válidos, el lote queda registrado como pendiente de análisis, con la empresa y el usuario de la sesión<br>[`LoteTest`](../backend/src/test/java/co/edu/usco/inspectia/analisis/dominio/LoteTest.java) · un lote recién registrado queda pendiente de análisis, con la empresa y el usuario que lo registra |
 | C2. Si el código ya existe en la empresa, el sistema lo avisa y no registra el lote. | [`RegistroDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/RegistroDeLotesIT.java) · si el código ya existe en la empresa, el sistema lo avisa y no registra el lote, aunque lo registre otro usuario |
-| C3. El código «l-001 » cuenta como repetido si ya existe «L-001». | [`EsquemaIT`](../backend/src/test/java/co/edu/usco/inspectia/EsquemaIT.java) · la base trata «l-001 » y «L-001» como el mismo código de la empresa<br>[`RegistroDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/RegistroDeLotesIT.java) · el código «l-001 » cuenta como repetido si ya existe «L-001» |
-| C4. La fecha de recepción no puede ser posterior a hoy. | [`FechaDeRecepcionIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/FechaDeRecepcionIT.java) · la fecha de recepción no puede ser posterior a hoy: con hoy en Colombia, el día siguiente se rechaza y hoy pasa (prueba de límite)<br>[`FechaDeRecepcionIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/FechaDeRecepcionIT.java) · una fecha de recepción de varias semanas después también se rechaza |
+| C3. El código «l-001 » cuenta como repetido si ya existe «L-001». | [`EsquemaIT`](../backend/src/test/java/co/edu/usco/inspectia/EsquemaIT.java) · la base trata «l-001 » y «L-001» como el mismo código de la empresa<br>[`RegistroDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/RegistroDeLotesIT.java) · el código «l-001 » cuenta como repetido si ya existe «L-001»<br>[`LoteTest`](../backend/src/test/java/co/edu/usco/inspectia/analisis/dominio/LoteTest.java) · «l-001 » y «L-001» tienen la misma clave de código; «L-0001» tiene otra |
+| C4. La fecha de recepción no puede ser posterior a hoy. | [`FechaDeRecepcionIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/FechaDeRecepcionIT.java) · la fecha de recepción no puede ser posterior a hoy: con hoy en Colombia, el día siguiente se rechaza y hoy pasa (prueba de límite)<br>[`FechaDeRecepcionIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/FechaDeRecepcionIT.java) · una fecha de recepción de varias semanas después también se rechaza<br>[`LoteTest`](../backend/src/test/java/co/edu/usco/inspectia/analisis/dominio/LoteTest.java) · el dominio rechaza una fecha de recepción posterior a hoy y acepta la de hoy (prueba de límite) |
 
 Otras pruebas de RF-04, que no cubren un criterio:
 
@@ -238,8 +238,14 @@ Otras pruebas de RF-04, que no cubren un criterio:
 - [`RegistroDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/RegistroDeLotesIT.java) · con el código de 30 caracteres, la finca o el proveedor de 120 y las observaciones de 500, el lote se registra (prueba de límite)
 - [`RegistroDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/RegistroDeLotesIT.java) · el código, la finca o el proveedor y las observaciones se guardan sin los espacios del inicio y del final; unas observaciones en blanco quedan vacías
 - [`RegistroDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/RegistroDeLotesIT.java) · el mismo código se puede usar en otra empresa
+- [`RegistroDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/RegistroDeLotesIT.java) · las sugerencias de finca o proveedor tampoco distinguen tildes: «paraiso» sugiere «Finca El Paraíso» y «unión», «Finca La Union»
 - [`RegistroDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/RegistroDeLotesIT.java) · los datos obligatorios y sus longitudes máximas: código de 30 caracteres, finca o proveedor de 120 y observaciones de 500 (parametrizada)
+- [`RegistroDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/RegistroDeLotesIT.java) · se sugieren como máximo 10 fincas o proveedores
+- [`RegistroDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/RegistroDeLotesIT.java) · si la misma finca se escribió con tilde y sin ella, se sugiere una sola vez, con la última forma
 - [`RegistroDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/RegistroDeLotesIT.java) · una fecha de recepción que no tiene el formato aaaa-mm-dd se rechaza en su campo
+- [`TextosTest`](../backend/src/test/java/co/edu/usco/inspectia/comun/texto/TextosTest.java) · la clave de búsqueda no distingue mayúsculas, tildes ni los espacios del inicio y del final
+- [`TextosTest`](../backend/src/test/java/co/edu/usco/inspectia/comun/texto/TextosTest.java) · sin tildes y la clave de búsqueda dejan un texto vacío como llega
+- [`TextosTest`](../backend/src/test/java/co/edu/usco/inspectia/comun/texto/TextosTest.java) · sin tildes: «Paraíso» queda «Paraiso», «Peña» queda «Pena» y «Güiza» queda «Guiza»
 
 ## RF-05 · Tomar o subir las fotos de la muestra del lote, con guía de captura
 
@@ -413,6 +419,7 @@ Otras pruebas de RF-14, que no cubren un criterio:
 - [`HistorialDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/HistorialDeLotesIT.java) · cada lote de la lista trae su fecha de recepción, código, estado, quién lo registró, porcentaje y categoría; los de un lote pendiente van vacíos
 - [`HistorialDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/HistorialDeLotesIT.java) · el detalle de un lote de la empresa se abre por su identificador
 - [`HistorialDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/HistorialDeLotesIT.java) · la administradora de la empresa también ve el historial de su empresa
+- [`HistorialDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/HistorialDeLotesIT.java) · la lista va del último movimiento al más antiguo: la fecha del resultado si el lote se analizó, o la de registro si está pendiente, y trae la fecha del resultado
 - [`HistorialDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/HistorialDeLotesIT.java) · las páginas empiezan en 0 y traen de 1 a 100 lotes, como los demás listados
 
 ## RF-15 · Descargar el reporte del lote en PDF
