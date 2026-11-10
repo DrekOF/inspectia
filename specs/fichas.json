@@ -3,7 +3,7 @@
     "nombre": "fichas.json",
     "descripcion": "Fichas de los requerimientos funcionales (formato largo) y no funcionales (formato corto) de InspectIA. Fuente única para las secciones 5 y 6 del documento de requerimientos y, más adelante, para el listado de casos de prueba (RP-13).",
     "fecha_creacion": "12/10/2026",
-    "actualizacion": "09/11/2026",
+    "actualizacion": "10/11/2026",
     "autor": "Equipo InspectIA",
     "version": "1.18"
   },
@@ -354,9 +354,9 @@
       "encabezado": "Clasificar cada grano con el modelo de IA",
       "titulo": "Clasificar cada grano como sano o no sano con el modelo de IA",
       "codigo": "RF-08",
-      "version": "1.0",
+      "version": "1.1",
       "fuente": "Problema general del sector cacaotero (D-19) y pauta del docente sobre los modelos de IA (RP-25).",
-      "descripcion": "El servicio de IA clasifica cada grano recortado en RF-07 como sano o no sano con el modelo elegido (D-18) y le devuelve a la API la posición, la clase y la confianza de cada grano.",
+      "descripcion": "El servicio de IA clasifica cada grano recortado en RF-07 como sano o no sano con el modelo elegido (D-18) y le devuelve a la API la posición, la clase y la confianza de cada grano. El modelo elegido es EfficientNet-B0 v1.0, de la release `modelos-v1.0` de Julián, en formato SavedModel de TensorFlow (D-40).",
       "justificacion": "Es el núcleo de InspectIA: reemplaza la evaluación manual, que depende de la experiencia de una persona, por un criterio uniforme. Sin esta clasificación no se puede calcular el porcentaje de granos sanos del lote (RF-10).",
       "precondiciones": {
         "b": [
@@ -369,7 +369,9 @@
           "Solo hay dos clases, sano y no sano, porque el dataset solo tiene esas dos.",
           "El modelo mira el grano por fuera: no mide la fermentación interna (D-17).",
           "El modelo llega entrenado y la app no lo reentrena (D-03).",
-          "Corre sin GPU, en la instancia t4g.medium (D-16)."
+          "Corre sin GPU, en la instancia t4g.medium (D-16).",
+          "Un grano es no sano si el modelo le da 0,5 o más de probabilidad de no sano: es el umbral con el que Julián midió el modelo (RNF-07).",
+          "EfficientNet-B0 clasifica 100 granos en unos 1,9 s: 19 ms por grano con 2 hilos de CPU, una estimación de Julián para la t4g.medium que se confirma al desplegar (D-16). Julián aplicó D-18 con un límite de 4 s por 100 granos, para que el análisis completo quepa en RNF-01 (P-01)."
         ]
       },
       "prioridad": "Alta",
@@ -393,20 +395,20 @@
           "Cada grano detectado recibe una sola clase: sano o no sano.",
           "Cada clasificación trae su confianza.",
           "El análisis guarda qué modelo y qué versión lo hicieron.",
-          "El modelo cumple el F1-score mínimo de RNF-07 en el conjunto de validación.",
+          "El modelo cumple el F1-score mínimo de RNF-07 en el conjunto de prueba (334 granos).",
           "La clasificación de toda la muestra cabe dentro del tiempo total del análisis, de 5 a 8 segundos (RNF-01).",
           "Si el servicio de IA no responde, el sistema avisa al usuario y no guarda un resultado incompleto."
         ]
       },
       "rnf": "RNF-01 (tiempo de respuesta), RNF-07 (F1-score mínimo) y RNF-08 (licencia del dataset).",
       "estado": "Propuesto",
-      "observaciones": "Pendiente de revisión de Julián (P-14). El umbral de confianza baja que usa RF-09 se fija con los resultados del modelo en validación (P-15)."
+      "observaciones": "Pendiente de revisión de Julián (P-14). El umbral de confianza baja que usa RF-09 se fija con los resultados del modelo en el `val` de Julián, no con la prueba (P-15)."
     },
     {
       "encabezado": "Pedir otra foto si la IA duda",
       "titulo": "Pedir una foto más clara o más fotos cuando la confianza del modelo es baja",
       "codigo": "RF-09",
-      "version": "1.1",
+      "version": "1.2",
       "fuente": "Proceso propuesto (TO-BE).",
       "descripcion": "Si el modelo clasifica demasiados granos con confianza baja, el sistema pide repetir la foto con más granos dudosos antes de dar el resultado.",
       "justificacion": "Un resultado con muchos granos dudosos no es confiable para decidir qué hacer con el lote.",
@@ -448,7 +450,7 @@
       },
       "rnf": "RNF-06 (facilidad de uso) y RNF-07 (F1-score mínimo).",
       "estado": "Aprobado",
-      "observaciones": "El 10 % y el umbral de confianza baja son valores iniciales; se fijan con los resultados del modelo en validación (P-15)."
+      "observaciones": "El 10 % y el umbral de confianza baja son valores iniciales; se fijan con los resultados del modelo en el `val` de Julián, no con la prueba (P-15)."
     },
     {
       "encabezado": "Calcular el % de granos sanos",
@@ -782,14 +784,14 @@
       "encabezado": "Consultar las métricas del modelo",
       "titulo": "Consultar las métricas del modelo",
       "codigo": "RF-17",
-      "version": "1.0",
+      "version": "1.1",
       "fuente": "D-14: métricas del modelo para el administrador de empresa.",
-      "descripcion": "El administrador de la empresa ve las métricas del modelo en uso, medidas en validación (F1-score macro, precisión y recall), y la confianza promedio de los análisis de su empresa.",
+      "descripcion": "El administrador de la empresa ve las métricas del modelo en uso, medidas en el conjunto de prueba (F1-score macro, precisión y recall), y la confianza promedio de los análisis de su empresa.",
       "justificacion": "Permite saber qué tan confiable es el modelo antes de usar sus resultados en decisiones importantes.",
       "precondiciones": "El administrador de empresa inició sesión (RF-01).",
       "restricciones": {
         "b": [
-          "Las métricas de validación son las del modelo en uso, tomadas de la comparación de los 5 modelos (D-18).",
+          "Las métricas de prueba son las del modelo en uso, tomadas de la comparación de los 5 modelos (D-18).",
           "El usuario final no ve métricas técnicas (sección 1, Usuarios)."
         ]
       },
@@ -801,7 +803,7 @@
       "proceso": {
         "n": [
           "El administrador abre «Modelo de IA».",
-          "El sistema muestra el modelo en uso y su versión, sus métricas de validación y la confianza promedio de los análisis de la empresa."
+          "El sistema muestra el modelo en uso y su versión, sus métricas de prueba y la confianza promedio de los análisis de la empresa."
         ]
       },
       "salida": "Nombre y versión del modelo, F1-score macro, precisión, recall y confianza promedio.",
@@ -973,15 +975,16 @@
       "titulo": "Alcanzar el F1-score mínimo del modelo de IA",
       "codigo": "RNF-07",
       "tipo": "Desempeño del modelo",
-      "version": "1.0",
-      "descripcion": "El modelo que usa la app (D-18) debe alcanzar un F1-score mínimo en el conjunto de validación (recortes_script/val, 334 granos). Se usa el F1-score macro, el promedio de las clases sano y no sano, porque el dataset tiene 77 % de granos sanos y la exactitud sola daría una idea engañosa. El valor mínimo lo define Julián (P-02); como referencia, con el mismo dataset se reportó 94,5 % de exactitud.",
+      "version": "1.1",
+      "descripcion": "El modelo que usa la app (D-18) debe alcanzar un F1-score macro de 0,65 o más en el conjunto de prueba: los 334 granos de `recortes_script/val` (261 sanos y 73 no sanos), que son el `test` de Julián y se usan una sola vez, para la medición final. Julián eligió el modelo con su propio `val` (195 granos, el 15 % del train del equipo), antes de medir la prueba. Se usa el F1-score macro, el promedio de las clases sano y no sano, porque el dataset tiene 77 % de granos sanos y la exactitud sola daría una idea engañosa. El mínimo lo fijó Julián con la validación cruzada (techo ≈ 0,69), antes de usar la prueba (P-02). EfficientNet-B0, el modelo de la app, logra 0,735 (IC 95 % 0,677–0,792) y una exactitud de 0,829; como referencia, con el mismo dataset se reportó 94,5 % de exactitud.",
       "prioridad": "Alta",
       "criterios": {
         "b": [
-          "El F1-score macro del modelo elegido en validación es igual o mayor al mínimo de P-02.",
+          "El F1-score macro del modelo elegido en el conjunto de prueba es de 0,65 o más (P-02): EfficientNet-B0 logra 0,735 (IC 95 % 0,677–0,792).",
           "Se reportan también la precisión, el recall y la matriz de confusión de cada clase.",
-          "Los 5 modelos se miden con el mismo conjunto de validación (D-18), sin imágenes repetidas del entrenamiento.",
-          "Los resultados de los 5 modelos quedan en la tabla comparativa (D-18)."
+          "Los 5 modelos se miden con el mismo conjunto de prueba (D-18), sin imágenes repetidas del entrenamiento ni del `val`.",
+          "Los resultados de los 5 modelos quedan en la tabla comparativa (D-18).",
+          "El modelo se elige con el `val` de Julián, antes de medir la prueba, y la prueba se usa una sola vez."
         ]
       }
     },

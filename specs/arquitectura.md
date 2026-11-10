@@ -1,23 +1,23 @@
 <!--
 Nombre: arquitectura.md
-Descripción: Resumen de la arquitectura del sistema y del software de InspectIA (D-16, D-18, D-21, D-23 y D-25). Detalle en 02_Analisis_Diseno/InspectIA_Despliegue_AWS.pdf.
+Descripción: Resumen de la arquitectura del sistema y del software de InspectIA (D-16, D-18, D-21, D-23, D-25 y D-40). Detalle en 02_Analisis_Diseno/InspectIA_Despliegue_AWS.pdf.
 Fecha de creación: 12/10/2026
-Actualización: 18/10/2026
+Actualización: 10/11/2026
 Autor: Equipo InspectIA
-Versión: 1.3
+Versión: 1.4
 -->
 
 # Arquitectura de InspectIA
 
-## 1. Piezas del sistema (D-16 y D-21)
+## 1. Piezas del sistema (D-16, D-21 y D-40)
 
 | Pieza | Tecnología | Qué hace |
 |---|---|---|
 | Página web | React + Material UI | Lo que usan las personas, en PC y celular (web responsive). |
 | Servidor | Java + Spring Boot | API REST con JSON: sesión y roles, empresas, usuarios, lotes, análisis, recomendación, historial, reportes PDF y estadísticas. |
-| Servicio de IA | Python + OpenCV + ONNX | Revisa la calidad de las fotos, separa los granos y los clasifica con el modelo elegido. |
+| Servicio de IA | Python + OpenCV + TensorFlow | Revisa la calidad de las fotos, separa los granos y los clasifica con el modelo elegido. |
 | Base de datos | PostgreSQL | Datos de todas las empresas en una base compartida; cada registro guarda su empresa (RNF-03). |
-| Archivos | Amazon S3 | Fotos, reportes PDF y los 5 modelos ONNX con su comparación. |
+| Archivos | Amazon S3 | Fotos, reportes PDF y los 5 modelos de Julián con su comparación. |
 
 - El servidor es un solo programa dividido en módulos (monolito modular). Sin microservicios.
 - Despliegue en AWS (us-east-1): CloudFront + S3 para la página web; una EC2 t4g.medium con Docker Compose (servidor, servicio de IA y PostgreSQL); S3; ECR; CloudWatch + SNS; EventBridge Scheduler; AWS Budgets. Costo estimado: ≈ US$31 al mes 24/7 o ≈ US$16 apagándola de noche.
@@ -43,7 +43,7 @@ backend/src/main/java/.../inspectia/
 ```
 
 - Hexagonal solo en `analisis`, porque ahí están las reglas del negocio y las piezas de afuera que pueden cambiar (modelo de IA, S3, PDF). Las reglas se prueban con un clasificador falso, sin encender el servicio de IA.
-- Mientras Julián entrega el modelo, `ClasificadorDeGranos` usa un adaptador falso para desarrollo y pruebas.
+- Julián ya entregó el modelo (D-40). Mientras el servicio de IA no lo use, `ClasificadorDeGranos` usa un adaptador falso para desarrollo y pruebas.
 - Los CRUD (empresa, usuario, rango) no se escriben a mano: los genera `generador/` (RP-23).
 
 ## 3. Flujo del análisis de un lote
@@ -63,11 +63,11 @@ backend/src/main/java/.../inspectia/
 
 El servidor le envía al servicio de IA las fotos de la muestra (sus enlaces de S3) y recibe, por cada grano, la posición, la clase y la confianza. El contrato exacto (OpenAPI) se define en la fase de diseño. Las tablas del flujo (lote, muestra, foto y grano) están en `specs/modelo-datos.md`.
 
-## 4. Modelos de IA (D-18)
+## 4. Modelos de IA (D-18 y D-40)
 
-- Julián entrena 5 modelos (2 transformers y 3 CNN) con federated learning, fuera de AWS, con los mismos recortes, y los compara en el mismo conjunto de validación (F1-score macro, precisión, recall y tiempo por grano).
-- La app usa uno solo: el de mejor F1-score entre los que permitan cumplir el tiempo de respuesta (RNF-01).
-- Los 5 ONNX y la comparación se guardan en S3; el servicio de IA carga solo el elegido al arrancar, según una variable de configuración.
+- Julián entrena 5 modelos (2 transformers y 3 CNN) con federated learning, fuera de AWS, con los mismos recortes. Los compara y elige con su `val` (195 granos) y después los mide una sola vez en el conjunto de prueba, los 334 granos de `recortes_script/val` (F1-score macro, precisión, recall y tiempo por grano; RNF-07).
+- La app usa uno solo: el de mejor F1-score entre los que permitan cumplir el tiempo de respuesta (RNF-01). Julián lo aplicó como el de mejor F1 macro en su `val` entre los que clasifican 100 granos en 4 s o menos: EfficientNet-B0, con F1 macro 0,735 en prueba (P-01).
+- Los 5 modelos y la comparación se guardan en S3; el servicio de IA carga solo el elegido al arrancar, según una variable de configuración. El elegido va en formato SavedModel de TensorFlow, que solo necesita TensorFlow (D-40).
 - La comparación de los 5 también queda en la tabla `modelo` de la base de datos (tipo, métricas y tiempo por grano), con el elegido marcado en uso. El script de base de datos carga esas filas (RP-15).
 
 ## 5. Módulos y requerimientos

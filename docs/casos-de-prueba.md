@@ -4,7 +4,7 @@ Descripción: Casos de prueba de InspectIA por ficha y criterio de aceptación, 
              tienen prueba (RP-13). Archivo generado por generador/casos_de_prueba.py: no se edita a mano;
              sale de specs/fichas.json y de las marcas de las pruebas.
 Fecha de creación: 12/10/2026
-Actualización: 09/11/2026
+Actualización: 10/11/2026
 Autor: Equipo InspectIA (generado por generador/casos_de_prueba.py v1.2)
 Versión: 1.2
 -->
@@ -21,7 +21,7 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 
 ## Resumen
 
-- **153 criterios de aceptación** en 26 fichas: 55 con prueba y 96 pendientes (2 eliminados).
+- **154 criterios de aceptación** en 26 fichas: 55 con prueba y 97 pendientes (2 eliminados).
 - **724 pruebas:** 237 de Java (33 generadas), 366 de JavaScript (73 generadas) y 121 de Python. Una prueba parametrizada cuenta una vez.
 
 | Ficha | Criterios | Con prueba | Pendientes |
@@ -50,7 +50,7 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 | RNF-04 · Exigir autenticación y restringir cada función según el rol | 6 | 6 | 0 |
 | RNF-05 · Funcionar en PC y en celular desde el navegador | 3 | 2 | 1 |
 | RNF-06 · Ser sencilla de usar para el usuario final | 4 | 2 | 2 |
-| RNF-07 · Alcanzar el F1-score mínimo del modelo de IA | 4 | 0 | 4 |
+| RNF-07 · Alcanzar el F1-score mínimo del modelo de IA | 5 | 0 | 5 |
 | RNF-08 · Citar a los autores del dataset y no usarlo con fines comerciales | 3 | 1 | 2 |
 
 ## RF-01 · Iniciar sesión según el rol
@@ -267,7 +267,7 @@ Otras pruebas de RF-03, que no cubren un criterio:
 | C1. Cada grano detectado recibe una sola clase: sano o no sano. | **Pendiente** |
 | C2. Cada clasificación trae su confianza. | **Pendiente** |
 | C3. El análisis guarda qué modelo y qué versión lo hicieron. | **Pendiente** |
-| C4. El modelo cumple el F1-score mínimo de RNF-07 en el conjunto de validación. | **Pendiente** |
+| C4. El modelo cumple el F1-score mínimo de RNF-07 en el conjunto de prueba (334 granos). | **Pendiente** |
 | C5. La clasificación de toda la muestra cabe dentro del tiempo total del análisis, de 5 a 8 segundos (RNF-01). | **Pendiente** |
 | C6. Si el servicio de IA no responde, el sistema avisa al usuario y no guarda un resultado incompleto. | **Pendiente** |
 
@@ -581,10 +581,11 @@ Otras pruebas de RNF-06, que no cubren un criterio:
 
 | Criterio | Pruebas |
 |---|---|
-| C1. El F1-score macro del modelo elegido en validación es igual o mayor al mínimo de P-02. | **Pendiente** |
+| C1. El F1-score macro del modelo elegido en el conjunto de prueba es de 0,65 o más (P-02): EfficientNet-B0 logra 0,735 (IC 95 % 0,677–0,792). | **Pendiente** |
 | C2. Se reportan también la precisión, el recall y la matriz de confusión de cada clase. | **Pendiente** |
-| C3. Los 5 modelos se miden con el mismo conjunto de validación (D-18), sin imágenes repetidas del entrenamiento. | **Pendiente** |
+| C3. Los 5 modelos se miden con el mismo conjunto de prueba (D-18), sin imágenes repetidas del entrenamiento ni del `val`. | **Pendiente** |
 | C4. Los resultados de los 5 modelos quedan en la tabla comparativa (D-18). | **Pendiente** |
+| C5. El modelo se elige con el `val` de Julián, antes de medir la prueba, y la prueba se usa una sola vez. | **Pendiente** |
 
 ## RNF-08 · Citar a los autores del dataset y no usarlo con fines comerciales
 
