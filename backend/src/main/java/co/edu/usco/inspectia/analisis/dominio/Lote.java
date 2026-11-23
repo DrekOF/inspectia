@@ -2,9 +2,9 @@
  * Nombre: Lote.java
  * Descripción: Un lote que se registra: sus datos, su estado inicial y las reglas del registro (RF-04).
  * Fecha de creación: 10/11/2026
- * Actualización: 10/11/2026
+ * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis.dominio;
 
@@ -15,8 +15,9 @@ import java.util.UUID;
 
 /**
  * Un lote que se registra (RF-04). Solo se crea con {@link #registrar}, que aplica las reglas: la fecha de
- * recepción no puede ser posterior a hoy (C4) y el lote empieza pendiente de análisis. Que el código no se
- * repita en la empresa lo revisa el caso de uso con el repositorio, comparando {@link #claveDeCodigo}.
+ * recepción no puede ser posterior a hoy (C4) ni de hace más de un año (restricción 4), y el lote empieza pendiente
+ * de análisis. Que el código no se repita en la empresa lo revisa el caso de uso con el repositorio, comparando
+ * {@link #claveDeCodigo}.
  *
  * <p>Los textos llegan ya recortados, sin espacios al inicio ni al final.
  */
@@ -53,6 +54,8 @@ public final class Lote {
      * @param hoy el día de hoy en Colombia
      * @return el lote
      * @throws FechaDeRecepcionFuturaExcepcion si la fecha de recepción es posterior a hoy (RF-04 C4)
+     * @throws FechaDeRecepcionAntiguaExcepcion si la fecha de recepción es de hace más de un año (RF-04,
+     *         restricción 4)
      */
     public static Lote registrar(UUID empresaId, UUID usuarioId, String codigo, LocalDate fechaRecepcion,
             String origen, String observaciones, LocalDate hoy) {
@@ -64,7 +67,22 @@ public final class Lote {
         if (fechaRecepcion.isAfter(hoy)) {
             throw new FechaDeRecepcionFuturaExcepcion(fechaRecepcion, hoy);
         }
+        LocalDate primeraFecha = primeraFechaDeRecepcion(hoy);
+        if (fechaRecepcion.isBefore(primeraFecha)) {
+            throw new FechaDeRecepcionAntiguaExcepcion(fechaRecepcion, primeraFecha);
+        }
         return new Lote(empresaId, usuarioId, codigo, fechaRecepcion, origen, observaciones, EstadoDeLote.PENDIENTE);
+    }
+
+    /**
+     * La fecha de recepción más antigua que se acepta: hace exactamente un año, el mismo día del año anterior. Si
+     * hoy es 29 de febrero, es el 28 de febrero del año anterior (RF-04, restricción 4).
+     *
+     * @param hoy el día de hoy en Colombia
+     * @return la fecha de hace un año
+     */
+    public static LocalDate primeraFechaDeRecepcion(LocalDate hoy) {
+        return hoy.minusYears(1);
     }
 
     /**

@@ -157,7 +157,7 @@ export default {
   'nuevoLote.subtitulo': 'Enter the lot details. Then you will take the sample photos.',
   'nuevoLote.formulario': 'Lot details',
   'nuevoLote.ayudaCodigo': 'It cannot repeat within your company.',
-  'nuevoLote.ayudaFecha': 'It cannot be later than today.',
+  'nuevoLote.ayudaFecha': 'It cannot be later than today or more than a year ago.',
   'nuevoLote.ayudaOrigen': 'We suggest the ones your company already used, so the statistics group them correctly.',
   'nuevoLote.sugerencias': 'Farms and suppliers your company already used',
   'nuevoLote.opcional': '(optional)',

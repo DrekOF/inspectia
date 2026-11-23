@@ -1,15 +1,16 @@
 /*
  * Nombre: esquemaDeLote.js
  * Descripción: Esquema de Yup del formulario Nuevo lote (RF-04, RP-07), con los mismos límites y mensajes que el
- *              backend: el código, la fecha de recepción no posterior a hoy en Colombia, la finca o el proveedor y
- *              las observaciones, opcionales.
+ *              backend: el código, la fecha de recepción no posterior a hoy en Colombia ni de hace más de un año,
+ *              la finca o el proveedor y las observaciones, opcionales.
  * Fecha de creación: 22/11/2026
- * Actualización: 22/11/2026
+ * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 import { object, string } from 'yup';
 import { enBlanco, recortar } from '../validacion/reglas.js';
+import { haceUnAnio } from './fechas.js';
 
 /** Las longitudes de la tabla lote (specs/entidades/lote.json), las mismas que valida el backend. */
 export const LIMITES_DEL_LOTE = { codigo: 30, origen: 120, observaciones: 500 };
@@ -34,16 +35,20 @@ function texto(t, { obligatorio, maximo }) {
  * Esquema de Nuevo lote.
  *
  * @param {(clave: string, valores?: object) => string} t la función de traducción de i18next
- * @param {string} hoy el día de hoy en Colombia (aaaa-mm-dd): la fecha de recepción no puede ser posterior
+ * @param {string} hoy el día de hoy en Colombia (aaaa-mm-dd): la fecha de recepción no puede ser posterior, ni
+ *   de hace más de un año
  * @returns {import('yup').ObjectSchema} el esquema del formulario
  */
 export function esquemaDeLote(t, hoy) {
+  const primeraFecha = haceUnAnio(hoy);
   return object({
     codigo: texto(t, { obligatorio: true, maximo: LIMITES_DEL_LOTE.codigo }),
     fechaRecepcion: string().default('')
       .test('obligatorio', () => t('validacion.obligatorio'), (valor) => !enBlanco(valor ?? ''))
       .test('noPosteriorAHoy', () => t('lote.fecha_recepcion.no_posterior_a_hoy'),
-        (valor) => enBlanco(valor ?? '') || valor <= hoy),
+        (valor) => enBlanco(valor ?? '') || valor <= hoy)
+      .test('noAnteriorAUnAnio', () => t('lote.fecha_recepcion.no_anterior_a_un_anio'),
+        (valor) => enBlanco(valor ?? '') || valor >= primeraFecha),
     origen: texto(t, { obligatorio: true, maximo: LIMITES_DEL_LOTE.origen }),
     observaciones: texto(t, { obligatorio: false, maximo: LIMITES_DEL_LOTE.observaciones }),
   });

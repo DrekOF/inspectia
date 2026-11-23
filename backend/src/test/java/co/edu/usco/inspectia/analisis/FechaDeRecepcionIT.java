@@ -21,6 +21,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import co.edu.usco.inspectia.PruebaIntegracion;
 import co.edu.usco.inspectia.RelojDePrueba;
 import co.edu.usco.inspectia.usuario.sesion.ApiSesion;
+import com.jayway.jsonpath.JsonPath;
+import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -136,5 +138,17 @@ class FechaDeRecepcionIT {
         assertThat(resultado).hasStatus(HttpStatus.BAD_REQUEST);
         assertThat(errores(resultado)).containsExactly(error("fechaRecepcion", FECHA_ANTIGUA));
         assertThat(jdbc.queryForObject("SELECT count(*) FROM lote", Integer.class)).isZero();
+    }
+
+    @Test
+    @DisplayName("RF-04 · el ejemplo de la fecha de recepción en la documentación OpenAPI es de hace una semana en Colombia, así el ejemplo de Swagger UI siempre se puede registrar")
+    void ejemploDeLaDocumentacion() {
+        MvcTestResult resultado = mvc.get().uri("/v3/api-docs").exchange();
+
+        assertThat(resultado).hasStatus(HttpStatus.OK);
+        String documento = new String(resultado.getResponse().getContentAsByteArray(), StandardCharsets.UTF_8);
+        String ejemplo = JsonPath.read(documento,
+                "$.components.schemas.LoteSolicitud.properties.fechaRecepcion.example");
+        assertThat(ejemplo).isEqualTo(HOY.minusWeeks(1).toString());
     }
 }

@@ -157,7 +157,7 @@ export default {
   'nuevoLote.subtitulo': 'Escribe los datos del lote. Después tomarás las fotos de la muestra.',
   'nuevoLote.formulario': 'Datos del lote',
   'nuevoLote.ayudaCodigo': 'No se repite en tu empresa.',
-  'nuevoLote.ayudaFecha': 'No puede ser posterior a hoy.',
+  'nuevoLote.ayudaFecha': 'No puede ser posterior a hoy ni de hace más de un año.',
   'nuevoLote.ayudaOrigen': 'Te sugerimos las que ya usó tu empresa, para que las estadísticas las agrupen bien.',
   'nuevoLote.sugerencias': 'Fincas y proveedores que ya usó tu empresa',
   'nuevoLote.opcional': '(opcional)',

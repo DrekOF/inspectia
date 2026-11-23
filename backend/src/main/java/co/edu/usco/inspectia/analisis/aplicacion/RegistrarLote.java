@@ -3,12 +3,13 @@
  * Descripción: Caso de uso de registrar un lote: aplica las reglas del dominio, revisa que el código no se
  *              repita en la empresa y lo guarda pendiente de análisis (RF-04, RNF-03).
  * Fecha de creación: 10/11/2026
- * Actualización: 10/11/2026
+ * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis.aplicacion;
 
+import co.edu.usco.inspectia.analisis.dominio.FechaDeRecepcionAntiguaExcepcion;
 import co.edu.usco.inspectia.analisis.dominio.FechaDeRecepcionFuturaExcepcion;
 import co.edu.usco.inspectia.analisis.dominio.Lote;
 import co.edu.usco.inspectia.comun.errores.CampoInvalido;
@@ -25,8 +26,9 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Registra un lote (RF-04). La empresa y el usuario salen de la sesión, nunca de la petición (RNF-03).
  *
- * <p>Si la fecha de recepción es posterior a hoy, responde 400 en ese campo (C4); si el código ya existe en
- * la empresa, sin distinguir mayúsculas ni espacios, responde 409 en el código (C2, C3). Si dos peticiones
+ * <p>Si la fecha de recepción es posterior a hoy (C4) o de hace más de un año (restricción 4), responde 400 en
+ * ese campo; si el código ya existe en la empresa, sin distinguir mayúsculas ni espacios, responde 409 en el código
+ * (C2, C3). Si dos peticiones
  * registran el mismo código a la vez, el índice único de la base rechaza la segunda, también con 409.
  */
 @Service
@@ -56,7 +58,7 @@ public class RegistrarLote {
      * @param empresaId la empresa de la sesión
      * @param usuarioId el usuario de la sesión
      * @return el lote registrado
-     * @throws ReglaIncumplidaExcepcion si la fecha de recepción es posterior a hoy (400)
+     * @throws ReglaIncumplidaExcepcion si la fecha de recepción es posterior a hoy o de hace más de un año (400)
      * @throws DatoRepetidoExcepcion si el código ya existe en la empresa (409)
      */
     @Transactional
@@ -69,6 +71,10 @@ public class RegistrarLote {
         } catch (FechaDeRecepcionFuturaExcepcion excepcion) {
             throw new ReglaIncumplidaExcepcion(
                     List.of(new CampoInvalido("fechaRecepcion", "lote.fecha_recepcion.no_posterior_a_hoy")));
+        } catch (FechaDeRecepcionAntiguaExcepcion excepcion) {
+            // El mensaje va en mensajes.properties y no en lote.json: cambiar lote.json cambia V1 (P-16).
+            throw new ReglaIncumplidaExcepcion(
+                    List.of(new CampoInvalido("fechaRecepcion", "lote.fecha_recepcion.no_anterior_a_un_anio")));
         }
         if (repositorio.existeCodigo(empresaId, Lote.claveDeCodigo(lote.getCodigo()))) {
             throw new DatoRepetidoExcepcion(List.of(new CampoInvalido("codigo", "lote.empresa_id_codigo.unico")));

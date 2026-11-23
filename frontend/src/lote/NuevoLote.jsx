@@ -3,11 +3,12 @@
  * Descripción: La pantalla Nuevo lote, el paso 1 del análisis (RF-04), como en el prototipo: el código, la fecha
  *              de recepción, la finca o el proveedor, con las sugerencias de la empresa, y las observaciones. Con
  *              datos válidos registra el lote y pasa a las fotos de la muestra; si el código ya existe en la
- *              empresa, lo marca con el aviso del prototipo.
+ *              empresa, lo marca con el aviso del prototipo. La fecha no ofrece días después de hoy ni de hace
+ *              más de un año.
  * Fecha de creación: 22/11/2026
- * Actualización: 22/11/2026
+ * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -25,7 +26,7 @@ import { useSesion } from '../sesion/contexto.js';
 import { medidas } from '../tema/tokens.js';
 import { CampoDeOrigen } from './CampoDeOrigen.jsx';
 import { esquemaDeLote } from './esquemaDeLote.js';
-import { hoyEnColombia } from './fechas.js';
+import { haceUnAnio, hoyEnColombia } from './fechas.js';
 import { PasosDelAnalisis } from './PasosDelAnalisis.jsx';
 
 const CAMPOS = ['codigo', 'fechaRecepcion', 'origen', 'observaciones'];
@@ -80,7 +81,7 @@ export default function NuevoLote() {
             <CampoDeTexto nombre="codigo" etiqueta={t('lote.codigo.etiqueta')} ayuda={t('nuevoLote.ayudaCodigo')}
               autoComplete="off" />
             <CampoDeTexto nombre="fechaRecepcion" etiqueta={t('lote.fecha_recepcion.etiqueta')}
-              ayuda={t('nuevoLote.ayudaFecha')} type="date" inputProps={{ max: hoy }} />
+              ayuda={t('nuevoLote.ayudaFecha')} type="date" inputProps={{ min: haceUnAnio(hoy), max: hoy }} />
             <CampoDeOrigen nombre="origen" etiqueta={t('lote.origen.etiqueta')} ayuda={t('nuevoLote.ayudaOrigen')} />
             <CampoDeTexto nombre="observaciones" etiqueta={`${t('lote.observaciones.etiqueta')} ${t('nuevoLote.opcional')}`}
               placeholder={t('nuevoLote.ejemploObservaciones')} variasLineas />

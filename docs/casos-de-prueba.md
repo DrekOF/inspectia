@@ -22,7 +22,7 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 ## Resumen
 
 - **154 criterios de aceptación** en 26 fichas: 62 con prueba y 90 pendientes (2 eliminados).
-- **810 pruebas:** 277 de Java (33 generadas), 412 de JavaScript (73 generadas) y 121 de Python. Una prueba parametrizada cuenta una vez.
+- **811 pruebas:** 278 de Java (33 generadas), 412 de JavaScript (73 generadas) y 121 de Python. Una prueba parametrizada cuenta una vez.
 
 | Ficha | Criterios | Con prueba | Pendientes |
 |---|---:|---:|---:|
@@ -234,6 +234,7 @@ Otras pruebas de RF-03, que no cubren un criterio:
 
 Otras pruebas de RF-04, que no cubren un criterio:
 
+- [`FechaDeRecepcionIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/FechaDeRecepcionIT.java) · el ejemplo de la fecha de recepción en la documentación OpenAPI es de hace una semana en Colombia, así el ejemplo de Swagger UI siempre se puede registrar
 - [`FechaDeRecepcionIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/FechaDeRecepcionIT.java) · la fecha de recepción puede ser de hace exactamente un año en Colombia, pero no del día anterior (prueba de límite)
 - [`FechaDeRecepcionIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/FechaDeRecepcionIT.java) · una fecha de recepción de hace miles de años responde 400 con su mensaje y no llega a la base, que no la admite (antes respondía 500)
 - [`RegistroDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/RegistroDeLotesIT.java) · al escribir la finca o el proveedor, el sistema sugiere los que ya usó la empresa, sin distinguir mayúsculas y sin repetirlos

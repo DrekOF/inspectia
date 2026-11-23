@@ -3,9 +3,9 @@
  * Descripción: Entidad JPA de la tabla lote (specs/entidades/lote.json), del módulo de análisis (RF-04, RF-12,
  *              RF-14).
  * Fecha de creación: 10/11/2026
- * Actualización: 10/11/2026
+ * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis.adaptadores.jpa;
 
@@ -55,7 +55,10 @@ public class LoteEntidad {
     @Column(name = "codigo", nullable = false, length = 30)
     private String codigo;
 
-    /** Fecha en que la empresa recibió el lote, no posterior a hoy (RF-04 C4). */
+    /**
+     * Fecha en que la empresa recibió el lote, no posterior a hoy ni de hace más de un año (RF-04 C4,
+     * restricción 4).
+     */
     @Column(name = "fecha_recepcion", nullable = false)
     private LocalDate fechaRecepcion;
 

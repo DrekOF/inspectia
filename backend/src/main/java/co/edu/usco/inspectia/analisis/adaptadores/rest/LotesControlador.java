@@ -74,7 +74,8 @@ public class LotesControlador {
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Registrar un lote", description = "Registra el lote en la empresa de la sesión, pendiente "
             + "de análisis. El código no se puede repetir en la empresa, sin distinguir mayúsculas ni espacios al "
-            + "inicio o al final (409), y la fecha de recepción no puede ser posterior a hoy en Colombia (400). "
+            + "inicio o al final (409), y la fecha de recepción no puede ser posterior a hoy en Colombia ni de hace más "
+            + "de un año (400). "
             + "Roles: USUARIO_FINAL.")
     public LoteRespuesta registrar(@Valid @RequestBody LoteSolicitud solicitud,
             @Parameter(hidden = true) @AuthenticationPrincipal UsuarioEnSesion sesion) {

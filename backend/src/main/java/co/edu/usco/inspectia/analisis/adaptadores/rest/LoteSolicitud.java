@@ -2,9 +2,9 @@
  * Nombre: LoteSolicitud.java
  * Descripción: Los datos con que se registra un lote, con sus validaciones (RF-04).
  * Fecha de creación: 10/11/2026
- * Actualización: 10/11/2026
+ * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis.adaptadores.rest;
 
@@ -34,7 +34,8 @@ public record LoteSolicitud(
         @NotBlank(message = "{validacion.obligatorio}")
         @Size(max = 30, message = "{validacion.longitud_max}")
         String codigo,
-        @Schema(description = "Fecha de recepción, no posterior a hoy en Colombia.", example = "2026-11-02",
+        @Schema(description = "Fecha de recepción, no posterior a hoy en Colombia ni de hace más de un año. El "
+                + "ejemplo, la de hace una semana, lo pone DocumentacionDeLotes.",
                 requiredMode = Schema.RequiredMode.REQUIRED)
         @NotNull(message = "{validacion.obligatorio}")
         LocalDate fechaRecepcion,
