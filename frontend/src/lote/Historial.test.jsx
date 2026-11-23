@@ -2,11 +2,12 @@
  * Nombre: Historial.test.jsx
  * Descripción: Pruebas de la pantalla Historial de lotes (RF-14): las columnas del prototipo, un lote pendiente
  *              y uno analizado, las páginas de 20 lotes, la lista vacía, con «Nuevo lote» solo para el usuario
- *              final, y las tarjetas del celular.
+ *              final, el estado con su ícono, la tabla que se recorre con el teclado, y en el celular, las
+ *              tarjetas y las páginas que caben desde 360 px.
  * Fecha de creación: 10/11/2026
- * Actualización: 22/11/2026
+ * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 import { screen, within } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
@@ -62,6 +63,27 @@ describe('Historial de lotes', () => {
       ['18/10/2026', 'L-0139', 'La Estrella', 'Analizado', '93,0 %', 'Estándar', 'María Torres'],
       ['—', 'L-0143', 'La Esperanza', 'Pendiente de análisis', '—', '—', 'Carlos Ramírez'],
     ]);
+  });
+
+  it('RF-14 · el estado de cada lote va con su ícono, como en el prototipo: un chulo si está analizado y un reloj si está pendiente', async () => {
+    conSesion(USUARIOS.USUARIO_FINAL);
+    conHistorial(() => paginaDeLotes([LOTE_ANALIZADO, LOTE_PENDIENTE]));
+    abrirApp('/historial');
+
+    const tabla = await screen.findByRole('table', { name: 'Lotes de la empresa' });
+    const [, analizado, pendiente] = within(tabla).getAllByRole('row');
+    expect(within(analizado).getByTestId('CheckIcon')).toBeInTheDocument();
+    expect(within(pendiente).getByTestId('ScheduleIcon')).toBeInTheDocument();
+  });
+
+  it('RNF-06 · C4 · la caja de la tabla recibe el foco y lleva su nombre, para recorrerla con el teclado si no cabe en la ventana', async () => {
+    conSesion(USUARIOS.USUARIO_FINAL);
+    conHistorial(() => paginaDeLotes([LOTE_PENDIENTE]));
+    abrirApp('/historial');
+
+    const caja = await screen.findByRole('region', { name: 'Lotes de la empresa' });
+    expect(caja).toHaveAttribute('tabindex', '0');
+    expect(within(caja).getByRole('table', { name: 'Lotes de la empresa' })).toBeInTheDocument();
   });
 
   it('RF-14 · C4 · con más de 20 lotes, la lista se divide en páginas de 20 y se pasa a la siguiente', async () => {
@@ -129,5 +151,19 @@ describe('Historial de lotes', () => {
     expect(tarjetas[0]).toHaveTextContent('Estándar');
     expect(tarjetas[1]).toHaveTextContent('Pendiente de análisis');
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
+  });
+
+  it('RNF-05 · C1 · en el celular, con 8 páginas, solo se ven la primera, la última y las vecinas de la que se ve, para que quepan desde 360 px', async () => {
+    anchoDePantalla(375);
+    conSesion(USUARIOS.USUARIO_FINAL);
+    const todos = Array.from({ length: 141 }, (_, indice) => loteNumero(141 - indice));
+    conHistorial((pagina) => paginaDeLotes(todos.slice(pagina * 20, pagina * 20 + 20), { pagina, total: 141 }));
+    abrirApp('/historial');
+
+    await screen.findByRole('list', { name: 'Lotes de la empresa' });
+    const paginas = screen.getByRole('navigation', { name: 'Páginas del historial' });
+    expect(within(paginas).getAllByRole('button', { name: /^Página \d+$/ }).map((boton) => boton.textContent))
+      .toEqual(['1', '2', '3', '8']);
+    expect(within(paginas).getByRole('button', { name: 'Página 1' })).toHaveAttribute('aria-current', 'page');
   });
 });

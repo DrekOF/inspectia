@@ -3,9 +3,9 @@
  * Descripción: Pruebas de integración del historial de lotes: solo los de la empresa, del más reciente al
  *              más antiguo, por páginas de 20, y el detalle de un lote (RF-14).
  * Fecha de creación: 10/11/2026
- * Actualización: 10/11/2026
+ * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis;
 
@@ -15,6 +15,7 @@ import static co.edu.usco.inspectia.usuario.sesion.ApiSesion.json;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import co.edu.usco.inspectia.PruebaIntegracion;
+import co.edu.usco.inspectia.comun.api.Pagina;
 import co.edu.usco.inspectia.usuario.sesion.ApiSesion;
 import com.jayway.jsonpath.JsonPath;
 import java.nio.charset.StandardCharsets;
@@ -180,13 +181,25 @@ class HistorialDeLotesIT {
     }
 
     @Test
-    @DisplayName("RF-14 · las páginas empiezan en 0 y traen de 1 a 100 lotes, como los demás listados")
+    @DisplayName("RF-14 · las páginas van de 0 a la más alta que la consulta puede pedir y traen de 1 a 100 lotes; "
+            + "fuera de esos límites responde 400 y no un error del servidor (prueba de límite)")
     void limitesDeLaPagina() {
+        String ultima = "?pagina=" + Pagina.PAGINA_MAXIMA + "&tamano=" + Pagina.TAMANO_MAXIMO;
         MvcTestResult negativa = api.enviar(HttpMethod.GET, ApiLotes.RUTA + "?pagina=-1", null, token);
+        MvcTestResult laUltima = api.enviar(HttpMethod.GET, ApiLotes.RUTA + ultima, null, token);
+        MvcTestResult pasada = api.enviar(HttpMethod.GET, ApiLotes.RUTA + "?pagina=" + (Pagina.PAGINA_MAXIMA + 1),
+                null, token);
+        MvcTestResult sinLotes = api.enviar(HttpMethod.GET, ApiLotes.RUTA + "?tamano=0", null, token);
         MvcTestResult grande = api.enviar(HttpMethod.GET, ApiLotes.RUTA + "?tamano=101", null, token);
 
         assertThat(negativa).hasStatus(HttpStatus.BAD_REQUEST);
         assertThat(errores(negativa)).containsExactly(error("pagina", "Debe ser mayor o igual a 0."));
+        assertThat(laUltima).hasStatus(HttpStatus.OK);
+        assertThat(codigos(laUltima)).isEmpty();
+        assertThat(pasada).hasStatus(HttpStatus.BAD_REQUEST);
+        assertThat(errores(pasada)).containsExactly(error("pagina", "Debe ser menor o igual a 21474836."));
+        assertThat(sinLotes).hasStatus(HttpStatus.BAD_REQUEST);
+        assertThat(errores(sinLotes)).containsExactly(error("tamano", "Debe ser mayor o igual a 1."));
         assertThat(grande).hasStatus(HttpStatus.BAD_REQUEST);
         assertThat(errores(grande)).containsExactly(error("tamano", "Debe ser menor o igual a 100."));
     }

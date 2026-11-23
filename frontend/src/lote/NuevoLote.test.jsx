@@ -2,17 +2,18 @@
  * Nombre: NuevoLote.test.jsx
  * Descripción: Pruebas de la pantalla Nuevo lote (RF-04): registrar con datos válidos y pasar a las fotos, el
  *              código repetido, la fecha posterior a hoy, los datos obligatorios, las sugerencias de finca o
- *              proveedor y Cancelar.
+ *              proveedor, sin el botón «Clear», y Cancelar. Las pruebas de la fecha fijan la hora en las 10 de la
+ *              noche del 9 de noviembre en Colombia, que en UTC ya es el 10.
  * Fecha de creación: 10/11/2026
- * Actualización: 10/11/2026
+ * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 import { fireEvent, screen, within } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { abrirApp, conSesion, USUARIOS } from '../pruebas/ayudas.jsx';
-import { hoyEnColombia, LOTE_PENDIENTE } from '../pruebas/lotes.js';
+import { LOTE_PENDIENTE } from '../pruebas/lotes.js';
 import { problema, servidor } from '../pruebas/servidor.js';
 
 const CARLOS = USUARIOS.USUARIO_FINAL;
@@ -67,7 +68,7 @@ describe('Nuevo lote', () => {
     await registrar(usuario);
 
     expect(await screen.findByRole('heading', { name: 'Fotos de la muestra' })).toBeInTheDocument();
-    expect(screen.getByText(/^Lote L-0200 · Finca La Esperanza\./)).toBeInTheDocument();
+    expect(await screen.findByText(/^Lote L-0200 · Finca La Esperanza\./)).toBeInTheDocument();
     expect(window.location.pathname).toBe(`/lotes/${CREADO.id}/fotos`);
     expect(enviado).toEqual({ codigo: 'L-0200', fechaRecepcion: '2026-11-02', origen: 'Finca La Esperanza',
       observaciones: 'Secado al sol.' });
@@ -87,37 +88,46 @@ describe('Nuevo lote', () => {
     expect(screen.getByRole('heading', { name: 'Nuevo lote' })).toBeInTheDocument();
   });
 
-  it('RF-04 · C4 · una fecha de recepción posterior a hoy se marca antes de enviar, y el campo no ofrece fechas después de hoy', async () => {
-    let enviados = 0;
-    servidor.use(http.post('/api/v1/lotes', () => {
-      enviados += 1;
-      return HttpResponse.json(CREADO, { status: 201 });
-    }));
-    const { usuario } = abrirApp('/lotes/nuevo');
+  describe('a las 10 de la noche del 9 de noviembre en Colombia, que en UTC ya es el 10', () => {
+    // Solo se fija la fecha: los temporizadores siguen siendo los de verdad, para user-event y las sugerencias.
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      vi.setSystemTime(new Date('2026-11-10T03:00:00Z'));
+    });
+    afterEach(() => vi.useRealTimers());
 
-    expect(screen.getByLabelText('Fecha de recepción')).toHaveAttribute('max', hoyEnColombia());
-    await registrar(usuario, { fecha: hoyEnColombia(1) });
+    it('RF-04 · C4 · una fecha de recepción posterior a hoy se marca antes de enviar, y el campo no ofrece fechas después de hoy', async () => {
+      let enviados = 0;
+      servidor.use(http.post('/api/v1/lotes', () => {
+        enviados += 1;
+        return HttpResponse.json(CREADO, { status: 201 });
+      }));
+      const { usuario } = abrirApp('/lotes/nuevo');
 
-    expect(await screen.findByText('La fecha de recepción no puede ser posterior a hoy.')).toBeInTheDocument();
-    expect(screen.getByLabelText('Fecha de recepción')).toHaveAttribute('aria-invalid', 'true');
-    expect(enviados).toBe(0);
-  });
+      expect(screen.getByLabelText('Fecha de recepción')).toHaveAttribute('max', '2026-11-09');
+      await registrar(usuario, { fecha: '2026-11-10' });
 
-  it('RF-04 · C4 · la fecha de hoy en Colombia sí se acepta (prueba de límite)', async () => {
-    let enviado;
-    servidor.use(
-      http.post('/api/v1/lotes', async ({ request }) => {
-        enviado = await request.json();
-        return HttpResponse.json({ ...CREADO, fechaRecepcion: enviado.fechaRecepcion }, { status: 201 });
-      }),
-      http.get(`/api/v1/lotes/${CREADO.id}`, () => HttpResponse.json(CREADO)),
-    );
-    const { usuario } = abrirApp('/lotes/nuevo');
+      expect(await screen.findByText('La fecha de recepción no puede ser posterior a hoy.')).toBeInTheDocument();
+      expect(screen.getByLabelText('Fecha de recepción')).toHaveAttribute('aria-invalid', 'true');
+      expect(enviados).toBe(0);
+    });
 
-    await registrar(usuario, { fecha: hoyEnColombia() });
+    it('RF-04 · C4 · la fecha de hoy en Colombia sí se acepta, aunque en UTC ya sea el día siguiente (prueba de límite)', async () => {
+      let enviado;
+      servidor.use(
+        http.post('/api/v1/lotes', async ({ request }) => {
+          enviado = await request.json();
+          return HttpResponse.json({ ...CREADO, fechaRecepcion: enviado.fechaRecepcion }, { status: 201 });
+        }),
+        http.get(`/api/v1/lotes/${CREADO.id}`, () => HttpResponse.json(CREADO)),
+      );
+      const { usuario } = abrirApp('/lotes/nuevo');
 
-    expect(await screen.findByRole('heading', { name: 'Fotos de la muestra' })).toBeInTheDocument();
-    expect(enviado.fechaRecepcion).toBe(hoyEnColombia());
+      await registrar(usuario, { fecha: '2026-11-09' });
+
+      expect(await screen.findByRole('heading', { name: 'Fotos de la muestra' })).toBeInTheDocument();
+      expect(enviado.fechaRecepcion).toBe('2026-11-09');
+    });
   });
 
   it('RF-04 · el código, la fecha y la finca o el proveedor son obligatorios; las observaciones no', async () => {
@@ -159,6 +169,17 @@ describe('Nuevo lote', () => {
     expect(screen.getByLabelText('Finca o proveedor')).toHaveValue('Finca La Esperanza');
     expect(screen.getByText('Te sugerimos las que ya usó tu empresa, para que las estadísticas las agrupen bien.'))
       .toBeInTheDocument();
+  });
+
+  it('RP-11 · el campo de la finca no tiene el botón «Clear» de Material UI, que no está traducido: el texto se borra con el teclado', async () => {
+    conSugerencias(['Finca La Esperanza']);
+    const { usuario } = abrirApp('/lotes/nuevo');
+
+    await usuario.type(screen.getByLabelText('Finca o proveedor'), 'La Es');
+    await usuario.click(await screen.findByRole('option', { name: 'Finca La Esperanza' }));
+
+    expect(screen.getByLabelText('Finca o proveedor')).toHaveValue('Finca La Esperanza');
+    expect(screen.queryByRole('button', { name: 'Clear', hidden: true })).not.toBeInTheDocument();
   });
 
   it('RF-04 · los pasos del análisis muestran que el lote va en el primero', () => {

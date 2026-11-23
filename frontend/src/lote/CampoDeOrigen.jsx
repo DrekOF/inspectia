@@ -3,11 +3,12 @@
  * Descripción: El campo «Finca o proveedor» de Nuevo lote, como en el prototipo: al escribir, sugiere las fincas
  *              y los proveedores que ya usó la empresa, para reutilizar el nombre que ya existe y que las
  *              estadísticas por finca no se partan (RF-04, restricción 3; RF-16). Se puede escribir uno nuevo.
- *              Tiene la etiqueta, el error y la ayuda de los demás campos (RNF-06).
+ *              Tiene la etiqueta, el error, la ayuda y el alto de los demás campos (RNF-06), y no tiene botón para
+ *              borrar: el texto se borra con el teclado, como en el prototipo.
  * Fecha de creación: 22/11/2026
- * Actualización: 22/11/2026
+ * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 import Autocomplete from '@mui/material/Autocomplete';
 import FormControl from '@mui/material/FormControl';
@@ -71,10 +72,12 @@ export function CampoDeOrigen({ nombre, etiqueta, ayuda }) {
   return (
     <FormControl fullWidth error={Boolean(error)}>
       <FormLabel htmlFor={nombre}>{etiqueta}</FormLabel>
-      <Autocomplete id={nombre} freeSolo options={sugerencias} filterOptions={(opciones) => opciones}
+      {/* Sin el relleno que Material UI le pone al campo de un Autocomplete, mide 48 px como los demás. */}
+      <Autocomplete id={nombre} freeSolo disableClearable options={sugerencias} filterOptions={(opciones) => opciones}
         inputValue={campo.value} onInputChange={(_, valor) => ayudas.setValue(valor)}
         onChange={(_, valor) => ayudas.setValue(valor ?? '')}
         slotProps={{ listbox: { 'aria-label': t('nuevoLote.sugerencias') } }}
+        sx={{ '& .MuiOutlinedInput-root': { p: 0, '& .MuiAutocomplete-input': { p: '0 14px' } } }}
         renderInput={({ slotProps: { input, htmlInput } }) => (
           <OutlinedInput ref={input.ref} className={input.className} startAdornment={input.startAdornment}
             endAdornment={input.endAdornment} onMouseDown={input.onMouseDown} fullWidth autoComplete="off"

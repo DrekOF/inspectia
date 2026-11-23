@@ -3,9 +3,9 @@
  * Descripción: API REST de los lotes: registrar un lote, el historial por páginas, el detalle y las
  *              sugerencias de finca o proveedor (RF-04, RF-14, RNF-03).
  * Fecha de creación: 10/11/2026
- * Actualización: 10/11/2026
+ * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis.adaptadores.rest;
 
@@ -95,9 +95,10 @@ public class LotesControlador {
             + "último movimiento al más antiguo: la fecha del resultado si el lote ya se analizó, o la de registro si "
             + "está pendiente. Roles: USUARIO_FINAL y ADMIN_EMPRESA.")
     public Pagina<LoteRespuesta> historial(
-            @Parameter(description = "Número de la página, desde 0.")
+            @Parameter(description = "Número de la página, de 0 a " + Pagina.PAGINA_MAXIMA + ".")
             @RequestParam(name = "pagina", defaultValue = "0")
-            @Min(value = 0, message = "{validacion.minimo}") int pagina,
+            @Min(value = 0, message = "{validacion.minimo}")
+            @Max(value = Pagina.PAGINA_MAXIMA, message = "{validacion.maximo}") int pagina,
             @Parameter(description = "Lotes por página, de 1 a " + Pagina.TAMANO_MAXIMO + ".")
             @RequestParam(name = "tamano", defaultValue = "" + Pagina.TAMANO_POR_DEFECTO)
             @Min(value = 1, message = "{validacion.minimo}")

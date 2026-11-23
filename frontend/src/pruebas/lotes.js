@@ -1,12 +1,11 @@
 /*
  * Nombre: lotes.js
- * Descripción: Lotes de ejemplo como los responde el backend, páginas del historial y la fecha de hoy en
- *              Colombia, para las pruebas de Nuevo lote, el Historial y las fotos de la muestra (RF-04, RF-05,
- *              RF-14).
+ * Descripción: Lotes de ejemplo como los responde el backend y páginas del historial, para las pruebas de Nuevo
+ *              lote, el Historial y las fotos de la muestra (RF-04, RF-05, RF-14).
  * Fecha de creación: 10/11/2026
- * Actualización: 10/11/2026
+ * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 import { USUARIOS } from './ayudas.jsx';
 
@@ -60,17 +59,4 @@ export function loteNumero(numero) {
  */
 export function paginaDeLotes(lotes, { pagina = 0, tamano = 20, total = lotes.length } = {}) {
   return { contenido: lotes, pagina, tamano, totalElementos: total, totalPaginas: Math.ceil(total / tamano) };
-}
-
-/**
- * Hoy en Colombia, en el formato de un campo de fecha (aaaa-mm-dd), más unos días.
- *
- * @param {number} [dias] los días que se suman; negativos para el pasado
- * @returns {string} la fecha
- */
-export function hoyEnColombia(dias = 0) {
-  const hoy = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date());
-  const fecha = new Date(`${hoy}T12:00:00Z`);
-  fecha.setUTCDate(fecha.getUTCDate() + dias);
-  return fecha.toISOString().slice(0, 10);
 }

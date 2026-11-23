@@ -2,11 +2,12 @@
  * Nombre: lotes.spec.js
  * Descripción: Pruebas de punta a punta de los lotes (RF-04, RF-14, RNF-03): registrar un lote en la pantalla y
  *              verlo pendiente en el historial, el código repetido, la fecha posterior a hoy, las sugerencias de
- *              finca o proveedor sin tildes, el historial sin lotes de otra empresa y sus páginas de 20.
+ *              finca o proveedor sin tildes, con el alto de los demás campos y sin el botón «Clear», el historial
+ *              sin lotes de otra empresa y sus páginas de 20.
  * Fecha de creación: 22/11/2026
- * Actualización: 22/11/2026
+ * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 import { randomUUID } from 'node:crypto';
 import {
@@ -123,6 +124,24 @@ test('RF-04 · al escribir la finca sin tilde, la pantalla sugiere la que ya us�
   const sugerencias = page.getByRole('listbox', { name: 'Fincas y proveedores que ya usó tu empresa' });
   await sugerencias.getByRole('option', { name: 'Finca El Paraíso' }).click();
   await expect(page.getByLabel('Finca o proveedor')).toHaveValue('Finca El Paraíso');
+});
+
+test('RF-04 · el campo «Finca o proveedor» mide lo mismo que los demás campos, como en el prototipo, y no tiene el botón «Clear» sin traducir (de punta a punta)', async ({ page, request }) => {
+  const { usuarioFinal } = await crearEmpresaConUsuarioFinal(request);
+  await iniciarSesion(page, usuarioFinal);
+  await page.goto('/lotes/nuevo');
+  /**
+   * El alto de la caja de un campo, sin su etiqueta ni su ayuda.
+   *
+   * @param {string} etiqueta la etiqueta del campo
+   * @returns {Promise<number>} el alto en píxeles
+   */
+  const alto = async (etiqueta) => (await page.getByLabel(etiqueta).locator('xpath=..').boundingBox()).height;
+
+  await page.getByLabel('Finca o proveedor').fill('Finca Nueva');
+
+  expect(await alto('Finca o proveedor')).toBe(await alto('Código del lote'));
+  await expect(page.getByRole('button', { name: 'Clear' })).toHaveCount(0);
 });
 
 test('RF-14 · C1 · el historial solo muestra los lotes de la empresa del usuario: los de otra empresa no aparecen (de punta a punta)', async ({ page, request }) => {

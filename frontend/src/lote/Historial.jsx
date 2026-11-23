@@ -5,11 +5,13 @@
  *              estado, el porcentaje de granos sanos, la categoría probable y quién lo registró. En el PC van en
  *              una tabla y en el celular, en tarjetas (RNF-05), por páginas de 20.
  * Fecha de creación: 22/11/2026
- * Actualización: 22/11/2026
+ * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 import Add from '@mui/icons-material/Add';
+import Check from '@mui/icons-material/Check';
+import Schedule from '@mui/icons-material/Schedule';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
@@ -22,29 +24,24 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Typography from '@mui/material/Typography';
 import usePagination from '@mui/material/usePagination';
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { textoDelError } from '../api/errores.js';
 import { historialDeLotes } from '../api/lotes.js';
 import { Aviso } from '../componentes/Aviso.jsx';
+import { OCULTO_A_LA_VISTA } from '../componentes/ocultoALaVista.js';
 import { TituloDePagina } from '../componentes/TituloDePagina.jsx';
 import { useEsPc } from '../componentes/useEsPc.js';
 import { textoDelDecimal } from '../crud/decimales.js';
 import { idiomaDe } from '../i18n/i18n.js';
 import { ROLES } from '../navegacion/menu.js';
 import { useSesion } from '../sesion/contexto.js';
-import { medidas } from '../tema/tokens.js';
+import { letra, medidas } from '../tema/tokens.js';
 import { diaEnColombia } from './fechas.js';
 
 /** Lo que muestra una celda sin dato, como el resultado de un lote pendiente. */
 const SIN_DATO = '—';
-
-/** Oculto a la vista, pero no para los lectores de pantalla, como el título de la tabla del prototipo. */
-const OCULTO_A_LA_VISTA = {
-  border: 0, clip: 'rect(0 0 0 0)', height: '1px', margin: '-1px', overflow: 'hidden', padding: 0,
-  position: 'absolute', whiteSpace: 'nowrap', width: '1px',
-};
 
 /**
  * El estilo de un recuadro, como el de la tabla o el de una tarjeta.
@@ -91,27 +88,44 @@ const COLUMNAS = [
 ];
 
 /**
- * El estado de un lote, como en el prototipo: analizado, en verde; pendiente, sin color.
+ * El estado de un lote, como en el prototipo: pendiente, en ámbar y con un reloj; analizado, en verde y con un
+ * chulo. El ícono acompaña al color, así el color no es la única señal (RNF-06).
  *
  * @param {{ lote: import('../api/lotes.js').Lote, texto: string }} props el lote y el texto de su estado
  * @returns {import('react').ReactElement} el estado
  */
 function Estado({ lote, texto }) {
-  return <Chip size="small" label={texto} color={lote.estado === 'ANALIZADO' ? 'success' : 'default'} variant="outlined" />;
+  const analizado = lote.estado === 'ANALIZADO';
+  const Icono = analizado ? Check : Schedule;
+  return (
+    <Chip size="small" label={texto} icon={<Icono />} sx={(theme) => {
+      const tono = theme.vars.palette.cacao[analizado ? 'exito' : 'advertencia'];
+      return {
+        height: 'auto', gap: '6px', px: '10px', py: '4px', borderRadius: `${medidas.chip.radio}px`,
+        bgcolor: tono.fondo, color: tono.texto, fontSize: letra.chip, fontWeight: letra.pesos.media,
+        '& .MuiChip-icon': { m: 0, fontSize: 14, color: 'inherit' },
+        '& .MuiChip-label': { p: 0 },
+      };
+    }} />
+  );
 }
 
 /**
- * Los lotes en el PC: una tabla con su título para los lectores de pantalla.
+ * Los lotes en el PC: una tabla con su título para los lectores de pantalla. En una ventana angosta, la caja de la
+ * tabla se desplaza a los lados; por eso recibe el foco, con el nombre de la tabla, y se recorre con las flechas
+ * del teclado (WCAG 2.1.1).
  *
  * @param {{ lotes: import('../api/lotes.js').Lote[], region: string }} props los lotes de la página y la región
  * @returns {import('react').ReactElement} la tabla
  */
 function Tabla({ lotes, region }) {
   const { t } = useTranslation();
+  const idDelTitulo = useId();
   return (
-    <Box sx={(theme) => ({ ...recuadro(theme), overflowX: 'auto' })}>
+    <Box role="region" tabIndex={0} aria-labelledby={idDelTitulo}
+      sx={(theme) => ({ ...recuadro(theme), overflowX: 'auto' })}>
       <Table>
-        <Box component="caption" sx={OCULTO_A_LA_VISTA}>{t('historial.lista')}</Box>
+        <Box component="caption" id={idDelTitulo} sx={OCULTO_A_LA_VISTA}>{t('historial.lista')}</Box>
         <TableHead>
           <TableRow>{COLUMNAS.map(([dato, clave]) => <TableCell key={dato}>{t(clave)}</TableCell>)}</TableRow>
         </TableHead>
@@ -169,7 +183,32 @@ function Tarjetas({ lotes, region }) {
 }
 
 /**
- * Las páginas del historial, como en el prototipo: cuántos lotes hay y los botones de cada página.
+ * El estilo de un botón de las páginas, como en el prototipo: de 44 px, con borde, y la página que se ve en el
+ * color primario, que se distingue de las demás con más de 3:1 (WCAG 1.4.11). Los puntos suspensivos no son
+ * botones: van sin borde y más angostos.
+ *
+ * @param {string} tipo el tipo del botón: page, previous, next, start-ellipsis o end-ellipsis
+ * @returns {import('@mui/material/styles').SxProps<import('@mui/material/styles').Theme>} el estilo
+ */
+function estiloDePagina(tipo) {
+  if (tipo.endsWith('ellipsis')) {
+    return { minWidth: 24, m: 0 };
+  }
+  return (theme) => ({
+    minWidth: medidas.zonaTactil, height: medidas.zonaTactil, m: 0, px: 1, borderRadius: `${medidas.boton.radio}px`,
+    border: `1px solid ${theme.vars.palette.divider}`, bgcolor: 'background.paper', fontSize: letra.texto,
+    ...(tipo === 'page' ? {} : { color: 'primary.main' }),
+    '&.Mui-selected, &.Mui-selected:hover, &.Mui-selected.Mui-focusVisible': {
+      bgcolor: 'primary.main', borderColor: 'primary.main', color: 'primary.contrastText',
+      fontWeight: letra.pesos.media,
+    },
+  });
+}
+
+/**
+ * Las páginas del historial, como en el prototipo: cuántos lotes hay y los botones de cada página. En el celular
+ * muestra menos páginas a cada lado de la que se ve, y la fila de botones baja a otra línea si no cabe: ninguna
+ * pantalla se desplaza a los lados desde 360 px (RNF-05 C1).
  *
  * @param {object} props las propiedades
  * @param {number} props.total cuántos lotes hay
@@ -180,8 +219,10 @@ function Tarjetas({ lotes, region }) {
  */
 function Paginas({ total, paginas, pagina, alCambiar }) {
   const { t } = useTranslation();
+  const esPc = useEsPc();
   const { items } = usePagination({
-    count: Math.max(paginas, 1), page: pagina + 1, onChange: (_, elegida) => alCambiar(elegida - 1),
+    count: Math.max(paginas, 1), page: pagina + 1, siblingCount: esPc ? 1 : 0,
+    onChange: (_, elegida) => alCambiar(elegida - 1),
   });
   const nombre = { previous: t('historial.paginaAnterior'), next: t('historial.paginaSiguiente') };
   return (
@@ -189,10 +230,12 @@ function Paginas({ total, paginas, pagina, alCambiar }) {
       display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 1.5, mt: 2,
     }}>
       <Typography variant="body2" color="text.secondary">{t('historial.cuenta', { count: total })}</Typography>
-      <Box component="ul" sx={{ listStyle: 'none', m: 0, p: 0, display: 'flex', gap: 0.5 }}>
+      <Box component="ul" sx={{
+        listStyle: 'none', m: 0, p: 0, display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px',
+      }}>
         {items.map(({ page: numero, type: tipo, selected: seleccionada, ...item }) => (
           <li key={`${tipo}-${numero}`}>
-            <PaginationItem {...item} type={tipo} page={numero} selected={seleccionada}
+            <PaginationItem {...item} type={tipo} page={numero} selected={seleccionada} sx={estiloDePagina(tipo)}
               aria-current={seleccionada ? 'page' : undefined}
               aria-label={nombre[tipo] ?? (tipo === 'page' ? t('historial.pagina', { pagina: numero }) : undefined)} />
           </li>

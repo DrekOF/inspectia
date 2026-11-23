@@ -4,9 +4,9 @@
  *              comparte con el backend no van aquí: salen de sus archivos .properties
  *              (herramientas/textos-del-backend.js). Los marcadores van entre llaves, como en el backend.
  * Fecha de creación: 20/10/2026
- * Actualización: 22/11/2026
+ * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.4
+ * Versión: 1.5
  */
 
 /** Textos en español, por clave. en.js tiene las mismas claves (i18n.test.js lo revisa). */
@@ -152,6 +152,7 @@ export default {
   'pasos.fotos': 'Fotos de la muestra',
   'pasos.resultado': 'Resultado',
   'pasos.listo': '(listo)',
+  'pasos.deTotal': 'Paso {numero} de {total}',
   'nuevoLote.titulo': 'Nuevo lote',
   'nuevoLote.subtitulo': 'Escribe los datos del lote. Después tomarás las fotos de la muestra.',
   'nuevoLote.formulario': 'Datos del lote',
@@ -176,7 +177,7 @@ export default {
   'historial.paginaSiguiente': 'Página siguiente',
   'historial.pagina': 'Página {pagina}',
   'fotos.titulo': 'Fotos de la muestra',
-  'fotos.descripcion': 'Lote {codigo} · {origen}. Sube 2 o 3 fotos; si sales ahora, el lote queda pendiente y lo retomas desde el Historial.',
+  'fotos.descripcion': 'Lote {codigo} · {origen}. El lote quedó registrado y pendiente de análisis.',
   'fotos.tusFotos': 'Tus fotos',
   'fotos.pronto': 'Pronto podrás subir aquí las fotos de la muestra.',
   'guia.titulo': 'Guía de captura',

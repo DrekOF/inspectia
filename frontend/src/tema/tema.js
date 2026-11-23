@@ -2,11 +2,11 @@
  * Nombre: tema.js
  * Descripción: Tema de Material UI de InspectIA (RP-08): los colores claro y oscuro, la letra y las medidas
  *              del prototipo, todos tomados de tokens.js. Usa variables CSS, así el tema cambia sin volver a
- *              dibujar la página.
+ *              dibujar la página. El texto de ejemplo de los campos va en el color del texto secundario.
  * Fecha de creación: 20/10/2026
- * Actualización: 20/10/2026
+ * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 import { createTheme } from '@mui/material/styles';
 import { colores, letra, medidas } from './tokens.js';
@@ -108,7 +108,18 @@ export const tema = createTheme({
             borderColor: theme.vars.palette.text.primary,
           },
         }),
-        input: { boxSizing: 'border-box', height: medidas.campo.alto, padding: '0 14px', fontSize: letra.texto },
+        input: ({ theme }) => {
+          // El texto de ejemplo, como «Por ejemplo: cosecha de octubre», en el color del texto secundario y sin
+          // transparencia: el gris de Material UI, al 42 %, no llega al 4,5:1 (RNF-06 C4). Un selector por
+          // navegador, porque si uno no conoce el de otro, descarta toda la regla.
+          const ejemplo = { color: theme.vars.palette.text.secondary, opacity: 1 };
+          return {
+            boxSizing: 'border-box', height: medidas.campo.alto, padding: '0 14px', fontSize: letra.texto,
+            '&::placeholder': ejemplo,
+            '&::-webkit-input-placeholder': ejemplo,
+            '&::-moz-placeholder': ejemplo,
+          };
+        },
       },
     },
     MuiFormHelperText: {
