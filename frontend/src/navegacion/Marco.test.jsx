@@ -4,9 +4,9 @@
  *              contenido», la barra con el usuario, las secciones pendientes, las rutas de otro rol, las que
  *              no existen, el menú en el celular, y el idioma y el tema desde la barra (RP-08, RP-11).
  * Fecha de creación: 20/10/2026
- * Actualización: 27/10/2026
+ * Actualización: 22/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
@@ -42,7 +42,7 @@ describe('marco de la app', () => {
       .toEqual(['Cambiar contraseña', 'Acerca de', 'Cerrar sesión']);
   });
 
-  it.each([['Estadísticas'], ['Modelo de IA'], ['Historial']])(
+  it.each([['Estadísticas'], ['Modelo de IA']])(
     'RF-01 · las secciones que aún no existen dicen «Esta sección estará disponible pronto.», sin códigos de requisitos: %s',
     async (seccion) => {
       conSesion(USUARIOS.ADMIN_EMPRESA);

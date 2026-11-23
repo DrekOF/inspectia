@@ -1,9 +1,10 @@
 /*
  * Nombre: Historial.test.jsx
  * Descripción: Pruebas de la pantalla Historial de lotes (RF-14): las columnas del prototipo, un lote pendiente
- *              y uno analizado, las páginas de 20 lotes, la lista vacía y las tarjetas del celular.
+ *              y uno analizado, las páginas de 20 lotes, la lista vacía, con «Nuevo lote» solo para el usuario
+ *              final, y las tarjetas del celular.
  * Fecha de creación: 10/11/2026
- * Actualización: 10/11/2026
+ * Actualización: 22/11/2026
  * Autor: Equipo InspectIA
  * Versión: 1.0
  */
@@ -94,13 +95,24 @@ describe('Historial de lotes', () => {
     expect(filas()).toHaveLength(1);
   });
 
-  it('RF-14 · sin lotes, la lista lo dice y no muestra páginas', async () => {
+  it('RF-14 · sin lotes, al usuario final la lista le dice que no hay y le ofrece «Nuevo lote» para registrar el primero', async () => {
     conSesion(USUARIOS.USUARIO_FINAL);
+    conHistorial(() => paginaDeLotes([]));
+    const { usuario } = abrirApp('/historial');
+
+    expect(await screen.findByText('Tu empresa todavía no tiene lotes.')).toBeInTheDocument();
+    expect(screen.queryByRole('navigation', { name: 'Páginas del historial' })).not.toBeInTheDocument();
+    await usuario.click(within(screen.getByRole('main')).getByRole('link', { name: 'Nuevo lote' }));
+    expect(await screen.findByRole('heading', { name: 'Nuevo lote' })).toBeInTheDocument();
+  });
+
+  it('RF-14 · sin lotes, la administradora solo ve el texto: no registra lotes (RF-04)', async () => {
+    conSesion(USUARIOS.ADMIN_EMPRESA);
     conHistorial(() => paginaDeLotes([]));
     abrirApp('/historial');
 
     expect(await screen.findByText('Tu empresa todavía no tiene lotes.')).toBeInTheDocument();
-    expect(screen.queryByRole('navigation', { name: 'Páginas del historial' })).not.toBeInTheDocument();
+    expect(within(screen.getByRole('main')).queryByRole('link', { name: 'Nuevo lote' })).not.toBeInTheDocument();
   });
 
   it('RNF-05 · en el celular cada lote va en una tarjeta, con su código, su estado y su resultado', async () => {

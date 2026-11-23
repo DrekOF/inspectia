@@ -2,12 +2,13 @@
  * Nombre: Rutas.jsx
  * Descripción: Las rutas de la app (RNF-04): Iniciar sesión y Acerca de se abren sin sesión; las demás piden
  *              una sesión y van dentro del marco, y cada sección solo la abren los roles que la usan. Las
- *              pantallas generadas reciben aquí sus extensiones (RP-23). Las secciones que todavía no existen
- *              muestran «Esta sección estará disponible pronto.».
+ *              pantallas generadas reciben aquí sus extensiones (RP-23), y las del análisis, escritas a mano, salen de
+ *              PANTALLAS_DEL_ANALISIS (RF-04, RF-14); la de las fotos de la muestra solo la abre el usuario final
+ *              (RF-05). Las secciones que todavía no existen muestran «Esta sección estará disponible pronto.».
  * Fecha de creación: 20/10/2026
- * Actualización: 26/10/2026
+ * Actualización: 22/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -15,6 +16,9 @@ import { Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, Outlet, Route, Routes } from 'react-router';
 import { EXTENSIONES } from '../extensiones.js';
+import FotosDeLaMuestra from '../lote/FotosDeLaMuestra.jsx';
+import Historial from '../lote/Historial.jsx';
+import NuevoLote from '../lote/NuevoLote.jsx';
 import AcercaDe from '../paginas/AcercaDe.jsx';
 import CambiarContrasena from '../paginas/CambiarContrasena.jsx';
 import IniciarSesion from '../paginas/IniciarSesion.jsx';
@@ -24,7 +28,13 @@ import Pendiente from '../paginas/Pendiente.jsx';
 import { useSesion } from '../sesion/contexto.js';
 import { RUTA_INICIAR_SESION } from '../sesion/volver.js';
 import { Marco } from './Marco.jsx';
-import { SECCIONES } from './menu.js';
+import { ROLES, SECCIONES } from './menu.js';
+
+/**
+ * Las pantallas del análisis, escritas a mano (D-21), según la ruta de su sección del menú. Se cargan con la app,
+ * como Cambiar contraseña, y no aparte, como las generadas.
+ */
+const PANTALLAS_DEL_ANALISIS = { '/lotes/nuevo': NuevoLote, '/historial': Historial };
 
 /**
  * Las pantallas que piden una sesión: sin ella llevan a Iniciar sesión; con ella van dentro del marco.
@@ -65,13 +75,17 @@ function Cargando() {
 }
 
 /**
- * Una sección: su pantalla generada, con sus extensiones, o la página de lo que está pendiente.
+ * Una sección: su pantalla del análisis, la generada con sus extensiones, o la página de lo que está pendiente.
  *
  * @param {{ seccion: import('./menu.js').Seccion }} props la sección
  * @returns {import('react').ReactElement} la pantalla
  */
 function PantallaDeSeccion({ seccion }) {
-  const { Pantalla, entidad, etiqueta } = seccion;
+  const { Pantalla, entidad, etiqueta, ruta } = seccion;
+  const DelAnalisis = PANTALLAS_DEL_ANALISIS[ruta];
+  if (DelAnalisis) {
+    return <DelAnalisis />;
+  }
   if (!Pantalla) {
     return <Pendiente etiqueta={etiqueta} />;
   }
@@ -91,6 +105,8 @@ export function Rutas() {
       <Route element={<ConSesion />}>
         <Route index element={<Inicio />} />
         <Route path="/cambiar-contrasena" element={<CambiarContrasena />} />
+        <Route path="/lotes/:id/fotos"
+          element={<ConRol roles={[ROLES.USUARIO_FINAL]}><FotosDeLaMuestra /></ConRol>} />
         {SECCIONES.filter(({ ruta }) => ruta !== '/').map((seccion) => (
           <Route key={seccion.ruta} path={seccion.ruta}
             element={<ConRol roles={seccion.roles}><PantallaDeSeccion seccion={seccion} /></ConRol>} />

@@ -4,11 +4,12 @@
  *              y, debajo, el error con su ícono y la ayuda. El error marca el campo con aria-invalid, y el error
  *              y la ayuda quedan unidos a él con aria-describedby, para los lectores de pantalla (RNF-06 C3 y
  *              C4). Un texto largo, como la recomendación de un rango, va en varias líneas, y una regla de todo el
- *              formulario puede marcar el campo con su aviso (RF-13).
+ *              formulario puede marcar el campo con su aviso (RF-13). El campo puede llevar atributos propios, como
+ *              la fecha máxima de la fecha de recepción de un lote (RF-04 C4).
  * Fecha de creación: 20/10/2026
- * Actualización: 28/10/2026
+ * Actualización: 22/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.2
+ * Versión: 1.3
  */
 import FormControl from '@mui/material/FormControl';
 import FormLabel from '@mui/material/FormLabel';
@@ -35,11 +36,14 @@ const VARIAS_LINEAS = { padding: '12px 14px', '& .MuiOutlinedInput-input': { hei
  * @param {boolean} [props.variasLineas] si el texto va en varias líneas, como la recomendación de un rango: el campo
  *   empieza con dos y crece con el texto
  * @param {import('react').ReactNode} [props.alFinal] lo que va al final del campo, como un botón
- * @param {string} [props.type] el tipo del campo, como email o password
+ * @param {string} [props.type] el tipo del campo, como email, password o date
  * @param {string} [props.autoComplete] qué dato es para el navegador, como username
+ * @param {object} [props.inputProps] atributos del elemento input, como max en una fecha; aria-describedby lo pone
+ *   el campo
  * @returns {import('react').ReactElement} el campo
  */
-export function CampoDeTexto({ nombre, etiqueta, ayuda, descritoPor, marcadoPor, variasLineas = false, alFinal, ...props }) {
+export function CampoDeTexto({ nombre, etiqueta, ayuda, descritoPor, marcadoPor, variasLineas = false, alFinal,
+  inputProps, ...props }) {
   const [campo, meta] = useField(nombre);
   const error = meta.touched && meta.error ? meta.error : null;
 
@@ -48,7 +52,7 @@ export function CampoDeTexto({ nombre, etiqueta, ayuda, descritoPor, marcadoPor,
       <FormLabel htmlFor={nombre}>{etiqueta}</FormLabel>
       <OutlinedInput id={nombre} {...campo} multiline={variasLineas} minRows={variasLineas ? 2 : undefined}
         sx={variasLineas ? VARIAS_LINEAS : undefined} {...props} endAdornment={alFinal}
-        inputProps={{ 'aria-describedby': idsQueDescriben(nombre, { marcadoPor, error, ayuda, descritoPor }) }} />
+        inputProps={{ ...inputProps, 'aria-describedby': idsQueDescriben(nombre, { marcadoPor, error, ayuda, descritoPor }) }} />
       <MensajesDelCampo nombre={nombre} error={error} ayuda={ayuda} />
     </FormControl>
   );

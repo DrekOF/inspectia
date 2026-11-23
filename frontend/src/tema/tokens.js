@@ -1,11 +1,12 @@
 /*
  * Nombre: tokens.js
  * Descripción: Tokens de diseño de InspectIA (RP-08): los colores de los temas claro y oscuro, con tonos de
- *              cacao, y la letra y las medidas del prototipo. Son la única fuente de colores de la app.
+ *              cacao, y la letra y las medidas del prototipo. Son la única fuente de colores de la app, también
+ *              de las marcas sobre las fotos y del dibujo de la foto de ejemplo de la guía de captura.
  * Fecha de creación: 20/10/2026
- * Actualización: 20/10/2026
+ * Actualización: 22/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 
 /**
@@ -62,6 +63,12 @@ export const colores = {
  * Cada una va con su forma (chulo, equis o signo de pregunta), así el color no es la única señal.
  */
 export const marcasDeFoto = { sano: '#2E6B34', noSano: '#B3261E', dudoso: '#8A5300' };
+
+/**
+ * El dibujo de la foto de ejemplo de la guía de captura (RF-05 C4): granos de cacao sobre papel blanco. Tampoco
+ * cambia con el tema, porque representa una foto.
+ */
+export const fotoDeEjemplo = { papel: '#FFFFFF', borde: '#D9CFC4', grano: '#6B3F22', brillo: '#8B5A3C' };
 
 /** Letra: Roboto 400, 500 y 700, servida desde la app. Tamaños en píxeles. */
 export const letra = {

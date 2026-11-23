@@ -4,7 +4,7 @@ Descripción: Casos de prueba de InspectIA por ficha y criterio de aceptación, 
              tienen prueba (RP-13). Archivo generado por generador/casos_de_prueba.py: no se edita a mano;
              sale de specs/fichas.json y de las marcas de las pruebas.
 Fecha de creación: 12/10/2026
-Actualización: 10/11/2026
+Actualización: 22/11/2026
 Autor: Equipo InspectIA (generado por generador/casos_de_prueba.py v1.2)
 Versión: 1.2
 -->
@@ -22,7 +22,7 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 ## Resumen
 
 - **154 criterios de aceptación** en 26 fichas: 62 con prueba y 90 pendientes (2 eliminados).
-- **778 pruebas:** 273 de Java (33 generadas), 384 de JavaScript (73 generadas) y 121 de Python. Una prueba parametrizada cuenta una vez.
+- **779 pruebas:** 273 de Java (33 generadas), 385 de JavaScript (73 generadas) y 121 de Python. Una prueba parametrizada cuenta una vez.
 
 | Ficha | Criterios | Con prueba | Pendientes |
 |---|---:|---:|---:|
@@ -430,7 +430,8 @@ Otras pruebas de RF-14, que no cubren un criterio:
 - [`HistorialDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/HistorialDeLotesIT.java) · las páginas empiezan en 0 y traen de 1 a 100 lotes, como los demás listados
 - [`Historial.test.jsx`](../frontend/src/lote/Historial.test.jsx) · la administradora de la empresa también ve el historial
 - [`Historial.test.jsx`](../frontend/src/lote/Historial.test.jsx) · la lista trae las columnas del prototipo: un lote analizado con su resultado y uno pendiente sin él
-- [`Historial.test.jsx`](../frontend/src/lote/Historial.test.jsx) · sin lotes, la lista lo dice y no muestra páginas
+- [`Historial.test.jsx`](../frontend/src/lote/Historial.test.jsx) · sin lotes, al usuario final la lista le dice que no hay y le ofrece «Nuevo lote» para registrar el primero
+- [`Historial.test.jsx`](../frontend/src/lote/Historial.test.jsx) · sin lotes, la administradora solo ve el texto: no registra lotes (RF-04)
 
 ## RF-15 · Descargar el reporte del lote en PDF
 
