@@ -1,11 +1,12 @@
 /*
  * Nombre: GuiaDeCaptura.jsx
  * Descripción: La guía de captura de las fotos de la muestra, como en el prototipo: una foto de ejemplo, dibujada
- *              mientras no haya fotos reales (P-12), y las reglas de D-08, D-23 y RF-05 (RF-05 C4).
+ *              mientras no haya fotos reales (P-12), y debajo las reglas de D-08, D-23 y RF-05 (RF-05 C4). En el PC
+ *              va en la columna izquierda, junto a las fotos, y en el celular, encima de ellas.
  * Fecha de creación: 22/11/2026
- * Actualización: 22/11/2026
+ * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -32,7 +33,7 @@ const GRANOS = [
 function FotoDeEjemplo({ descripcion }) {
   return (
     <Box component="svg" role="img" aria-label={descripcion} viewBox="0 0 256 144"
-      sx={{ display: 'block', width: '100%', maxWidth: 320, height: 'auto' }}>
+      sx={{ display: 'block', width: '100%', maxWidth: 360, height: 'auto' }}>
       <rect x="1" y="1" width="254" height="142" rx="8" fill={fotoDeEjemplo.papel} stroke={fotoDeEjemplo.borde} />
       {GRANOS.map(([x, y, giro]) => (
         <g key={`${x}-${y}`} transform={`rotate(${giro} ${x} ${y})`}>
@@ -45,7 +46,7 @@ function FotoDeEjemplo({ descripcion }) {
 }
 
 /**
- * La guía de captura, en una región con su título.
+ * La guía de captura, en una región con su título. Ocupa la parte angosta de la fila que comparte con las fotos.
  *
  * @returns {import('react').ReactElement} la guía
  */
@@ -54,19 +55,17 @@ export function GuiaDeCaptura() {
   const idDelTitulo = useId();
   return (
     <Box component="section" aria-labelledby={idDelTitulo} sx={(theme) => ({
-      display: 'flex', flexDirection: 'column', gap: 2, p: { xs: 2.5, md: 3 }, mb: 3,
-      borderRadius: `${medidas.tarjeta.radio}px`, border: `1px solid ${theme.vars.palette.divider}`,
-      bgcolor: 'background.paper',
+      flex: '1 1 300px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: { xs: 1.5, md: '14px' },
+      p: { xs: 2, md: '22px' }, borderRadius: `${medidas.tarjeta.radio}px`,
+      border: `1px solid ${theme.vars.palette.divider}`, bgcolor: 'background.paper',
     })}>
       <Typography variant="h2" id={idDelTitulo}>{t('guia.titulo')}</Typography>
-      <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3, alignItems: { md: 'flex-start' } }}>
-        <Box component="figure" sx={{ m: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
-          <FotoDeEjemplo descripcion={t('guia.ejemplo')} />
-          <Typography component="figcaption" variant="body2" color="text.secondary">{t('guia.ejemploTitulo')}</Typography>
-        </Box>
-        <Box component="ul" sx={{ m: 0, pl: 2.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
-          {REGLAS.map((regla) => <Typography component="li" key={regla}>{t(regla)}</Typography>)}
-        </Box>
+      <Box component="figure" sx={{ m: 0, display: 'flex', flexDirection: 'column', gap: 1 }}>
+        <FotoDeEjemplo descripcion={t('guia.ejemplo')} />
+        <Typography component="figcaption" variant="body2" color="text.secondary">{t('guia.ejemploTitulo')}</Typography>
+      </Box>
+      <Box component="ul" sx={{ m: 0, pl: 2.5, display: 'flex', flexDirection: 'column', gap: 1 }}>
+        {REGLAS.map((regla) => <Typography component="li" key={regla}>{t(regla)}</Typography>)}
       </Box>
     </Box>
   );

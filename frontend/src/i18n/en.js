@@ -6,7 +6,7 @@
  * Fecha de creación: 20/10/2026
  * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.5
+ * Versión: 1.6
  */
 
 /** Textos en inglés, por clave. Tiene las mismas claves que es.js (i18n.test.js lo revisa). */
@@ -176,10 +176,21 @@ export default {
   'historial.paginaAnterior': 'Previous page',
   'historial.paginaSiguiente': 'Next page',
   'historial.pagina': 'Page {pagina}',
+  'historial.continuar': 'Continue',
+  'historial.continuarLote': 'Continue lot {codigo}',
   'fotos.titulo': 'Sample photos',
-  'fotos.descripcion': 'Lot {codigo} · {origen}. The lot was registered and is pending analysis.',
+  'fotos.descripcion': 'Lot {codigo} · {origen}. Upload 2 or 3 photos; if you leave now, the lot stays pending and you can resume it from the History.',
   'fotos.tusFotos': 'Your photos',
-  'fotos.pronto': 'Soon you will be able to upload the sample photos here.',
+  'fotos.foto': 'Photo {numero}',
+  'fotos.fotoOpcional': 'Photo {numero} (optional)',
+  'fotos.ayudaOpcional': 'Add it if the beans do not fit apart from each other in two photos.',
+  'fotos.imagen': 'Photo {numero} of the sample',
+  'fotos.archivo': 'File of photo {numero}',
+  'fotos.elegirArchivo': 'Choose file',
+  'fotos.tomarFoto': 'Take photo',
+  'fotos.reemplazar': 'Replace',
+  'fotos.subiendo': 'Uploading photo {numero}…',
+  'fotos.cargada': 'Photo {numero} uploaded.',
   'guia.titulo': 'Capture guide',
   'guia.ejemplo': 'Example of a correct photo: whole beans, apart from each other, on white paper, seen from above',
   'guia.ejemploTitulo': 'Example of a correct photo',
