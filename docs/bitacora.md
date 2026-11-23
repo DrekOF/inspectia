@@ -4,7 +4,7 @@ Descripción: Registro paso a paso de cómo se construyó InspectIA, para la sus
 Fecha de creación: 12/10/2026
 Actualización: 23/11/2026
 Autor: Equipo InspectIA
-Versión: 1.23
+Versión: 1.24
 -->
 
 # Bitácora de construcción (RP-24)
@@ -1141,6 +1141,213 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
     - el ruleset de `main`: como el repositorio es público, las reglas se pueden usar sin GitHub Pro. Lo pidió con un
       PR para todo cambio sin aprobaciones obligatorias, los cuatro jobs en verde y sin force push ni borrado.
 - Archivos o PR: la rama `feature/RF-04-registrar-lote` y su PR hacia `main`.
+
+## 23/11/2026 · RF-05 y RF-14 C5: las fotos de la muestra y «Continuar»
+
+- Quién: Cristhian Sánchez (`DrekOF`), con Claude Code.
+- Qué se hizo:
+  - **El PR 2 del módulo de análisis, en la rama `feature/RF-05-fotos`:**
+    1. `3cda923` D-41, el almacén de las fotos sin AWS, y las restricciones de RF-05, RF-14 y RNF-04.
+    2. `18b0008` las pruebas del backend en rojo, que fijan el contrato de las fotos.
+    3. `d30552a` el backend: el almacén en una carpeta y los enlaces firmados.
+    4. `d2aa141` las pruebas del frontend en rojo, con MSW.
+    5. `fd7312c` la página de las fotos y «Continuar» en el historial.
+    6. `5bbda7f` las pruebas de punta a punta, con Playwright y Selenium.
+    7. `3351573` las correcciones de la revisión antes del PR.
+    8. Esta entrada de la bitácora, los README y los casos de prueba.
+  - **La API de las fotos** (`/api/v1/lotes/{id}/fotos`), solo del usuario final, en tres pasos, el mismo flujo que
+    con S3:
+    1. pedir el enlace de la foto N, de 1 a 3: el backend revisa el lote, el número, el tipo y el tamaño;
+    2. subir el archivo con `PUT` a ese enlace, sin el token;
+    3. confirmarla: el backend revisa que el archivo llegó, su tamaño y sus primeros bytes, y la guarda «Cargada».
+
+    `GET` trae las fotos de la muestra en curso, cada una con un enlace nuevo para verla. Un lote de otra empresa
+    responde que no existe (RNF-03).
+  - **El almacén en una carpeta (D-41):** mientras no haya despliegue en AWS, las fotos van a
+    `<carpeta del usuario>/.inspectia/fotos` o a la de `INSPECTIA_FOTOS_CARPETA`, fuera del repositorio. El backend
+    firma los enlaces de `/api/v1/archivos`, que no piden sesión: los autoriza su firma, HMAC-SHA256 con una clave al
+    azar que solo vive en memoria. Vencen a los 10 minutos para subir y a los 15 para ver. Sin firma, con otra o
+    vencida, responden 403. Con `inspectia.archivos.almacen=s3` esas rutas no existen. Cristhian no tiene que tocar su
+    `infra/.env` ni reiniciar la base.
+  - **La página de las fotos,** como en el prototipo: la guía a la izquierda y «Tus fotos» con 3 casillas, la tercera
+    opcional. En el celular, «Tomar foto» abre la cámara trasera; en el PC, «Elegir archivo» abre el selector
+    (RF-05 C1). Cada foto se revisa en el navegador, se sube apenas se elige, se ve en su casilla y se puede
+    reemplazar.
+  - **«Continuar» en el historial:** en los lotes pendientes, solo para el usuario final, lleva a las fotos del lote,
+    con las que ya se subieron (RF-14 C5).
+  - **Las fichas y las especificaciones:**
+    - D-41 nueva, con lo que Cristhian aprobó;
+    - la restricción 4 de RF-05, con el almacén en carpeta;
+    - la restricción 4 de RF-14, con «Continuar» solo para el usuario final;
+    - la descripción de RNF-04, con la excepción de los enlaces firmados;
+    - `arquitectura.md` y la fila de `ruta` en `modelo-datos.md`;
+    - RF-05 y RF-14 siguen en «Aprobado» (D-29): el «al menos 2» de RF-05 C2 llega con «Analizar la muestra», y
+      RF-14 C2, C3 y C6, con el resultado.
+  - **Los README:** el principal dice cómo se suben las fotos; el del frontend, qué hay en `src/lote/` y cómo prueban
+    las fotos las pruebas de punta a punta; el de `infra/` tiene una sección nueva, «Fotos en tu PC», y cómo probar
+    la API de las fotos en tres pasos.
+  - **Decisiones pequeñas,** tomadas con el prototipo y las fichas:
+    - **Las rutas no llevan el número de muestra:** el backend usa la muestra en curso, que en este PR es la 1 de un
+      lote pendiente. Así la página sirve igual para la segunda muestra (D-25) y nadie elige una que no le toca.
+    - **La muestra 1 nace con la primera foto confirmada,** pendiente, y su `usuario_id` es quien la subió. El PR del
+      resultado decide si al enviarla pasa a ser quien la envía.
+    - **Cualquier usuario final de la empresa puede continuar un lote pendiente,** no solo quien lo registró: RF-14 C1
+      ya le muestra los lotes de sus compañeros, y C5 no lo limita.
+    - **Reemplazar:**
+      - antes de enviar la muestra se puede reemplazar cualquier foto, y la nueva toma su número;
+      - no suma a `muestra.repeticiones`, que cuenta las que pide repetir la IA (RF-09);
+      - la fila anterior se borra en la misma transacción, antes de guardar la nueva, y su archivo, después de
+        confirmar: si algo falla antes, la anterior sigue (RF-05 C5).
+    - **No hay «Quitar»:** el prototipo no lo tiene. Con 3 fotos, solo se reemplaza.
+    - **Confirmar dos veces la misma foto responde la misma foto,** así un reintento no falla.
+    - **Las llaves** son `<empresa>/<lote>/<uuid>.jpg` o `.png`, siempre armadas por el backend, y una ya subida no se
+      pisa: responde 409.
+    - **Los mensajes nuevos van a mano** en `mensajes.properties` y `mensajes_en.properties`, porque los generados
+      solo dicen qué pasó y cambiar `foto.json` cambiaría `V1` (P-16). Dicen qué hacer (RNF-06 C3), como «La foto
+      pesa más de 10 MB: tómala de nuevo con la resolución normal de la cámara o elige otra.». La página usa las
+      mismas claves.
+    - **«Cargada»:** sin la revisión de la IA (RF-06), toda foto queda en ese estado. Su chip va en el tono de
+      información, con una nube con chulo, y no en el verde de «Aprobada», que prometería una revisión que llega en el
+      PR del servicio de IA. El chip con ícono es el mismo del historial (`ChipDeEstado`).
+    - **La vista previa es la foto ya subida,** desde su enlace de vista, con «Reemplazar», como en el prototipo. No
+      se usan URL `blob:`, así la política de seguridad de contenido de D-31 no tendrá que permitirlas. Mientras sube
+      una foto nueva se sigue viendo la anterior, con una barra «Subiendo la foto N…».
+    - **La subida empieza apenas se elige la foto:** si Android cierra la pestaña mientras la cámara está abierta, lo
+      que ya se subió queda.
+    - **El navegador revisa cada foto antes de pedir el enlace:** el formato, por sus primeros bytes, como el backend,
+      y no por el nombre ni por el tipo que dice el navegador, que algunos Android dejan vacío; después, el tamaño. No
+      se reduce ni se recomprime ninguna foto, por la resolución que pide el modelo (P-12).
+    - **Las casillas:** las 3 se ven desde el inicio; la 1 y la 2 sin «(opcional)» ni ayuda, y la 3 con los textos del
+      prototipo. En el PC van en una rejilla, la vacía con borde punteado, el ícono de subir y «Elegir archivo»; en el
+      celular, en 2 columnas, con la 3 a todo el ancho y «Tomar foto», lleno y con la cámara.
+    - **Celular o PC se decide por el ancho** (`useEsPc`, 900 px), como en el resto de la app. En el celular solo está
+      «Tomar foto», como en el prototipo, sin «Elegir de la galería».
+    - **No se ponen dos enlaces del prototipo:** «Analizar la muestra», que no tiene a dónde llevar hasta el PR del
+      resultado, y «Volver a los datos del lote», porque no hay edición de lotes y Nuevo lote registraría otro.
+    - **El subtítulo del prototipo** vuelve, como se anotó en el PR 1, y sale «Pronto podrás subir aquí…».
+    - **La guía** va en la columna izquierda en el PC, con la figura encima de las reglas, y arriba en el celular.
+      «JPG o PNG, de hasta 10 MB cada una.» sigue como la quinta regla de la lista, como en el PR 1, y no como un
+      párrafo aparte, como en el prototipo: así se lee con las demás.
+    - **La accesibilidad de las casillas** (RNF-06):
+      - cada una es un grupo con el nombre «Foto N»;
+      - el botón es el mismo antes y después de subir, para no perder el foco; mientras sube no se deshabilita, que
+        también le quitaría el foco: queda con `aria-disabled` y no abre el selector;
+      - un `role="status"` dice «Subiendo la foto N…» y «Foto N cargada.»;
+      - un error va con su ícono, en `role="alert"` y con el borde de la casilla en rojo, como pide el README del
+        prototipo; cada intento vuelve a mostrar su aviso, así un rechazo repetido también se anuncia;
+      - «Reintentar» desaparece mientras sube: antes lleva el foco al botón de la casilla. El de la lista de fotos lo
+        lleva al título «Tus fotos», y el del lote, al título de la página.
+    - **La casilla queda ocupada desde que se elige la foto,** también mientras lee sus primeros bytes, que con un
+      archivo en la nube, como uno de OneDrive, puede tardar: otra elección no empieza una segunda subida.
+    - **«Reintentar» aparece solo cuando sirve:** si falló la conexión, el servidor o el enlace. Si el backend rechazó
+      la foto, el lote no existe o ya no está pendiente, el mensaje dice qué hacer y no hay «Reintentar».
+    - **Si la foto llegó y lo que falló fue su confirmación, «Reintentar» solo la confirma,** sin subirla otra vez;
+      la confirmación repetida es segura. Si el backend dice que no llegó, la sube de nuevo con otro enlace.
+    - **La subida no usa el cliente de la API:** va directo al enlace firmado, sin el token, como irá a S3, y un 401
+      o un 403 del enlace no cierra la sesión. Manda el `Content-Type` firmado, aunque el navegador diga otro tipo o
+      ninguno, y el idioma de la app, para que los mensajes del backend lleguen en él.
+    - **Un lote que ya no está pendiente no ofrece subir fotos:** la página no muestra los pasos ni la guía, dice que
+      sus fotos ya no se pueden cambiar y dónde ver su resultado. Con este PR no hay cómo llegar a ese caso, pero la
+      página no ofrece lo que el backend va a rechazar. La segunda muestra (D-25) cambiará esta regla en el backend y
+      en la página.
+    - **Si el lote no llega** por otra causa que no exista, la página ofrece «Reintentar». Un lote que no existe o es
+      de otra empresa no lo ofrece (RNF-03).
+    - **El número de la foto, de 1 a 3, sale de la regla del dominio** (`ReglasDeFotos`): la aplican el controlador y
+      el caso de uso. Una llave que no tiene la forma de un UUID responde 400 en «llave», no 500.
+    - **OpenAPI describe cada campo de las respuestas de las fotos,** como en `LoteRespuesta`, con los valores de
+      `formato` y `estado`.
+    - **Si una imagen no carga,** lo normal es que su enlace venció: la página vuelve a pedir la lista, que trae
+      enlaces nuevos, una sola vez, para no pedirla sin fin si el archivo no está. Una lista que se pidió antes de
+      confirmar una foto no la deshace.
+    - **Las imágenes se sirven** con el tipo de la extensión de la llave, `Content-Disposition: inline`,
+      `Cache-Control: private` por lo que le queda al enlace y `nosniff`.
+    - **El historial:**
+      - la columna «Acciones» es solo del usuario final;
+      - «Continuar» va en cada lote pendiente, con el nombre «Continuar el lote L-0143», que empieza por el texto que
+        se ve (D-32); en la tabla es un botón de texto de 40 px, como en el prototipo, y en el celular, al pie de la
+        tarjeta, de 44 px;
+      - la administradora no ve la columna ni el botón.
+    - **`GET /api/v1/lotes/{id}/fotos` es solo del usuario final en este PR.** El PR del resultado lo abre a la
+      administradora para el detalle.
+    - **Los datos que la base rechazaría se revisan antes,** para que no respondan 500. El estado del lote se lee
+      con `SELECT … FOR UPDATE`, para que dos confirmaciones a la vez no choquen.
+    - **En las pruebas de Vitest, los archivos son `File` de Node:** el `fetch` de Node no acepta el `File` de jsdom
+      como cuerpo.
+    - **Las pruebas de punta a punta hacen sus imágenes:** un PNG de un color, de un tamaño exacto si hace falta, un
+      PDF y un JPEG dibujado en el navegador. Ninguna foto del dataset ni archivos pesados entran al repositorio
+      (RNF-08).
+  - **Queda fuera:**
+    - **PR del resultado:**
+      - el «al menos 2» de RF-05 C2, con «Analizar la muestra», la muestra en espera y la cola (RNF-02 C3);
+      - «Ver» y el detalle del lote con las fotos de cada muestra, también para la administradora (RF-14 C3);
+      - la segunda muestra (D-25, RF-14 C6) y quién queda en `muestra.usuario_id` al enviarla.
+    - **PR del servicio de IA:**
+      - RF-06 a RF-09: «Aprobada», «Por repetir» con su motivo, «Repetir la foto» y `muestra.repeticiones`;
+      - la orientación EXIF entre la página y el servicio de IA: la posición de cada grano va en píxeles de la foto
+        original (`modelo-datos.md`);
+      - la ubicación GPS que traen algunas fotos en su EXIF.
+    - **PR del despliegue:**
+      - el adaptador de S3: que firme el tipo y que no pise una llave, que revise el archivo antes de confirmarlo, y
+        una regla de ciclo de vida para las subidas sin confirmar;
+      - la política de seguridad de contenido con el bucket (D-31).
+    - **PR del PDF:** dónde van los PDF dentro del almacén (RF-15).
+    - **Sin PR:** «Lotes recientes» del inicio del prototipo.
+    - **La prueba en celulares reales:** que «Tomar foto» abra la cámara en un Android con Chrome y en un iPhone con
+      Safari (RNF-05 C2). Las pruebas automáticas solo pueden revisar el atributo `capture`; queda pedida a
+      Cristhian en el PR.
+  - **Problemas encontrados:**
+    - **El `File` de jsdom no sirve como cuerpo de `fetch` en Node:** MSW fallaba al armar la petición. Las pruebas de
+      Vitest usan el `File` de Node, que el `fireEvent` de Testing Library también acepta en el selector.
+    - **`@mui/icons-material/ErrorOutline` no existe en la versión del proyecto:** se usa `ErrorOutlineOutlined`.
+    - **En Playwright, `getByText('Cargada')` encontraba también «Foto 1 cargada.»:** sin `exact`, no distingue
+      mayúsculas y busca el texto dentro de otros. Fallaron 12 pruebas en la primera corrida; con `exact: true`,
+      pasaron.
+    - **`AlmacenEnCarpetaTest`:** `Path.startsWith` de AssertJ exige que el archivo exista; la prueba compara con el
+      `startsWith` de Java.
+    - **La revisión tardó casi dos horas:** la primera tanda de revisores se detuvo a los pocos minutos y se volvió a
+      lanzar.
+  - **Resultado,** sobre `3351573`, el último commit con código:
+    - Backend: 153 pruebas unitarias y 484 de integración (`./mvnw verify`).
+    - Frontend: 645 pruebas de Vitest en 46 archivos, ESLint y el build.
+    - Playwright: 314 pruebas en verde y 6 omitidas, sin Firefox, que no abre en este Windows. Se omiten, en el PC, la
+      de la cámara, y en el celular, la del teclado y una de una ventana de PC.
+    - Selenium: 32 en verde, con Chrome y Edge, en el PC y en el celular.
+    - Casos de prueba: 915 pruebas y 83 criterios sin prueba. Pasan `casos_de_prueba.py comprobar` y
+      `generar.py comprobar`, con RF-05 y RF-14 en «Aprobado».
+- Por qué: las fotos son el paso 2 del flujo del análisis (D-08): sin ellas no hay granos que clasificar. Y un lote que
+  queda pendiente tiene que poder retomarse desde el historial (RF-14 C5).
+- Cómo se pidió:
+  - **Al revisar el PR #15 (23/11/2026),** Cristhian pidió que, con el límite de la fecha subido y todos los jobs en
+    verde, Claude Code fusionara sin esperarlo y siguiera con el PR de las fotos. Ese «fusiona sin esperarme» valía
+    solo para el #15: este PR espera su «fusiona».
+  - **La pregunta de seguridad, antes de escribir el código:** con la carpeta local, el backend atiende sin sesión
+    los enlaces firmados para subir y ver una foto. Claude Code propuso firmarlos con HMAC-SHA256, que venzan a los 10
+    y a los 15 minutos, 403 sin firma válida, y anotarlo en una D-41 nueva y en RNF-04. Cristhian respondió:
+    - «Sí, con D-41, como recomiendas: sin firma, con una firma que no coincide o vencida, 403. Dos condiciones: las
+      rutas firmadas solo existen con la carpeta local (con S3 no se activan), y la de subida revisa también el tipo y
+      el tamaño (JPG o PNG, hasta 10 MB).»
+    - La clave de la firma: «Al azar, en memoria (Recomendado)».
+
+    La primera vez se equivocó de respuesta y pidió que le hiciera de nuevo las dos preguntas.
+  - **La forma de trabajo** es la del 22/11/2026: una sola parada por PR, las decisiones pequeñas anotadas aquí y en
+    el PR, y preguntar solo en los 4 casos.
+  - **La revisión antes del PR** la decidió Claude Code, como en el PR 1: la sesión tenía activado ultracode, que
+    permite los flujos de varios agentes. Un flujo de 8 agentes revisó todo el PR, sin cambiar nada: cuatro revisores
+    (backend, frontend, pruebas y reglas del proyecto) y un verificador por cada uno, que trató de descartar cada
+    hallazgo. Hubo 18 hallazgos, 15 distintos; confirmó 8 y descartó 7. Se corrigieron los 15 en `3351573`, porque los
+    7 descartados no son errores que pasen hoy, pero sí mejoras baratas:
+    - confirmados:
+      - una llave de este lote con 36 guiones o 36 ceros respondía 500;
+      - la regla de 1 a 3 fotos del dominio no la usaba la app, y su prueba marcada «RF-05 · C2» probaba código muerto;
+      - ninguna prueba comprobaba que la subida mandara el `Content-Type` firmado, ni que el archivo de una foto
+        reemplazada se borrara solo después del commit;
+      - el foco se perdía al pulsar «Reintentar», y la casilla dejaba empezar otra subida mientras leía la primera;
+      - el comando `curl` de `infra/README.md` no servía en PowerShell, y el JSDoc de `registrarLote` en Selenium
+        decía algo falso;
+    - descartados y corregidos igual: la descripción de los campos en OpenAPI, el idioma de la subida, el lote que ya
+      no está pendiente, «Reintentar» del lote, el reintento que solo confirma, y las pruebas de la vigencia de los
+      enlaces (10 y 15 minutos) y de la revisión del archivo al confirmarlo.
+- Archivos o PR: la rama `feature/RF-05-fotos` y su PR hacia `main`.
 
 ## Plantilla para nuevas entradas
 

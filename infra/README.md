@@ -1,10 +1,10 @@
 <!--
 Nombre: README.md (infra)
-Descripción: Qué va en la carpeta infra/ de InspectIA, cómo reiniciar la base local, cómo crear el administrador de la plataforma y restablecer su contraseña, cómo probar la sesión en local y cómo usan infra/ las pruebas de punta a punta y la demostración de otra temática.
+Descripción: Qué va en la carpeta infra/ de InspectIA, cómo reiniciar la base local, dónde quedan las fotos en tu PC, cómo crear el administrador de la plataforma y restablecer su contraseña, cómo probar la sesión, los lotes y las fotos en local y cómo usan infra/ las pruebas de punta a punta y la demostración de otra temática.
 Fecha de creación: 12/10/2026
 Actualización: 23/11/2026
 Autor: Equipo InspectIA
-Versión: 1.11
+Versión: 1.12
 -->
 
 # infra
@@ -14,7 +14,7 @@ Infraestructura y despliegue de InspectIA.
 Qué hay hoy:
 
 - `docker-compose.yml`: PostgreSQL 18 para desarrollo local. El servidor y el servicio de IA se agregan cuando existan.
-- `.env.example`: variables locales de la base de datos, la clave de los tokens del inicio de sesión y el primer administrador de la plataforma. Cópialo a `infra/.env`, que no se sube al repositorio, y escribe tus valores.
+- `.env.example`: variables locales de la base de datos, la clave de los tokens del inicio de sesión, el primer administrador de la plataforma y, si quieres otra, la carpeta de las fotos. Cópialo a `infra/.env`, que no se sube al repositorio, y escribe tus valores.
 - `bd/crear-admin-plataforma.sql`, con sus envoltorios `.sh` y `.ps1`: crea el primer administrador de la plataforma (RF-01, RP-15). Las tablas no se crean aquí: las crea Flyway al arrancar el backend, con la migración que genera `generador/` (RP-23).
 - `bd/restablecer-admin-plataforma.sql`, con sus envoltorios `.sh` y `.ps1`: restablece la contraseña del administrador de la plataforma si la olvida (D-30).
 
@@ -37,6 +37,17 @@ Si cambia `V1__esquema_inicial.sql`, quien ya tenga la base local debe reiniciar
 1. `docker compose -f infra/docker-compose.yml down -v`
 2. `docker compose -f infra/docker-compose.yml up -d`
 3. Arranca el backend con `clean`, para que no queden clases viejas de antes de regenerar: `./mvnw clean spring-boot:run` en `backend/` (en PowerShell, `.\mvnw clean spring-boot:run`). Después vuelve a crear el administrador con el script (ver «Primer administrador de la plataforma»).
+
+Borra también la carpeta de las fotos (ver «Fotos en tu PC»): sus archivos eran de los lotes que se borraron.
+
+## Fotos en tu PC
+
+Mientras no haya despliegue en AWS, el backend guarda las fotos de las muestras en una carpeta de tu PC, fuera del repositorio, en lugar de S3 (D-41): por defecto, `<tu carpeta de usuario>/.inspectia/fotos` (en Windows, `C:\Users\<tu usuario>\.inspectia\fotos`). Al arrancar, el backend la crea si no existe y escribe en su registro cuál usa. No tienes que cambiar nada en `infra/.env`.
+
+- **Otra carpeta:** escribe en `infra/.env` la línea `INSPECTIA_FOTOS_CARPETA` (está comentada en `.env.example`), con la ruta completa, con «/» también en Windows y sin tildes, por ejemplo `INSPECTIA_FOTOS_CARPETA=C:/Users/tu-usuario/fotos-inspectia`. Una ruta relativa no deja arrancar el backend, para que las fotos nunca queden dentro del repositorio.
+- **Los enlaces:** el backend firma los enlaces para subir y ver cada foto, como haría S3: `/api/v1/archivos/<empresa>/<lote>/<archivo>?vence=…&firma=…`. No piden sesión, porque un `<img>` no manda el token: los autoriza su firma, que vence a los 10 minutos para subir y a los 15 para ver. Sin firma, con otra firma o vencida, responden 403. La clave de la firma se crea al azar cada vez que arranca el backend y no se guarda: después de reiniciarlo, la página pide enlaces nuevos sola.
+- **Las fotos sin confirmar** (una subida que no terminó) pueden quedar en la carpeta. Si reinicias la base, bórrala completa.
+- **Las pruebas** no usan esta carpeta: las de integración usan una temporal por corrida, y las de punta a punta, otra en la carpeta temporal del sistema, que se borra al apagar su entorno.
 
 ## Base de las pruebas de punta a punta
 
@@ -118,5 +129,13 @@ Para los lotes (RF-04 y RF-14), con el administrador de esa empresa crea un usua
 - `GET /api/v1/lotes/origenes?texto=paraiso` sugiere las fincas y los proveedores que ya usó la empresa.
 
 El administrador de empresa también ve el historial y cada lote, pero no registra lotes: recibe 403. Un lote de otra empresa responde 404, como si no existiera (RNF-03).
+
+Para las fotos de un lote pendiente (RF-05), con el mismo usuario final y el `id` del lote, en tres pasos, como la página:
+
+1. `POST /api/v1/lotes/{id}/fotos/1/subida` con `tipo` (`image/jpeg` o `image/png`) y `tamanoBytes` (el tamaño exacto del archivo, de hasta 10.485.760). Responde 201 con la `llave` y la `url` firmada para subirla.
+2. Sube el archivo a esa `url` con `PUT`, sin el token y con el mismo `Content-Type`. Swagger no sube archivos así; desde la carpeta de la foto, en Git Bash: `curl -X PUT --data-binary "@foto.jpg" -H "Content-Type: image/jpeg" "http://localhost:8080<url>"`. En PowerShell es igual, con `curl.exe` en vez de `curl`. El archivo y la `url` van entre comillas: sin ellas, PowerShell lee `@foto` como una variable y `&` como otro comando. Responde 200.
+3. `PUT /api/v1/lotes/{id}/fotos/1` con la `llave`: confirma la foto, que queda «Cargada», y responde con su enlace de vista (`vista.url`). Ese enlace es relativo: se abre en el navegador con `http://localhost:8080` delante.
+
+`GET /api/v1/lotes/{id}/fotos` trae las fotos de la muestra en curso, cada una con un enlace de vista nuevo. Las fotos van de la 1 a la 3; subir otra con el mismo número la reemplaza y borra la anterior. Un archivo que no es JPG ni PNG, o de más de 10 MB, responde 400 con el mensaje de qué hacer. El administrador de empresa recibe 403 en estas rutas, y un lote de otra empresa, 404.
 
 Para cambiar tu propia contraseña (RF-18), abre `PUT /api/v1/sesion/contrasena` con `contrasenaActual` y `contrasenaNueva`. La respuesta 200 trae un token nuevo, que vence a la misma hora que el anterior: pégalo en «Authorize», porque el anterior y los de tus demás sesiones responden 401 «Tu contraseña cambió». Una contraseña actual errada responde 400 y cuenta para el bloqueo; desde el quinto fallo seguido responde 429 hasta que termine.
