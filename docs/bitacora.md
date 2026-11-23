@@ -985,7 +985,11 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
     6. `5eeb815` las pruebas de punta a punta, con Playwright y Selenium.
     7. `c9d6fc0` las correcciones de la revisión antes del PR.
     8. `cbcc837` la clase del tema desde antes de dibujar la app (ver «Problemas encontrados»).
-    9. Esta documentación: la bitácora, las fichas y los README.
+    9. `ac253da` la bitácora, las fichas y los README.
+    10. `6d26623` las pruebas del límite de un año de la fecha de recepción, en rojo, y las fechas de las pruebas,
+        relativas a hoy.
+    11. `dba1596` ese límite en el backend y en el formulario.
+    12. Esta actualización de la bitácora, de la ficha y del README de `infra/`.
   - **La API de lotes** (`/api/v1/lotes`):
     - registrar, solo el usuario final;
     - el historial por páginas de 20 y el detalle de un lote, el usuario final y el administrador de empresa;
@@ -994,8 +998,19 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
     La empresa y el usuario salen siempre de la sesión: un lote de otra empresa responde que no existe (RNF-03).
   - **Las pantallas:** Nuevo lote (paso 1), el Historial y Fotos de la muestra (paso 2, por ahora con la guía de
     captura), con los textos y los colores del prototipo, en el PC y en el celular, en español y en inglés.
+  - **El límite de la fecha de recepción:** no puede ser de hace más de un año, con la fecha de Colombia. La de hace
+    exactamente un año pasa y la del día anterior, no; si hoy es 29 de febrero, hace un año es el 28. Lo valida el
+    dominio (`FechaDeRecepcionAntiguaExcepcion`), que responde 400 con su mensaje, y el formulario, que no ofrece
+    fechas fuera de ese rango. Una fecha del año -10000 ya no llega a la base: responde 400 y no 500.
+  - **El ruleset «Proteger main»** (RP-18, RP-19), creado con `gh api`:
+    - todo cambio a `main` entra por un PR, sin aprobaciones obligatorias;
+    - los jobs Generador, Backend, Frontend y De punta a punta tienen que estar en verde;
+    - no se puede hacer force push ni borrar la rama.
+
+    El PR #15 lo cumplía: GitHub lo marcó listo para fusionar, con los cuatro jobs en verde.
   - **Las fichas:**
     - la restricción 3 de RF-04, con las sugerencias;
+    - la restricción 4 de RF-04, con el límite de un año de la fecha de recepción;
     - una restricción nueva en RF-14, con el orden del historial;
     - RF-04 pasa a «Implementado» (D-29);
     - RF-14 sigue en «Aprobado», porque le faltan C2, C3, C5 y C6, que llegan en los PR de las fotos y del resultado.
@@ -1034,7 +1049,14 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
       ventana (WCAG 2.1.1).
     - **El texto de ejemplo de todos los campos** va en el color del texto secundario: el gris de Material UI no
       llegaba al contraste de RNF-06 C4.
-    - **`CampoDeTexto` acepta atributos del input,** como la fecha máxima de la fecha de recepción.
+    - **`CampoDeTexto` acepta atributos del input,** como las fechas mínima y máxima de la fecha de recepción.
+    - **El mensaje del límite de un año** va en `mensajes.properties`, escrito a mano, y no en `lote.json`: el header
+      de `V1` lista la versión de cada entidad, así que cambiar `lote.json` habría obligado a reiniciar la base local
+      (P-16). La ayuda del campo dice «No puede ser posterior a hoy ni de hace más de un año.».
+    - **Las pruebas que usan el reloj real registran los lotes con una fecha de hace una semana,** y las de Nuevo lote
+      fijan la fecha: con fechas fijas habrían empezado a fallar en noviembre de 2027, cuando quedaran de hace más de
+      un año. En las pruebas de punta a punta y de Selenium, las fechas salen de `e2e/fechas.js`, calculadas aparte
+      del código de la app.
     - **En las pruebas de punta a punta, cada prueba de lotes crea su propia empresa con su usuario final.** Playwright
       corre 5 navegadores a la vez sobre la misma base, y así ninguna ve los lotes de otra.
     - **Selenium pone la fecha con el setter del navegador,** porque con sendKeys el formato depende del idioma.
@@ -1055,10 +1077,13 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
     - la restricción 3 de RF-04, que ahora dice que las tildes solo se ignoran en las sugerencias, sin cambiar RF-16;
     - el README del frontend, que no nombraba las pantallas de los lotes.
 
-    Queda uno para Cristhian, porque cambia RF-04: la fecha de recepción no tiene límite inferior, y una fecha antes
-    del año 4713 a. C. llega a la base y responde 500. Solo se alcanza llamando a la API directamente.
-  - **Para otros PR:** los listados generados tampoco limitan la página, y la tabla de las pantallas generadas
-    tampoco recibe el foco. Quedaron como tareas aparte, porque se cambian en el generador.
+    Quedaba uno, que cambiaba RF-04: la fecha de recepción no tenía límite inferior, y una fecha anterior al año
+    4713 a. C. llegaba a la base y respondía 500. Cristhian decidió el límite de un año, y entró en este PR.
+  - **Para otros PR:**
+    - los listados generados tampoco limitan la página, y la tabla de las pantallas generadas tampoco recibe el foco.
+      Se cambian en el generador, y van en un PR pequeño al final del módulo de análisis, si siguen pendientes;
+    - cuando lleguen las estadísticas (RF-16), «Paraíso» y «Paraiso» se juntan en Java, como en las sugerencias, sin
+      tocar `V1`.
   - **Problemas encontrados:**
     - **En el tema oscuro, los botones de Nuevo lote pasaban del color claro al oscuro.** Con las correcciones, la
       prueba de accesibilidad de los lotes falló en Chrome: axe midió «Continuar a las fotos» con 1,36:1. Midiendo
@@ -1073,11 +1098,11 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
     - **La limpieza de la carpeta temporal se llevó los ayudantes** con que se editan los archivos y se copia el
       backend. Se volvieron a crear.
   - **Resultado:**
-    - Backend: 125 pruebas unitarias y 443 de integración.
-    - Frontend: 606 pruebas de Vitest en 44 archivos, ESLint y el build.
-    - Playwright: 276 pruebas en verde y 4 omitidas, sin Firefox, que no abre en este Windows.
+    - Backend: 127 pruebas unitarias y 446 de integración.
+    - Frontend: 609 pruebas de Vitest en 44 archivos, ESLint y el build.
+    - Playwright: 280 pruebas en verde y 4 omitidas, sin Firefox, que no abre en este Windows.
     - Selenium: 28 en verde, con Chrome y Edge, en el PC y en el celular.
-    - Casos de prueba: 802 pruebas y 90 criterios sin prueba; `casos_de_prueba.py comprobar` pasa con RF-04 en
+    - Casos de prueba: 811 pruebas y 90 criterios sin prueba; `casos_de_prueba.py comprobar` pasa con RF-04 en
       «Implementado».
 - Por qué: es el primer paso del flujo del análisis (D-08). Sin un lote registrado no hay fotos ni resultado, y el
   historial deja ver los lotes de la empresa (RF-14).
@@ -1100,7 +1125,21 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
       la separación entre empresas, o si hace falta algo de Cristhian;
     - Claude Code sube la rama, abre el PR con `gh` y lo fusiona cuando Cristhian dice «fusiona» y todo está en verde.
   - **La revisión antes del PR** la decidió Claude Code: la sesión tenía activado ultracode, que permite los flujos de
-    varios agentes.
+    varios agentes. El límite de un año pasó por otra revisión igual, más pequeña, con 3 revisores y un verificador
+    por hallazgo. Confirmó 3, corregidos en `dba1596`: el ejemplo de la fecha en OpenAPI, que era fijo y habría
+    dejado de valer al año; la fila de la fecha en `specs/modelo-datos.md`, y tres JavaDoc. Descartó 2.
+  - **Sus respuestas al revisar el PR #15 (23/11/2026):**
+    - la fecha de recepción, como máximo un año antes de hoy, con la fecha de Colombia, en este PR: la restricción
+      en la ficha, la validación en el backend y en el formulario, y la prueba de límite;
+    - Auto-fix no se activa: si la CI falla, se le avisa;
+    - RF-16: «Paraíso» y «Paraiso» se juntan en Java cuando lleguen las estadísticas, sin tocar `V1`; se anota en
+      «Queda fuera»;
+    - las dos tareas de lo generado no se hacen por ahora: si al final del módulo de análisis siguen pendientes, van
+      en un PR pequeño;
+    - con el límite subido y todos los jobs en verde, Claude Code fusiona sin esperarlo y sigue con el PR de las
+      fotos;
+    - el ruleset de `main`: como el repositorio es público, las reglas se pueden usar sin GitHub Pro. Lo pidió con un
+      PR para todo cambio sin aprobaciones obligatorias, los cuatro jobs en verde y sin force push ni borrado.
 - Archivos o PR: la rama `feature/RF-04-registrar-lote` y su PR hacia `main`.
 
 ## Plantilla para nuevas entradas

@@ -113,7 +113,7 @@ El administrador de la plataforma recibe 403 en esas rutas, porque no tiene empr
 
 Para los lotes (RF-04 y RF-14), con el administrador de esa empresa crea un usuario final con `POST /api/v1/usuarios` e inicia sesión con él. Ahí:
 
-- `POST /api/v1/lotes` con `codigo`, `fechaRecepcion` (aaaa-mm-dd, no posterior a hoy en Colombia), `origen` y `observaciones` registra un lote pendiente de análisis. Un código que ya existe en la empresa responde 409.
+- `POST /api/v1/lotes` con `codigo`, `fechaRecepcion` (aaaa-mm-dd, no posterior a hoy en Colombia ni de hace más de un año), `origen` y `observaciones` registra un lote pendiente de análisis. Un código que ya existe en la empresa responde 409.
 - `GET /api/v1/lotes?pagina=0&tamano=20` trae el historial de la empresa, del último movimiento al más antiguo, y `GET /api/v1/lotes/{id}`, un lote.
 - `GET /api/v1/lotes/origenes?texto=paraiso` sugiere las fincas y los proveedores que ya usó la empresa.
 

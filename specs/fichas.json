@@ -186,7 +186,8 @@
         "b": [
           "El código del lote no se repite dentro de la misma empresa, sin distinguir mayúsculas ni espacios al inicio o al final.",
           "El lote queda asociado a la empresa y al usuario que lo registró (RNF-03).",
-          "Al escribir la finca o el proveedor, el sistema sugiere los que ya usó la empresa, para reutilizar el nombre que ya existe y que las estadísticas por finca no se partan (RF-16). Busca el texto en cualquier parte del nombre, sin distinguir mayúsculas, tildes ni los espacios del inicio y del final («paraiso» sugiere «Finca El Paraíso»). Los nombres que solo se diferencian en eso aparecen una sola vez, con la forma más usada y, si empatan, con la más reciente. Las sugerencias van en orden alfabético y son como máximo 10. Las tildes solo se ignoran en las sugerencias: las estadísticas agrupan la finca como dice RF-16."
+          "Al escribir la finca o el proveedor, el sistema sugiere los que ya usó la empresa, para reutilizar el nombre que ya existe y que las estadísticas por finca no se partan (RF-16). Busca el texto en cualquier parte del nombre, sin distinguir mayúsculas, tildes ni los espacios del inicio y del final («paraiso» sugiere «Finca El Paraíso»). Los nombres que solo se diferencian en eso aparecen una sola vez, con la forma más usada y, si empatan, con la más reciente. Las sugerencias van en orden alfabético y son como máximo 10. Las tildes solo se ignoran en las sugerencias: las estadísticas agrupan la finca como dice RF-16.",
+          "La fecha de recepción no puede ser de hace más de un año, con la fecha de Colombia: la de hace exactamente un año todavía vale y la del día anterior, no. Si hoy es 29 de febrero, hace un año es el 28 de febrero."
         ]
       },
       "prioridad": "Alta",
