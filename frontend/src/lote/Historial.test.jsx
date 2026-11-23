@@ -2,23 +2,27 @@
  * Nombre: Historial.test.jsx
  * Descripción: Pruebas de la pantalla Historial de lotes (RF-14): las columnas del prototipo, un lote pendiente
  *              y uno analizado, las páginas de 20 lotes, la lista vacía, con «Nuevo lote» solo para el usuario
- *              final, el estado con su ícono, la tabla que se recorre con el teclado, y en el celular, las
- *              tarjetas y las páginas que caben desde 360 px.
+ *              final, «Continuar» en los lotes pendientes, también solo para el usuario final (C5), el estado con su
+ *              ícono, la tabla que se recorre con el teclado, y en el celular, las tarjetas y las páginas que caben
+ *              desde 360 px.
  * Fecha de creación: 10/11/2026
  * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 import { screen, within } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { afterEach, describe, expect, it } from 'vitest';
 import { abrirApp, conSesion, USUARIOS } from '../pruebas/ayudas.jsx';
+import { conFotos, fotoCargada } from '../pruebas/fotos.js';
 import { LOTE_ANALIZADO, LOTE_PENDIENTE, loteNumero, paginaDeLotes } from '../pruebas/lotes.js';
 import { anchoDePantalla } from '../pruebas/preparacion.js';
 import { servidor } from '../pruebas/servidor.js';
 
 const COLUMNAS = ['Fecha del resultado', 'Código', 'Finca o proveedor', 'Estado', '% de granos sanos',
   'Categoría probable', 'Registrado por'];
+/** Las del usuario final, que también tiene la de las acciones, con «Continuar» (RF-14 C5). */
+const COLUMNAS_DEL_USUARIO_FINAL = [...COLUMNAS, 'Acciones'];
 
 /**
  * Responde las páginas del historial y anota cuáles se pidieron.
@@ -50,7 +54,7 @@ function filas() {
 describe('Historial de lotes', () => {
   afterEach(() => anchoDePantalla(1280));
 
-  it('RF-14 · la lista trae las columnas del prototipo: un lote analizado con su resultado y uno pendiente sin él', async () => {
+  it('RF-14 · la lista trae las columnas del prototipo: un lote analizado con su resultado y uno pendiente sin él, con «Continuar»', async () => {
     conSesion(USUARIOS.USUARIO_FINAL);
     conHistorial(() => paginaDeLotes([LOTE_ANALIZADO, LOTE_PENDIENTE]));
     abrirApp('/historial');
@@ -58,11 +62,28 @@ describe('Historial de lotes', () => {
     expect(await screen.findByRole('heading', { name: 'Historial de lotes' })).toBeInTheDocument();
     expect(screen.getByText('Los lotes de Cacaos del Huila, del más reciente al más antiguo.')).toBeInTheDocument();
     const tabla = await screen.findByRole('table', { name: 'Lotes de la empresa' });
-    expect(within(tabla).getAllByRole('columnheader').map((titulo) => titulo.textContent)).toEqual(COLUMNAS);
+    expect(within(tabla).getAllByRole('columnheader').map((titulo) => titulo.textContent))
+      .toEqual(COLUMNAS_DEL_USUARIO_FINAL);
     expect(filas()).toEqual([
-      ['18/10/2026', 'L-0139', 'La Estrella', 'Analizado', '93,0 %', 'Estándar', 'María Torres'],
-      ['—', 'L-0143', 'La Esperanza', 'Pendiente de análisis', '—', '—', 'Carlos Ramírez'],
+      ['18/10/2026', 'L-0139', 'La Estrella', 'Analizado', '93,0 %', 'Estándar', 'María Torres', ''],
+      ['—', 'L-0143', 'La Esperanza', 'Pendiente de análisis', '—', '—', 'Carlos Ramírez', 'Continuar'],
     ]);
+  });
+
+  it('RF-14 · C5 · en un lote pendiente, el usuario final pulsa «Continuar» y retoma la captura de fotos de ese lote, con las que ya subió', async () => {
+    conSesion(USUARIOS.USUARIO_FINAL);
+    conHistorial(() => paginaDeLotes([LOTE_ANALIZADO, LOTE_PENDIENTE]));
+    servidor.use(http.get(`/api/v1/lotes/${LOTE_PENDIENTE.id}`, () => HttpResponse.json(LOTE_PENDIENTE)));
+    conFotos(LOTE_PENDIENTE.id, [fotoCargada(1)]);
+    const { usuario } = abrirApp('/historial');
+
+    const tabla = await screen.findByRole('table', { name: 'Lotes de la empresa' });
+    expect(within(tabla).getAllByRole('link', { name: /^Continuar/ })).toHaveLength(1);
+    await usuario.click(within(tabla).getByRole('link', { name: 'Continuar el lote L-0143' }));
+
+    expect(await screen.findByRole('heading', { name: 'Fotos de la muestra' })).toBeInTheDocument();
+    expect(window.location.pathname).toBe(`/lotes/${LOTE_PENDIENTE.id}/fotos`);
+    expect(await screen.findByRole('img', { name: 'Foto 1 de la muestra' })).toBeInTheDocument();
   });
 
   it('RF-14 · el estado de cada lote va con su ícono, como en el prototipo: un chulo si está analizado y un reloj si está pendiente', async () => {
@@ -108,13 +129,16 @@ describe('Historial de lotes', () => {
     expect(pedidas).toEqual(['pagina=0&tamano=20', 'pagina=1&tamano=20']);
   });
 
-  it('RF-14 · la administradora de la empresa también ve el historial', async () => {
+  it('RF-14 · la administradora de la empresa también ve el historial, y el lote pendiente sin «Continuar» ni la columna de las acciones', async () => {
     conSesion(USUARIOS.ADMIN_EMPRESA);
-    conHistorial(() => paginaDeLotes([LOTE_PENDIENTE]));
+    conHistorial(() => paginaDeLotes([LOTE_ANALIZADO, LOTE_PENDIENTE]));
     abrirApp('/historial');
 
-    expect(await screen.findByRole('table', { name: 'Lotes de la empresa' })).toBeInTheDocument();
-    expect(filas()).toHaveLength(1);
+    const tabla = await screen.findByRole('table', { name: 'Lotes de la empresa' });
+    expect(within(tabla).getAllByRole('columnheader').map((titulo) => titulo.textContent)).toEqual(COLUMNAS);
+    expect(filas()).toHaveLength(2);
+    expect(filas()[1]).toEqual(['—', 'L-0143', 'La Esperanza', 'Pendiente de análisis', '—', '—', 'Carlos Ramírez']);
+    expect(screen.queryByRole('link', { name: /^Continuar/ })).not.toBeInTheDocument();
   });
 
   it('RF-14 · sin lotes, al usuario final la lista le dice que no hay y le ofrece «Nuevo lote» para registrar el primero', async () => {
@@ -151,6 +175,31 @@ describe('Historial de lotes', () => {
     expect(tarjetas[0]).toHaveTextContent('Estándar');
     expect(tarjetas[1]).toHaveTextContent('Pendiente de análisis');
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
+  });
+
+  it('RF-14 · C5 · en el celular, «Continuar» va al pie de la tarjeta del lote pendiente, y la del analizado no lo tiene', async () => {
+    anchoDePantalla(375);
+    conSesion(USUARIOS.USUARIO_FINAL);
+    conHistorial(() => paginaDeLotes([LOTE_ANALIZADO, LOTE_PENDIENTE]));
+    abrirApp('/historial');
+
+    const lista = await screen.findByRole('list', { name: 'Lotes de la empresa' });
+    const [analizado, pendiente] = within(lista).getAllByRole('listitem');
+    expect(within(analizado).queryByRole('link')).not.toBeInTheDocument();
+    const continuar = within(pendiente).getByRole('link', { name: 'Continuar el lote L-0143' });
+    expect(continuar).toHaveAttribute('href', `/lotes/${LOTE_PENDIENTE.id}/fotos`);
+    expect(pendiente.lastElementChild).toContainElement(continuar);
+  });
+
+  it('RF-14 · en el celular, la tarjeta del lote pendiente de la administradora no tiene «Continuar»', async () => {
+    anchoDePantalla(375);
+    conSesion(USUARIOS.ADMIN_EMPRESA);
+    conHistorial(() => paginaDeLotes([LOTE_PENDIENTE]));
+    abrirApp('/historial');
+
+    const lista = await screen.findByRole('list', { name: 'Lotes de la empresa' });
+    expect(within(lista).getByRole('listitem')).toHaveTextContent('Pendiente de análisis');
+    expect(within(lista).queryByRole('link')).not.toBeInTheDocument();
   });
 
   it('RNF-05 · C1 · en el celular, con 8 páginas, solo se ven la primera, la última y las vecinas de la que se ve, para que quepan desde 360 px', async () => {

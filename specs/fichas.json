@@ -5,7 +5,7 @@
     "fecha_creacion": "12/10/2026",
     "actualizacion": "23/11/2026",
     "autor": "Equipo InspectIA",
-    "version": "1.19"
+    "version": "1.20"
   },
   "rf": [
     {
@@ -221,7 +221,7 @@
       "encabezado": "Tomar o subir las fotos de la muestra",
       "titulo": "Tomar o subir las fotos de la muestra del lote, con guía de captura",
       "codigo": "RF-05",
-      "version": "1.1",
+      "version": "1.2",
       "fuente": "D-08 (captura del lote), D-23 y D-26 (tamaño de la muestra) y D-25 (segunda muestra).",
       "descripcion": "El usuario toma con la cámara del celular, o sube desde el PC, 2 o 3 fotos de cada muestra del lote, siguiendo una guía de captura. Un lote tiene una muestra, o dos si la app sugiere otra (D-25).",
       "justificacion": "La calidad de las fotos define la calidad del resultado; la guía evita fotos que no sirven.",
@@ -231,7 +231,7 @@
           "La guía pide entre 100 y 150 granos por muestra, repartidos en 2 o 3 fotos (D-23). Si la muestra pasa de 150 granos, se acepta; el mínimo de 100 es obligatorio (D-26, RF-07).",
           "Granos enteros sobre papel blanco, separados entre sí, con luz difusa y fotos tomadas desde arriba (D-08).",
           "Fotos en JPG o PNG, de hasta 10 MB cada una.",
-          "Las fotos suben directo a S3 con un enlace temporal (D-16; detalle en el documento de arquitectura).",
+          "Las fotos suben directo a S3 con un enlace temporal (D-16; detalle en el documento de arquitectura). Mientras no hay despliegue en AWS, y en las pruebas, una carpeta del servidor hace las veces de S3, con enlaces temporales que firma el mismo servidor (D-41).",
           "Una foto rechazada (RF-06, RF-07) o reemplazada (RF-09) se borra de la base de datos y de S3."
         ]
       },
@@ -653,7 +653,7 @@
       "encabezado": "Consultar el historial de lotes",
       "titulo": "Consultar el historial de lotes evaluados",
       "codigo": "RF-14",
-      "version": "1.2",
+      "version": "1.3",
       "fuente": "Levantamiento inicial: trazabilidad de los lotes evaluados.",
       "descripcion": "El usuario consulta los lotes de su empresa, analizados o pendientes, con filtros, y abre el detalle de cada uno.",
       "justificacion": "Da trazabilidad: qué se analizó, cuándo, quién lo hizo y con qué resultado.",
@@ -662,7 +662,8 @@
         "b": [
           "Solo se ven los lotes de la propia empresa (RNF-03).",
           "La lista se muestra por páginas de 20 lotes.",
-          "La lista va del último movimiento de cada lote al más antiguo: la fecha del resultado si el lote ya se analizó, o la de registro si está pendiente. Cada lote trae la fecha del resultado, que es la que muestra la columna «Fecha del resultado» del prototipo."
+          "La lista va del último movimiento de cada lote al más antiguo: la fecha del resultado si el lote ya se analizó, o la de registro si está pendiente. Cada lote trae la fecha del resultado, que es la que muestra la columna «Fecha del resultado» del prototipo.",
+          "«Continuar» un lote pendiente desde la captura de fotos (RF-05) y analizar la segunda muestra (D-25) son solo del usuario final, como la página de las fotos. El administrador de empresa ve el lote pendiente sin esa acción. Se aparta del prototipo, que la mostraba en el historial del administrador."
         ]
       },
       "prioridad": "Alta",
@@ -925,8 +926,8 @@
       "titulo": "Exigir autenticación y restringir cada función según el rol",
       "codigo": "RNF-04",
       "tipo": "Seguridad",
-      "version": "1.1",
-      "descripcion": "Todo, salvo la pantalla de inicio de sesión, exige una sesión iniciada, y cada función solo la puede usar el rol que le corresponde. La conexión siempre va cifrada (HTTPS).",
+      "version": "1.2",
+      "descripcion": "Todo, salvo la pantalla de inicio de sesión, exige una sesión iniciada, y cada función solo la puede usar el rol que le corresponde. La conexión siempre va cifrada (HTTPS). Excepción: con el almacén de fotos en carpeta, los enlaces temporales de las fotos no piden sesión; los autoriza su firma, que vence en minutos (D-41).",
       "prioridad": "Alta",
       "criterios": {
         "b": [

@@ -4,7 +4,7 @@ Descripción: Presentación del monorepo de InspectIA: estructura, versiones, re
 Fecha de creación: 12/10/2026
 Actualización: 23/11/2026
 Autor: Equipo InspectIA
-Versión: 1.12
+Versión: 1.13
 -->
 
 # InspectIA
@@ -148,6 +148,7 @@ Los comandos están en la sección Comandos de `CLAUDE.md`. En resumen:
 - **Contraseñas:** cada usuario cambia la suya con `PUT /api/v1/sesion/contrasena` (RF-18). Si el administrador de la plataforma olvida la suya, el equipo la restablece con un script de la base de datos (D-30); los pasos están en `infra/README.md`.
 - **Rangos de recomendación:** el administrador de empresa lista, edita en bloque y restaura los 4 rangos de su empresa en la pantalla «Rangos de recomendación» o en `/api/v1/rangos-recomendacion` (RF-13); los pasos para probar la API están en `infra/README.md`.
 - **Lotes:** el usuario final registra un lote en «Nuevo lote» o con `POST /api/v1/lotes` (RF-04), y él y el administrador de empresa ven los lotes de su empresa en «Historial» o en `GET /api/v1/lotes` (RF-14); los pasos para probar la API están en `infra/README.md`.
+- **Fotos de la muestra:** después de registrar un lote, o con «Continuar» en el historial, el usuario final sube 2 o 3 fotos en «Fotos de la muestra»: en el celular, «Tomar foto» abre la cámara, y en el PC, «Elegir archivo» abre el selector (RF-05, RF-14 C5). Mientras no haya despliegue en AWS, las fotos se guardan en una carpeta de tu PC, fuera del repositorio, con enlaces que firma el backend (D-41). No hace falta tocar `infra/.env` ni reiniciar la base; ver «Fotos en tu PC» en `infra/README.md`.
 - **Generador:** los CRUD (tablas, backend y pantallas) salen de `specs/entidades/*.json` y no se editan a mano (RP-23). Hoy tienen pantalla las empresas, los usuarios y los rangos. Ver `generador/README.md`.
 - **Casos de prueba:** `docs/casos-de-prueba.md` lista cada criterio de aceptación con sus pruebas y los que aún no tienen ninguna (RP-13). Lo arma `generador/casos_de_prueba.py` desde las marcas de las pruebas.
 

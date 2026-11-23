@@ -2,9 +2,9 @@
 # Descripción: Configuración del servidor de InspectIA. La conexión a la base sale de variables
 #              de entorno; en local se leen de infra/.env, que no se sube al repositorio.
 # Fecha de creación: 13/10/2026
-# Actualización: 14/10/2026
+# Actualización: 23/11/2026
 # Autor: Equipo InspectIA
-# Versión: 1.2
+# Versión: 1.3
 
 spring:
   application:
@@ -43,3 +43,9 @@ inspectia:
     # de la variable de entorno INSPECTIA_JWT_CLAVE (en local, de infra/.env) y nunca se escribe
     # aquí. Sin ella, el servidor no arranca.
     clave: ${INSPECTIA_JWT_CLAVE:}
+  archivos:
+    # Dónde van las fotos de las muestras (D-41). Por ahora, en una carpeta del servidor: es el almacén de siempre
+    # (almacen: carpeta). Con «s3», que llega con el despliegue, no se cargan la carpeta ni sus enlaces firmados.
+    # La carpeta sale de INSPECTIA_FOTOS_CARPETA (en local, de infra/.env). Sin ella, o vacía, es
+    # <carpeta del usuario>/.inspectia/fotos. Va completa y fuera del repositorio; las pruebas usan una temporal.
+    carpeta: ${INSPECTIA_FOTOS_CARPETA:}

@@ -8,12 +8,13 @@
  * Fecha de creación: 10/11/2026
  * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 import { fireEvent, screen, within } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { abrirApp, conSesion, USUARIOS } from '../pruebas/ayudas.jsx';
+import { SIN_FOTOS } from '../pruebas/fotos.js';
 import { LOTE_PENDIENTE } from '../pruebas/lotes.js';
 import { problema, servidor } from '../pruebas/servidor.js';
 
@@ -58,6 +59,8 @@ describe('Nuevo lote', () => {
     vi.setSystemTime(new Date('2026-11-10T17:00:00Z'));
     conSesion(CARLOS);
     conSugerencias([]);
+    // Las pruebas que registran el lote llegan a la página de las fotos, que pide las del lote nuevo: no tiene.
+    servidor.use(http.get('/api/v1/lotes/:id/fotos', () => HttpResponse.json(SIN_FOTOS)));
   });
   afterEach(() => vi.useRealTimers());
 

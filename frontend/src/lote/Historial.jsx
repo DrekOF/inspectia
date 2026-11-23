@@ -3,18 +3,18 @@
  * Descripción: La pantalla Historial de lotes (RF-14), como en el prototipo: los lotes de la empresa, del último
  *              movimiento al más antiguo, con la fecha del resultado, el código, la finca o el proveedor, el
  *              estado, el porcentaje de granos sanos, la categoría probable y quién lo registró. En el PC van en
- *              una tabla y en el celular, en tarjetas (RNF-05), por páginas de 20.
+ *              una tabla y en el celular, en tarjetas (RNF-05), por páginas de 20. El usuario final retoma un lote
+ *              pendiente con «Continuar» (RF-14 C5); la administradora solo consulta.
  * Fecha de creación: 22/11/2026
  * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 import Add from '@mui/icons-material/Add';
 import Check from '@mui/icons-material/Check';
 import Schedule from '@mui/icons-material/Schedule';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
 import PaginationItem from '@mui/material/PaginationItem';
 import Table from '@mui/material/Table';
@@ -30,6 +30,7 @@ import { Link } from 'react-router';
 import { textoDelError } from '../api/errores.js';
 import { historialDeLotes } from '../api/lotes.js';
 import { Aviso } from '../componentes/Aviso.jsx';
+import { ChipDeEstado } from '../componentes/ChipDeEstado.jsx';
 import { OCULTO_A_LA_VISTA } from '../componentes/ocultoALaVista.js';
 import { TituloDePagina } from '../componentes/TituloDePagina.jsx';
 import { useEsPc } from '../componentes/useEsPc.js';
@@ -97,28 +98,40 @@ const COLUMNAS = [
 function Estado({ lote, texto }) {
   const analizado = lote.estado === 'ANALIZADO';
   const Icono = analizado ? Check : Schedule;
+  return <ChipDeEstado texto={texto} tono={analizado ? 'exito' : 'advertencia'} icono={<Icono />} />;
+}
+
+/**
+ * «Continuar» de un lote pendiente: lleva a las fotos de su muestra (RF-14 C5). Su nombre dice el lote y empieza por
+ * el texto que se ve (D-32). En la tabla es un botón de texto de 40 px, como en el prototipo; en la tarjeta, un botón
+ * con borde a todo el ancho, de 44 px (RNF-05).
+ *
+ * @param {{ lote: import('../api/lotes.js').Lote, enTarjeta?: boolean }} props el lote y dónde va
+ * @returns {import('react').ReactElement} el enlace
+ */
+function Continuar({ lote, enTarjeta = false }) {
+  const { t } = useTranslation();
   return (
-    <Chip size="small" label={texto} icon={<Icono />} sx={(theme) => {
-      const tono = theme.vars.palette.cacao[analizado ? 'exito' : 'advertencia'];
-      return {
-        height: 'auto', gap: '6px', px: '10px', py: '4px', borderRadius: `${medidas.chip.radio}px`,
-        bgcolor: tono.fondo, color: tono.texto, fontSize: letra.chip, fontWeight: letra.pesos.media,
-        '& .MuiChip-icon': { m: 0, fontSize: 14, color: 'inherit' },
-        '& .MuiChip-label': { p: 0 },
-      };
-    }} />
+    <Button component={Link} to={`/lotes/${lote.id}/fotos`} variant={enTarjeta ? 'outlined' : 'text'}
+      aria-label={t('historial.continuarLote', { codigo: lote.codigo })}
+      sx={enTarjeta
+        ? { minHeight: medidas.zonaTactil, mt: 0.75 }
+        : { minHeight: medidas.boton.altoEnTabla, px: '10px', textDecoration: 'underline' }}>
+      {t('historial.continuar')}
+    </Button>
   );
 }
 
 /**
  * Los lotes en el PC: una tabla con su título para los lectores de pantalla. En una ventana angosta, la caja de la
  * tabla se desplaza a los lados; por eso recibe el foco, con el nombre de la tabla, y se recorre con las flechas
- * del teclado (WCAG 2.1.1).
+ * del teclado (WCAG 2.1.1). Para el usuario final, la última columna tiene las acciones de cada lote.
  *
- * @param {{ lotes: import('../api/lotes.js').Lote[], region: string }} props los lotes de la página y la región
+ * @param {{ lotes: import('../api/lotes.js').Lote[], region: string, registra: boolean }} props los lotes de la
+ *   página, la región y si la sesión es del usuario final, que registra y retoma lotes
  * @returns {import('react').ReactElement} la tabla
  */
-function Tabla({ lotes, region }) {
+function Tabla({ lotes, region, registra }) {
   const { t } = useTranslation();
   const idDelTitulo = useId();
   return (
@@ -127,7 +140,10 @@ function Tabla({ lotes, region }) {
       <Table>
         <Box component="caption" id={idDelTitulo} sx={OCULTO_A_LA_VISTA}>{t('historial.lista')}</Box>
         <TableHead>
-          <TableRow>{COLUMNAS.map(([dato, clave]) => <TableCell key={dato}>{t(clave)}</TableCell>)}</TableRow>
+          <TableRow>
+            {COLUMNAS.map(([dato, clave]) => <TableCell key={dato}>{t(clave)}</TableCell>)}
+            {registra && <TableCell align="right">{t('crud.acciones')}</TableCell>}
+          </TableRow>
         </TableHead>
         <TableBody>
           {lotes.map((lote) => {
@@ -139,6 +155,11 @@ function Tabla({ lotes, region }) {
                     {dato === 'estado' ? <Estado lote={lote} texto={datos.estado} /> : datos[dato]}
                   </TableCell>
                 ))}
+                {registra && (
+                  <TableCell align="right" sx={{ py: 1 }}>
+                    {lote.estado === 'PENDIENTE' && <Continuar lote={lote} />}
+                  </TableCell>
+                )}
               </TableRow>
             );
           })}
@@ -149,12 +170,14 @@ function Tabla({ lotes, region }) {
 }
 
 /**
- * Los lotes en el celular: una tarjeta por lote, con su código y su estado arriba (RNF-05).
+ * Los lotes en el celular: una tarjeta por lote, con su código y su estado arriba (RNF-05). Para el usuario final,
+ * la de un lote pendiente lleva «Continuar» al pie.
  *
- * @param {{ lotes: import('../api/lotes.js').Lote[], region: string }} props los lotes de la página y la región
+ * @param {{ lotes: import('../api/lotes.js').Lote[], region: string, registra: boolean }} props los lotes de la
+ *   página, la región y si la sesión es del usuario final, que registra y retoma lotes
  * @returns {import('react').ReactElement} las tarjetas
  */
-function Tarjetas({ lotes, region }) {
+function Tarjetas({ lotes, region, registra }) {
   const { t } = useTranslation();
   return (
     <Box component="ul" role="list" aria-label={t('historial.lista')}
@@ -175,6 +198,7 @@ function Tarjetas({ lotes, region }) {
                 {datos[dato]}
               </Typography>
             ))}
+            {registra && lote.estado === 'PENDIENTE' && <Continuar lote={lote} enTarjeta />}
           </Box>
         );
       })}
@@ -274,6 +298,7 @@ export default function Historial() {
   const cargando = respuesta.pedido !== pedido;
   const { datos, error } = respuesta;
   const total = datos?.totalElementos ?? 0;
+  // Solo el usuario final registra lotes (RF-04) y los retoma (RF-14 C5); la administradora solo consulta.
   const registra = sesion.usuario.rol === ROLES.USUARIO_FINAL;
 
   return (
@@ -294,7 +319,6 @@ export default function Historial() {
       {datos && total === 0 && (
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
           <Typography>{t('historial.vacia')}</Typography>
-          {/* Solo el usuario final registra lotes (RF-04); la administradora solo consulta el historial. */}
           {registra && (
             <Button component={Link} to="/lotes/nuevo" variant="contained" startIcon={<Add />}>
               {t('menu.nuevoLote')}
@@ -304,7 +328,9 @@ export default function Historial() {
       )}
       {datos && total > 0 && (
         <>
-          {esPc ? <Tabla lotes={datos.contenido} region={region} /> : <Tarjetas lotes={datos.contenido} region={region} />}
+          {esPc
+            ? <Tabla lotes={datos.contenido} region={region} registra={registra} />
+            : <Tarjetas lotes={datos.contenido} region={region} registra={registra} />}
           <Paginas total={total} paginas={datos.totalPaginas} pagina={pagina} alCambiar={setPagina} />
         </>
       )}

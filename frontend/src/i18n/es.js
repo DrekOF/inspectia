@@ -6,7 +6,7 @@
  * Fecha de creación: 20/10/2026
  * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.5
+ * Versión: 1.6
  */
 
 /** Textos en español, por clave. en.js tiene las mismas claves (i18n.test.js lo revisa). */
@@ -176,10 +176,23 @@ export default {
   'historial.paginaAnterior': 'Página anterior',
   'historial.paginaSiguiente': 'Página siguiente',
   'historial.pagina': 'Página {pagina}',
+  'historial.continuar': 'Continuar',
+  'historial.continuarLote': 'Continuar el lote {codigo}',
   'fotos.titulo': 'Fotos de la muestra',
-  'fotos.descripcion': 'Lote {codigo} · {origen}. El lote quedó registrado y pendiente de análisis.',
+  'fotos.descripcion': 'Lote {codigo} · {origen}. Sube 2 o 3 fotos; si sales ahora, el lote queda pendiente y lo retomas desde el Historial.',
+  'fotos.descripcionSinSubir': 'Lote {codigo} · {origen}.',
+  'fotos.verElResultado': 'Consulta su resultado en el Historial.',
   'fotos.tusFotos': 'Tus fotos',
-  'fotos.pronto': 'Pronto podrás subir aquí las fotos de la muestra.',
+  'fotos.foto': 'Foto {numero}',
+  'fotos.fotoOpcional': 'Foto {numero} (opcional)',
+  'fotos.ayudaOpcional': 'Agrégala si los granos no caben separados en dos fotos.',
+  'fotos.imagen': 'Foto {numero} de la muestra',
+  'fotos.archivo': 'Archivo de la foto {numero}',
+  'fotos.elegirArchivo': 'Elegir archivo',
+  'fotos.tomarFoto': 'Tomar foto',
+  'fotos.reemplazar': 'Reemplazar',
+  'fotos.subiendo': 'Subiendo la foto {numero}…',
+  'fotos.cargada': 'Foto {numero} cargada.',
   'guia.titulo': 'Guía de captura',
   'guia.ejemplo': 'Ejemplo de foto correcta: granos enteros y separados sobre papel blanco, vistos desde arriba',
   'guia.ejemploTitulo': 'Ejemplo de foto correcta',

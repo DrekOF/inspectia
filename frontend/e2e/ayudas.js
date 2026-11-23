@@ -2,12 +2,13 @@
  * Nombre: ayudas.js (e2e)
  * Descripción: Ayudas de las pruebas de punta a punta con Playwright: los datos del entorno aislado, la persona
  *              de cada rol, crear usuarios y empresas propios por la API para las pruebas que cambian datos,
- *              iniciar y cerrar sesión, buscar una fila en la lista de una pantalla generada, y una empresa propia
- *              con su usuario final y sus lotes, para las pruebas de los lotes (RF-04, RF-14).
+ *              iniciar y cerrar sesión, buscar una fila en la lista de una pantalla generada, una empresa propia
+ *              con su usuario final y sus lotes, para las pruebas de los lotes (RF-04, RF-14), y subir fotos de la
+ *              muestra en la pantalla o por la API (RF-05).
  * Fecha de creación: 20/10/2026
  * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.4
+ * Versión: 1.5
  */
 import { randomUUID } from 'node:crypto';
 import { test as base, expect } from '@playwright/test';
@@ -148,6 +149,70 @@ export async function registrarLotes(api, persona, lotes) {
     registrados.push(await respuesta.json());
   }
   return registrados;
+}
+
+/**
+ * Sube fotos de la muestra de un lote por la API, como la página (D-41): pide el enlace, sube el archivo al enlace
+ * sin el token y lo confirma.
+ *
+ * @param {import('@playwright/test').APIRequestContext} api el cliente de la API de Playwright
+ * @param {{ correo: string, contrasena: string }} persona el usuario final
+ * @param {string} loteId el lote
+ * @param {Array<{ numero: number, archivo: Buffer, tipo?: string }>} fotos el número de cada foto, sus bytes y su
+ *   tipo; por defecto, image/png
+ */
+export async function subirFotosPorLaApi(api, persona, loteId, fotos) {
+  const autorizacion = { Authorization: `Bearer ${await tokenDe(api, persona)}` };
+  for (const { numero, archivo, tipo = 'image/png' } of fotos) {
+    const pedido = await api.post(`/api/v1/lotes/${loteId}/fotos/${numero}/subida`,
+      { data: { tipo, tamanoBytes: archivo.length }, headers: autorizacion });
+    expect(pedido.status(), `enlace de la foto ${numero}`).toBe(201);
+    const enlace = await pedido.json();
+    const subida = await api.fetch(enlace.url, { method: enlace.metodo, headers: enlace.encabezados, data: archivo });
+    expect(subida.ok(), `subida de la foto ${numero}`).toBe(true);
+    const confirmada = await api.put(`/api/v1/lotes/${loteId}/fotos/${numero}`,
+      { data: { llave: enlace.llave }, headers: autorizacion });
+    expect(confirmada.status(), `confirmación de la foto ${numero}`).toBe(200);
+  }
+}
+
+/**
+ * La casilla de una foto en la página de las fotos de la muestra.
+ *
+ * @param {import('@playwright/test').Page} page la página
+ * @param {number} numero el número de la foto, de 1 a 3
+ * @returns {import('@playwright/test').Locator} la casilla
+ */
+export function casillaDeFoto(page, numero) {
+  return page.getByRole('group', { name: numero === 3 ? 'Foto 3 (opcional)' : `Foto ${numero}`, exact: true });
+}
+
+/**
+ * Elige una foto como una persona: pulsa el botón de su casilla («Elegir archivo», «Tomar foto» o «Reemplazar»),
+ * que abre el selector de archivos, y elige el archivo.
+ *
+ * @param {import('@playwright/test').Page} page la página, en las fotos de la muestra
+ * @param {number} numero el número de la foto
+ * @param {{ name: string, mimeType: string, buffer: Buffer }} archivo el archivo
+ * @returns {Promise<import('@playwright/test').FileChooser>} el selector que se abrió
+ */
+export async function elegirFoto(page, numero, archivo) {
+  const boton = casillaDeFoto(page, numero).getByRole('button', { name: /^(Elegir archivo|Tomar foto|Reemplazar)$/ });
+  const [selector] = await Promise.all([page.waitForEvent('filechooser'), boton.click()]);
+  await selector.setFiles(archivo);
+  return selector;
+}
+
+/**
+ * Espera que una imagen se vea entera: que el navegador la haya cargado y tenga ancho. Así se sabe que su enlace pasa
+ * por la app hasta el backend y que el archivo es una imagen.
+ *
+ * @param {import('@playwright/test').Locator} imagen la imagen
+ */
+export async function seVeLaImagen(imagen) {
+  await expect(imagen).toBeVisible();
+  await expect.poll(() => imagen.evaluate((elemento) => (elemento.complete ? elemento.naturalWidth : 0)))
+    .toBeGreaterThan(0);
 }
 
 /**

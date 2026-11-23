@@ -8,11 +8,12 @@
  *              infra/.env, la base de desarrollo ni backend/target: compila una copia del backend, que lleva
  *              al lado los scripts de infra/bd para que también pasen allí sus pruebas. La demostración de otra
  *              temática (herramientas/otra-tematica.js) lo enciende en su propia carpeta y su propio proyecto, con
- *              un paso de preparación que genera su entidad en la copia antes de compilarla.
+ *              un paso de preparación que genera su entidad en la copia antes de compilarla. Las fotos van a una
+ *              carpeta temporal del proyecto, nunca a la de quien corre las pruebas (D-41), y se borran al apagarlo.
  * Fecha de creación: 20/10/2026
- * Actualización: 28/10/2026
+ * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.2
+ * Versión: 1.3
  *
  * Uso: lo encienden y lo apagan las pruebas (e2e/entorno/global.js). Para correr las pruebas varias veces
  * sobre el mismo entorno: «npm run e2e:entorno» en una terminal y, en otra, INSPECTIA_E2E_URL con la
@@ -24,6 +25,7 @@ import {
   closeSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, rmSync, writeFileSync,
 } from 'node:fs';
 import { createServer } from 'node:net';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { espejarBackend } from '../../herramientas/espejo.js';
@@ -284,6 +286,11 @@ export async function encenderEntorno({ carpeta = CARPETA, proyecto = PROYECTO, 
   const base = { POSTGRES_DB: 'inspectia', POSTGRES_USER: 'inspectia', POSTGRES_PASSWORD: claveAlAzar(24), POSTGRES_PORT: String(puertoBase) };
   writeFileSync(archivoDeVariables, Object.entries(base).map(([nombre, valor]) => `${nombre}=${valor}\n`).join(''));
 
+  // Las fotos del entorno (D-41): una carpeta temporal por proyecto, corta para no llegar al límite de 260 caracteres
+  // de las rutas de Windows. Se borra al empezar, por si quedó de una corrida anterior, y al apagarlo.
+  const carpetaDeFotos = join(tmpdir(), `${proyecto}-fotos`);
+  rmSync(carpetaDeFotos, { recursive: true, force: true, maxRetries: 5 });
+
   const procesos = [];
   const apagar = async () => {
     for (const proceso of procesos) {
@@ -292,6 +299,7 @@ export async function encenderEntorno({ carpeta = CARPETA, proyecto = PROYECTO, 
     await ejecutar('docker', compose(proyecto, archivoDeVariables, 'down', '-v', '--remove-orphans')).catch(() => {});
     rmSync(join(carpeta, 'datos.json'), { force: true });
     rmSync(archivoDeVariables, { force: true });
+    rmSync(carpetaDeFotos, { recursive: true, force: true, maxRetries: 5 });
   };
 
   try {
@@ -312,6 +320,7 @@ export async function encenderEntorno({ carpeta = CARPETA, proyecto = PROYECTO, 
         POSTGRES_HOST: '127.0.0.1',
         SERVER_PORT: String(puertoBackend),
         INSPECTIA_JWT_CLAVE: randomBytes(32).toString('base64'),
+        INSPECTIA_FOTOS_CARPETA: carpetaDeFotos,
       },
     });
     procesos.push(backend);

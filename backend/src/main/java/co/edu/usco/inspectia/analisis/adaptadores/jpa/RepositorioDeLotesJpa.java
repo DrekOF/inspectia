@@ -2,15 +2,16 @@
  * Nombre: RepositorioDeLotesJpa.java
  * Descripción: Implementa con JPA el puerto de los lotes guardados (RF-04, RF-14, D-21).
  * Fecha de creación: 10/11/2026
- * Actualización: 10/11/2026
+ * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis.adaptadores.jpa;
 
 import co.edu.usco.inspectia.analisis.aplicacion.OrigenUsado;
 import co.edu.usco.inspectia.analisis.aplicacion.RepositorioDeLotes;
 import co.edu.usco.inspectia.analisis.aplicacion.VistaDeLote;
+import co.edu.usco.inspectia.analisis.dominio.EstadoDeLote;
 import co.edu.usco.inspectia.analisis.dominio.Lote;
 import java.util.List;
 import java.util.Optional;
@@ -67,5 +68,15 @@ public class RepositorioDeLotesJpa implements RepositorioDeLotes {
     @Override
     public List<OrigenUsado> origenesUsados(UUID empresaId) {
         return lotes.origenesUsados(empresaId);
+    }
+
+    @Override
+    public Optional<EstadoDeLote> estado(UUID empresaId, UUID id) {
+        return lotes.estado(empresaId, id);
+    }
+
+    @Override
+    public Optional<EstadoDeLote> estadoParaActualizar(UUID empresaId, UUID id) {
+        return lotes.paraActualizar(empresaId, id).map(LoteEntidad::getEstado);
     }
 }

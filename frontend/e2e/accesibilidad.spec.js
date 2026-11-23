@@ -1,18 +1,21 @@
 /*
  * Nombre: accesibilidad.spec.js
  * Descripción: Pruebas de accesibilidad de punta a punta (RNF-06 C4, RP-08): axe revisa las pautas WCAG 2.2 AA
- *              en cada pantalla de esta versión y en los dos temas, también en las de los lotes (RF-04, RF-14), y se
- *              inicia sesión solo con el teclado.
+ *              en cada pantalla de esta versión y en los dos temas, también en las de los lotes (RF-04, RF-14) y en
+ *              las fotos de la muestra con una foto subida y un error a la vista (RF-05), y se inicia sesión solo con
+ *              el teclado.
  * Fecha de creación: 20/10/2026
- * Actualización: 22/11/2026
+ * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 import { randomUUID } from 'node:crypto';
 import AxeBuilder from '@axe-core/playwright';
 import {
-  crearEmpresaConUsuarioFinal, datos, escribirYEntrar, expect, iniciarSesion, registrarLotes, test,
+  casillaDeFoto, crearEmpresaConUsuarioFinal, datos, escribirYEntrar, expect, iniciarSesion, registrarLotes,
+  seVeLaImagen, subirFotosPorLaApi, test,
 } from './ayudas.js';
+import { PDF, png } from './imagenes.js';
 
 const PAUTAS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 
@@ -60,9 +63,10 @@ test('RNF-06 · C4 · las pantallas de esta versión no tienen fallas de accesib
   await revisarPantallas(page, 'dark');
 });
 
-test('RNF-06 · C4 · las pantallas de los lotes no tienen fallas de accesibilidad WCAG AA en los dos temas, tampoco con los errores del formulario a la vista', async ({ page, request }) => {
+test('RNF-06 · C4 · las pantallas de los lotes no tienen fallas de accesibilidad WCAG AA en los dos temas, tampoco con los errores del formulario a la vista ni con una foto subida y otra rechazada', async ({ page, request }) => {
   const { usuarioFinal } = await crearEmpresaConUsuarioFinal(request);
   const [lote] = await registrarLotes(request, usuarioFinal, [{ codigo: `A-${randomUUID().slice(0, 8)}` }]);
+  await subirFotosPorLaApi(request, usuarioFinal, lote.id, [{ numero: 1, archivo: png() }]);
   await iniciarSesion(page, usuarioFinal);
   for (const esquema of ['light', 'dark']) {
     await page.emulateMedia({ colorScheme: esquema });
@@ -77,7 +81,11 @@ test('RNF-06 · C4 · las pantallas de los lotes no tienen fallas de accesibilid
     await sinFallas(page, `Historial, tema ${esquema}`);
     await page.goto(`/lotes/${lote.id}/fotos`);
     await expect(page.getByRole('region', { name: 'Guía de captura' })).toBeVisible();
-    await sinFallas(page, `Fotos de la muestra, tema ${esquema}`);
+    await seVeLaImagen(casillaDeFoto(page, 1).getByRole('img', { name: 'Foto 1 de la muestra' }));
+    await page.getByLabel('Archivo de la foto 2').setInputFiles({ name: 'informe.pdf', mimeType: 'application/pdf',
+      buffer: PDF });
+    await expect(casillaDeFoto(page, 2).getByRole('alert')).toBeVisible();
+    await sinFallas(page, `Fotos de la muestra, con una foto subida y otra rechazada, tema ${esquema}`);
   }
 });
 

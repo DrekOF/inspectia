@@ -2,9 +2,9 @@
 Nombre: arquitectura.md
 Descripción: Resumen de la arquitectura del sistema y del software de InspectIA (D-16, D-18, D-21, D-23, D-25 y D-40). Detalle en 02_Analisis_Diseno/InspectIA_Despliegue_AWS.pdf.
 Fecha de creación: 12/10/2026
-Actualización: 10/11/2026
+Actualización: 23/11/2026
 Autor: Equipo InspectIA
-Versión: 1.4
+Versión: 1.5
 -->
 
 # Arquitectura de InspectIA
@@ -17,12 +17,12 @@ Versión: 1.4
 | Servidor | Java + Spring Boot | API REST con JSON: sesión y roles, empresas, usuarios, lotes, análisis, recomendación, historial, reportes PDF y estadísticas. |
 | Servicio de IA | Python + OpenCV + TensorFlow | Revisa la calidad de las fotos, separa los granos y los clasifica con el modelo elegido. |
 | Base de datos | PostgreSQL | Datos de todas las empresas en una base compartida; cada registro guarda su empresa (RNF-03). |
-| Archivos | Amazon S3 | Fotos, reportes PDF y los 5 modelos de Julián con su comparación. |
+| Archivos | Amazon S3 | Fotos, reportes PDF y los 5 modelos de Julián con su comparación. En local, las fotos van a una carpeta del servidor (D-41). |
 
 - El servidor es un solo programa dividido en módulos (monolito modular). Sin microservicios.
 - Despliegue en AWS (us-east-1): CloudFront + S3 para la página web; una EC2 t4g.medium con Docker Compose (servidor, servicio de IA y PostgreSQL); S3; ECR; CloudWatch + SNS; EventBridge Scheduler; AWS Budgets. Costo estimado: ≈ US$31 al mes 24/7 o ≈ US$16 apagándola de noche.
 - Docker Compose y no ECS: con una sola máquina, Compose basta. Se pasaría a ECS si una máquina no alcanza o si el producto exige alta disponibilidad.
-- Las fotos se suben directo a S3 con enlaces temporales (URL prefirmadas) que genera el servidor.
+- Las fotos se suben directo a S3 con enlaces temporales (URL prefirmadas) que genera el servidor. En local, el servidor hace las veces de S3: guarda las fotos en una carpeta y firma sus propios enlaces, que no piden sesión (D-41).
 - CI/CD con GitHub Actions: si las pruebas pasan, publica el front-end en S3 y las imágenes en ECR y actualiza la instancia por SSM; si fallan, crea un issue y avisa al equipo. Conexión a AWS por OIDC, sin claves en el repositorio.
 
 ## 2. Organización del servidor (D-21)
@@ -33,7 +33,7 @@ backend/src/main/java/.../inspectia/
 │   ├── dominio/     reglas sin Spring: % de granos sanos (RF-10), categoría y sugerencia (RF-12)
 │   ├── aplicacion/  caso de uso AnalizarLote y puertos (interfaces):
 │   │                ClasificadorDeGranos, AlmacenDeArchivos, GeneradorDeReporte, repositorios
-│   └── adaptadores/ REST, cliente HTTP al servicio de IA, S3, PDF, JPA
+│   └── adaptadores/ REST, cliente HTTP al servicio de IA, S3 (en local, una carpeta: D-41), PDF, JPA
 ├── empresa/         capas, generado desde specs/entidades/empresa.json
 ├── usuario/         capas, generado desde specs/entidades/usuario.json; a mano, sus reglas, la
 │                    sesión (RF-01) y el restablecimiento de los administradores (RF-02 C12)
@@ -51,7 +51,7 @@ backend/src/main/java/.../inspectia/
 | Paso | Requerimiento | Dónde |
 |---|---|---|
 | 1. Registrar el lote | RF-04 | Servidor |
-| 2. Tomar o subir 2 o 3 fotos de la muestra (la guía pide de 100 a 150 granos; se aceptan más, D-23 y D-26) | RF-05 | Página web → S3 |
+| 2. Tomar o subir 2 o 3 fotos de la muestra (la guía pide de 100 a 150 granos; se aceptan más, D-23 y D-26) | RF-05 | Página web → S3 (en local, el servidor; D-41) |
 | 3. Revisar nitidez y luz | RF-06 | Servicio de IA |
 | 4. Separar y recortar los granos; granos pegados; mínimo 100 granos | RF-07 | Servicio de IA |
 | 5. Clasificar cada grano (posición, clase y confianza) | RF-08 | Servicio de IA |

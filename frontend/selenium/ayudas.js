@@ -2,13 +2,13 @@
  * Nombre: ayudas.js (selenium)
  * Descripción: Ayudas de las pruebas con Selenium (RP-14): abrir Chrome o Edge en tamaño de PC o de celular,
  *              buscar campos por su etiqueta, también dentro de un grupo, y botones por su texto, escribir en
- *              un campo en lugar de lo que tenía, crear usuarios y empresas propios por la API y, si una prueba
- *              falla, guardar una captura de la pantalla y la consola del navegador en reports/selenium, que no
- *              se sube al repositorio.
+ *              un campo en lugar de lo que tenía, crear usuarios, empresas y lotes propios por la API, encontrar el
+ *              selector oculto de una foto y, si una prueba falla, guardar una captura de la pantalla y la consola
+ *              del navegador en reports/selenium, que no se sube al repositorio.
  * Fecha de creación: 20/10/2026
- * Actualización: 28/10/2026
+ * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.3
+ * Versión: 1.4
  */
 import { randomUUID } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -217,6 +217,36 @@ export async function crearEmpresa() {
     throw new Error(`No se pudo registrar la empresa de prueba: ${respuesta.status}`);
   }
   return { ...empresa, id: (await respuesta.json()).id };
+}
+
+/**
+ * Registra un lote pendiente por la API con un usuario final (RF-04), con la fecha de recepción que recibe.
+ *
+ * @param {{ correo: string, contrasena: string }} persona el usuario final
+ * @param {string} codigo el código del lote
+ * @param {string} fechaRecepcion la fecha de recepción (aaaa-mm-dd)
+ * @returns {Promise<{ id: string, codigo: string }>} el lote, como lo responde la API
+ */
+export async function registrarLote(persona, codigo, fechaRecepcion) {
+  const respuesta = await pedir('POST', '/lotes',
+    { codigo, fechaRecepcion, origen: 'Finca La Esperanza', observaciones: null }, await tokenDe(persona));
+  if (respuesta.status !== 201) {
+    throw new Error(`No se pudo registrar el lote de prueba: ${respuesta.status}`);
+  }
+  return respuesta.json();
+}
+
+/**
+ * El selector de archivos de una foto de la muestra, que está oculto: la página lo abre con el botón de la casilla.
+ * Por eso no se espera que se vea, como con esperar(); sendKeys con la ruta de un archivo lo elige.
+ *
+ * @param {import('selenium-webdriver').WebDriver} driver el navegador, en las fotos de la muestra
+ * @param {number} numero el número de la foto, de 1 a 3
+ * @returns {Promise<import('selenium-webdriver').WebElement>} el selector
+ */
+export function archivoDeLaFoto(driver, numero) {
+  return driver.wait(until.elementLocated(By.css(`input[type="file"][aria-label="Archivo de la foto ${numero}"]`)),
+    ESPERA);
 }
 
 /**
