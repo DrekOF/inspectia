@@ -3,9 +3,9 @@
     "nombre": "fichas.json",
     "descripcion": "Fichas de los requerimientos funcionales (formato largo) y no funcionales (formato corto) de InspectIA. Fuente única para las secciones 5 y 6 del documento de requerimientos y, más adelante, para el listado de casos de prueba (RP-13).",
     "fecha_creacion": "12/10/2026",
-    "actualizacion": "10/11/2026",
+    "actualizacion": "23/11/2026",
     "autor": "Equipo InspectIA",
-    "version": "1.18"
+    "version": "1.19"
   },
   "rf": [
     {
@@ -177,7 +177,7 @@
       "encabezado": "Registrar un lote",
       "titulo": "Registrar un lote",
       "codigo": "RF-04",
-      "version": "1.1",
+      "version": "1.2",
       "fuente": "Proceso propuesto (TO-BE) y D-08.",
       "descripcion": "El usuario final registra un lote nuevo con sus datos básicos antes de fotografiar la muestra.",
       "justificacion": "Cada análisis pertenece a un lote; sin ese registro no hay historial ni reporte.",
@@ -186,7 +186,7 @@
         "b": [
           "El código del lote no se repite dentro de la misma empresa, sin distinguir mayúsculas ni espacios al inicio o al final.",
           "El lote queda asociado a la empresa y al usuario que lo registró (RNF-03).",
-          "Al escribir la finca o el proveedor, el sistema sugiere los que ya usó la empresa; se comparan sin distinguir mayúsculas (RF-16)."
+          "Al escribir la finca o el proveedor, el sistema sugiere los que ya usó la empresa, para reutilizar el nombre que ya existe y que las estadísticas por finca no se partan (RF-16). Busca el texto en cualquier parte del nombre, sin distinguir mayúsculas, tildes ni los espacios del inicio y del final («paraiso» sugiere «Finca El Paraíso»). Los nombres que solo se diferencian en eso aparecen una sola vez, con la forma más usada y, si empatan, con la más reciente. Las sugerencias van en orden alfabético y son como máximo 10. Las tildes solo se ignoran en las sugerencias: las estadísticas agrupan la finca como dice RF-16."
         ]
       },
       "prioridad": "Alta",
@@ -213,7 +213,7 @@
         ]
       },
       "rnf": "RNF-03 (datos separados por empresa) y RNF-06 (facilidad de uso).",
-      "estado": "Aprobado",
+      "estado": "Implementado",
       "observaciones": "Los campos exactos están en specs/modelo-datos.md."
     },
     {
@@ -652,7 +652,7 @@
       "encabezado": "Consultar el historial de lotes",
       "titulo": "Consultar el historial de lotes evaluados",
       "codigo": "RF-14",
-      "version": "1.1",
+      "version": "1.2",
       "fuente": "Levantamiento inicial: trazabilidad de los lotes evaluados.",
       "descripcion": "El usuario consulta los lotes de su empresa, analizados o pendientes, con filtros, y abre el detalle de cada uno.",
       "justificacion": "Da trazabilidad: qué se analizó, cuándo, quién lo hizo y con qué resultado.",
@@ -660,7 +660,8 @@
       "restricciones": {
         "b": [
           "Solo se ven los lotes de la propia empresa (RNF-03).",
-          "La lista se muestra por páginas de 20 lotes."
+          "La lista se muestra por páginas de 20 lotes.",
+          "La lista va del último movimiento de cada lote al más antiguo: la fecha del resultado si el lote ya se analizó, o la de registro si está pendiente. Cada lote trae la fecha del resultado, que es la que muestra la columna «Fecha del resultado» del prototipo."
         ]
       },
       "prioridad": "Alta",

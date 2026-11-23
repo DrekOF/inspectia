@@ -2,9 +2,9 @@
 Nombre: bitacora.md
 Descripción: Registro paso a paso de cómo se construyó InspectIA, para la sustentación (RP-24).
 Fecha de creación: 12/10/2026
-Actualización: 10/11/2026
+Actualización: 23/11/2026
 Autor: Equipo InspectIA
-Versión: 1.22
+Versión: 1.23
 -->
 
 # Bitácora de construcción (RP-24)
@@ -968,6 +968,140 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
     - la frase de estado de P-14;
     - en `specs/arquitectura.md`, la sección 4 con los conjuntos de Julián y la línea del adaptador falso.
 - Archivos o PR: la rama `feature/D-39-modelos-v1.0`; el PR lo abre Cristhian.
+
+## 23/11/2026 · RF-04 y RF-14: registrar lotes y el historial
+
+- Quién: Cristhian Sánchez (`DrekOF`), con Claude Code.
+- Qué se hizo:
+  - **El PR 1 del módulo de análisis, en la rama `feature/RF-04-registrar-lote`:**
+    1. `25f614f` las pruebas del backend en rojo, que fijan el contrato de `/api/v1/lotes`.
+    2. `bf70807` el backend:
+       - el dominio del lote sin Spring;
+       - los casos de uso `RegistrarLote` y `ConsultarLotes`, con el puerto `RepositorioDeLotes`;
+       - los adaptadores REST y JPA, sobre la tabla `lote` de V1, que no cambia.
+    3. `0518130` las sugerencias de finca con la forma más usada.
+    4. `e6b370e` las pruebas del frontend en rojo, con MSW.
+    5. `6f6337f` las pantallas Nuevo lote e Historial, y la página de las fotos con la guía de captura.
+    6. `5eeb815` las pruebas de punta a punta, con Playwright y Selenium.
+    7. `c9d6fc0` las correcciones de la revisión antes del PR.
+    8. `cbcc837` la clase del tema desde antes de dibujar la app (ver «Problemas encontrados»).
+    9. Esta documentación: la bitácora, las fichas y los README.
+  - **La API de lotes** (`/api/v1/lotes`):
+    - registrar, solo el usuario final;
+    - el historial por páginas de 20 y el detalle de un lote, el usuario final y el administrador de empresa;
+    - las sugerencias de finca o proveedor (`/origenes`).
+
+    La empresa y el usuario salen siempre de la sesión: un lote de otra empresa responde que no existe (RNF-03).
+  - **Las pantallas:** Nuevo lote (paso 1), el Historial y Fotos de la muestra (paso 2, por ahora con la guía de
+    captura), con los textos y los colores del prototipo, en el PC y en el celular, en español y en inglés.
+  - **Las fichas:**
+    - la restricción 3 de RF-04, con las sugerencias;
+    - una restricción nueva en RF-14, con el orden del historial;
+    - RF-04 pasa a «Implementado» (D-29);
+    - RF-14 sigue en «Aprobado», porque le faltan C2, C3, C5 y C6, que llegan en los PR de las fotos y del resultado.
+  - **Los README:** el del frontend nombra las pantallas de los lotes y la carpeta `src/lote/`; el principal y el de
+    `infra/` dicen cómo probar la API de lotes.
+  - **Decisiones pequeñas,** tomadas con el prototipo y las fichas:
+    - **El detalle de un lote:** `GET /api/v1/lotes/{id}` existe desde este PR. Lo necesitan RNF-03 C1 y la página de
+      las fotos.
+    - **Las páginas del historial:** reciben `pagina` y `tamano`, como los demás listados: la página desde 0 y de 1 a
+      100 lotes, 20 por defecto. La página va hasta 21.474.836: con una mayor, la consulta fallaba con un error del
+      servidor (500); ahora responde 400.
+    - **Las observaciones en blanco** se guardan vacías.
+    - **La comparación sin tildes** de las sugerencias se hace en Java (`Textos.sinTildes`), no en PostgreSQL: con la
+      extensión `unaccent` habría que regenerar V1 y reiniciar la base local (P-16).
+    - **El código repetido:** la pantalla lo avisa con el texto del prototipo, que nombra el código, y no con el
+      mensaje general del backend.
+    - **Las celdas sin dato muestran «—»,** como la fecha del resultado y el porcentaje de un lote pendiente. Sin
+      lotes, la lista dice «Tu empresa todavía no tiene lotes.».
+    - **El estado de cada lote** va como en el prototipo: en ámbar y con un reloj si está pendiente, y en verde y con
+      un chulo si está analizado. La cuenta del historial usa el plural («1 lote · 20 por página»).
+    - **Lo que el Historial todavía no tiene:** los filtros (RF-14 C2, en el PR del resultado), la columna «Acciones»
+      con «Continuar» (en el PR de las fotos, solo para el usuario final) y el PDF (en su PR).
+    - **La foto de ejemplo de la guía es un dibujo en SVG,** con colores propios en los tokens, mientras no haya fotos
+      reales (P-12). Debajo de la guía, «Tus fotos» dice que pronto se podrán subir ahí.
+    - **La página de las fotos dice que el lote quedó registrado y pendiente de análisis.** El texto del prototipo
+      invita a subir las fotos y a retomar el lote desde el Historial, y eso llega con RF-05 y RF-14 C5; vuelve en el
+      PR de las fotos.
+    - **La página de las fotos es solo del usuario final,** como Nuevo lote.
+    - **Las sugerencias de finca** se piden un cuarto de segundo después de la última tecla, y ninguna con el campo en
+      blanco. El campo no tiene botón para borrar, como en el prototipo: el de Material UI dice «Clear», en inglés.
+    - **Las páginas del historial** tienen sus números, como en el prototipo: botones de 44 px y la página que se ve
+      en el color primario. En el celular se ven menos números, y la fila baja a otra línea si no cabe.
+    - **Los pasos del análisis,** como en el prototipo: en el PC, en fila, con los listos en verde; en el celular,
+      «Paso N de 3» con una barra.
+    - **La caja de la tabla del historial recibe el foco,** para recorrerla con el teclado cuando no cabe en la
+      ventana (WCAG 2.1.1).
+    - **El texto de ejemplo de todos los campos** va en el color del texto secundario: el gris de Material UI no
+      llegaba al contraste de RNF-06 C4.
+    - **`CampoDeTexto` acepta atributos del input,** como la fecha máxima de la fecha de recepción.
+    - **En las pruebas de punta a punta, cada prueba de lotes crea su propia empresa con su usuario final.** Playwright
+      corre 5 navegadores a la vez sobre la misma base, y así ninguna ve los lotes de otra.
+    - **Selenium pone la fecha con el setter del navegador,** porque con sendKeys el formato depende del idioma.
+  - **La revisión antes del PR:** Claude Code corrió una revisión de solo lectura con un flujo de 8 agentes: cuatro
+    revisores (backend, frontend, pruebas y reglas del proyecto) y un verificador para cada uno, que trató de
+    descartar cada hallazgo. Confirmó 18 y descartó 4. Se corrigieron 17 en `c9d6fc0`, y la búsqueda del estado en
+    Selenium en `5eeb815`:
+    - el tope de la página del historial, que respondía 500;
+    - el estado, las páginas y los pasos, que no seguían el prototipo, y las páginas que se salían de la pantalla a
+      360 px con 7 páginas o más;
+    - el botón «Clear» en inglés y el alto del campo de la finca (66 px en vez de 48);
+    - el contraste del texto de ejemplo (2,6:1) y el de la página que se ve en el historial (1,2:1);
+    - la caja de la tabla, que se desplazaba sin poder recibir el foco;
+    - la página de las fotos, que prometía lo que todavía no hace;
+    - en las pruebas: las de «hoy en Colombia» usaban el reloj real y copiaban la fórmula del código, una prueba de
+      Nuevo lote no esperaba un texto que llega con la segunda petición, la marca «RF-04 · C1» de una prueba que no lo
+      cubre, y la de Selenium, que buscaba «Pendiente de análisis» en toda la página;
+    - la restricción 3 de RF-04, que ahora dice que las tildes solo se ignoran en las sugerencias, sin cambiar RF-16;
+    - el README del frontend, que no nombraba las pantallas de los lotes.
+
+    Queda uno para Cristhian, porque cambia RF-04: la fecha de recepción no tiene límite inferior, y una fecha antes
+    del año 4713 a. C. llega a la base y responde 500. Solo se alcanza llamando a la API directamente.
+  - **Para otros PR:** los listados generados tampoco limitan la página, y la tabla de las pantallas generadas
+    tampoco recibe el foco. Quedaron como tareas aparte, porque se cambian en el generador.
+  - **Problemas encontrados:**
+    - **En el tema oscuro, los botones de Nuevo lote pasaban del color claro al oscuro.** Con las correcciones, la
+      prueba de accesibilidad de los lotes falló en Chrome: axe midió «Continuar a las fotos» con 1,36:1. Midiendo
+      cuadro por cuadro se vio que la página ya tenía la clase `dark` cuando aparecía el botón, pero el botón
+      arrancaba con el color del tema claro y tardaba 250 ms en llegar al oscuro; en Cambiar contraseña no pasaba.
+      La causa: el campo de varias líneas de Observaciones mide sus estilos al aparecer, antes de que Material UI
+      ponga la clase del tema, y la transición de los botones hacía el resto. Ahora la página arranca con la clase
+      del tema, puesta antes de dibujar la app (`tema/claseInicial.js`), y axe no encuentra fallas.
+    - **Selenium no abrió el navegador.** En la primera corrida, Chrome y Edge no abrieron a tiempo en una de sus dos
+      combinaciones: el gancho que abre el navegador pasó de los 120 segundos y sus pruebas no corrieron. Era la
+      primera vez en 12 días, y cada navegador bajaba su driver nuevo. En la segunda corrida pasaron las 28.
+    - **La limpieza de la carpeta temporal se llevó los ayudantes** con que se editan los archivos y se copia el
+      backend. Se volvieron a crear.
+  - **Resultado:**
+    - Backend: 125 pruebas unitarias y 443 de integración.
+    - Frontend: 606 pruebas de Vitest en 44 archivos, ESLint y el build.
+    - Playwright: 276 pruebas en verde y 4 omitidas, sin Firefox, que no abre en este Windows.
+    - Selenium: 28 en verde, con Chrome y Edge, en el PC y en el celular.
+    - Casos de prueba: 802 pruebas y 90 criterios sin prueba; `casos_de_prueba.py comprobar` pasa con RF-04 en
+      «Implementado».
+- Por qué: es el primer paso del flujo del análisis (D-08). Sin un lote registrado no hay fotos ni resultado, y el
+  historial deja ver los lotes de la empresa (RF-14).
+- Cómo se pidió:
+  - **El plan:** el 10/11/2026 Cristhian aprobó partir el módulo de análisis en 7 PR, cada uno probado de punta a
+    punta. El 22/11/2026 los redujo a 5: lotes, fotos, resultado, servicio de IA y PDF. P-19 no tiene PR propio.
+  - **Sus respuestas durante este PR:**
+    - el historial va del último movimiento al más antiguo: la fecha del resultado si el lote se analizó, o la de
+      registro si está pendiente; y trae la fecha del resultado. Se anotó en RF-14;
+    - las sugerencias no distinguen tildes, y de cada finca se sugiere la forma más usada y, si empatan, la más
+      reciente. Se anotó en la restricción 3 de RF-04;
+    - sin lotes, el usuario final ve el botón «Nuevo lote» y la administradora solo el texto;
+    - para el PR de las fotos, «Continuar» y la segunda muestra son solo del usuario final;
+    - los permisos y los textos recortados no hace falta anotarlos: ya los dicen las fichas y la regla de los
+      formularios.
+  - **La forma de trabajo nueva, desde el 22/11/2026:**
+    - una sola parada por PR, con todos los commits seguidos;
+    - las decisiones pequeñas se toman con el prototipo y las fichas, y se anotan aquí y en el PR;
+    - se pregunta solo si hay que regenerar V1, si cambia una ficha o una decisión, si toca la seguridad, los costos o
+      la separación entre empresas, o si hace falta algo de Cristhian;
+    - Claude Code sube la rama, abre el PR con `gh` y lo fusiona cuando Cristhian dice «fusiona» y todo está en verde.
+  - **La revisión antes del PR** la decidió Claude Code: la sesión tenía activado ultracode, que permite los flujos de
+    varios agentes.
+- Archivos o PR: la rama `feature/RF-04-registrar-lote` y su PR hacia `main`.
 
 ## Plantilla para nuevas entradas
 

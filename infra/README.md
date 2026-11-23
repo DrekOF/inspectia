@@ -2,9 +2,9 @@
 Nombre: README.md (infra)
 Descripción: Qué va en la carpeta infra/ de InspectIA, cómo reiniciar la base local, cómo crear el administrador de la plataforma y restablecer su contraseña, cómo probar la sesión en local y cómo usan infra/ las pruebas de punta a punta y la demostración de otra temática.
 Fecha de creación: 12/10/2026
-Actualización: 09/11/2026
+Actualización: 23/11/2026
 Autor: Equipo InspectIA
-Versión: 1.10
+Versión: 1.11
 -->
 
 # infra
@@ -110,5 +110,13 @@ Para los rangos de recomendación (RF-13), crea una empresa con `POST /api/v1/em
 - `POST /api/v1/rangos-recomendacion/restaurar-por-defecto` vuelve a los valores de D-10.
 
 El administrador de la plataforma recibe 403 en esas rutas, porque no tiene empresa.
+
+Para los lotes (RF-04 y RF-14), con el administrador de esa empresa crea un usuario final con `POST /api/v1/usuarios` e inicia sesión con él. Ahí:
+
+- `POST /api/v1/lotes` con `codigo`, `fechaRecepcion` (aaaa-mm-dd, no posterior a hoy en Colombia), `origen` y `observaciones` registra un lote pendiente de análisis. Un código que ya existe en la empresa responde 409.
+- `GET /api/v1/lotes?pagina=0&tamano=20` trae el historial de la empresa, del último movimiento al más antiguo, y `GET /api/v1/lotes/{id}`, un lote.
+- `GET /api/v1/lotes/origenes?texto=paraiso` sugiere las fincas y los proveedores que ya usó la empresa.
+
+El administrador de empresa también ve el historial y cada lote, pero no registra lotes: recibe 403. Un lote de otra empresa responde 404, como si no existiera (RNF-03).
 
 Para cambiar tu propia contraseña (RF-18), abre `PUT /api/v1/sesion/contrasena` con `contrasenaActual` y `contrasenaNueva`. La respuesta 200 trae un token nuevo, que vence a la misma hora que el anterior: pégalo en «Authorize», porque el anterior y los de tus demás sesiones responden 401 «Tu contraseña cambió». Una contraseña actual errada responde 400 y cuenta para el bloqueo; desde el quinto fallo seguido responde 429 hasta que termine.
