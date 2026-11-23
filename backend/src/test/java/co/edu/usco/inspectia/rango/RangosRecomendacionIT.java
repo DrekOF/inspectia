@@ -4,9 +4,9 @@
  *              reales: edición de los 4 en bloque, límites, valores por defecto, permisos y separación por
  *              empresa (RF-13, RNF-03, RNF-04).
  * Fecha de creación: 19/10/2026
- * Actualización: 20/10/2026
+ * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.2
+ * Versión: 1.3
  */
 package co.edu.usco.inspectia.rango;
 
@@ -563,9 +563,10 @@ class RangosRecomendacionIT {
         UUID usuario = jdbc.queryForObject("SELECT id FROM usuario WHERE correo = ?", UUID.class, ADMIN_A);
         return jdbc.queryForObject("""
                 INSERT INTO lote (empresa_id, codigo, fecha_recepcion, origen, estado, usuario_id, porcentaje_sanos,
-                                  categoria, recomendacion, sugerir_otra_muestra, aviso_confianza_baja, fecha_resultado)
-                VALUES (?, 'L-001', current_date, 'Finca La Esperanza', 'ANALIZADO', ?, 91.0, 'ESTANDAR', ?, false, false,
-                        now())
+                                  margen, categoria, recomendacion, sugerir_otra_muestra, aviso_confianza_baja,
+                                  fecha_resultado)
+                VALUES (?, 'L-001', current_date, 'Finca La Esperanza', 'ANALIZADO', ?, 91.0, 7.4, 'ESTANDAR', ?,
+                        false, false, now())
                 RETURNING id""", UUID.class, empresaA, usuario, D10.get(1).recomendacion());
     }
 

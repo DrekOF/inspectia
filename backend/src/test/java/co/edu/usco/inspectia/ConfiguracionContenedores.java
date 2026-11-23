@@ -1,14 +1,16 @@
 /*
  * Nombre: ConfiguracionContenedores.java
  * Descripción: Entorno de las pruebas de integración: PostgreSQL 18 en un contenedor de Testcontainers,
- *              una clave de tokens nueva en cada corrida y una carpeta temporal para las fotos (D-41).
+ *              una clave de tokens nueva en cada corrida, una carpeta temporal para las fotos (D-41), la cola de
+ *              análisis a mano y un clasificador de granos programable (RNF-02 C3).
  * Fecha de creación: 13/10/2026
  * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.2
+ * Versión: 1.3
  */
 package co.edu.usco.inspectia;
 
+import co.edu.usco.inspectia.analisis.ClasificadorProgramable;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
@@ -20,6 +22,7 @@ import java.util.stream.Stream;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
 import org.springframework.test.context.DynamicPropertyRegistrar;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
@@ -34,6 +37,10 @@ import org.testcontainers.utility.DockerImageName;
  *       repositorio.</li>
  *   <li>La carpeta de las fotos (D-41): una temporal en cada corrida, que se borra al terminar. Así las
  *       pruebas nunca escriben en la carpeta de fotos de quien las corre.</li>
+ *   <li>La cola de análisis a mano (RNF-02 C3): ningún hilo la atiende solo, porque podría atender una muestra
+ *       mientras otra prueba borra los datos. Las pruebas la atienden con {@code AtenderCola.atenderUna()}.</li>
+ *   <li>Un clasificador de granos programable ({@link ClasificadorProgramable}), que gana al falso: cada prueba
+ *       puede pedirle otro modelo, pocos granos o un fallo sin crear otro contexto de Spring ni otro contenedor.</li>
  * </ul>
  */
 @TestConfiguration(proxyBeanMethods = false)
@@ -77,6 +84,27 @@ public class ConfiguracionContenedores {
     @Bean
     DynamicPropertyRegistrar carpetaDeFotosDePrueba() {
         return registro -> registro.add("inspectia.archivos.carpeta", () -> CARPETA_DE_FOTOS.toString());
+    }
+
+    /**
+     * Apaga el hilo de la cola de análisis: las pruebas la atienden a mano, una muestra a la vez.
+     *
+     * @return el registro de la propiedad {@code inspectia.analisis.cola.automatica}
+     */
+    @Bean
+    DynamicPropertyRegistrar colaDeAnalisisAMano() {
+        return registro -> registro.add("inspectia.analisis.cola.automatica", () -> "false");
+    }
+
+    /**
+     * El clasificador de granos de las pruebas, que gana al falso.
+     *
+     * @return el clasificador programable
+     */
+    @Bean
+    @Primary
+    ClasificadorProgramable clasificadorProgramable() {
+        return new ClasificadorProgramable();
     }
 
     /**

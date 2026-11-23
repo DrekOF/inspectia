@@ -5,7 +5,7 @@
  * Fecha de creación: 10/11/2026
  * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 package co.edu.usco.inspectia.analisis;
 
@@ -150,7 +150,7 @@ class HistorialDeLotesIT {
         lotes.registrarOk(token, "L-003");
         // L-001 se analiza justo después del registro de L-002 y antes del de L-003: sube por encima de L-002.
         jdbc.update("""
-                UPDATE lote SET estado = 'ANALIZADO', porcentaje_sanos = 93.0, categoria = 'ESTANDAR',
+                UPDATE lote SET estado = 'ANALIZADO', porcentaje_sanos = 93.0, margen = 5.7, categoria = 'ESTANDAR',
                     recomendacion = 'Apto para venta estándar.', sugerir_otra_muestra = false,
                     aviso_confianza_baja = false,
                     fecha_resultado = (SELECT fecha_creacion FROM lote WHERE codigo = 'L-002') + interval '1 microsecond'
