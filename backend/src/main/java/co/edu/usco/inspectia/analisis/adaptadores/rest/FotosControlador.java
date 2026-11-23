@@ -11,6 +11,7 @@ package co.edu.usco.inspectia.analisis.adaptadores.rest;
 
 import co.edu.usco.inspectia.analisis.aplicacion.ConsultarFotos;
 import co.edu.usco.inspectia.analisis.aplicacion.SubirFotos;
+import co.edu.usco.inspectia.analisis.dominio.ReglasDeFotos;
 import co.edu.usco.inspectia.comun.seguridad.UsuarioEnSesion;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -95,7 +96,7 @@ public class FotosControlador {
             + "se confirma la foto. Rol: USUARIO_FINAL.")
     public SubidaRespuesta pedirSubida(@PathVariable UUID id,
             @PathVariable @Min(value = 1, message = "{validacion.minimo}")
-            @Max(value = 3, message = "{validacion.maximo}") int numero,
+            @Max(value = ReglasDeFotos.MAXIMO_DE_FOTOS, message = "{validacion.maximo}") int numero,
             @Valid @RequestBody SolicitudDeSubida solicitud,
             @Parameter(hidden = true) @AuthenticationPrincipal UsuarioEnSesion sesion) {
         return SubidaRespuesta.de(subir.pedirSubida(sesion.empresaId(), id, numero, solicitud.tipo(),
@@ -119,7 +120,7 @@ public class FotosControlador {
             + "misma foto. Rol: USUARIO_FINAL.")
     public FotoRespuesta confirmar(@PathVariable UUID id,
             @PathVariable @Min(value = 1, message = "{validacion.minimo}")
-            @Max(value = 3, message = "{validacion.maximo}") int numero,
+            @Max(value = ReglasDeFotos.MAXIMO_DE_FOTOS, message = "{validacion.maximo}") int numero,
             @Valid @RequestBody ConfirmacionDeFoto confirmacion,
             @Parameter(hidden = true) @AuthenticationPrincipal UsuarioEnSesion sesion) {
         return FotoRespuesta.de(subir.confirmar(sesion.empresaId(), sesion.id(), id, numero, confirmacion.llave()));

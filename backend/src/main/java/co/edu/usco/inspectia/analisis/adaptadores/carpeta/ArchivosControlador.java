@@ -135,7 +135,7 @@ public class ArchivosControlador {
     @SecurityRequirements
     @Operation(summary = "Ver una foto con un enlace firmado", description = "Sin sesión: la autoriza la firma del "
             + "enlace, que vence en 15 minutos (403 si no sirve). Responde la imagen con el tipo de su formato, nunca "
-            + "el que llegó al subirla (D-41).")
+            + "el que llegó al subirla (D-41). Si la foto ya no está, como una reemplazada, responde 404.")
     public ResponseEntity<Resource> ver(@PathVariable String empresa, @PathVariable String lote,
             @PathVariable String archivo,
             @Parameter(description = "Vencimiento del enlace.") @RequestParam(name = "vence", required = false)

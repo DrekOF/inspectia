@@ -1,8 +1,8 @@
 /*
  * Nombre: EnlacesFirmadosIT.java
  * Descripción: Pruebas de los enlaces firmados de las fotos en la carpeta local (D-41, RP-12): no piden sesión, la
- *              firma ata el método, el tipo y el tamaño, sin firma válida responden 403, una foto subida no se pisa y
- *              la foto se sirve como imagen.
+ *              firma ata el método, el tipo y el tamaño, sin firma válida responden 403, una foto subida no se pisa,
+ *              la foto se sirve como imagen, y los enlaces vencen a los 10 minutos para subir y a los 15 para ver.
  * Fecha de creación: 23/11/2026
  * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
@@ -23,9 +23,14 @@ import co.edu.usco.inspectia.ConfiguracionContenedores;
 import co.edu.usco.inspectia.PruebaIntegracion;
 import co.edu.usco.inspectia.usuario.sesion.ApiSesion;
 import java.nio.file.Files;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -180,6 +185,38 @@ class EnlacesFirmadosIT {
 
         assertThat(subir).hasStatus(HttpStatus.OK);
         assertThat(ver).hasStatus(HttpStatus.OK);
+    }
+
+    @Test
+    @DisplayName("D-41 · el enlace para subir vence a los 10 minutos y los de vista, al confirmar y en la lista, a los 15; la caché de la foto no dura más que su enlace")
+    @SuppressWarnings("unchecked")
+    void vigenciaDeLosEnlaces() {
+        byte[] contenido = jpg();
+        Instant antes = Instant.now();
+        Map<String, Object> subida = fotos.subida(token, lote, 1, JPG, contenido.length);
+        fotos.subir((String) subida.get("url"), JPG, contenido);
+        Map<String, Object> foto = json(fotos.confirmar(token, lote, 1, (String) subida.get("llave")));
+        Map<String, Object> enLaLista = ((List<Map<String, Object>>) json(fotos.listar(token, lote)).get("fotos")).get(0);
+        MvcTestResult imagen = fotos.ver(vista(foto));
+        Instant despues = Instant.now();
+
+        venceA(subida, antes, despues, Duration.ofMinutes(10));
+        venceA((Map<String, Object>) foto.get("vista"), antes, despues, Duration.ofMinutes(15));
+        venceA((Map<String, Object>) enLaLista.get("vista"), antes, despues, Duration.ofMinutes(15));
+        String cacheControl = imagen.getResponse().getHeader(HttpHeaders.CACHE_CONTROL);
+        Matcher cache = Pattern.compile("max-age=(\\d+)").matcher(cacheControl);
+        assertThat(cache.find()).isTrue();
+        assertThat(Long.parseLong(cache.group(1))).isBetween(1L, Duration.ofMinutes(15).toSeconds());
+    }
+
+    /**
+     * Revisa que un enlace venza a su tiempo: su {@code vence} y el de su dirección son el mismo segundo, entre el
+     * comienzo y el fin de la prueba, más la vigencia.
+     */
+    private static void venceA(Map<String, Object> enlace, Instant antes, Instant despues, Duration vigencia) {
+        long vence = Instant.parse((String) enlace.get("vence")).getEpochSecond();
+        assertThat(vence).isBetween(antes.plus(vigencia).getEpochSecond(), despues.plus(vigencia).getEpochSecond());
+        assertThat((String) enlace.get("url")).contains("vence=" + vence + "&");
     }
 
     @Test

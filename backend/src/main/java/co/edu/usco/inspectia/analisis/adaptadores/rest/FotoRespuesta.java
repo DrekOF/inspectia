@@ -22,7 +22,13 @@ import java.time.Instant;
  * @param vista el enlace para verla, sin el token, que vence en minutos (RNF-03 C3)
  */
 @Schema(description = "Una foto de la muestra, con el enlace para verla.")
-public record FotoRespuesta(int numero, String formato, long tamanoBytes, String estado, Enlace vista) {
+public record FotoRespuesta(
+        @Schema(description = "Su número en la muestra, de 1 a 3.", example = "1") int numero,
+        @Schema(description = "Su formato.", allowableValues = {"JPG", "PNG"}, example = "JPG") String formato,
+        @Schema(description = "Cuánto pesa, en bytes: hasta 10.485.760.", example = "2048") long tamanoBytes,
+        @Schema(description = "Su estado: CARGADA hasta que la revise la IA (RF-06).",
+                allowableValues = {"CARGADA", "APROBADA", "POR_REPETIR"}, example = "CARGADA") String estado,
+        @Schema(description = "El enlace para verla.") Enlace vista) {
 
     /**
      * Un enlace temporal para ver la foto.
@@ -31,7 +37,11 @@ public record FotoRespuesta(int numero, String formato, long tamanoBytes, String
      * @param vence cuándo deja de servir
      */
     @Schema(description = "El enlace para ver la foto: se usa con GET, sin el token (D-41).")
-    public record Enlace(String url, Instant vence) {
+    public record Enlace(
+            @Schema(description = "El enlace firmado: relativo a la página con la carpeta local (D-41), absoluto con "
+                    + "S3. Sirve en un <img>.") String url,
+            @Schema(description = "Cuándo deja de servir: 15 minutos después de pedirlo. La lista de las fotos da "
+                    + "enlaces nuevos.") Instant vence) {
     }
 
     /**

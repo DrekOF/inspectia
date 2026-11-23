@@ -180,6 +180,8 @@ export default {
   'historial.continuarLote': 'Continue lot {codigo}',
   'fotos.titulo': 'Sample photos',
   'fotos.descripcion': 'Lot {codigo} · {origen}. Upload 2 or 3 photos; if you leave now, the lot stays pending and you can resume it from the History.',
+  'fotos.descripcionSinSubir': 'Lot {codigo} · {origen}.',
+  'fotos.verElResultado': 'Check its result in the History.',
   'fotos.tusFotos': 'Your photos',
   'fotos.foto': 'Photo {numero}',
   'fotos.fotoOpcional': 'Photo {numero} (optional)',

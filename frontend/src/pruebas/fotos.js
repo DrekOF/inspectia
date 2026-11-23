@@ -9,7 +9,10 @@
  */
 import { File as FileDeNode } from 'node:buffer';
 import { http, HttpResponse } from 'msw';
-import { servidor } from './servidor.js';
+import { problema, servidor } from './servidor.js';
+
+/** El mensaje del backend para un enlace con otra firma, como el de un Content-Type distinto del firmado (D-41). */
+export const ENLACE_NO_VALIDO = 'El enlace de la foto venció o no es válido: vuelve a intentarlo.';
 
 /** La muestra de un lote que todavía no tiene fotos. */
 export const SIN_FOTOS = { muestra: null, estado: null, fotos: [] };
@@ -36,6 +39,27 @@ export function archivo(nombre, tipo, tamano = 64, comoSi = tipo) {
   const bytes = new Uint8Array(tamano);
   bytes.set((COMIENZOS[comoSi] ?? []).slice(0, tamano));
   return /** @type {File} */ (/** @type {unknown} */ (new FileDeNode([bytes], nombre, { type: tipo })));
+}
+
+/**
+ * Un archivo de prueba que tarda en dejar leer sus primeros bytes, como uno de OneDrive que todavía está en la nube,
+ * hasta que la prueba lo suelta. Se sube como cualquier otro.
+ *
+ * @param {string} nombre el nombre del archivo
+ * @param {string} tipo su tipo y el de sus bytes
+ * @param {number} [tamano] cuántos bytes mide
+ * @returns {{ archivo: File, soltar: () => void }} el archivo y cómo dejar que se lea
+ */
+export function archivoLento(nombre, tipo, tamano = 64) {
+  let soltar;
+  const lectura = new Promise((resolver) => { soltar = resolver; });
+  const lento = archivo(nombre, tipo, tamano);
+  const cortar = lento.slice.bind(lento);
+  lento.slice = (...limites) => {
+    const parte = cortar(...limites);
+    return { arrayBuffer: () => lectura.then(() => parte.arrayBuffer()) };
+  };
+  return { archivo: lento, soltar };
 }
 
 /**
@@ -69,22 +93,25 @@ export function conFotos(loteId, fotos) {
 
 /**
  * Responde la subida de las fotos de un lote, como el backend con la carpeta local (D-41): el enlace, el PUT al
- * enlace y la confirmación. Anota lo que llegó a cada uno.
+ * enlace y la confirmación. Como el backend, el PUT responde 403 si su Content-Type no es el que se firmó. Anota lo
+ * que llegó a cada uno.
  *
  * @param {string} loteId el lote
  * @param {{ base?: string, espera?: Promise<unknown> }} [opciones] dónde están los enlaces: /api/v1/archivos, o el
  *   dominio de S3; y lo que espera el PUT antes de responder, para ver la página mientras sube
  * @returns {{ pedidas: object[], subidas: object[], confirmadas: object[] }} lo que llegó: lo que se pidió, cada PUT,
- *   con su Authorization, su Content-Type, sus bytes y su dirección, y cada confirmación
+ *   con su Authorization, su Content-Type, su Accept-Language, sus bytes y su dirección, y cada confirmación
  */
 export function conSubidas(loteId, { base = '/api/v1/archivos', espera } = {}) {
   const anotado = { pedidas: [], subidas: [], confirmadas: [] };
+  const firmados = new Map();
   servidor.use(
     http.post(`/api/v1/lotes/${loteId}/fotos/:numero/subida`, async ({ request, params }) => {
       const cuerpo = await request.json();
       anotado.pedidas.push({ numero: Number(params.numero), ...cuerpo });
       const extension = cuerpo.tipo === 'image/png' ? 'png' : 'jpg';
       const llave = `e/${loteId}/foto-${params.numero}-${anotado.pedidas.length}.${extension}`;
+      firmados.set(llave, cuerpo.tipo);
       return HttpResponse.json({
         llave, url: `${base}/${llave}?vence=1&firma=s`, metodo: 'PUT', encabezados: { 'Content-Type': cuerpo.tipo },
         vence: '2026-11-23T15:10:00Z',
@@ -92,10 +119,15 @@ export function conSubidas(loteId, { base = '/api/v1/archivos', espera } = {}) {
     }),
     http.put(`${base}/*`, async ({ request }) => {
       await espera;
+      const tipo = request.headers.get('Content-Type');
       anotado.subidas.push({
-        autorizacion: request.headers.get('Authorization'), tipo: request.headers.get('Content-Type'),
+        autorizacion: request.headers.get('Authorization'), tipo, idioma: request.headers.get('Accept-Language'),
         bytes: (await request.arrayBuffer()).byteLength, url: request.url,
       });
+      const llave = /\/(e\/.+)$/.exec(new URL(request.url).pathname)?.[1];
+      if (firmados.get(llave) !== tipo) {
+        return problema(403, ENLACE_NO_VALIDO);
+      }
       return new HttpResponse(null, { status: 200 });
     }),
     http.put(`/api/v1/lotes/${loteId}/fotos/:numero`, async ({ request, params }) => {

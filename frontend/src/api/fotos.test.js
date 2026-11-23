@@ -9,6 +9,7 @@
  */
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it, vi } from 'vitest';
+import { conSesion, USUARIOS } from '../pruebas/ayudas.jsx';
 import { archivo } from '../pruebas/fotos.js';
 import { problema, servidor } from '../pruebas/servidor.js';
 import { ErrorDeApi } from './cliente.js';
@@ -36,18 +37,19 @@ describe('Peticiones de las fotos', () => {
     ]);
   });
 
-  it('D-41 · la foto sube al enlace con su método y sus encabezados firmados, sin el token de la sesión', async () => {
+  it('D-41 · la foto sube al enlace con su método y el tipo firmado, aunque el archivo no diga su tipo, sin el token de la sesión y con el idioma de la app', async () => {
+    conSesion(USUARIOS.USUARIO_FINAL);
     let recibido;
     servidor.use(http.put('/api/v1/archivos/*', async ({ request }) => {
-      recibido = { url: request.url, tipo: request.headers.get('Content-Type'),
+      recibido = { url: request.url, tipo: request.headers.get('Content-Type'), idioma: request.headers.get('Accept-Language'),
         autorizacion: request.headers.get('Authorization'), bytes: (await request.arrayBuffer()).byteLength };
       return new HttpResponse(null, { status: 200 });
     }));
 
-    await subirArchivo(ENLACE, archivo('a.jpg', 'image/jpeg', 100));
+    await subirArchivo(ENLACE, archivo('IMG_0001', '', 100, 'image/jpeg'), 'en');
 
     expect(recibido).toEqual({ url: `${window.location.origin}/api/v1/archivos/e/l/a.jpg?vence=1&firma=s`,
-      tipo: 'image/jpeg', autorizacion: null, bytes: 100 });
+      tipo: 'image/jpeg', idioma: 'en', autorizacion: null, bytes: 100 });
   });
 
   it('D-41 · si el enlace responde un error, es un ErrorDeApi con su estado y su mensaje; sin conexión, con estado 0', async () => {

@@ -180,6 +180,8 @@ export default {
   'historial.continuarLote': 'Continuar el lote {codigo}',
   'fotos.titulo': 'Fotos de la muestra',
   'fotos.descripcion': 'Lote {codigo} · {origen}. Sube 2 o 3 fotos; si sales ahora, el lote queda pendiente y lo retomas desde el Historial.',
+  'fotos.descripcionSinSubir': 'Lote {codigo} · {origen}.',
+  'fotos.verElResultado': 'Consulta su resultado en el Historial.',
   'fotos.tusFotos': 'Tus fotos',
   'fotos.foto': 'Foto {numero}',
   'fotos.fotoOpcional': 'Foto {numero} (opcional)',

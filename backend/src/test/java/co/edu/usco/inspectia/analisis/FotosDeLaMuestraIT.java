@@ -198,6 +198,35 @@ class FotosDeLaMuestraIT {
     }
 
     @Test
+    @DisplayName("RF-05 · C2 · confirmar la foto 4 o la 0 responde 400 en el número y no guarda nada (prueba de límite)")
+    void confirmarFueraDelRango() {
+        Map<String, Object> subida = fotos.subida(token, lote, 1, JPG, jpg().length);
+        fotos.subir((String) subida.get("url"), JPG, jpg());
+
+        MvcTestResult cuarta = fotos.confirmar(token, lote, 4, (String) subida.get("llave"));
+        MvcTestResult cero = fotos.confirmar(token, lote, 0, (String) subida.get("llave"));
+
+        assertThat(cuarta).hasStatus(HttpStatus.BAD_REQUEST);
+        assertThat(errores(cuarta)).containsExactly(error("numero", "Debe ser menor o igual a 3."));
+        assertThat(cero).hasStatus(HttpStatus.BAD_REQUEST);
+        assertThat(errores(cero)).containsExactly(error("numero", "Debe ser mayor o igual a 1."));
+        assertThat(contarFotos()).isZero();
+    }
+
+    @Test
+    @DisplayName("RF-05 · una llave de este lote sin la forma de un UUID, como 36 guiones, responde 400 en la llave y no 500")
+    void llaveMalFormada() {
+        String llave = jdbc.queryForObject("SELECT empresa_id FROM lote WHERE id = ?", UUID.class, lote) + "/" + lote
+                + "/" + "-".repeat(36) + ".jpg";
+
+        MvcTestResult resultado = fotos.confirmar(token, lote, 1, llave);
+
+        assertThat(resultado).hasStatus(HttpStatus.BAD_REQUEST);
+        assertThat(errores(resultado)).containsExactly(error("llave", "El valor no es válido."));
+        assertThat(contarFotos()).isZero();
+    }
+
+    @Test
     @DisplayName("RF-05 · confirmar una foto que no se subió responde que no llegó y no guarda nada")
     void confirmarSinSubir() {
         Map<String, Object> subida = fotos.subida(token, lote, 1, JPG, 1_000);

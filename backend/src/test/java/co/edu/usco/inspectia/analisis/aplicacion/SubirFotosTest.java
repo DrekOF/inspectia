@@ -1,7 +1,8 @@
 /*
  * Nombre: SubirFotosTest.java
- * Descripción: Pruebas unitarias del caso de uso de subir las fotos, con Mockito (RF-05): el reemplazo borra el
- *              archivo anterior solo después de guardar la nueva, y un lote que no está pendiente no recibe fotos.
+ * Descripción: Pruebas unitarias del caso de uso de subir las fotos, con Mockito (RF-05): el reemplazo borra la fila
+ *              anterior y deja el archivo para un evento, la revisión del archivo al confirmarlo, el número de la foto,
+ *              la forma de la llave, y un lote que no está pendiente no recibe fotos.
  * Fecha de creación: 23/11/2026
  * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
@@ -12,6 +13,7 @@ package co.edu.usco.inspectia.analisis.aplicacion;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.inOrder;
@@ -24,8 +26,12 @@ import co.edu.usco.inspectia.analisis.dominio.EstadoDeFoto;
 import co.edu.usco.inspectia.analisis.dominio.EstadoDeLote;
 import co.edu.usco.inspectia.analisis.dominio.EstadoDeMuestra;
 import co.edu.usco.inspectia.analisis.dominio.FormatoDeFoto;
+import co.edu.usco.inspectia.comun.errores.CampoInvalido;
 import co.edu.usco.inspectia.comun.errores.ConflictoExcepcion;
+import co.edu.usco.inspectia.comun.errores.ReglaIncumplidaExcepcion;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.List;
 import java.time.Instant;
 import java.util.Map;
 import java.util.Optional;
@@ -66,7 +72,7 @@ class SubirFotosTest {
     }
 
     @Test
-    @DisplayName("RF-05 · C5 · al reemplazar una foto, la anterior se borra de la base antes de guardar la nueva y su archivo después de confirmar, no antes")
+    @DisplayName("RF-05 · C5 · al reemplazar una foto, la anterior se borra de la base antes de guardar la nueva, y su archivo no lo borra el caso de uso: lo deja a un evento, que espera a que se confirme (ver ArchivosReemplazadosIT)")
     void reemplazarBorraDespues() {
         MuestraEnCurso muestra = new MuestraEnCurso(MUESTRA, 1, EstadoDeMuestra.PENDIENTE);
         FotoGuardada anterior = new FotoGuardada(UUID.randomUUID(), 2, ANTERIOR, FormatoDeFoto.JPG, 1_000,
@@ -127,5 +133,67 @@ class SubirFotosTest {
 
         assertThatThrownBy(() -> subir.pedirSubida(EMPRESA, LOTE, 1, "image/jpeg", 1_000))
                 .isInstanceOf(ConflictoExcepcion.class);
+    }
+
+    @Test
+    @DisplayName("RF-05 · C3 · al confirmar, un archivo que no empieza como su formato, uno de más de 10 MB y uno vacío se rechazan en la llave, sin guardar la foto ni crear la muestra")
+    void alConfirmarRevisaElArchivo() {
+        when(lotes.estadoParaActualizar(EMPRESA, LOTE)).thenReturn(Optional.of(EstadoDeLote.PENDIENTE));
+        Map<ArchivoGuardado, String> casos = Map.of(
+                new ArchivoGuardado(8, "%PDF-1.7".getBytes(StandardCharsets.US_ASCII)), "foto.formato.no_permitido",
+                new ArchivoGuardado(10_485_761, PNG), "foto.tamano_bytes.demasiado_grande",
+                new ArchivoGuardado(0, new byte[0]), "foto.no_llego");
+
+        casos.forEach((archivo, clave) -> {
+            when(almacen.describir(NUEVA)).thenReturn(Optional.of(archivo));
+            assertThatThrownBy(() -> subir.confirmar(EMPRESA, USUARIO, LOTE, 1, NUEVA)).as(clave)
+                    .isInstanceOfSatisfying(ReglaIncumplidaExcepcion.class, excepcion -> assertThat(excepcion.getCampos())
+                            .containsExactly(new CampoInvalido("llave", clave)));
+        });
+        verify(muestras, never()).crear(any(), any(), anyInt(), any());
+        verify(muestras, never()).guardarFoto(any(), any(), anyInt(), anyString(), any(), anyLong());
+    }
+
+    @Test
+    @DisplayName("RF-05 · al confirmar, un lote que ya no está pendiente responde 409 sin mirar el almacén ni guardar nada")
+    void alConfirmarSoloLotesPendientes() {
+        when(lotes.estadoParaActualizar(EMPRESA, LOTE)).thenReturn(Optional.of(EstadoDeLote.ANALIZADO));
+
+        assertThatThrownBy(() -> subir.confirmar(EMPRESA, USUARIO, LOTE, 1, NUEVA))
+                .isInstanceOf(ConflictoExcepcion.class).hasMessage("foto.lote_no_pendiente");
+        verify(almacen, never()).describir(anyString());
+        verify(muestras, never()).guardarFoto(any(), any(), anyInt(), anyString(), any(), anyLong());
+    }
+
+    @Test
+    @DisplayName("RF-05 · C2 · el caso de uso también limita el número de la foto de 1 a 3: el 0 y el 4 se rechazan sin pedir enlaces ni guardar nada (prueba de límite)")
+    void numeroDeUnoATres() {
+        for (int numero : new int[] {0, 4}) {
+            assertThatThrownBy(() -> subir.pedirSubida(EMPRESA, LOTE, numero, "image/jpeg", 1_000)).as("pedir %d", numero)
+                    .isInstanceOfSatisfying(ReglaIncumplidaExcepcion.class, excepcion -> assertThat(excepcion.getCampos())
+                            .containsExactly(new CampoInvalido("numero", "error.valor_invalido")));
+            assertThatThrownBy(() -> subir.confirmar(EMPRESA, USUARIO, LOTE, numero, NUEVA)).as("confirmar %d", numero)
+                    .isInstanceOfSatisfying(ReglaIncumplidaExcepcion.class, excepcion -> assertThat(excepcion.getCampos())
+                            .containsExactly(new CampoInvalido("numero", "error.valor_invalido")));
+        }
+        verify(lotes, never()).estado(any(), any());
+        verify(lotes, never()).estadoParaActualizar(any(), any());
+        verify(almacen, never()).enlaceDeSubida(anyString(), anyString(), anyLong(), any(Duration.class));
+        verify(muestras, never()).guardarFoto(any(), any(), anyInt(), anyString(), any(), anyLong());
+    }
+
+    @Test
+    @DisplayName("RF-05 · una llave de este lote sin la forma que arma el backend, como 36 guiones o 36 ceros en lugar del UUID, se rechaza en la llave sin mirar el almacén")
+    void llaveSinLaFormaDelBackend() {
+        when(lotes.estadoParaActualizar(EMPRESA, LOTE)).thenReturn(Optional.of(EstadoDeLote.PENDIENTE));
+        String prefijo = EMPRESA + "/" + LOTE + "/";
+
+        for (String llave : List.of(prefijo + "-".repeat(36) + ".jpg", prefijo + "0".repeat(36) + ".jpg",
+                prefijo + "0199F0A0-0000-7000-8000-000000000007.png")) {
+            assertThatThrownBy(() -> subir.confirmar(EMPRESA, USUARIO, LOTE, 1, llave)).as(llave)
+                    .isInstanceOfSatisfying(ReglaIncumplidaExcepcion.class, excepcion -> assertThat(excepcion.getCampos())
+                            .containsExactly(new CampoInvalido("llave", "error.valor_invalido")));
+        }
+        verify(almacen, never()).describir(anyString());
     }
 }

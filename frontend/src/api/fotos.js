@@ -89,20 +89,23 @@ async function detalleDe(respuesta) {
 }
 
 /**
- * Sube una foto a su enlace firmado, con el método y los encabezados de la firma (D-41). No lleva el token de la
- * sesión, que S3 rechazaría junto a un enlace firmado, y un 401 o un 403 del enlace no cierra la sesión.
+ * Sube una foto a su enlace firmado, con el método y los encabezados de la firma (D-41): el Content-Type va siempre
+ * el firmado, aunque el navegador diga otro tipo o ninguno. No lleva el token de la sesión, que S3 rechazaría junto a
+ * un enlace firmado, y un 401 o un 403 del enlace no cierra la sesión. Sí lleva el idioma de la app, para que los
+ * mensajes del backend lleguen en él.
  *
  * @param {EnlaceTemporal} enlace el enlace de subida
  * @param {Blob} archivo la foto
+ * @param {string} [idioma] el idioma de la app, como «es», para Accept-Language
  * @returns {Promise<void>} se cumple cuando la foto llegó
  * @throws {ErrorDeApi} si no llegó: con estado 0 si no hubo conexión
  */
-export async function subirArchivo(enlace, archivo) {
+export async function subirArchivo(enlace, archivo, idioma) {
   let respuesta;
   try {
     respuesta = await fetch(new URL(enlace.url, window.location.origin), {
       method: enlace.metodo ?? 'PUT',
-      headers: enlace.encabezados ?? {},
+      headers: { ...(idioma ? { 'Accept-Language': idioma } : {}), ...enlace.encabezados },
       body: archivo,
     });
   } catch {

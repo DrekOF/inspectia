@@ -23,8 +23,16 @@ import java.util.Map;
  * @param vence cuándo deja de servir
  */
 @Schema(description = "El enlace para subir una foto: se usa con PUT, sin el token (D-41).")
-public record SubidaRespuesta(String llave, String url, String metodo, Map<String, String> encabezados,
-        Instant vence) {
+public record SubidaRespuesta(
+        @Schema(description = "La llave del archivo: se manda al confirmar la foto.",
+                example = "0199f0a0-0000-7000-8000-000000000001/0199f0a0-0000-7000-8000-000000000143/"
+                        + "0199f0a0-0000-7000-8000-000000000201.jpg") String llave,
+        @Schema(description = "El enlace firmado: relativo a la página con la carpeta local (D-41), absoluto con S3. "
+                + "Se usa sin el token.") String url,
+        @Schema(description = "El método con que se sube.", example = "PUT") String metodo,
+        @Schema(description = "Los encabezados que hay que mandar tal cual, como el Content-Type firmado.")
+        Map<String, String> encabezados,
+        @Schema(description = "Cuándo deja de servir el enlace: 10 minutos después de pedirlo.") Instant vence) {
 
     /**
      * La respuesta de una subida pedida.

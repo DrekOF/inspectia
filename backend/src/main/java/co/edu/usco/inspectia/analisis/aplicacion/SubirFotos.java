@@ -45,9 +45,15 @@ public class SubirFotos {
     /** Cuánto dura un enlace para subir una foto (D-41). */
     public static final Duration VIGENCIA_DE_SUBIDA = Duration.ofMinutes(10);
 
-    /** Las llaves que arma este caso de uso: {@code <empresa>/<lote>/<uuid>.<jpg|png>}. */
+    /** Un UUID escrito como lo escribe Java, en minúsculas. */
+    private static final String FORMA_DE_UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
+
+    /**
+     * Las llaves que arma este caso de uso: {@code <empresa>/<lote>/<uuid>.<jpg|png>}. Es la misma forma que acepta el
+     * almacén: una llave con otra forma responde 400 en la llave, y no llega al almacén.
+     */
     private static final Pattern LLAVE = Pattern.compile(
-            "^([0-9a-f-]{36})/([0-9a-f-]{36})/[0-9a-f-]{36}\\.(jpg|png)$");
+            "^(" + FORMA_DE_UUID + ")/(" + FORMA_DE_UUID + ")/" + FORMA_DE_UUID + "\\.(jpg|png)$");
 
     private final RepositorioDeLotes lotes;
     private final RepositorioDeMuestras muestras;
@@ -84,10 +90,12 @@ public class SubirFotos {
      * @return la llave del archivo y el enlace para subirlo
      * @throws NoEncontradoExcepcion si el lote no existe o es de otra empresa (404, RNF-03 C1)
      * @throws ConflictoExcepcion si el lote o su muestra ya no están pendientes (409)
-     * @throws ReglaIncumplidaExcepcion si el archivo no es JPG ni PNG o pesa más de 10 MB (400, RF-05 C3)
+     * @throws ReglaIncumplidaExcepcion si el número no va de 1 a 3 (RF-05 C2), o si el archivo no es JPG ni PNG o pesa
+     *     más de 10 MB (400, RF-05 C3)
      */
     @Transactional(readOnly = true)
     public SubidaDeFoto pedirSubida(UUID empresaId, UUID loteId, int numero, String tipo, long bytes) {
+        revisarNumero(numero);
         revisarQueSigaPendiente(empresaId, loteId, lotes.estado(empresaId, loteId));
         FormatoDeFoto formato = revisarArchivo(tipo, bytes);
         String llave = empresaId + "/" + loteId + "/" + UUID.randomUUID() + "." + formato.getExtension();
@@ -107,10 +115,12 @@ public class SubirFotos {
      * @return la foto, con su enlace para verla
      * @throws NoEncontradoExcepcion si el lote no existe o es de otra empresa (404, RNF-03 C1)
      * @throws ConflictoExcepcion si el lote o su muestra ya no están pendientes (409)
-     * @throws ReglaIncumplidaExcepcion si la llave no es de este lote, el archivo no llegó o no es JPG ni PNG (400)
+     * @throws ReglaIncumplidaExcepcion si el número no va de 1 a 3, o si la llave no es de este lote, el archivo no
+     *     llegó o no es JPG ni PNG (400)
      */
     @Transactional
     public VistaDeFoto confirmar(UUID empresaId, UUID usuarioId, UUID loteId, int numero, String llave) {
+        revisarNumero(numero);
         revisarQueSigaPendiente(empresaId, loteId, lotes.estadoParaActualizar(empresaId, loteId));
         FormatoDeFoto formato = formatoDeLaLlave(llave, empresaId, loteId);
         Optional<MuestraEnCurso> enCurso = muestras.muestraEnCurso(empresaId, loteId);
@@ -129,6 +139,16 @@ public class SubirFotos {
             eventos.publishEvent(new ArchivoReemplazado(anterior.llave()));
         });
         return vistas.de(muestras.guardarFoto(empresaId, muestra.id(), numero, llave, formato, archivo.bytes()));
+    }
+
+    /**
+     * El número de la foto va de 1 a 3 (RF-05 C2). El controlador también lo revisa, con el mismo límite del dominio; el
+     * caso de uso no depende de eso.
+     */
+    private static void revisarNumero(int numero) {
+        if (!ReglasDeFotos.esNumeroValido(numero)) {
+            throw new ReglaIncumplidaExcepcion(List.of(new CampoInvalido("numero", "error.valor_invalido")));
+        }
     }
 
     /** Solo un lote pendiente, con su muestra en curso pendiente o sin muestra, recibe fotos (RF-05). */

@@ -2,8 +2,10 @@
  * Nombre: FotosDeLaMuestra.test.jsx
  * Descripción: Pruebas de la pantalla Fotos de la muestra (RF-05, RF-14 C5): el lote y la guía de captura, las 3
  *              casillas, el botón que abre la cámara en el celular y elige archivos en el PC, las fotos que se
- *              rechazan antes de subir, la subida por el enlace firmado sin el token, el reemplazo, el reintento,
- *              retomar el lote con sus fotos, los pasos y un lote de otra empresa (RNF-03, RNF-04, RNF-05, D-41).
+ *              rechazan antes de subir, la subida por el enlace firmado sin el token y con el tipo firmado, el
+ *              reemplazo, el reintento, que solo confirma si el archivo ya llegó, el foco al reintentar, una casilla
+ *              que no sube dos fotos a la vez, retomar el lote con sus fotos, los pasos, un lote que ya no está
+ *              pendiente y uno de otra empresa (RNF-03, RNF-04, RNF-05, RNF-06, D-41).
  * Fecha de creación: 10/11/2026
  * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
@@ -13,7 +15,9 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { abrirApp, conSesion, USUARIOS } from '../pruebas/ayudas.jsx';
-import { archivo, conFotos, conSubidas, fotoCargada } from '../pruebas/fotos.js';
+import {
+  archivo, archivoLento, conFotos, conSubidas, ENLACE_NO_VALIDO, fotoCargada,
+} from '../pruebas/fotos.js';
 import { LOTE_ANALIZADO, LOTE_PENDIENTE } from '../pruebas/lotes.js';
 import { anchoDePantalla } from '../pruebas/preparacion.js';
 import { problema, servidor } from '../pruebas/servidor.js';
@@ -22,7 +26,6 @@ const RUTA = `/lotes/${LOTE_PENDIENTE.id}/fotos`;
 const FORMATO_NO_PERMITIDO = 'La foto debe ser JPG o PNG: elige una foto en uno de esos formatos.';
 const DEMASIADO_GRANDE =
   'La foto pesa más de 10 MB: tómala de nuevo con la resolución normal de la cámara o elige otra.';
-const ENLACE_NO_VALIDO = 'El enlace de la foto venció o no es válido: vuelve a intentarlo.';
 
 /**
  * Elige un archivo para una foto, como lo deja el selector del navegador. Con un evento de cambio, y no con
@@ -100,6 +103,19 @@ describe('Fotos de la muestra', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('No existe un registro con ese identificador.');
     expect(screen.queryByRole('region', { name: 'Guía de captura' })).not.toBeInTheDocument();
     expect(screen.queryByRole('group', { name: 'Foto 1' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Reintentar' })).not.toBeInTheDocument();
+  });
+
+  it('RF-04 · si el lote no llega por otra causa, la página lo dice con «Reintentar», que deja el foco en el título y lo muestra', async () => {
+    servidor.use(http.get(`/api/v1/lotes/${LOTE_PENDIENTE.id}`, () => problema(500, 'Error interno.'), { once: true }));
+    const { usuario } = abrirApp(RUTA);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Error interno.');
+    await usuario.click(screen.getByRole('button', { name: 'Reintentar' }));
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Fotos de la muestra' })).toHaveFocus();
+    expect(await screen.findByText(/^Lote L-0143 · La Esperanza\. Sube 2 o 3 fotos/)).toBeInTheDocument();
+    expect(await screen.findByRole('group', { name: 'Foto 1' })).toBeInTheDocument();
   });
 
   it('RF-05 · C1 · en el PC, cada casilla vacía ofrece «Elegir archivo», sin la cámara, para JPG o PNG', async () => {
@@ -159,6 +175,19 @@ describe('Fotos de la muestra', () => {
 
     expect(await within(await casilla(2)).findByText('Cargada')).toBeInTheDocument();
     expect(anotado.pedidas).toEqual([{ numero: 2, tipo: 'image/jpeg', tamanoBytes: 512 }]);
+    expect(anotado.subidas).toEqual([expect.objectContaining({ tipo: 'image/jpeg', bytes: 512 })]);
+  });
+
+  it('RF-05 · un archivo .jpg que por dentro es un PNG se firma y se sube como PNG, aunque el navegador diga JPG', async () => {
+    const anotado = conSubidas(LOTE_PENDIENTE.id);
+    abrirApp(RUTA);
+
+    await elegir(1, archivo('captura.jpg', 'image/jpeg', 256, 'image/png'));
+
+    expect(await within(await casilla(1)).findByText('Cargada')).toBeInTheDocument();
+    expect(anotado.pedidas).toEqual([{ numero: 1, tipo: 'image/png', tamanoBytes: 256 }]);
+    expect(anotado.subidas).toEqual([expect.objectContaining({ tipo: 'image/png', idioma: 'es' })]);
+    expect(anotado.confirmadas).toEqual([{ numero: 1, llave: expect.stringMatching(/\.png$/) }]);
   });
 
   it('RF-05 · C3 · un archivo que no es JPG ni PNG se rechaza antes de subirlo, con el mensaje de qué hacer, y no se pide ningún enlace', async () => {
@@ -254,6 +283,81 @@ describe('Fotos de la muestra', () => {
     expect(anotado.confirmadas).toHaveLength(1);
   });
 
+  it('RNF-06 · C4 · al pulsar «Reintentar», el foco queda en el botón de la casilla, que sigue ahí mientras sube', async () => {
+    conSubidas(LOTE_PENDIENTE.id);
+    servidor.use(http.put('/api/v1/archivos/*', () => HttpResponse.error(), { once: true }));
+    const { usuario } = abrirApp(RUTA);
+
+    await elegir(1, archivo('granos.jpg', 'image/jpeg'));
+    const primera = await casilla(1);
+    await usuario.click(await within(primera).findByRole('button', { name: 'Reintentar' }));
+
+    expect(within(primera).getByRole('button', { name: /^(Elegir archivo|Reemplazar)$/ })).toHaveFocus();
+    expect(await within(primera).findByText('Cargada')).toBeInTheDocument();
+    expect(within(primera).getByRole('button', { name: 'Reemplazar' })).toHaveFocus();
+  });
+
+  it('RF-05 · si la foto llegó pero su confirmación falla, «Reintentar» solo la confirma: no vuelve a subirla', async () => {
+    const anotado = conSubidas(LOTE_PENDIENTE.id);
+    servidor.use(http.put(`/api/v1/lotes/${LOTE_PENDIENTE.id}/fotos/:numero`, () => HttpResponse.error(),
+      { once: true }));
+    const { usuario } = abrirApp(RUTA);
+
+    await elegir(1, archivo('granos.jpg', 'image/jpeg'));
+    const primera = await casilla(1);
+    await usuario.click(await within(primera).findByRole('button', { name: 'Reintentar' }));
+
+    expect(await within(primera).findByText('Cargada')).toBeInTheDocument();
+    expect(anotado.pedidas).toHaveLength(1);
+    expect(anotado.subidas).toHaveLength(1);
+    expect(anotado.confirmadas).toEqual([{ numero: 1, llave: expect.stringMatching(/foto-1-1\.jpg$/) }]);
+  });
+
+  it('RF-05 · si al confirmar el backend dice que la foto no llegó, «Reintentar» la sube de nuevo con otro enlace', async () => {
+    const anotado = conSubidas(LOTE_PENDIENTE.id);
+    servidor.use(http.put(`/api/v1/lotes/${LOTE_PENDIENTE.id}/fotos/:numero`, () => problema(400,
+      'Revisa los datos marcados.', { errores: [{ campo: 'llave', mensaje: 'La foto no llegó completa: súbela de nuevo.' }] }),
+    { once: true }));
+    const { usuario } = abrirApp(RUTA);
+
+    await elegir(1, archivo('granos.jpg', 'image/jpeg'));
+    const primera = await casilla(1);
+    expect(await within(primera).findByRole('alert')).toHaveTextContent('La foto no llegó completa: súbela de nuevo.');
+    await usuario.click(within(primera).getByRole('button', { name: 'Reintentar' }));
+
+    expect(await within(primera).findByText('Cargada')).toBeInTheDocument();
+    expect(anotado.pedidas).toHaveLength(2);
+    expect(anotado.subidas).toHaveLength(2);
+  });
+
+  it('RF-05 · mientras lee la foto elegida, la casilla ya está ocupada: otra elección no empieza una segunda subida', async () => {
+    const anotado = conSubidas(LOTE_PENDIENTE.id);
+    const lenta = archivoLento('en-la-nube.jpg', 'image/jpeg', 300);
+    abrirApp(RUTA);
+    const primera = await casilla(1);
+
+    await elegir(1, lenta.archivo);
+    expect(await within(primera).findByRole('progressbar', { name: 'Subiendo la foto 1…' })).toBeInTheDocument();
+    expect(within(primera).getByRole('button', { name: 'Elegir archivo' })).toHaveAttribute('aria-disabled', 'true');
+    await elegir(1, archivo('otra.jpg', 'image/jpeg', 100));
+    lenta.soltar();
+
+    expect(await within(primera).findByText('Cargada')).toBeInTheDocument();
+    expect(anotado.pedidas).toEqual([{ numero: 1, tipo: 'image/jpeg', tamanoBytes: 300 }]);
+  });
+
+  it('RNF-06 · un rechazo repetido se vuelve a anunciar: cada intento muestra su aviso de nuevo', async () => {
+    abrirApp(RUTA);
+    const primera = await casilla(1);
+
+    await elegir(1, archivo('informe.pdf', 'application/pdf'));
+    const primerAviso = await within(primera).findByRole('alert');
+    await elegir(1, archivo('otro.pdf', 'application/pdf'));
+
+    await waitFor(() => expect(within(primera).getByRole('alert')).not.toBe(primerAviso));
+    expect(within(primera).getByRole('alert')).toHaveTextContent(FORMATO_NO_PERMITIDO);
+  });
+
   it('RF-05 · si el enlace venció, la casilla lo dice con «Reintentar», y un 401 del enlace no cierra la sesión', async () => {
     conSubidas(LOTE_PENDIENTE.id);
     // El primer PUT recibe el 401 y el segundo, el 403: servidor.use pone los dos adelante, en este orden.
@@ -285,6 +389,7 @@ describe('Fotos de la muestra', () => {
     expect(screen.queryByRole('group', { name: 'Foto 1' })).not.toBeInTheDocument();
     await usuario.click(screen.getByRole('button', { name: 'Reintentar' }));
 
+    expect(screen.getByRole('heading', { name: 'Tus fotos' })).toHaveFocus();
     expect(await within(await casilla(1)).findByRole('img', { name: 'Foto 1 de la muestra' })).toBeInTheDocument();
   });
 
@@ -316,13 +421,17 @@ describe('Fotos de la muestra', () => {
     expect(within(await casilla(3)).getByRole('button', { name: 'Elegir archivo' })).toBeInTheDocument();
   });
 
-  it('RF-05 · un lote que ya no está pendiente de análisis no ofrece subir fotos: lo dice', async () => {
+  it('RF-05 · un lote que ya no está pendiente de análisis no ofrece subir fotos: lo dice y dice dónde ver su resultado', async () => {
     servidor.use(http.get(`/api/v1/lotes/${LOTE_PENDIENTE.id}`,
       () => HttpResponse.json({ ...LOTE_ANALIZADO, id: LOTE_PENDIENTE.id })));
     abrirApp(RUTA);
 
     expect(await screen.findByText('Este lote ya no está pendiente de análisis: sus fotos no se pueden cambiar.'))
       .toBeInTheDocument();
+    expect(screen.getByText('Consulta su resultado en el Historial.')).toBeInTheDocument();
+    expect(screen.getByText('Lote L-0139 · La Estrella.')).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Guía de captura' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('list', { name: 'Pasos del análisis' })).not.toBeInTheDocument();
     expect(screen.queryByRole('group', { name: 'Foto 1' })).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Archivo de la foto 1')).not.toBeInTheDocument();
   });

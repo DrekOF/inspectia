@@ -220,7 +220,7 @@ export async function crearEmpresa() {
 }
 
 /**
- * Registra un lote pendiente por la API con un usuario final (RF-04), con fecha de recepción de hoy.
+ * Registra un lote pendiente por la API con un usuario final (RF-04), con la fecha de recepción que recibe.
  *
  * @param {{ correo: string, contrasena: string }} persona el usuario final
  * @param {string} codigo el código del lote

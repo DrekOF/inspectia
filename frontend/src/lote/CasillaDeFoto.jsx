@@ -101,10 +101,13 @@ function estiloDeLaCasilla({ vacia, esPc, conError }) {
  * @returns {import('react').ReactElement} la casilla
  */
 export function CasillaDeFoto({ loteId, numero, foto, alConfirmar, alFallarLaVista }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { pedir } = useSesion();
   const esPc = useEsPc();
   const entrada = useRef(null);
+  const botonDeLaFoto = useRef(null);
+  // Si hay una subida en curso: el estado tarda un render en cambiar, y dos elecciones seguidas no deben subir dos.
+  const enCurso = useRef(false);
   const idDelTitulo = useId();
   const [subida, setSubida] = useState(QUIETA);
   const [anuncio, setAnuncio] = useState('');
@@ -113,28 +116,46 @@ export function CasillaDeFoto({ loteId, numero, foto, alConfirmar, alFallarLaVis
   const fallida = subida.fase === 'fallida';
 
   /**
-   * Revisa la foto, pide el enlace, la sube y la confirma. Si algo falla, guarda el archivo para reintentar.
+   * Revisa la foto, pide el enlace, la sube y la confirma. La casilla queda ocupada desde que empieza, también
+   * mientras lee los primeros bytes, que con un archivo en la nube puede tardar. Si algo falla, guarda el archivo para
+   * reintentar y, si ya llegó al almacén, su llave: reintentar entonces solo lo confirma, sin subirlo de nuevo.
    *
    * @param {File} archivo la foto elegida
+   * @param {string|null} [llaveSubida] la llave del archivo, si ya llegó y solo falta confirmarlo
    */
-  async function subir(archivo) {
-    setAnuncio('');
+  async function subir(archivo, llaveSubida = null) {
+    if (enCurso.current) {
+      return;
+    }
+    enCurso.current = true;
+    setSubida({ fase: 'subiendo' });
+    setAnuncio(t('fotos.subiendo', { numero }));
+    let llave = llaveSubida;
     try {
-      const revision = await revisarArchivo(archivo);
-      if (revision.error) {
-        setSubida({ fase: 'fallida', mensaje: t(revision.error), reintentable: false });
-        return;
+      if (!llave) {
+        const revision = await revisarArchivo(archivo);
+        if (revision.error) {
+          setSubida({ fase: 'fallida', mensaje: t(revision.error), reintentable: false });
+          setAnuncio('');
+          return;
+        }
+        const enlace = await pedirSubida(pedir, loteId, numero, { tipo: revision.tipo, tamanoBytes: archivo.size });
+        await subirArchivo(enlace, archivo, i18n.language);
+        llave = enlace.llave;
       }
-      setSubida({ fase: 'subiendo' });
-      setAnuncio(t('fotos.subiendo', { numero }));
-      const enlace = await pedirSubida(pedir, loteId, numero, { tipo: revision.tipo, tamanoBytes: archivo.size });
-      await subirArchivo(enlace, archivo);
-      alConfirmar(await confirmarFoto(pedir, loteId, numero, enlace.llave));
+      alConfirmar(await confirmarFoto(pedir, loteId, numero, llave));
       setSubida(QUIETA);
       setAnuncio(t('fotos.cargada', { numero }));
     } catch (error) {
-      setSubida({ fase: 'fallida', mensaje: mensajeDelError(error, t), reintentable: sePuedeReintentar(error), archivo });
+      // Si el backend dice que el archivo no está, reintentar lo sube de nuevo.
+      const sinElArchivo = (error.errores ?? []).some(({ campo }) => campo === 'llave');
+      setSubida({
+        fase: 'fallida', mensaje: mensajeDelError(error, t), reintentable: sePuedeReintentar(error), archivo,
+        llave: sinElArchivo ? null : llave,
+      });
       setAnuncio('');
+    } finally {
+      enCurso.current = false;
     }
   }
 
@@ -146,16 +167,25 @@ export function CasillaDeFoto({ loteId, numero, foto, alConfirmar, alFallarLaVis
   function alElegir(evento) {
     const [elegida] = evento.target.files ?? [];
     evento.target.value = '';
-    if (elegida && !subiendo) {
+    if (elegida) {
       subir(elegida);
     }
   }
 
   /** Abre el selector de archivos, o la cámara en el celular, dentro del mismo clic: iOS no lo abre después. */
   function abrirSelector() {
-    if (!subiendo) {
+    if (!enCurso.current) {
       entrada.current?.click();
     }
+  }
+
+  /**
+   * Reintenta la subida. Antes lleva el foco al botón de la foto, que sigue en la casilla: «Reintentar» desaparece
+   * mientras sube, y el foco se perdería con él (RNF-06 C4).
+   */
+  function reintentar() {
+    botonDeLaFoto.current?.focus();
+    subir(subida.archivo, subida.llave);
   }
 
   let boton = { texto: t('fotos.reemplazar'), variante: 'outlined', icono: undefined, alto: medidas.zonaTactil };
@@ -199,7 +229,7 @@ export function CasillaDeFoto({ loteId, numero, foto, alConfirmar, alFallarLaVis
             {subida.mensaje}
           </Typography>
           {subida.reintentable && (
-            <Button variant="outlined" onClick={() => subir(subida.archivo)} sx={{ minHeight: medidas.zonaTactil }}>
+            <Button variant="outlined" onClick={reintentar} sx={{ minHeight: medidas.zonaTactil }}>
               {t('crud.reintentar')}
             </Button>
           )}
@@ -207,7 +237,7 @@ export function CasillaDeFoto({ loteId, numero, foto, alConfirmar, alFallarLaVis
       )}
       {/* El mismo botón antes y después de subir la foto: así el foco sigue en él (RNF-06 C4). Mientras sube, no
           se deshabilita, porque perdería el foco: queda marcado con aria-disabled y no abre el selector. */}
-      <Button variant={boton.variante} startIcon={boton.icono} onClick={abrirSelector}
+      <Button ref={botonDeLaFoto} variant={boton.variante} startIcon={boton.icono} onClick={abrirSelector}
         aria-disabled={subiendo || undefined} sx={{
           minHeight: boton.alto, px: '18px', alignSelf: esPc && vacia ? 'center' : 'stretch',
           '& .MuiButton-startIcon > *:nth-of-type(1)': { fontSize: 20 },

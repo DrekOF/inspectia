@@ -20,7 +20,13 @@ import java.util.List;
  * @param fotos las fotos, por número
  */
 @Schema(description = "Las fotos de la muestra en curso del lote.")
-public record FotosDeLaMuestraRespuesta(Integer muestra, String estado, List<FotoRespuesta> fotos) {
+public record FotosDeLaMuestraRespuesta(
+        @Schema(description = "El número de la muestra; vacío si todavía no tiene fotos.", example = "1")
+        Integer muestra,
+        @Schema(description = "El estado de la muestra; vacío si todavía no tiene fotos.",
+                allowableValues = {"PENDIENTE", "EN_ESPERA", "EN_PROCESO", "TERMINADA"}, example = "PENDIENTE")
+        String estado,
+        @Schema(description = "Las fotos, por número; vacía si todavía no tiene.") List<FotoRespuesta> fotos) {
 
     /**
      * La respuesta de las fotos de una muestra.
