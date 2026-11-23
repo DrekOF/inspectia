@@ -22,7 +22,7 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 ## Resumen
 
 - **154 criterios de aceptación** en 26 fichas: 62 con prueba y 90 pendientes (2 eliminados).
-- **799 pruebas:** 273 de Java (33 generadas), 405 de JavaScript (73 generadas) y 121 de Python. Una prueba parametrizada cuenta una vez.
+- **802 pruebas:** 273 de Java (33 generadas), 408 de JavaScript (73 generadas) y 121 de Python. Una prueba parametrizada cuenta una vez.
 
 | Ficha | Criterios | Con prueba | Pendientes |
 |---|---:|---:|---:|
@@ -682,6 +682,9 @@ Pruebas que no cubren un criterio de una ficha, sino una pauta del docente (RP) 
 
 - [`Marco.test.jsx`](../frontend/src/navegacion/Marco.test.jsx) · el tema se cambia desde la barra
 - [`IniciarSesion.test.jsx`](../frontend/src/paginas/IniciarSesion.test.jsx) · el tema se cambia a oscuro desde Iniciar sesión y queda guardado al volver a abrir la app
+- [`claseInicial.test.js`](../frontend/src/tema/claseInicial.test.js) · con el tema del sistema, o sin elegir todavía, arranca con el del sistema
+- [`claseInicial.test.js`](../frontend/src/tema/claseInicial.test.js) · con un tema elegido, la app arranca con ese, aunque el sistema esté en el otro
+- [`claseInicial.test.js`](../frontend/src/tema/claseInicial.test.js) · sin acceso al almacenamiento del navegador, arranca con el tema del sistema
 
 ### RP-10 · Header en cada artefacto con nombre, descripción, fecha de creación, fecha de actualización, autor y versión
 
