@@ -22,7 +22,7 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 ## Resumen
 
 - **154 criterios de aceptación** en 26 fichas: 67 con prueba y 85 pendientes (2 eliminados).
-- **838 pruebas:** 305 de Java (33 generadas), 412 de JavaScript (73 generadas) y 121 de Python. Una prueba parametrizada cuenta una vez.
+- **860 pruebas:** 327 de Java (33 generadas), 412 de JavaScript (73 generadas) y 121 de Python. Una prueba parametrizada cuenta una vez.
 
 | Ficha | Criterios | Con prueba | Pendientes |
 |---|---:|---:|---:|
@@ -271,10 +271,10 @@ Otras pruebas de RF-04, que no cubren un criterio:
 | Criterio | Pruebas |
 |---|---|
 | C1. En el celular, el botón abre la cámara; en el PC, permite elegir archivos. | **Pendiente** |
-| C2. El sistema exige al menos 2 fotos y acepta como máximo 3. | [`FotosDeLaMuestraIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/FotosDeLaMuestraIT.java) · la muestra acepta hasta 3 fotos: con las 3 subidas, la foto 4 y la foto 0 responden 400 (prueba de límite) |
-| C3. Rechaza archivos que no sean JPG o PNG o que pasen de 10 MB, con un mensaje claro. | [`FotosDeLaMuestraIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/FotosDeLaMuestraIT.java) · un archivo que dice ser JPG pero no lo es por dentro se rechaza al subirlo, con el mensaje de qué hacer, y no queda en la base<br>[`FotosDeLaMuestraIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/FotosDeLaMuestraIT.java) · un archivo que no es JPG ni PNG se rechaza al pedir el enlace, con el mensaje de qué hacer, y no se guarda nada<br>[`FotosDeLaMuestraIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/FotosDeLaMuestraIT.java) · una foto de 10.485.760 bytes se sube y una de 10.485.761 se rechaza al pedir el enlace (prueba de límite) |
+| C2. El sistema exige al menos 2 fotos y acepta como máximo 3. | [`FotosDeLaMuestraIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/FotosDeLaMuestraIT.java) · la muestra acepta hasta 3 fotos: con las 3 subidas, la foto 4 y la foto 0 responden 400 (prueba de límite)<br>[`ReglasDeFotosTest`](../backend/src/test/java/co/edu/usco/inspectia/analisis/dominio/ReglasDeFotosTest.java) · el número de foto va de 1 a 3: el 0 y el 4 no (prueba de límite) |
+| C3. Rechaza archivos que no sean JPG o PNG o que pasen de 10 MB, con un mensaje claro. | [`FotosDeLaMuestraIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/FotosDeLaMuestraIT.java) · un archivo que dice ser JPG pero no lo es por dentro se rechaza al subirlo, con el mensaje de qué hacer, y no queda en la base<br>[`FotosDeLaMuestraIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/FotosDeLaMuestraIT.java) · un archivo que no es JPG ni PNG se rechaza al pedir el enlace, con el mensaje de qué hacer, y no se guarda nada<br>[`FotosDeLaMuestraIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/FotosDeLaMuestraIT.java) · una foto de 10.485.760 bytes se sube y una de 10.485.761 se rechaza al pedir el enlace (prueba de límite)<br>[`ReglasDeFotosTest`](../backend/src/test/java/co/edu/usco/inspectia/analisis/dominio/ReglasDeFotosTest.java) · JPG y PNG se reconocen por sus primeros bytes; GIF, WebP, PDF, un archivo vacío o con el formato cambiado, no<br>[`ReglasDeFotosTest`](../backend/src/test/java/co/edu/usco/inspectia/analisis/dominio/ReglasDeFotosTest.java) · solo se aceptan los tipos JPG y PNG, sin distinguir mayúsculas ni sus parámetros<br>[`ReglasDeFotosTest`](../backend/src/test/java/co/edu/usco/inspectia/analisis/dominio/ReglasDeFotosTest.java) · una foto de 10.485.760 bytes pasa y una de 10.485.761 no (prueba de límite) |
 | C4. La guía de captura se puede consultar antes de cada foto. | [`FotosDeLaMuestra.test.jsx`](../frontend/src/lote/FotosDeLaMuestra.test.jsx) · la guía de captura se ve en la página de las fotos, con la foto de ejemplo y sus reglas |
-| C5. Cuando una foto se reemplaza, la anterior se borra de S3 y de la base de datos. | [`FotosDeLaMuestraIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/FotosDeLaMuestraIT.java) · al reemplazar la foto 2, la anterior se borra de la carpeta y de la base, y la nueva toma su número |
+| C5. Cuando una foto se reemplaza, la anterior se borra de S3 y de la base de datos. | [`FotosDeLaMuestraIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/FotosDeLaMuestraIT.java) · al reemplazar la foto 2, la anterior se borra de la carpeta y de la base, y la nueva toma su número<br>[`AlmacenEnCarpetaTest`](../backend/src/test/java/co/edu/usco/inspectia/analisis/adaptadores/carpeta/AlmacenEnCarpetaTest.java) · borrar una foto la quita de la carpeta, y borrar una que ya no está no falla<br>[`SubirFotosTest`](../backend/src/test/java/co/edu/usco/inspectia/analisis/aplicacion/SubirFotosTest.java) · al reemplazar una foto, la anterior se borra de la base antes de guardar la nueva y su archivo después de confirmar, no antes |
 
 Otras pruebas de RF-05, que no cubren un criterio:
 
@@ -283,6 +283,10 @@ Otras pruebas de RF-05, que no cubren un criterio:
 - [`FotosDeLaMuestraIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/FotosDeLaMuestraIT.java) · la primera foto crea la muestra 1 del lote, pendiente y con quien la subió, y la foto queda «Cargada» en la carpeta
 - [`FotosDeLaMuestraIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/FotosDeLaMuestraIT.java) · no se suben fotos a un lote que ya no está pendiente de análisis: responde 409 con el motivo
 - [`FotosDeLaMuestraIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/FotosDeLaMuestraIT.java) · una muestra sin fotos se lista vacía, sin número de muestra
+- [`SubirFotosTest`](../backend/src/test/java/co/edu/usco/inspectia/analisis/aplicacion/SubirFotosTest.java) · la primera foto confirmada crea la muestra 1 con quien la subió
+- [`SubirFotosTest`](../backend/src/test/java/co/edu/usco/inspectia/analisis/aplicacion/SubirFotosTest.java) · un lote que no está pendiente no recibe fotos: no se pide ningún enlace
+- [`SubirFotosTest`](../backend/src/test/java/co/edu/usco/inspectia/analisis/aplicacion/SubirFotosTest.java) · una muestra que ya se envió no recibe fotos, aunque el lote siga pendiente
+- [`ReglasDeFotosTest`](../backend/src/test/java/co/edu/usco/inspectia/analisis/dominio/ReglasDeFotosTest.java) · el formato de una extensión y su tipo: jpg es image/jpeg y png es image/png
 
 ## RF-06 · Validar la calidad de cada foto (nitidez y luz) y pedir repetirla si no sirve
 
@@ -956,3 +960,15 @@ Pruebas que no cubren un criterio de una ficha, sino una pauta del docente (RP) 
 - [`EnlacesFirmadosIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/EnlacesFirmadosIT.java) · un enlace de una foto que se borró responde 404
 - [`EnlacesFirmadosIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/EnlacesFirmadosIT.java) · un token vencido o que no sirve en el encabezado no impide subir ni ver con el enlace firmado
 - [`EnlacesFirmadosIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/EnlacesFirmadosIT.java) · una foto ya subida no se puede pisar con el mismo enlace: responde 409 y queda la primera
+- [`AlmacenEnCarpetaTest`](../backend/src/test/java/co/edu/usco/inspectia/analisis/adaptadores/carpeta/AlmacenEnCarpetaTest.java) · los enlaces son relativos a /api/v1/archivos, con su vencimiento y su firma, y el de subida pide el tipo firmado
+- [`AlmacenEnCarpetaTest`](../backend/src/test/java/co/edu/usco/inspectia/analisis/adaptadores/carpeta/AlmacenEnCarpetaTest.java) · un archivo guardado se describe con su tamaño y sus primeros bytes, y no se pisa: el segundo responde 409
+- [`AlmacenEnCarpetaTest`](../backend/src/test/java/co/edu/usco/inspectia/analisis/adaptadores/carpeta/AlmacenEnCarpetaTest.java) · una llave que no tiene la forma <empresa>/<lote>/<archivo> o que sale de la carpeta se rechaza
+- [`ConfiguracionDelAlmacenEnCarpetaTest`](../backend/src/test/java/co/edu/usco/inspectia/analisis/adaptadores/carpeta/ConfiguracionDelAlmacenEnCarpetaTest.java) · con el almacén de S3, las rutas firmadas de la carpeta no existen ni se crea la clave
+- [`ConfiguracionDelAlmacenEnCarpetaTest`](../backend/src/test/java/co/edu/usco/inspectia/analisis/adaptadores/carpeta/ConfiguracionDelAlmacenEnCarpetaTest.java) · sin decir el almacén, se cargan la carpeta, su firma y sus rutas firmadas
+- [`FirmaDeEnlacesTest`](../backend/src/test/java/co/edu/usco/inspectia/analisis/adaptadores/carpeta/FirmaDeEnlacesTest.java) · cambiar el método, la llave, el tipo, el tamaño, el vencimiento o la firma invalida el enlace
+- [`FirmaDeEnlacesTest`](../backend/src/test/java/co/edu/usco/inspectia/analisis/adaptadores/carpeta/FirmaDeEnlacesTest.java) · el enlace sirve hasta el segundo anterior a su vencimiento y vence en ese segundo (prueba de límite)
+- [`FirmaDeEnlacesTest`](../backend/src/test/java/co/edu/usco/inspectia/analisis/adaptadores/carpeta/FirmaDeEnlacesTest.java) · una clave de menos de 32 bytes no se acepta
+- [`FirmaDeEnlacesTest`](../backend/src/test/java/co/edu/usco/inspectia/analisis/adaptadores/carpeta/FirmaDeEnlacesTest.java) · una firma hecha con otra clave no sirve: la clave es al azar en cada arranque
+- [`PropiedadesDeArchivosTest`](../backend/src/test/java/co/edu/usco/inspectia/analisis/adaptadores/carpeta/PropiedadesDeArchivosTest.java) · sin INSPECTIA_FOTOS_CARPETA, o vacía, las fotos van a <carpeta del usuario>/.inspectia/fotos
+- [`PropiedadesDeArchivosTest`](../backend/src/test/java/co/edu/usco/inspectia/analisis/adaptadores/carpeta/PropiedadesDeArchivosTest.java) · una ruta completa se usa tal cual, sin los espacios de los extremos
+- [`PropiedadesDeArchivosTest`](../backend/src/test/java/co/edu/usco/inspectia/analisis/adaptadores/carpeta/PropiedadesDeArchivosTest.java) · una ruta relativa no deja arrancar el backend, con un mensaje que dice qué hacer: las fotos nunca quedan dentro del repositorio

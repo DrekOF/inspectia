@@ -3,12 +3,13 @@
  * Descripción: Puerto de los lotes guardados: registrar, revisar el código y consultar el historial (RF-04,
  *              RF-14).
  * Fecha de creación: 10/11/2026
- * Actualización: 10/11/2026
+ * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis.aplicacion;
 
+import co.edu.usco.inspectia.analisis.dominio.EstadoDeLote;
 import co.edu.usco.inspectia.analisis.dominio.Lote;
 import java.util.List;
 import java.util.Optional;
@@ -66,4 +67,23 @@ public interface RepositorioDeLotes {
      * @return las formas, sin orden
      */
     List<OrigenUsado> origenesUsados(UUID empresaId);
+
+    /**
+     * El estado de un lote de la empresa.
+     *
+     * @param empresaId la empresa
+     * @param id el lote
+     * @return el estado, o vacío si el lote no existe o es de otra empresa
+     */
+    Optional<EstadoDeLote> estado(UUID empresaId, UUID id);
+
+    /**
+     * El estado de un lote de la empresa, bloqueando su fila hasta el final de la transacción: así dos fotos que se
+     * confirman a la vez no crean dos muestras ni se pisan (RF-05).
+     *
+     * @param empresaId la empresa
+     * @param id el lote
+     * @return el estado, o vacío si el lote no existe o es de otra empresa
+     */
+    Optional<EstadoDeLote> estadoParaActualizar(UUID empresaId, UUID id);
 }

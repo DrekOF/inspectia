@@ -3,20 +3,23 @@
  * Descripción: Repositorio de Spring Data de la tabla lote, con las consultas del registro, el historial y
  *              las sugerencias de finca o proveedor (RF-04, RF-14, RNF-03).
  * Fecha de creación: 10/11/2026
- * Actualización: 10/11/2026
+ * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis.adaptadores.jpa;
 
 import co.edu.usco.inspectia.analisis.aplicacion.OrigenUsado;
 import co.edu.usco.inspectia.analisis.aplicacion.VistaDeLote;
+import co.edu.usco.inspectia.analisis.dominio.EstadoDeLote;
+import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -76,4 +79,25 @@ public interface LotesJpa extends JpaRepository<LoteEntidad, UUID> {
     @Query("select new co.edu.usco.inspectia.analisis.aplicacion.OrigenUsado(l.origen, count(l), "
             + "max(l.fechaCreacion)) from LoteEntidad l where l.empresaId = :empresa group by l.origen")
     List<OrigenUsado> origenesUsados(@Param("empresa") UUID empresa);
+
+    /**
+     * El estado de un lote de la empresa.
+     *
+     * @param empresa la empresa
+     * @param id el lote
+     * @return el estado, o vacío si no existe o es de otra empresa
+     */
+    @Query("select l.estado from LoteEntidad l where l.id = :id and l.empresaId = :empresa")
+    Optional<EstadoDeLote> estado(@Param("empresa") UUID empresa, @Param("id") UUID id);
+
+    /**
+     * Un lote de la empresa, con su fila bloqueada hasta el final de la transacción ({@code SELECT … FOR UPDATE}).
+     *
+     * @param empresa la empresa
+     * @param id el lote
+     * @return el lote, o vacío si no existe o es de otra empresa
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select l from LoteEntidad l where l.id = :id and l.empresaId = :empresa")
+    Optional<LoteEntidad> paraActualizar(@Param("empresa") UUID empresa, @Param("id") UUID id);
 }

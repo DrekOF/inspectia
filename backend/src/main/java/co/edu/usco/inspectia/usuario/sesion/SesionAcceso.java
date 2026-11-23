@@ -3,9 +3,9 @@
  * Descripción: Reglas de acceso de la sesión: iniciar sesión es público y no lee el token; ver la
  *              sesión y cambiar la propia contraseña exigen uno válido (RF-01, RF-18, RNF-04).
  * Fecha de creación: 14/10/2026
- * Actualización: 19/10/2026
+ * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.2
+ * Versión: 1.3
  */
 package co.edu.usco.inspectia.usuario.sesion;
 
@@ -19,9 +19,9 @@ import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.stereotype.Component;
 
 /**
- * Reglas de acceso de la sesión (RNF-04): iniciar sesión es lo único público de la API y no lee el
- * token; ver la sesión actual y cambiar la propia contraseña (RF-18) los puede cualquier rol con un token
- * válido.
+ * Reglas de acceso de la sesión (RNF-04): iniciar sesión es público y no lee el token; ver la sesión actual y
+ * cambiar la propia contraseña (RF-18) los puede cualquier rol con un token válido. Lo único más que no pide sesión
+ * son los enlaces firmados de la carpeta de las fotos, que autoriza su firma (D-41).
  */
 @Component
 public class SesionAcceso implements ReglasDeAcceso {

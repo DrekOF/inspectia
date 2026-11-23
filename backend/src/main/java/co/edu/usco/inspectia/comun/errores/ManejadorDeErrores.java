@@ -3,9 +3,9 @@
  * Descripción: Convierte los errores de la API en respuestas application/problem+json (RFC 9457), con
  *              la lista «errores» y los mensajes en el idioma de la petición (RP-03, RP-11).
  * Fecha de creación: 13/10/2026
- * Actualización: 20/10/2026
+ * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.5
+ * Versión: 1.6
  */
 package co.edu.usco.inspectia.comun.errores;
 
@@ -47,8 +47,9 @@ import tools.jackson.databind.exc.InvalidFormatException;
  * si no pide ninguno, en español (RP-11).
  *
  * <p>Los 401 y 403 no pasan por aquí: los responde la cadena de seguridad
- * ({@code co.edu.usco.inspectia.comun.seguridad.RespuestasDeSeguridad}). La excepción es el 401 de un
- * inicio de sesión rechazado ({@link SesionRechazadaExcepcion}), que sale del servicio de la sesión.
+ * ({@code co.edu.usco.inspectia.comun.seguridad.RespuestasDeSeguridad}). Las excepciones son el 401 de un
+ * inicio de sesión rechazado ({@link SesionRechazadaExcepcion}), que sale del servicio de la sesión, y el 403 de
+ * un enlace firmado que no sirve ({@link EnlaceNoValidoExcepcion}, D-41), en rutas que no piden sesión.
  */
 @Slf4j
 @RestControllerAdvice
@@ -79,6 +80,24 @@ public class ManejadorDeErrores extends ResponseEntityExceptionHandler {
     @ExceptionHandler(ReglaIncumplidaExcepcion.class)
     ProblemDetail reglaIncumplida(ReglaIncumplidaExcepcion excepcion) {
         return problema(HttpStatus.BAD_REQUEST, "error.datos_invalidos", traducir(excepcion.getCampos()));
+    }
+
+    /** El contenido de una petición que no es de un formulario no sirve, como un archivo que no es una foto: 400. */
+    @ExceptionHandler(PeticionRechazadaExcepcion.class)
+    ProblemDetail peticionRechazada(PeticionRechazadaExcepcion excepcion) {
+        return problema(HttpStatus.BAD_REQUEST, excepcion.getClave(), List.of());
+    }
+
+    /** El estado de un registro no permite la operación, como subir fotos a un lote ya analizado: 409. */
+    @ExceptionHandler(ConflictoExcepcion.class)
+    ProblemDetail conflicto(ConflictoExcepcion excepcion) {
+        return problema(HttpStatus.CONFLICT, excepcion.getClave(), List.of());
+    }
+
+    /** Un enlace firmado sin firma, con una firma que no coincide o vencida (D-41): 403, como S3, y no 401. */
+    @ExceptionHandler(EnlaceNoValidoExcepcion.class)
+    ProblemDetail enlaceNoValido(EnlaceNoValidoExcepcion excepcion) {
+        return problema(HttpStatus.FORBIDDEN, "error.enlace_no_valido", List.of());
     }
 
     /** Inicio de sesión rechazado (RF-01): 401 con el motivo y, si lleva, la ayuda en {@code ayuda}. */
