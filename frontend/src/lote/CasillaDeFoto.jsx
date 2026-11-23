@@ -3,11 +3,12 @@
  * Descripción: La casilla de una foto de la muestra, como en el prototipo (RF-05): vacía, con «Elegir archivo» en el
  *              PC o «Tomar foto», que abre la cámara trasera, en el celular (C1); o con la foto ya subida, su estado y
  *              «Reemplazar». Revisa el archivo antes de pedir el enlace (C3), lo sube directo al enlace firmado
- *              (D-41), lo confirma y dice cómo terminó; si falló, ofrece «Reintentar».
+ *              (D-41), lo confirma y dice cómo terminó; si falló, ofrece «Reintentar». Avisa cuándo empieza y cuándo
+ *              termina su subida, para que «Analizar la muestra» espere a que termine (RF-05 C2).
  * Fecha de creación: 23/11/2026
  * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 import CloudDone from '@mui/icons-material/CloudDone';
 import ErrorOutline from '@mui/icons-material/ErrorOutlineOutlined';
@@ -17,7 +18,7 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import LinearProgress from '@mui/material/LinearProgress';
 import Typography from '@mui/material/Typography';
-import { useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { textoDelError } from '../api/errores.js';
 import { confirmarFoto, pedirSubida, subirArchivo } from '../api/fotos.js';
@@ -98,9 +99,11 @@ function estiloDeLaCasilla({ vacia, esPc, conError }) {
  * @param {import('../api/fotos.js').Foto} [props.foto] la foto ya subida, si la hay
  * @param {(foto: import('../api/fotos.js').Foto) => void} props.alConfirmar se llama con la foto que se confirmó
  * @param {() => void} props.alFallarLaVista se llama si la imagen no carga, como cuando su enlace venció
+ * @param {(numero: number, enCurso: boolean) => void} [props.alCambiarLaSubida] se llama cuando su subida empieza y
+ *   cuando termina, bien o mal
  * @returns {import('react').ReactElement} la casilla
  */
-export function CasillaDeFoto({ loteId, numero, foto, alConfirmar, alFallarLaVista }) {
+export function CasillaDeFoto({ loteId, numero, foto, alConfirmar, alFallarLaVista, alCambiarLaSubida }) {
   const { t, i18n } = useTranslation();
   const { pedir } = useSesion();
   const esPc = useEsPc();
@@ -114,6 +117,10 @@ export function CasillaDeFoto({ loteId, numero, foto, alConfirmar, alFallarLaVis
   const vacia = !foto;
   const subiendo = subida.fase === 'subiendo';
   const fallida = subida.fase === 'fallida';
+
+  useEffect(() => {
+    alCambiarLaSubida?.(numero, subiendo);
+  }, [alCambiarLaSubida, numero, subiendo]);
 
   /**
    * Revisa la foto, pide el enlace, la sube y la confirma. La casilla queda ocupada desde que empieza, también

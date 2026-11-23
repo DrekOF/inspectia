@@ -2,11 +2,12 @@
  * Nombre: tokens.js
  * Descripción: Tokens de diseño de InspectIA (RP-08): los colores de los temas claro y oscuro, con tonos de
  *              cacao, y la letra y las medidas del prototipo. Son la única fuente de colores de la app, también
- *              de las marcas sobre las fotos y del dibujo de la foto de ejemplo de la guía de captura.
+ *              de las marcas sobre las fotos, con su símbolo y su anillo de foco, y del dibujo de la foto de ejemplo
+ *              de la guía de captura. La cifra del resultado tiene su propio tamaño de letra.
  * Fecha de creación: 20/10/2026
- * Actualización: 22/11/2026
+ * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 
 /**
@@ -60,9 +61,18 @@ export const colores = {
 
 /**
  * Marcas sobre las fotos de la muestra (RF-11): no cambian con el tema, porque la foto tampoco cambia.
- * Cada una va con su forma (chulo, equis o signo de pregunta), así el color no es la única señal.
+ * Cada una va con su forma (chulo, equis o signo de pregunta), así el color no es la única señal. Un grano dudoso
+ * conserva el color y el símbolo de su clase y lleva además el signo de pregunta, en su propio color (D-42).
+ * El símbolo va en blanco sobre el color de la marca. El foco del teclado es un anillo doble, claro y oscuro, que
+ * se ve sobre un grano claro y sobre uno oscuro (RNF-06 C4).
  */
-export const marcasDeFoto = { sano: '#2E6B34', noSano: '#B3261E', dudoso: '#8A5300' };
+export const marcasDeFoto = {
+  sano: '#2E6B34',
+  noSano: '#B3261E',
+  dudoso: '#8A5300',
+  simbolo: '#FFFFFF',
+  foco: { claro: '#FFFFFF', oscuro: '#2B1D14' },
+};
 
 /**
  * El dibujo de la foto de ejemplo de la guía de captura (RF-05 C4): granos de cacao sobre papel blanco. Tampoco
@@ -79,6 +89,8 @@ export const letra = {
   texto: 16,
   ayuda: 14,
   chip: 13,
+  /** La cifra del resultado: el porcentaje de granos sanos (RF-10). */
+  cifra: { pc: 64, celular: 52 },
 };
 
 /** Medidas en píxeles: barra, menú, contenido, controles y zonas táctiles. */

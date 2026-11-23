@@ -5,17 +5,19 @@
  *              (RF-05). Al retomar un lote pendiente muestra las que ya se subieron (RF-14 C5). Pide el lote y las
  *              fotos a la vez. Si el lote no existe o es de otra empresa, lo dice con el mensaje del backend (RNF-03);
  *              si no llegó por otra causa, ofrece «Reintentar»; y si ya no está pendiente, dice dónde ver su resultado.
+ *              Si su muestra ya se envió y está en espera o en proceso, lleva al resultado del lote, donde se ve la
+ *              espera (RNF-02 C3).
  * Fecha de creación: 22/11/2026
  * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useParams } from 'react-router';
+import { Link, Navigate, useParams } from 'react-router';
 import { textoDelError } from '../api/errores.js';
 import { verLote } from '../api/lotes.js';
 import { Aviso } from '../componentes/Aviso.jsx';
@@ -23,6 +25,7 @@ import { TituloDePagina } from '../componentes/TituloDePagina.jsx';
 import { useSesion } from '../sesion/contexto.js';
 import { GuiaDeCaptura } from './GuiaDeCaptura.jsx';
 import { PasosDelAnalisis } from './PasosDelAnalisis.jsx';
+import { EN_CURSO } from './resultado.js';
 import { TusFotos } from './TusFotos.jsx';
 import { useFotosDelLote } from './useFotosDelLote.js';
 
@@ -56,6 +59,11 @@ function FotosDelLote({ loteId }) {
     setRecargas((veces) => veces + 1);
   }
 
+  // Una muestra que ya se envió no recibe fotos: su espera se ve en el resultado del lote.
+  if (EN_CURSO.includes(fotos.estado)) {
+    return <Navigate to={`/lotes/${loteId}`} replace />;
+  }
+
   const cargando = respuesta.recarga !== recargas;
   const { lote, error } = cargando ? { lote: null, error: null } : respuesta;
   const pendiente = lote?.estado === 'PENDIENTE';
@@ -81,7 +89,12 @@ function FotosDelLote({ loteId }) {
         </Box>
       )}
       {/* Un lote que ya no está pendiente no recibe fotos: el backend las rechazaría. */}
-      {lote && !pendiente && <Aviso tipo="info" titulo={t('foto.lote_no_pendiente')}>{t('fotos.verElResultado')}</Aviso>}
+      {lote && !pendiente && (
+        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1.5 }}>
+          <Aviso tipo="info" titulo={t('foto.lote_no_pendiente')} />
+          <Button component={Link} to={`/lotes/${lote.id}`} variant="outlined">{t('fotos.verElResultado')}</Button>
+        </Box>
+      )}
       {pendiente && (
         <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: 3 }}>
           <GuiaDeCaptura />

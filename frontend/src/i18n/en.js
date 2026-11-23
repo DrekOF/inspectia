@@ -6,7 +6,7 @@
  * Fecha de creación: 20/10/2026
  * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.6
+ * Versión: 1.7
  */
 
 /** Textos en inglés, por clave. Tiene las mismas claves que es.js (i18n.test.js lo revisa). */
@@ -178,10 +178,12 @@ export default {
   'historial.pagina': 'Page {pagina}',
   'historial.continuar': 'Continue',
   'historial.continuarLote': 'Continue lot {codigo}',
+  'historial.ver': 'View',
+  'historial.verLote': 'View lot {codigo}',
   'fotos.titulo': 'Sample photos',
   'fotos.descripcion': 'Lot {codigo} · {origen}. Upload 2 or 3 photos; if you leave now, the lot stays pending and you can resume it from the History.',
   'fotos.descripcionSinSubir': 'Lot {codigo} · {origen}.',
-  'fotos.verElResultado': 'Check its result in the History.',
+  'fotos.verElResultado': 'See the result',
   'fotos.tusFotos': 'Your photos',
   'fotos.foto': 'Photo {numero}',
   'fotos.fotoOpcional': 'Photo {numero} (optional)',
@@ -201,4 +203,60 @@ export default {
   'guia.luz': 'Soft light, without strong shadows.',
   'guia.arriba': 'Take the photo from above, holding the phone still.',
   'guia.formato': 'JPG or PNG, up to 10 MB each.',
+
+  // «Analyze the sample», at the foot of «Your photos» (RF-05 C2)
+  'analizar.boton': 'Analyze the sample',
+  'analizar.esperaSubida': 'Wait until photo {numero} finishes uploading.',
+  'analizar.esperaSubidas': 'Wait until the photos finish uploading.',
+
+  // Waiting for the analysis, on the result page (RNF-01 C4, RNF-02 C3)
+  'espera.titulo': 'Sample analysis',
+  'espera.avance': 'Analysis progress',
+  'espera.EN_ESPERA': 'Your analysis is queued: it starts as soon as the one ahead of it finishes.',
+  'espera.EN_PROCESO': 'Analyzing the sample…',
+  'espera.tarda': 'It is taking longer than usual. You can wait here or go back to the History: the result is saved.',
+  'espera.irAlHistorial': 'Go to the History',
+  'espera.fallo': 'The sample analysis did not finish: the sample is pending again.',
+  'espera.falloQueHacer': 'Check the photos and press “Analyze the sample” again.',
+  'espera.falloAdmin': 'An end user of your company can check the photos and send it again.',
+  'espera.volverALasFotos': 'Back to the photos',
+
+  // Result and detail of a lot (RF-10, RF-11, RF-12, RF-14 C3, D-42, D-43)
+  'resultado.titulo': 'Result of lot {codigo}',
+  'resultado.tituloSinLote': 'Lot result',
+  'resultado.datos': '{origen} · Received on {recepcion}',
+  'resultado.datosAnalizado': '{origen} · Received on {recepcion} · Analyzed on {dia} at {hora}',
+  'resultado.sinResultado': 'This lot has no result yet.',
+  'resultado.listo': 'Done: this is the result of lot {codigo}.',
+  'resultado.resumen': 'Result summary',
+  'resultado.deGranosSanos': 'healthy beans',
+  'resultado.rango': 'Probable range: between {desde} and {hasta} %',
+  'resultado.granos': 'Beans',
+  'resultado.sanos': 'Healthy',
+  'resultado.noSanos': 'Not healthy',
+  'resultado.marcados': '{sanos} of {total} marked as healthy',
+  'resultado.corrige': 'The percentage corrects the known errors of the model.',
+  'resultado.nota': 'It is a probable category: the official one is confirmed with the cut test.',
+  'resultado.sugerencia': 'The result is less than 1 point away from a category limit.',
+  'resultado.sugerenciaDetalle': 'It is worth analyzing another sample of the same lot to confirm it: the result will add up the beans of both samples.',
+  'resultado.fotosMarcadas': 'Marked photos',
+  'resultado.muestra': 'Sample {numero}',
+  'resultado.analizadaPor': 'Analyzed by {nombre}',
+  'resultado.modelo': 'AI model: {nombre} {version}',
+  'resultado.pestanas': 'Photos of sample {numero}',
+  'resultado.pestana': 'Photo {numero}',
+  'resultado.granosDeLaPestana_one': '{count} bean',
+  'resultado.granosDeLaPestana_many': '{count} beans',
+  'resultado.granosDeLaPestana_other': '{count} beans',
+  'resultado.imagen': 'Photo {numero} of the sample, with its beans marked',
+  'resultado.granosDeLaFoto': 'Beans of photo {numero}',
+  'resultado.grano.SANO': 'Bean {numero}: healthy',
+  'resultado.grano.NO_SANO': 'Bean {numero}: not healthy',
+  'resultado.granoDudoso': '{grano}, uncertain',
+  'resultado.claseDudosa': '{clase} · uncertain',
+  'resultado.dudoso': 'Uncertain',
+  'resultado.leyenda': 'Mark legend',
+  'resultado.ayudaPc': 'Hover over a bean or tap it to see its class.',
+  'resultado.ayudaCelular': 'Tap a bean to see its class.',
+  'resultado.ayudaTeclado': 'With the keyboard, enter the photo with Tab and move from bean to bean with the arrow keys.',
 };

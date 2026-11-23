@@ -4,11 +4,12 @@
  *              una sesión y van dentro del marco, y cada sección solo la abren los roles que la usan. Las
  *              pantallas generadas reciben aquí sus extensiones (RP-23), y las del análisis, escritas a mano, salen de
  *              PANTALLAS_DEL_ANALISIS (RF-04, RF-14); la de las fotos de la muestra solo la abre el usuario final
- *              (RF-05). Las secciones que todavía no existen muestran «Esta sección estará disponible pronto.».
+ *              (RF-05), y la del resultado de un lote, el usuario final y la administradora (RF-10 a RF-12, RF-14 C3).
+ *              Las secciones que todavía no existen muestran «Esta sección estará disponible pronto.».
  * Fecha de creación: 20/10/2026
- * Actualización: 22/11/2026
+ * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.2
+ * Versión: 1.3
  */
 import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -19,6 +20,7 @@ import { EXTENSIONES } from '../extensiones.js';
 import FotosDeLaMuestra from '../lote/FotosDeLaMuestra.jsx';
 import Historial from '../lote/Historial.jsx';
 import NuevoLote from '../lote/NuevoLote.jsx';
+import ResultadoDelLote from '../lote/ResultadoDelLote.jsx';
 import AcercaDe from '../paginas/AcercaDe.jsx';
 import CambiarContrasena from '../paginas/CambiarContrasena.jsx';
 import IniciarSesion from '../paginas/IniciarSesion.jsx';
@@ -107,6 +109,9 @@ export function Rutas() {
         <Route path="/cambiar-contrasena" element={<CambiarContrasena />} />
         <Route path="/lotes/:id/fotos"
           element={<ConRol roles={[ROLES.USUARIO_FINAL]}><FotosDeLaMuestra /></ConRol>} />
+        {/* /lotes/nuevo sigue abriendo Nuevo lote: React Router prefiere el segmento fijo al de :id. */}
+        <Route path="/lotes/:id"
+          element={<ConRol roles={[ROLES.USUARIO_FINAL, ROLES.ADMIN_EMPRESA]}><ResultadoDelLote /></ConRol>} />
         {SECCIONES.filter(({ ruta }) => ruta !== '/').map((seccion) => (
           <Route key={seccion.ruta} path={seccion.ruta}
             element={<ConRol roles={seccion.roles}><PantallaDeSeccion seccion={seccion} /></ConRol>} />

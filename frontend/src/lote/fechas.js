@@ -2,11 +2,12 @@
  * Nombre: fechas.js (lote)
  * Descripción: Las fechas de los lotes en la hora de Colombia: el día de hoy, que no puede pasar la fecha de
  *              recepción (RF-04 C4); el de hace un año, la fecha de recepción más antigua que se acepta (RF-04,
- *              restricción 4), y la fecha del resultado, como la muestra el historial (RF-14).
+ *              restricción 4); la fecha y la hora del resultado, como las muestran el historial y el resultado
+ *              (RF-14, RF-10), y la fecha de recepción, que es un día del calendario y no se corre con la zona.
  * Fecha de creación: 22/11/2026
  * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 
 /** «Hoy» es el día en Colombia, como en el backend («Fechas» en specs/modelo-datos.md). */
@@ -49,4 +50,33 @@ export function diaEnColombia(fechaHora, region) {
   return new Intl.DateTimeFormat(region, {
     day: '2-digit', month: '2-digit', year: 'numeric', timeZone: ZONA_DE_COLOMBIA,
   }).format(new Date(fechaHora));
+}
+
+/**
+ * La hora de una fecha y hora del backend en Colombia, en el formato del idioma, como «11:42 a. m.» o «11:42 AM».
+ *
+ * @param {string} fechaHora la fecha y hora (ISO 8601)
+ * @param {string} region la región del idioma de la app, como es-CO
+ * @returns {string} la hora
+ */
+export function horaEnColombia(fechaHora, region) {
+  return new Intl.DateTimeFormat(region, {
+    hour: 'numeric', minute: '2-digit', timeZone: ZONA_DE_COLOMBIA,
+  }).format(new Date(fechaHora));
+}
+
+/**
+ * Un día del calendario (aaaa-mm-dd), como la fecha de recepción, en el formato del idioma, como 20/10/2026. Se
+ * escribe en UTC, la misma zona en que se lee, así el día no se corre: leído en la hora de Colombia, el 20 de octubre
+ * a medianoche en UTC sería todavía el 19.
+ *
+ * @param {string} dia el día (aaaa-mm-dd)
+ * @param {string} region la región del idioma de la app, como es-CO
+ * @returns {string} el día
+ */
+export function diaDelCalendario(dia, region) {
+  const [anio, mes, numero] = dia.split('-').map(Number);
+  return new Intl.DateTimeFormat(region, {
+    day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC',
+  }).format(new Date(Date.UTC(anio, mes - 1, numero)));
 }
