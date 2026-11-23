@@ -4,7 +4,7 @@ Descripción: Resumen de la arquitectura del sistema y del software de InspectIA
 Fecha de creación: 12/10/2026
 Actualización: 23/11/2026
 Autor: Equipo InspectIA
-Versión: 1.5
+Versión: 1.6
 -->
 
 # Arquitectura de InspectIA
@@ -61,7 +61,7 @@ backend/src/main/java/.../inspectia/
 | 9. Mostrar la foto marcada y descargar el PDF | RF-11 y RF-15 | Página web y servidor |
 | 10. Si la app la sugirió, segunda muestra: pasos 2 a 9 con fotos nuevas. El resultado del lote suma los granos de las 2 muestras, ya no sugiere otra y el PDF se rehace (D-25) | RF-05 a RF-15 | Todas las piezas |
 
-El servidor le envía al servicio de IA las fotos de la muestra (sus enlaces de S3) y recibe, por cada grano, la posición, la clase y la confianza. El contrato exacto (OpenAPI) se define en la fase de diseño. Las tablas del flujo (lote, muestra, foto y grano) están en `specs/modelo-datos.md`.
+El servidor le envía al servicio de IA las fotos de la muestra (su contenido, no sus enlaces: respuesta de Cristhian del 10/11/2026) y recibe, por cada grano, la posición, la clase y la confianza, y el modelo que las clasificó. Los análisis esperan su turno en una cola guardada en la base, con las muestras en espera ordenadas por la fecha de envío: un solo hilo del servidor las atiende de a una, y si el servidor se reinicia, ninguna se pierde (RNF-02 C3). El contrato exacto (OpenAPI) se define en la fase de diseño. Las tablas del flujo (lote, muestra, foto y grano) están en `specs/modelo-datos.md`.
 
 ## 4. Modelos de IA (D-18 y D-40)
 

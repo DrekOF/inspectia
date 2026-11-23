@@ -2,10 +2,10 @@
 -- Descripción: Crea las tablas de InspectIA desde specs/entidades (RP-15). Archivo generado por
 --              generador/ (RP-23): no se edita a mano; se cambia el JSON o la plantilla y se regenera.
 -- Fecha de creación: 13/10/2026
--- Actualización: 27/10/2026
+-- Actualización: 23/11/2026
 -- Autor: Equipo InspectIA (generado por generador/ v1.10)
 -- Versión: 1.10
--- Entidades: empresa 1.3, foto 1.0, grano 1.0, lote 1.0, modelo 1.0, muestra 1.0, rango_recomendacion 1.3, usuario 1.8
+-- Entidades: empresa 1.3, foto 1.0, grano 1.0, lote 1.1, modelo 1.1, muestra 1.1, rango_recomendacion 1.3, usuario 1.8
 
 -- Mantiene fecha_actualizacion en cada cambio, también cuando lo hace un script.
 CREATE FUNCTION actualizar_fecha_actualizacion() RETURNS trigger
@@ -51,6 +51,8 @@ CREATE TABLE modelo (
     f1_macro numeric(5,2),
     precision_macro numeric(5,2),
     recall_macro numeric(5,2),
+    recall_sano numeric(5,2) NOT NULL,
+    recall_no_sano numeric(5,2) NOT NULL,
     tiempo_por_grano_ms numeric(8,2),
     en_uso boolean NOT NULL DEFAULT false,
     fecha_creacion timestamptz NOT NULL DEFAULT now(),
@@ -61,13 +63,16 @@ CREATE TABLE modelo (
     CONSTRAINT modelo_f1_macro_rango CHECK (f1_macro BETWEEN 0 AND 100),
     CONSTRAINT modelo_precision_macro_rango CHECK (precision_macro BETWEEN 0 AND 100),
     CONSTRAINT modelo_recall_macro_rango CHECK (recall_macro BETWEEN 0 AND 100),
+    CONSTRAINT modelo_recall_sano_rango CHECK (recall_sano BETWEEN 0 AND 100),
+    CONSTRAINT modelo_recall_no_sano_rango CHECK (recall_no_sano BETWEEN 0 AND 100),
     CONSTRAINT modelo_tiempo_por_grano_ms_minimo CHECK (tiempo_por_grano_ms >= 0),
-    CONSTRAINT modelo_datos_completos CHECK (num_nonnulls(tipo, f1_macro, precision_macro, recall_macro, tiempo_por_grano_ms) IN (0, 5))
+    CONSTRAINT modelo_datos_completos CHECK (num_nonnulls(tipo, f1_macro, precision_macro, recall_macro, tiempo_por_grano_ms) IN (0, 5)),
+    CONSTRAINT modelo_mejor_que_el_azar CHECK (recall_sano + recall_no_sano > 100)
 );
 CREATE UNIQUE INDEX modelo_en_uso_unico ON modelo (en_uso) WHERE en_uso;
 CREATE TRIGGER modelo_fecha_actualizacion BEFORE UPDATE ON modelo
     FOR EACH ROW EXECUTE FUNCTION actualizar_fecha_actualizacion();
-COMMENT ON TABLE modelo IS 'Modelo de IA. La tabla guarda la comparación de D-18: los 5 modelos de Julián (2 transformers y 3 CNN, RP-25), con el elegido marcado en uso. Es común a todas las empresas (RNF-03). Las filas las carga el script de base de datos (RP-15); en desarrollo, también el clasificador falso, sin métricas.';
+COMMENT ON TABLE modelo IS 'Modelo de IA. La tabla guarda la comparación de D-18: los 5 modelos de Julián (2 transformers y 3 CNN, RP-25), con el elegido marcado en uso. Es común a todas las empresas (RNF-03). Las filas las carga el script de base de datos (RP-15); en desarrollo, también el clasificador falso, con los recall de EfficientNet-B0 y sin las demás métricas. Los recall de cada clase corrigen el porcentaje del lote (D-39): todo modelo los tiene.';
 COMMENT ON COLUMN modelo.id IS 'Identificador (UUID v7)';
 COMMENT ON COLUMN modelo.nombre IS 'Nombre (RF-08, RF-17)';
 COMMENT ON COLUMN modelo.version IS 'Versión (RF-08, RF-17)';
@@ -75,6 +80,8 @@ COMMENT ON COLUMN modelo.tipo IS 'Tipo (D-18, RP-25)';
 COMMENT ON COLUMN modelo.f1_macro IS 'F1-score macro (%) (RF-17, RNF-07)';
 COMMENT ON COLUMN modelo.precision_macro IS 'Precisión macro (%) (RF-17, RNF-07)';
 COMMENT ON COLUMN modelo.recall_macro IS 'Recall macro (%) (RF-17, RNF-07)';
+COMMENT ON COLUMN modelo.recall_sano IS 'Recall de sano (%) (RF-10, D-39)';
+COMMENT ON COLUMN modelo.recall_no_sano IS 'Recall de no sano (%) (RF-10, D-39)';
 COMMENT ON COLUMN modelo.tiempo_por_grano_ms IS 'Tiempo por grano (ms) (D-18)';
 COMMENT ON COLUMN modelo.en_uso IS 'En uso (RF-17, D-18)';
 COMMENT ON COLUMN modelo.fecha_creacion IS 'Fecha de creación del registro';
@@ -161,6 +168,7 @@ CREATE TABLE lote (
     estado varchar(30) NOT NULL DEFAULT 'PENDIENTE',
     usuario_id uuid NOT NULL,
     porcentaje_sanos numeric(4,1),
+    margen numeric(4,1),
     categoria varchar(30),
     recomendacion varchar(300),
     sugerir_otra_muestra boolean,
@@ -173,8 +181,9 @@ CREATE TABLE lote (
     CONSTRAINT lote_id_empresa_unico UNIQUE (id, empresa_id),
     CONSTRAINT lote_estado_valores CHECK (estado IN ('PENDIENTE', 'ANALIZADO')),
     CONSTRAINT lote_porcentaje_sanos_rango CHECK (porcentaje_sanos BETWEEN 0 AND 100),
+    CONSTRAINT lote_margen_rango CHECK (margen BETWEEN 0 AND 100),
     CONSTRAINT lote_categoria_valores CHECK (categoria IN ('PREMIUM', 'ESTANDAR', 'CORRIENTE', 'FUERA_DE_NORMA')),
-    CONSTRAINT lote_resultado_segun_estado CHECK ((estado = 'PENDIENTE' AND num_nonnulls(porcentaje_sanos, categoria, recomendacion, sugerir_otra_muestra, aviso_confianza_baja, fecha_resultado, reporte_ruta) = 0) OR (estado = 'ANALIZADO' AND num_nonnulls(porcentaje_sanos, categoria, recomendacion, sugerir_otra_muestra, aviso_confianza_baja, fecha_resultado) = 6)),
+    CONSTRAINT lote_resultado_segun_estado CHECK ((estado = 'PENDIENTE' AND num_nonnulls(porcentaje_sanos, margen, categoria, recomendacion, sugerir_otra_muestra, aviso_confianza_baja, fecha_resultado, reporte_ruta) = 0) OR (estado = 'ANALIZADO' AND num_nonnulls(porcentaje_sanos, margen, categoria, recomendacion, sugerir_otra_muestra, aviso_confianza_baja, fecha_resultado) = 7)),
     CONSTRAINT lote_empresa_id_fk FOREIGN KEY (empresa_id) REFERENCES empresa (id) ON DELETE RESTRICT,
     CONSTRAINT lote_usuario_id_fk FOREIGN KEY (usuario_id, empresa_id) REFERENCES usuario (id, empresa_id) ON DELETE RESTRICT
 );
@@ -194,6 +203,7 @@ COMMENT ON COLUMN lote.observaciones IS 'Observaciones (RF-04)';
 COMMENT ON COLUMN lote.estado IS 'Estado (RF-04, RF-12, RF-14)';
 COMMENT ON COLUMN lote.usuario_id IS 'Registrado por (RF-04)';
 COMMENT ON COLUMN lote.porcentaje_sanos IS '% de granos sanos (RF-10, D-25)';
+COMMENT ON COLUMN lote.margen IS 'Margen (puntos) (RF-10, P-19)';
 COMMENT ON COLUMN lote.categoria IS 'Categoría probable (RF-12, RF-13)';
 COMMENT ON COLUMN lote.recomendacion IS 'Recomendación (RF-12, RF-13)';
 COMMENT ON COLUMN lote.sugerir_otra_muestra IS 'Sugiere otra muestra (RF-12, D-24, D-25)';
@@ -245,6 +255,7 @@ CREATE TABLE muestra (
 CREATE INDEX muestra_empresa_id_idx ON muestra (empresa_id);
 CREATE INDEX muestra_usuario_id_idx ON muestra (usuario_id);
 CREATE INDEX muestra_modelo_id_idx ON muestra (modelo_id);
+CREATE INDEX muestra_estado_fecha_envio_idx ON muestra (estado, fecha_envio);
 CREATE TRIGGER muestra_fecha_actualizacion BEFORE UPDATE ON muestra
     FOR EACH ROW EXECUTE FUNCTION actualizar_fecha_actualizacion();
 COMMENT ON TABLE muestra IS 'Muestra de un lote: 2 o 3 fotos con 100 granos o más (D-23, D-26). Un lote tiene como máximo 2 muestras, y la segunda solo existe si la app la sugirió (D-25). La maneja el módulo analisis del backend, escrito a mano (D-21).';

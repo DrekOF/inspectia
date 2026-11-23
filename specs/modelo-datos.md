@@ -4,7 +4,7 @@ Descripción: Modelo de datos de InspectIA: diagrama entidad-relación, tablas c
 Fecha de creación: 13/10/2026
 Actualización: 23/11/2026
 Autor: Equipo InspectIA
-Versión: 1.9
+Versión: 1.10
 -->
 
 # Modelo de datos de InspectIA
@@ -63,6 +63,7 @@ erDiagram
         varchar estado
         uuid usuario_id FK
         numeric porcentaje_sanos
+        numeric margen
         varchar categoria
         varchar recomendacion
         boolean sugerir_otra_muestra
@@ -118,6 +119,8 @@ erDiagram
         numeric f1_macro
         numeric precision_macro
         numeric recall_macro
+        numeric recall_sano
+        numeric recall_no_sano
         numeric tiempo_por_grano_ms
         boolean en_uso
     }
@@ -207,6 +210,7 @@ En las tablas, «Oblig.» dice si el campo es obligatorio y «Único» si no se 
 | estado | lista: PENDIENTE, ANALIZADO | Sí | — | RF-04, RF-12, RF-14 |
 | usuario_id | uuid, FK a usuario (quién lo registró) | Sí | — | RF-04 |
 | porcentaje_sanos | numeric(4,1) | Con resultado | — | RF-10, D-25 |
+| margen | numeric(4,1), en puntos, de 0 a 100 | Con resultado | — | RF-10, P-19, D-43 |
 | categoria | lista de rango_recomendacion | Con resultado | — | RF-12, RF-13 |
 | recomendacion | varchar(300), copia del texto del rango | Con resultado | — | RF-12, RF-13 |
 | sugerir_otra_muestra | boolean | Con resultado | — | RF-12, D-24, D-25 |
@@ -217,6 +221,7 @@ En las tablas, «Oblig.» dice si el campo es obligatorio y «Único» si no se 
 - «Con resultado»: obligatorio cuando el estado es ANALIZADO y vacío cuando es PENDIENTE (CHECK).
 - El resultado es del lote. Con 2 muestras sale de la suma de sus granos (D-25).
 - Cuando termina la segunda muestra, el resultado se recalcula con los rangos vigentes y el PDF anterior se borra, para rehacerlo (RF-15).
+- `porcentaje_sanos` es el porcentaje corregido (D-39) y `margen`, su margen (P-19), los dos redondeados a un decimal. La página muestra el rango probable con los dos (D-43). El porcentaje contado no se guarda: sale de los conteos de las muestras.
 
 ### 3.5 muestra
 
@@ -241,6 +246,7 @@ En las tablas, «Oblig.» dice si el campo es obligatorio y «Único» si no se 
 - «Al terminar»: obligatorio cuando el estado es TERMINADA (CHECK).
 - Una muestra pasa de PENDIENTE (captura de fotos) a EN_ESPERA cuando el usuario envía las fotos, a EN_PROCESO cuando el servidor la atiende y a TERMINADA con el resultado. Si hay que repetir una foto (RF-06, RF-07, RF-09) o el servicio de IA no responde (RF-08), vuelve a PENDIENTE sin guardar un resultado incompleto.
 - La segunda muestra solo se crea si el lote tiene `sugerir_otra_muestra` y una sola muestra (D-25).
+- Las muestras EN_ESPERA forman la cola de análisis: se atienden por `fecha_envio` (RNF-02 C3), con el índice `(estado, fecha_envio)`.
 
 ### 3.6 foto
 
@@ -281,13 +287,17 @@ En las tablas, «Oblig.» dice si el campo es obligatorio y «Único» si no se 
 | f1_macro | numeric(5,2), de 0 a 100 | No¹ | — | RF-17, RNF-07 |
 | precision_macro | numeric(5,2), de 0 a 100 | No¹ | — | RF-17, RNF-07 |
 | recall_macro | numeric(5,2), de 0 a 100 | No¹ | — | RF-17, RNF-07 |
+| recall_sano | numeric(5,2), de 0 a 100 | Sí | — | RF-10, D-39 |
+| recall_no_sano | numeric(5,2), de 0 a 100 | Sí | — | RF-10, D-39 |
 | tiempo_por_grano_ms | numeric(8,2) | No¹ | — | D-18 |
 | en_uso | boolean, por defecto false | Sí | Solo uno en true | RF-17, D-18 |
 
 ¹ Vacíos solo en el clasificador falso de desarrollo. Un CHECK exige que estén todos o ninguno.
 
 - La tabla guarda la comparación de D-18 (RP-25). El script de base de datos (RP-15) carga los 5 modelos de Julián y marca en uso el elegido, que es el mismo que carga el servicio de IA.
-- Mientras llegan los modelos (P-01), el script de datos de desarrollo carga solo el clasificador falso.
+- `recall_sano` y `recall_no_sano` corrigen el porcentaje del lote (D-39), así que todo modelo los tiene, también el clasificador falso. Un CHECK exige que sumen más de 100: si no, el modelo no es mejor que el azar y la corrección dividiría por cero o invertiría el resultado. EfficientNet-B0 tiene 91,20 y 53,40, los valores de D-39.
+- Mientras no esté el servicio de IA, el backend usa un clasificador falso. Al arrancar, registra su fila si no existe (`clasificador-falso`, versión `1.0`), con los recall de EfficientNet-B0 y sin las demás métricas, y no la marca en uso: no es una migración, para que en producción no quede cargada.
+- Las filas no se editan: una versión nueva de un modelo es una fila nueva. Así, los lotes ya analizados conservan su porcentaje (RF-10 C13).
 
 ## 4. Relaciones y borrado
 
