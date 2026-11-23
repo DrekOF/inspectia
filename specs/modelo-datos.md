@@ -2,9 +2,9 @@
 Nombre: modelo-datos.md
 Descripción: Modelo de datos de InspectIA: diagrama entidad-relación, tablas con su trazabilidad a las fichas y decisiones de diseño.
 Fecha de creación: 13/10/2026
-Actualización: 27/10/2026
+Actualización: 23/11/2026
 Autor: Equipo InspectIA
-Versión: 1.7
+Versión: 1.8
 -->
 
 # Modelo de datos de InspectIA
@@ -201,7 +201,7 @@ En las tablas, «Oblig.» dice si el campo es obligatorio y «Único» si no se 
 |---|---|---|---|---|
 | empresa_id | uuid, FK a empresa | Sí | — | RNF-03, RF-04 |
 | codigo | varchar(30) | Sí | Único por empresa, sin distinguir mayúsculas ni espacios | RF-04 |
-| fecha_recepcion | date, no posterior a hoy | Sí | — | RF-04 |
+| fecha_recepcion | date, no posterior a hoy ni de hace más de un año, con la fecha de Colombia (restricción 4) | Sí | — | RF-04 |
 | origen | varchar(120): finca o proveedor | Sí | — | RF-04, RF-16 |
 | observaciones | varchar(500) | No | — | RF-04 |
 | estado | lista: PENDIENTE, ANALIZADO | Sí | — | RF-04, RF-12, RF-14 |

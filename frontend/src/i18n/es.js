@@ -4,9 +4,9 @@
  *              comparte con el backend no van aquí: salen de sus archivos .properties
  *              (herramientas/textos-del-backend.js). Los marcadores van entre llaves, como en el backend.
  * Fecha de creación: 20/10/2026
- * Actualización: 02/11/2026
+ * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.3
+ * Versión: 1.5
  */
 
 /** Textos en español, por clave. en.js tiene las mismas claves (i18n.test.js lo revisa). */
@@ -147,4 +147,45 @@ export default {
   'acercaDe.proyectoTexto': 'Proyecto final del curso de Inteligencia Artificial, Programa de Ingeniería de Software, Universidad Surcolombiana. Equipo: Cristhian Eduardo Sánchez Mosquera, Julián Andrés Silva Morales y Jhon Jairo Perdomo Perdomo. Docente: Juan Antonio Castro Silva.',
   'acercaDe.version': 'Versión {version}',
   'acercaDe.volver': 'Volver a Iniciar sesión',
+  'pasos.titulo': 'Pasos del análisis',
+  'pasos.datos': 'Datos del lote',
+  'pasos.fotos': 'Fotos de la muestra',
+  'pasos.resultado': 'Resultado',
+  'pasos.listo': '(listo)',
+  'pasos.deTotal': 'Paso {numero} de {total}',
+  'nuevoLote.titulo': 'Nuevo lote',
+  'nuevoLote.subtitulo': 'Escribe los datos del lote. Después tomarás las fotos de la muestra.',
+  'nuevoLote.formulario': 'Datos del lote',
+  'nuevoLote.ayudaCodigo': 'No se repite en tu empresa.',
+  'nuevoLote.ayudaFecha': 'No puede ser posterior a hoy ni de hace más de un año.',
+  'nuevoLote.ayudaOrigen': 'Te sugerimos las que ya usó tu empresa, para que las estadísticas las agrupen bien.',
+  'nuevoLote.sugerencias': 'Fincas y proveedores que ya usó tu empresa',
+  'nuevoLote.opcional': '(opcional)',
+  'nuevoLote.ejemploObservaciones': 'Por ejemplo: cosecha de octubre, secado al sol.',
+  'nuevoLote.continuar': 'Continuar a las fotos',
+  'nuevoLote.codigoRepetido': 'Ya existe un lote con el código {codigo} en tu empresa. Usa otro código.',
+  'historial.titulo': 'Historial de lotes',
+  'historial.subtitulo': 'Los lotes de {empresa}, del más reciente al más antiguo.',
+  'historial.lista': 'Lotes de la empresa',
+  'historial.codigo': 'Código',
+  'historial.vacia': 'Tu empresa todavía no tiene lotes.',
+  'historial.paginas': 'Páginas del historial',
+  'historial.cuenta_one': '{count} lote · 20 por página',
+  'historial.cuenta_many': '{count} lotes · 20 por página',
+  'historial.cuenta_other': '{count} lotes · 20 por página',
+  'historial.paginaAnterior': 'Página anterior',
+  'historial.paginaSiguiente': 'Página siguiente',
+  'historial.pagina': 'Página {pagina}',
+  'fotos.titulo': 'Fotos de la muestra',
+  'fotos.descripcion': 'Lote {codigo} · {origen}. El lote quedó registrado y pendiente de análisis.',
+  'fotos.tusFotos': 'Tus fotos',
+  'fotos.pronto': 'Pronto podrás subir aquí las fotos de la muestra.',
+  'guia.titulo': 'Guía de captura',
+  'guia.ejemplo': 'Ejemplo de foto correcta: granos enteros y separados sobre papel blanco, vistos desde arriba',
+  'guia.ejemploTitulo': 'Ejemplo de foto correcta',
+  'guia.granos': 'Entre 100 y 150 granos, repartidos en 2 o 3 fotos (unos 50 por foto).',
+  'guia.papel': 'Granos enteros sobre papel blanco, separados entre sí.',
+  'guia.luz': 'Luz difusa, sin sombras fuertes.',
+  'guia.arriba': 'Toma la foto desde arriba, con el celular quieto.',
+  'guia.formato': 'JPG o PNG, de hasta 10 MB cada una.',
 };

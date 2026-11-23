@@ -3,16 +3,16 @@ Nombre: README.md (frontend)
 Descripción: La página web de InspectIA: qué hay en frontend/, cómo arrancarla junto con el backend, sus textos,
              sus pruebas, el entorno aislado de las pruebas de punta a punta y la demostración de otra temática.
 Fecha de creación: 12/10/2026
-Actualización: 09/11/2026
+Actualización: 23/11/2026
 Autor: Equipo InspectIA
-Versión: 1.7
+Versión: 1.8
 -->
 
 # frontend
 
 Página web de InspectIA, para PC y celular (RNF-05). Hecha con React 19, Material UI 9 y Vite 8, con Node 24.22.0 (la de `.node-version`). Las versiones de cada librería están en `package.json` y en la tabla de versiones del README principal.
 
-Esta versión tiene el marco (barra superior, menú según el rol, idioma y tema), Iniciar sesión (RF-01), Cambiar contraseña (RF-18), Acerca de, con la cita del dataset (RNF-08), y las pantallas de Empresas (RF-02), Usuarios (RF-03) y Rangos de recomendación (RF-13), generadas desde su JSON (RP-23). Las demás secciones del menú dicen «Esta sección estará disponible pronto.» hasta que llegue su función. La referencia visual es el prototipo de `02_Analisis_Diseno/Prototipo_Frontend`, fuera del repositorio.
+Esta versión tiene el marco (barra superior, menú según el rol, idioma y tema), Iniciar sesión (RF-01), Cambiar contraseña (RF-18), Acerca de, con la cita del dataset (RNF-08), las pantallas de Empresas (RF-02), Usuarios (RF-03) y Rangos de recomendación (RF-13), generadas desde su JSON (RP-23), y las primeras del análisis de un lote: Nuevo lote (RF-04), el Historial (RF-14) y Fotos de la muestra, por ahora con la guía de captura (RF-05 C4). Las demás secciones del menú dicen «Esta sección estará disponible pronto.» hasta que llegue su función. La referencia visual es el prototipo de `02_Analisis_Diseno/Prototipo_Frontend`, fuera del repositorio.
 
 ## Qué hay
 
@@ -22,13 +22,14 @@ Esta versión tiene el marco (barra superior, menú según el rol, idioma y tema
 | `src/crud/` | Lo común de las pantallas generadas: la lista en páginas de 20 (tabla en el PC y tarjetas en el celular), el formulario, encima de la lista o a su lado en el PC (D-37), la confirmación al desactivar, el máximo de activos, la fila de quien tiene la sesión y el foco al abrir y cerrar un panel. También la pantalla en bloque (`PantallaEnBloque`), con todas las filas en un formulario, como los rangos, y los decimales con el separador del idioma (`decimales.js`). |
 | `src/empresa/` | Lo escrito a mano para la pantalla de empresas: el panel de administradores, que restablece la contraseña de uno (RF-02 C12). |
 | `src/rango/` | Lo escrito a mano para la pantalla de rangos (RF-13): el resumen «Así quedan los rangos» y la regla del orden de los límites (`limites.js`), la misma del backend. |
+| `src/lote/` | El análisis de un lote, escrito a mano: Nuevo lote (RF-04), con las sugerencias de finca o proveedor y su esquema de Yup (`esquemaDeLote.js`); el Historial (RF-14); Fotos de la muestra, con la guía de captura; los pasos del análisis, y las fechas en la hora de Colombia (`fechas.js`). |
 | `src/extensiones.js` | Lo escrito a mano de cada pantalla generada, por entidad. Las rutas se lo pasan a la pantalla, así lo generado no importa código escrito a mano. |
 | `src/paginas/` | Las pantallas: Iniciar sesión, el inicio de cada rol, Cambiar contraseña, Acerca de, las secciones pendientes y las direcciones que no existen. |
 | `src/navegacion/` | El marco de las pantallas con sesión (barra, menú y «Saltar al contenido»), las rutas y el menú de cada rol (`menu.js`). |
 | `src/sesion/` | La sesión (D-28, D-31): se guarda en el navegador, vence a las 8 horas, se cierra con un 401 y vuelve a la pantalla anterior si entra el mismo usuario. |
 | `src/api/` | El cliente de la API: el token, el idioma y los errores `application/problem+json` del backend. |
-| `src/componentes/` | Piezas comunes: campos, avisos, tarjetas, títulos, la marca y los selectores de idioma y tema. |
-| `src/validacion/` | Los esquemas de Yup de las páginas escritas a mano (RP-07), con los mismos límites y mensajes del backend. La contraseña nueva de Cambiar contraseña usa la validación generada de la contraseña de un usuario, en el orden en que la API escoge el error. En `reglas.js` va también lo que usan las validaciones generadas, como leer un número escrito con coma o con punto. |
+| `src/componentes/` | Piezas comunes: campos, avisos, tarjetas, títulos, la marca, los selectores de idioma y tema, y el estilo de lo que solo leen los lectores de pantalla (`ocultoALaVista.js`). |
+| `src/validacion/` | Los esquemas de Yup de las páginas escritas a mano (RP-07), con los mismos límites y mensajes del backend; el de Nuevo lote va con su pantalla, en `src/lote/`. La contraseña nueva de Cambiar contraseña usa la validación generada de la contraseña de un usuario, en el orden en que la API escoge el error. En `reglas.js` va también lo que usan las validaciones generadas, como leer un número escrito con coma o con punto. |
 | `src/i18n/` | Los idiomas (RP-11): español por defecto e inglés. |
 | `src/tema/` | Los tokens de color, letra y medidas (`tokens.js`) y el tema de Material UI, claro y oscuro (RP-08). |
 | `herramientas/` | La lectura de los `.properties` del backend (plugin de Vite), la copia en espejo que usan el entorno de punta a punta y la demostración, y la demostración de otra temática (`otra-tematica.js`). |
@@ -84,7 +85,7 @@ Las contraseñas y la clave de los tokens son nuevas en cada corrida. Quedan en 
 
 En PowerShell, por ejemplo: `$env:INSPECTIA_E2E_SIN_FIREFOX = '1'; npm run e2e:playwright`.
 
-Las pruebas que solo miran, como las generadas de los permisos de una pantalla, entran con `personaDelRol`, que da la persona fija del entorno para cada rol. Las que cambian datos crean los suyos por la API, así no chocan entre navegadores: usuarios con `crearUsuario` y empresas con `crearEmpresa`, con un NIT válido nuevo. Las de la pantalla de usuarios registran cada una su propia empresa y entran con su administrador, para no llenar los 25 activos de Cacaos del Huila; las de rangos, también, porque guardar cambia los rangos de la empresa. En Selenium, `escribirEn` reemplaza el texto de un campo con el teclado: `clear()` cambia el valor sin el evento que escucha React. Como la lista va de 20 en 20, `botonDeLaFila` pasa de página hasta encontrar la fila; en cada página espera que cambien las filas, porque el rango cambia antes de que lleguen.
+Las pruebas que solo miran, como las generadas de los permisos de una pantalla, entran con `personaDelRol`, que da la persona fija del entorno para cada rol. Las que cambian datos crean los suyos por la API, así no chocan entre navegadores: usuarios con `crearUsuario` y empresas con `crearEmpresa`, con un NIT válido nuevo. Las de la pantalla de usuarios registran cada una su propia empresa y entran con su administrador, para no llenar los 25 activos de Cacaos del Huila; las de rangos, también, porque guardar cambia los rangos de la empresa. Las de los lotes crean cada una su empresa con su usuario final (`crearEmpresaConUsuarioFinal`) y registran sus lotes por la API (`registrarLotes`): los navegadores corren a la vez sobre la misma base, y así ninguna prueba ve los lotes de otra. En Selenium, `escribirEn` reemplaza el texto de un campo con el teclado: `clear()` cambia el valor sin el evento que escucha React. Como la lista va de 20 en 20, `botonDeLaFila` pasa de página hasta encontrar la fila; en cada página espera que cambien las filas, porque el rango cambia antes de que lleguen.
 
 Si una prueba de Selenium falla, su captura (`.png`) y la consola del navegador (`.consola.log`, que empieza con la prueba, el error, la dirección y la hora) quedan en `reports/selenium/`. No van en `test-results/` porque Playwright vacía esa carpeta en cada corrida.
 

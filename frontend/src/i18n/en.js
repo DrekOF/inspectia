@@ -4,9 +4,9 @@
  *              comparte con el backend no van aquí: salen de sus archivos .properties
  *              (herramientas/textos-del-backend.js). Los marcadores van entre llaves, como en el backend.
  * Fecha de creación: 20/10/2026
- * Actualización: 02/11/2026
+ * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.3
+ * Versión: 1.5
  */
 
 /** Textos en inglés, por clave. Tiene las mismas claves que es.js (i18n.test.js lo revisa). */
@@ -147,4 +147,45 @@ export default {
   'acercaDe.proyectoTexto': 'Final project of the Artificial Intelligence course, Software Engineering Program, Universidad Surcolombiana. Team: Cristhian Eduardo Sánchez Mosquera, Julián Andrés Silva Morales and Jhon Jairo Perdomo Perdomo. Professor: Juan Antonio Castro Silva.',
   'acercaDe.version': 'Version {version}',
   'acercaDe.volver': 'Back to Sign in',
+  'pasos.titulo': 'Analysis steps',
+  'pasos.datos': 'Lot details',
+  'pasos.fotos': 'Sample photos',
+  'pasos.resultado': 'Result',
+  'pasos.listo': '(done)',
+  'pasos.deTotal': 'Step {numero} of {total}',
+  'nuevoLote.titulo': 'New lot',
+  'nuevoLote.subtitulo': 'Enter the lot details. Then you will take the sample photos.',
+  'nuevoLote.formulario': 'Lot details',
+  'nuevoLote.ayudaCodigo': 'It cannot repeat within your company.',
+  'nuevoLote.ayudaFecha': 'It cannot be later than today or more than a year ago.',
+  'nuevoLote.ayudaOrigen': 'We suggest the ones your company already used, so the statistics group them correctly.',
+  'nuevoLote.sugerencias': 'Farms and suppliers your company already used',
+  'nuevoLote.opcional': '(optional)',
+  'nuevoLote.ejemploObservaciones': 'For example: October harvest, sun-dried.',
+  'nuevoLote.continuar': 'Continue to the photos',
+  'nuevoLote.codigoRepetido': 'A lot with code {codigo} already exists in your company. Use another code.',
+  'historial.titulo': 'Lot history',
+  'historial.subtitulo': 'The lots of {empresa}, from the most recent to the oldest.',
+  'historial.lista': 'Company lots',
+  'historial.codigo': 'Code',
+  'historial.vacia': 'Your company has no lots yet.',
+  'historial.paginas': 'History pages',
+  'historial.cuenta_one': '{count} lot · 20 per page',
+  'historial.cuenta_many': '{count} lots · 20 per page',
+  'historial.cuenta_other': '{count} lots · 20 per page',
+  'historial.paginaAnterior': 'Previous page',
+  'historial.paginaSiguiente': 'Next page',
+  'historial.pagina': 'Page {pagina}',
+  'fotos.titulo': 'Sample photos',
+  'fotos.descripcion': 'Lot {codigo} · {origen}. The lot was registered and is pending analysis.',
+  'fotos.tusFotos': 'Your photos',
+  'fotos.pronto': 'Soon you will be able to upload the sample photos here.',
+  'guia.titulo': 'Capture guide',
+  'guia.ejemplo': 'Example of a correct photo: whole beans, apart from each other, on white paper, seen from above',
+  'guia.ejemploTitulo': 'Example of a correct photo',
+  'guia.granos': 'Between 100 and 150 beans, split into 2 or 3 photos (about 50 per photo).',
+  'guia.papel': 'Whole beans on white paper, apart from each other.',
+  'guia.luz': 'Soft light, without strong shadows.',
+  'guia.arriba': 'Take the photo from above, holding the phone still.',
+  'guia.formato': 'JPG or PNG, up to 10 MB each.',
 };

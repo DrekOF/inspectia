@@ -2,15 +2,17 @@
  * Nombre: ayudas.js (e2e)
  * Descripción: Ayudas de las pruebas de punta a punta con Playwright: los datos del entorno aislado, la persona
  *              de cada rol, crear usuarios y empresas propios por la API para las pruebas que cambian datos,
- *              iniciar y cerrar sesión, y buscar una fila en la lista de una pantalla generada.
+ *              iniciar y cerrar sesión, buscar una fila en la lista de una pantalla generada, y una empresa propia
+ *              con su usuario final y sus lotes, para las pruebas de los lotes (RF-04, RF-14).
  * Fecha de creación: 20/10/2026
- * Actualización: 27/10/2026
+ * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.2
+ * Versión: 1.4
  */
 import { randomUUID } from 'node:crypto';
 import { test as base, expect } from '@playwright/test';
 import { datos, empresaNueva } from './entorno/datos.js';
+import { diaEnColombia } from './fechas.js';
 
 /*
  * Los datos del entorno aislado que arma e2e/entorno (backend, base y usuarios de cada corrida): el
@@ -99,6 +101,53 @@ export async function crearEmpresa(api) {
   });
   expect(respuesta.status()).toBe(201);
   return { ...empresa, id: (await respuesta.json()).id };
+}
+
+/**
+ * Una fecha de recepción de hace una semana en Colombia, para los lotes que no prueban la fecha. Es relativa a
+ * hoy: una fecha fija pasaría a ser de hace más de un año, y la app la rechazaría (RF-04).
+ */
+export const RECEPCION = diaEnColombia(-7);
+
+/**
+ * Una empresa nueva con un usuario final, creados por la API: así cada prueba de los lotes tiene los suyos y no ve
+ * los de las demás, que corren a la vez sobre la misma base.
+ *
+ * @param {import('@playwright/test').APIRequestContext} api el cliente de la API de Playwright
+ * @returns {Promise<{ empresa: object, usuarioFinal: { nombre: string, correo: string, contrasena: string } }>}
+ *   la empresa y su usuario final
+ */
+export async function crearEmpresaConUsuarioFinal(api) {
+  const empresa = await crearEmpresa(api);
+  const usuarioFinal = { nombre: 'Marta Ruiz', correo: `marta.${randomUUID().slice(0, 8)}@cacaoandino.test`,
+    contrasena: CONTRASENA, rol: 'USUARIO_FINAL' };
+  const respuesta = await api.post('/api/v1/usuarios', {
+    data: usuarioFinal, headers: { Authorization: `Bearer ${await tokenDe(api, empresa.administrador)}` },
+  });
+  expect(respuesta.status()).toBe(201);
+  return { empresa, usuarioFinal };
+}
+
+/**
+ * Registra lotes por la API con un usuario final, uno detrás de otro (RF-04).
+ *
+ * @param {import('@playwright/test').APIRequestContext} api el cliente de la API de Playwright
+ * @param {{ correo: string, contrasena: string }} persona el usuario final
+ * @param {Array<{ codigo: string, origen?: string }>} lotes los lotes
+ * @returns {Promise<object[]>} los lotes registrados, como los responde la API
+ */
+export async function registrarLotes(api, persona, lotes) {
+  const token = await tokenDe(api, persona);
+  const registrados = [];
+  for (const { codigo, origen = 'Finca La Esperanza' } of lotes) {
+    const respuesta = await api.post('/api/v1/lotes', {
+      data: { codigo, fechaRecepcion: RECEPCION, origen, observaciones: null },
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    expect(respuesta.status(), `registrar ${codigo}`).toBe(201);
+    registrados.push(await respuesta.json());
+  }
+  return registrados;
 }
 
 /**
