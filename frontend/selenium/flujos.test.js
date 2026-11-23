@@ -1,21 +1,38 @@
 /*
  * Nombre: flujos.test.js
  * Descripción: Pruebas con Selenium de los flujos principales (RP-14): entrar con el menú del rol, los datos
- *              errados, cambiar la contraseña, registrar una empresa, crear un usuario que entra y guardar unos
- *              rangos propios y restaurar los de D-10, en Chrome y en Edge, en tamaño de PC y de celular
- *              (RNF-05). Con INSPECTIA_E2E_SIN_EDGE=1 salta Edge, como en la CI. Si una falla, guarda su captura y
- *              la consola del navegador en reports/selenium.
+ *              errados, cambiar la contraseña, registrar una empresa, crear un usuario que entra, guardar unos
+ *              rangos propios y restaurar los de D-10, y registrar un lote que pasa a las fotos y queda pendiente
+ *              en el historial, en Chrome y en Edge, en tamaño de PC y de celular (RNF-05). Con
+ *              INSPECTIA_E2E_SIN_EDGE=1 salta Edge, como en la CI. Si una falla, guarda su captura y la consola del
+ *              navegador en reports/selenium.
  * Fecha de creación: 20/10/2026
- * Actualización: 09/11/2026
+ * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.4
+ * Versión: 1.5
  */
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { Key } from 'selenium-webdriver';
 import {
   abrirNavegador, APP, boton, Browser, By, campo, campoDelGrupo, CELULAR, CONTRASENA, crearEmpresa, crearUsuario,
   datos, descartarConsola, desactivarUsuario, empresaNueva, entrar, escribirEn, esperar, esperarTexto, guardarFalla,
 } from './ayudas.js';
+
+/**
+ * Escribe una fecha (aaaa-mm-dd) en un campo de fecha. Con sendKeys, el formato depende del idioma del navegador;
+ * así se pone el valor con el setter del navegador y se avisa con un evento input, que React sí recibe.
+ *
+ * @param {import('selenium-webdriver').WebDriver} driver el navegador
+ * @param {import('selenium-webdriver').WebElement} elemento el campo de fecha
+ * @param {string} fecha la fecha
+ */
+async function escribirFecha(driver, elemento, fecha) {
+  await driver.executeScript(`
+    const [campoDeFecha, valor] = arguments;
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(campoDeFecha, valor);
+    campoDeFecha.dispatchEvent(new Event('input', { bubbles: true }));`, elemento, fecha);
+}
 
 /**
  * Los navegadores, cada uno en tamaño de PC y de celular. Con INSPECTIA_E2E_SIN_EDGE=1 se salta Edge, como en la CI:
@@ -184,6 +201,34 @@ describe.each(COMBINACIONES)('%s en %s', (_, navegador, __, celular) => {
       expect(await valorDe('Premium o Especial', 'Recomendación')).toBe('Apto para mercado especial o de exportación.');
     } finally {
       await driver.executeScript('localStorage.clear()');
+    }
+  });
+
+  it('RF-04 · C1 · el usuario final registra un lote en la pantalla, pasa a las fotos y lo ve pendiente en el historial (Selenium)', async () => {
+    const luis = await crearUsuario();
+    const codigo = `S-${randomUUID().slice(0, 8)}`;
+    try {
+      await entrar(driver, luis);
+      await esperarTexto(driver, 'Hola, Luis');
+      await driver.get(`${APP}/lotes/nuevo`);
+      await (await campo(driver, 'Código del lote')).sendKeys(codigo);
+      await escribirFecha(driver, await campo(driver, 'Fecha de recepción'), '2026-11-02');
+      const origen = await campo(driver, 'Finca o proveedor');
+      await origen.sendKeys('Finca La Esperanza');
+      // Cierra las sugerencias de la finca, para que no tapen el botón.
+      await origen.sendKeys(Key.ESCAPE);
+      await (await boton(driver, 'Continuar a las fotos')).click();
+      await esperarTexto(driver, `Lote ${codigo} · Finca La Esperanza.`);
+      await esperarTexto(driver, 'Guía de captura');
+
+      await driver.get(`${APP}/historial`);
+      // El estado se busca en la fila del lote (o en su tarjeta, en el celular): la empresa de prueba tiene más
+      // lotes pendientes, de las otras combinaciones y de corridas anteriores.
+      await esperar(driver, By.xpath(`//*[self::tr or self::li][.//*[normalize-space()='${codigo}']]`
+        + "//*[normalize-space()='Pendiente de análisis']"));
+    } finally {
+      await driver.executeScript('localStorage.clear()');
+      await desactivarUsuario(luis.id);
     }
   });
 });

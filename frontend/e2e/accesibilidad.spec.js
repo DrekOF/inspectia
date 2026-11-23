@@ -1,14 +1,18 @@
 /*
  * Nombre: accesibilidad.spec.js
  * Descripción: Pruebas de accesibilidad de punta a punta (RNF-06 C4, RP-08): axe revisa las pautas WCAG 2.2 AA
- *              en cada pantalla de esta versión y en los dos temas, y se inicia sesión solo con el teclado.
+ *              en cada pantalla de esta versión y en los dos temas, también en las de los lotes (RF-04, RF-14), y se
+ *              inicia sesión solo con el teclado.
  * Fecha de creación: 20/10/2026
- * Actualización: 20/10/2026
+ * Actualización: 22/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
+import { randomUUID } from 'node:crypto';
 import AxeBuilder from '@axe-core/playwright';
-import { datos, escribirYEntrar, expect, iniciarSesion, test } from './ayudas.js';
+import {
+  crearEmpresaConUsuarioFinal, datos, escribirYEntrar, expect, iniciarSesion, registrarLotes, test,
+} from './ayudas.js';
 
 const PAUTAS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 
@@ -40,9 +44,10 @@ async function revisarPantallas(page, esquema) {
   await sinFallas(page, 'Acerca de, sin sesión');
   await iniciarSesion(page, datos.adminEmpresa);
   await sinFallas(page, 'Inicio');
-  for (const ruta of ['/cambiar-contrasena', '/acerca-de', '/estadisticas']) {
+  for (const ruta of ['/cambiar-contrasena', '/acerca-de', '/estadisticas', '/historial']) {
     await page.goto(ruta);
     await expect(page.getByRole('main')).toBeVisible();
+    await expect(page.getByRole('progressbar')).toHaveCount(0);
     await sinFallas(page, ruta);
   }
 }
@@ -53,6 +58,27 @@ test('RNF-06 · C4 · las pantallas de esta versión no tienen fallas de accesib
 
 test('RNF-06 · C4 · las pantallas de esta versión no tienen fallas de accesibilidad WCAG AA en el tema oscuro', async ({ page }) => {
   await revisarPantallas(page, 'dark');
+});
+
+test('RNF-06 · C4 · las pantallas de los lotes no tienen fallas de accesibilidad WCAG AA en los dos temas, tampoco con los errores del formulario a la vista', async ({ page, request }) => {
+  const { usuarioFinal } = await crearEmpresaConUsuarioFinal(request);
+  const [lote] = await registrarLotes(request, usuarioFinal, [{ codigo: `A-${randomUUID().slice(0, 8)}` }]);
+  await iniciarSesion(page, usuarioFinal);
+  for (const esquema of ['light', 'dark']) {
+    await page.emulateMedia({ colorScheme: esquema });
+    await page.goto('/lotes/nuevo');
+    await expect(page.getByRole('heading', { name: 'Nuevo lote' })).toBeVisible();
+    await sinFallas(page, `Nuevo lote, tema ${esquema}`);
+    await page.getByRole('button', { name: 'Continuar a las fotos' }).click();
+    await expect(page.getByText('Este dato es obligatorio.').first()).toBeVisible();
+    await sinFallas(page, `Nuevo lote con los errores, tema ${esquema}`);
+    await page.goto('/historial');
+    await expect(page.getByText(lote.codigo, { exact: true })).toBeVisible();
+    await sinFallas(page, `Historial, tema ${esquema}`);
+    await page.goto(`/lotes/${lote.id}/fotos`);
+    await expect(page.getByRole('region', { name: 'Guía de captura' })).toBeVisible();
+    await sinFallas(page, `Fotos de la muestra, tema ${esquema}`);
+  }
 });
 
 test('RNF-06 · C4 · se inicia sesión solo con el teclado', async ({ page, isMobile }) => {
