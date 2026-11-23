@@ -1,10 +1,11 @@
 /*
  * Nombre: MuestraEntidad.java
- * Descripción: Entidad JPA de la tabla muestra (specs/entidades/muestra.json), del módulo de análisis (RF-05, D-25).
+ * Descripción: Entidad JPA de la tabla muestra (specs/entidades/muestra.json), del módulo de análisis (RF-05, RF-10,
+ *              RNF-02, D-25).
  * Fecha de creación: 23/11/2026
  * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis.adaptadores.jpa;
 
@@ -28,8 +29,10 @@ import org.hibernate.generator.EventType;
 /**
  * La tabla {@code muestra}. Su esquema lo genera {@code generador/} desde {@code specs/entidades/muestra.json} (V1);
  * esta entidad se escribe a mano, como {@link LoteEntidad}, porque la muestra es del módulo de análisis (D-21).
- * Hibernate valida al arrancar que coincida con la tabla. En este PR solo se usan los datos de la toma de fotos: el
- * resultado llega con el análisis (RF-10).
+ * Hibernate valida al arrancar que coincida con la tabla. Pasa de pendiente, mientras se toman las fotos, a «en
+ * espera» cuando se envía, a «en proceso» cuando la toma la cola ({@link ColaEnLaBase}) y a terminada con sus conteos,
+ * su modelo y la copia de los parámetros (RF-10 C6); terminarla o devolverla a pendiente son {@code UPDATE} con una
+ * condición sobre su estado ({@link MuestrasJpa}).
  */
 @Entity
 @Table(name = "muestra")

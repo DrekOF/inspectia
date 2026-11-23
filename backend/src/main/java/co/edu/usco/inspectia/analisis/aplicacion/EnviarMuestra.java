@@ -1,0 +1,103 @@
+/*
+ * Nombre: EnviarMuestra.java
+ * Descripción: Caso de uso de «Analizar la muestra»: envía a la cola la muestra en curso de un lote, con 2 o 3 fotos, y
+ *              despierta a la cola cuando se confirma (RF-05 C2, RNF-02 C3).
+ * Fecha de creación: 23/11/2026
+ * Actualización: 23/11/2026
+ * Autor: Equipo InspectIA
+ * Versión: 1.0
+ */
+package co.edu.usco.inspectia.analisis.aplicacion;
+
+import co.edu.usco.inspectia.analisis.dominio.EstadoDeLote;
+import co.edu.usco.inspectia.analisis.dominio.EstadoDeMuestra;
+import co.edu.usco.inspectia.analisis.dominio.ReglasDeFotos;
+import co.edu.usco.inspectia.comun.errores.CampoInvalido;
+import co.edu.usco.inspectia.comun.errores.ConflictoExcepcion;
+import co.edu.usco.inspectia.comun.errores.NoEncontradoExcepcion;
+import co.edu.usco.inspectia.comun.errores.ReglaIncumplidaExcepcion;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.UUID;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+/**
+ * «Analizar la muestra» (RF-05 C2, RNF-02 C3). La empresa y el usuario salen de la sesión (RNF-03). Bloquea el lote
+ * primero, como {@link SubirFotos#confirmar}: así no se cruza con una foto que se confirma al mismo tiempo.
+ *
+ * <ul>
+ *   <li>Sin muestra, o con una pendiente de menos de 2 fotos: 400 en {@code fotos}, sin cambiar nada (RF-05 C2).</li>
+ *   <li>Con una pendiente de 2 o 3 fotos: queda «en espera», con la fecha de envío y con quien la envía como quien la
+ *       analizó. Cuando la transacción se confirma, el evento {@link MuestraEnviada} despierta a la cola.</li>
+ *   <li>Ya «en espera» o «en proceso»: responde su avance sin cambiar nada, así un reintento es seguro.</li>
+ *   <li>Un lote analizado no se vuelve a analizar: 409. La segunda muestra (D-25) llega en otro PR.</li>
+ * </ul>
+ */
+@Service
+public class EnviarMuestra {
+
+    private final RepositorioDeLotes lotes;
+    private final RepositorioDeMuestras muestras;
+    private final ApplicationEventPublisher eventos;
+    private final Clock reloj;
+
+    /**
+     * Crea el caso de uso; Spring le pasa sus dependencias.
+     *
+     * @param lotes los lotes guardados
+     * @param muestras las muestras y sus fotos
+     * @param eventos para despertar a la cola después de confirmar
+     * @param reloj el reloj de la aplicación, en UTC
+     */
+    public EnviarMuestra(RepositorioDeLotes lotes, RepositorioDeMuestras muestras, ApplicationEventPublisher eventos,
+            Clock reloj) {
+        this.lotes = lotes;
+        this.muestras = muestras;
+        this.eventos = eventos;
+        this.reloj = reloj;
+    }
+
+    /**
+     * Envía a analizar la muestra en curso del lote.
+     *
+     * @param empresaId la empresa de la sesión
+     * @param usuarioId el usuario de la sesión, que queda como quien analizó la muestra
+     * @param loteId el lote
+     * @return el avance de la muestra: «en espera», o el que ya tenía si se había enviado
+     * @throws NoEncontradoExcepcion si el lote no existe o es de otra empresa (404, RNF-03 C1)
+     * @throws ConflictoExcepcion si el lote ya tiene su resultado (409)
+     * @throws ReglaIncumplidaExcepcion si la muestra no tiene al menos 2 fotos (400 en {@code fotos}, RF-05 C2)
+     */
+    @Transactional
+    public AvanceDelAnalisis enviar(UUID empresaId, UUID usuarioId, UUID loteId) {
+        EstadoDeLote estado = lotes.estadoParaActualizar(empresaId, loteId)
+                .orElseThrow(() -> new NoEncontradoExcepcion("lote " + loteId));
+        if (estado != EstadoDeLote.PENDIENTE) {
+            throw new ConflictoExcepcion("analisis.lote_analizado");
+        }
+        MuestraEnCurso muestra = muestras.muestraEnCurso(empresaId, loteId).orElseThrow(EnviarMuestra::faltanFotos);
+        if (muestra.estado() == EstadoDeMuestra.EN_ESPERA || muestra.estado() == EstadoDeMuestra.EN_PROCESO) {
+            return muestras.avance(empresaId, loteId).orElseThrow();
+        }
+        if (muestra.estado() != EstadoDeMuestra.PENDIENTE) {
+            throw new ConflictoExcepcion("analisis.lote_analizado");
+        }
+        if (!ReglasDeFotos.alcanzanParaAnalizar(muestras.fotos(empresaId, muestra.id()).size())) {
+            throw faltanFotos();
+        }
+        // PostgreSQL guarda microsegundos: así la fecha que se responde es la misma que queda guardada.
+        Instant ahora = reloj.instant().truncatedTo(ChronoUnit.MICROS);
+        muestras.enviar(empresaId, muestra.id(), usuarioId, ahora);
+        eventos.publishEvent(new MuestraEnviada(muestra.id()));
+        return AvanceDelAnalisis.de(muestra.numero(), EstadoDeMuestra.EN_ESPERA, ahora, null, null);
+    }
+
+    /** La muestra necesita al menos 2 fotos (RF-05 C2); el mensaje dice qué hacer (RNF-06 C3). */
+    private static ReglaIncumplidaExcepcion faltanFotos() {
+        return new ReglaIncumplidaExcepcion(List.of(new CampoInvalido("fotos", "analisis.fotos.minimo")));
+    }
+}

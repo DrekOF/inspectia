@@ -1,16 +1,18 @@
 /*
  * Nombre: RepositorioDeLotes.java
- * Descripción: Puerto de los lotes guardados: registrar, revisar el código y consultar el historial (RF-04,
- *              RF-14).
+ * Descripción: Puerto de los lotes guardados: registrar, revisar el código, consultar el historial, y guardar y
+ *              consultar el resultado (RF-04, RF-10, RF-12, RF-14).
  * Fecha de creación: 10/11/2026
  * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 package co.edu.usco.inspectia.analisis.aplicacion;
 
 import co.edu.usco.inspectia.analisis.dominio.EstadoDeLote;
 import co.edu.usco.inspectia.analisis.dominio.Lote;
+import co.edu.usco.inspectia.analisis.dominio.ResultadoDelLote;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -79,11 +81,31 @@ public interface RepositorioDeLotes {
 
     /**
      * El estado de un lote de la empresa, bloqueando su fila hasta el final de la transacción: así dos fotos que se
-     * confirman a la vez no crean dos muestras ni se pisan (RF-05).
+     * confirman a la vez no crean dos muestras ni se pisan (RF-05), y confirmar una foto, enviar la muestra y guardar
+     * su resultado se ordenan entre sí, siempre con el lote primero.
      *
      * @param empresaId la empresa
      * @param id el lote
      * @return el estado, o vacío si el lote no existe o es de otra empresa
      */
     Optional<EstadoDeLote> estadoParaActualizar(UUID empresaId, UUID id);
+
+    /**
+     * Guarda el resultado de un lote y lo deja analizado (RF-10 C6, RF-12). Se llama con el lote ya bloqueado.
+     *
+     * @param empresaId la empresa
+     * @param id el lote
+     * @param resultado el porcentaje corregido, su margen, la categoría, la recomendación, la sugerencia y el aviso
+     * @param fechaResultado la fecha del resultado, al microsegundo
+     */
+    void guardarResultado(UUID empresaId, UUID id, ResultadoDelLote resultado, Instant fechaResultado);
+
+    /**
+     * El resultado guardado de un lote de la empresa, sin recalcularlo (RF-14 C3).
+     *
+     * @param empresaId la empresa
+     * @param id el lote
+     * @return el resultado, o vacío si el lote no existe o es de otra empresa
+     */
+    Optional<ResultadoGuardado> resultado(UUID empresaId, UUID id);
 }

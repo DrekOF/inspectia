@@ -1,11 +1,11 @@
 /*
  * Nombre: LoteEntidad.java
- * Descripción: Entidad JPA de la tabla lote (specs/entidades/lote.json), del módulo de análisis (RF-04, RF-12,
- *              RF-14).
+ * Descripción: Entidad JPA de la tabla lote (specs/entidades/lote.json), del módulo de análisis (RF-04, RF-10,
+ *              RF-12, RF-14), con el margen del porcentaje (P-19).
  * Fecha de creación: 10/11/2026
  * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 package co.edu.usco.inspectia.analisis.adaptadores.jpa;
 
@@ -82,6 +82,13 @@ public class LoteEntidad {
     /** Porcentaje de granos sanos, con 1 decimal; vacío mientras está pendiente (RF-10). */
     @Column(name = "porcentaje_sanos", precision = 4, scale = 1)
     private BigDecimal porcentajeSanos;
+
+    /**
+     * Margen del porcentaje, en puntos y con 1 decimal; vacío mientras está pendiente (RF-10, P-19). Se guarda con el
+     * resultado: si P-19 cambia el cálculo, los lotes ya analizados no cambian (D-43).
+     */
+    @Column(name = "margen", precision = 4, scale = 1)
+    private BigDecimal margen;
 
     /** Categoría probable; vacía mientras está pendiente (RF-12). */
     @Column(name = "categoria", length = 30)

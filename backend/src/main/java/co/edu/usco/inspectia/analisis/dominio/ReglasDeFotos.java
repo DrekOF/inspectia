@@ -1,11 +1,11 @@
 /*
  * Nombre: ReglasDeFotos.java
- * Descripción: Las reglas de las fotos de una muestra (RF-05): de 1 a 3 por muestra, JPG o PNG, de hasta 10 MB, y un
- *              contenido que empieza como su formato.
+ * Descripción: Las reglas de las fotos de una muestra (RF-05): de 1 a 3 por muestra, al menos 2 para analizarla, JPG
+ *              o PNG, de hasta 10 MB, y un contenido que empieza como su formato.
  * Fecha de creación: 23/11/2026
  * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis.dominio;
 
@@ -20,6 +20,9 @@ public final class ReglasDeFotos {
 
     /** Cuántas fotos tiene como máximo una muestra (RF-05 C2). */
     public static final int MAXIMO_DE_FOTOS = 3;
+
+    /** Cuántas fotos necesita una muestra como mínimo para analizarla (RF-05 C2, D-23). */
+    public static final int MINIMO_DE_FOTOS = 2;
 
     private ReglasDeFotos() {
     }
@@ -63,5 +66,15 @@ public final class ReglasDeFotos {
      */
     public static boolean esNumeroValido(int numero) {
         return numero >= 1 && numero <= MAXIMO_DE_FOTOS;
+    }
+
+    /**
+     * Si una muestra tiene las fotos para analizarla: de 2 a 3 (RF-05 C2).
+     *
+     * @param fotos cuántas fotos confirmadas tiene la muestra
+     * @return {@code true} si tiene de 2 a 3
+     */
+    public static boolean alcanzanParaAnalizar(int fotos) {
+        return fotos >= MINIMO_DE_FOTOS && fotos <= MAXIMO_DE_FOTOS;
     }
 }

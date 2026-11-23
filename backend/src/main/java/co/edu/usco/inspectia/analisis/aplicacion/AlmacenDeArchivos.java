@@ -1,11 +1,12 @@
 /*
  * Nombre: AlmacenDeArchivos.java
  * Descripción: Puerto del almacén de los archivos de las muestras (D-21, D-41): los enlaces temporales para subir y
- *              ver una foto, y revisar o borrar un archivo. Lo implementan la carpeta local y, con el despliegue, S3.
+ *              ver una foto, y revisar, leer o borrar un archivo. Lo implementan la carpeta local y, con el
+ *              despliegue, S3.
  * Fecha de creación: 23/11/2026
  * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis.aplicacion;
 
@@ -46,6 +47,16 @@ public interface AlmacenDeArchivos {
      * @return el archivo, o vacío si no se subió
      */
     Optional<ArchivoGuardado> describir(String llave);
+
+    /**
+     * El contenido de un archivo ya subido, para mandárselo al clasificador de granos: el servidor le manda las fotos,
+     * no sus enlaces (specs/arquitectura.md).
+     *
+     * @param llave el archivo
+     * @return sus bytes
+     * @throws java.io.UncheckedIOException si el archivo no está o no se puede leer
+     */
+    byte[] leer(String llave);
 
     /**
      * Borra un archivo. Si ya no está, no hace nada.
