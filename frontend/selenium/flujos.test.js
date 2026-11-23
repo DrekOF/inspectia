@@ -2,23 +2,28 @@
  * Nombre: flujos.test.js
  * Descripción: Pruebas con Selenium de los flujos principales (RP-14): entrar con el menú del rol, los datos
  *              errados, cambiar la contraseña, registrar una empresa, crear un usuario que entra, guardar unos
- *              rangos propios y restaurar los de D-10, y registrar un lote que pasa a las fotos y queda pendiente
- *              en el historial, en Chrome y en Edge, en tamaño de PC y de celular (RNF-05). Con
- *              INSPECTIA_E2E_SIN_EDGE=1 salta Edge, como en la CI. Si una falla, guarda su captura y la consola del
- *              navegador en reports/selenium.
+ *              rangos propios y restaurar los de D-10, registrar un lote que pasa a las fotos y queda pendiente
+ *              en el historial, y subir dos fotos y volver a ellas con «Continuar», en Chrome y en Edge, en tamaño de
+ *              PC y de celular (RNF-05). Con INSPECTIA_E2E_SIN_EDGE=1 salta Edge, como en la CI. Si una falla,
+ *              guarda su captura y la consola del navegador en reports/selenium.
  * Fecha de creación: 20/10/2026
  * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.5
+ * Versión: 1.6
  */
 import { randomUUID } from 'node:crypto';
+import { rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { Key } from 'selenium-webdriver';
 import {
-  abrirNavegador, APP, boton, Browser, By, campo, campoDelGrupo, CELULAR, CONTRASENA, crearEmpresa, crearUsuario,
-  datos, descartarConsola, desactivarUsuario, empresaNueva, entrar, escribirEn, esperar, esperarTexto, guardarFalla,
+  abrirNavegador, APP, archivoDeLaFoto, boton, Browser, By, campo, campoDelGrupo, CELULAR, CONTRASENA, crearEmpresa,
+  crearUsuario, datos, descartarConsola, desactivarUsuario, empresaNueva, entrar, escribirEn, esperar, esperarTexto,
+  guardarFalla, registrarLote,
 } from './ayudas.js';
 import { diaEnColombia } from '../e2e/fechas.js';
+import { png } from '../e2e/imagenes.js';
 
 /**
  * Escribe una fecha (aaaa-mm-dd) en un campo de fecha. Con sendKeys, el formato depende del idioma del navegador;
@@ -228,6 +233,44 @@ describe.each(COMBINACIONES)('%s en %s', (_, navegador, __, celular) => {
       await esperar(driver, By.xpath(`//*[self::tr or self::li][.//*[normalize-space()='${codigo}']]`
         + "//*[normalize-space()='Pendiente de análisis']"));
     } finally {
+      await driver.executeScript('localStorage.clear()');
+      await desactivarUsuario(luis.id);
+    }
+  });
+
+  it('RF-14 · C5 · el usuario final sube dos fotos, las ve cargadas, y desde «Continuar» del historial vuelve a ellas (Selenium)', async () => {
+    const luis = await crearUsuario();
+    const lote = await registrarLote(luis, `S-${randomUUID().slice(0, 8)}`, diaEnColombia(-7));
+    // Selenium elige archivos por su ruta: las fotos se escriben en la carpeta temporal y se borran al terminar.
+    const fotos = [1, 2].map((numero) => join(tmpdir(), `inspectia-selenium-${randomUUID().slice(0, 8)}-${numero}.png`));
+    fotos.forEach((ruta, indice) => writeFileSync(ruta, png({ color: [107, 63 + 40 * indice, 34] })));
+    /**
+     * Espera que la foto se vea entera, cargada desde su enlace.
+     *
+     * @param {number} numero el número de la foto
+     */
+    const seVe = async (numero) => {
+      const imagen = await esperar(driver, By.css(`img[alt="Foto ${numero} de la muestra"]`));
+      await driver.wait(() => driver.executeScript('return arguments[0].complete && arguments[0].naturalWidth > 0',
+        imagen), 15_000);
+    };
+    try {
+      await entrar(driver, luis);
+      await esperarTexto(driver, 'Hola, Luis');
+      await driver.get(`${APP}/lotes/${lote.id}/fotos`);
+      for (const [indice, ruta] of fotos.entries()) {
+        await (await archivoDeLaFoto(driver, indice + 1)).sendKeys(ruta);
+        await seVe(indice + 1);
+      }
+
+      await driver.get(`${APP}/historial`);
+      await (await boton(driver, `Continuar el lote ${lote.codigo}`)).click();
+
+      await seVe(1);
+      await seVe(2);
+      expect(await driver.getCurrentUrl()).toBe(`${APP}/lotes/${lote.id}/fotos`);
+    } finally {
+      fotos.forEach((ruta) => rmSync(ruta, { force: true }));
       await driver.executeScript('localStorage.clear()');
       await desactivarUsuario(luis.id);
     }
