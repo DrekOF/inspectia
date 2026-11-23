@@ -3,13 +3,14 @@
  * Descripción: Pruebas con Selenium de los flujos principales (RP-14): entrar con el menú del rol, los datos
  *              errados, cambiar la contraseña, registrar una empresa, crear un usuario que entra, guardar unos
  *              rangos propios y restaurar los de D-10, registrar un lote que pasa a las fotos y queda pendiente
- *              en el historial, y subir dos fotos y volver a ellas con «Continuar», en Chrome y en Edge, en tamaño de
+ *              en el historial, subir dos fotos y volver a ellas con «Continuar», y analizar la muestra y ver su
+ *              resultado, en Chrome y en Edge, en tamaño de
  *              PC y de celular (RNF-05). Con INSPECTIA_E2E_SIN_EDGE=1 salta Edge, como en la CI. Si una falla,
  *              guarda su captura y la consola del navegador en reports/selenium.
  * Fecha de creación: 20/10/2026
  * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.6
+ * Versión: 1.7
  */
 import { randomUUID } from 'node:crypto';
 import { rmSync, writeFileSync } from 'node:fs';
@@ -269,6 +270,37 @@ describe.each(COMBINACIONES)('%s en %s', (_, navegador, __, celular) => {
       await seVe(1);
       await seVe(2);
       expect(await driver.getCurrentUrl()).toBe(`${APP}/lotes/${lote.id}/fotos`);
+    } finally {
+      fotos.forEach((ruta) => rmSync(ruta, { force: true }));
+      await driver.executeScript('localStorage.clear()');
+      await desactivarUsuario(luis.id);
+    }
+  });
+
+  it('RF-10 · el usuario final sube dos fotos, pulsa «Analizar la muestra» y ve el resultado: 87 de 100 sanos dan 90,6 % (Selenium)', async () => {
+    const luis = await crearUsuario();
+    const lote = await registrarLote(luis, `S-${randomUUID().slice(0, 8)}`, diaEnColombia(-7));
+    // El clasificador falso marca como no sanos tantos granos como el ancho de la foto módulo 50: 6 y 7 de 100.
+    const fotos = [106, 107].map((ancho) => {
+      const ruta = join(tmpdir(), `inspectia-selenium-${randomUUID().slice(0, 8)}-${ancho}.png`);
+      writeFileSync(ruta, png({ ancho, alto: 100 }));
+      return ruta;
+    });
+    try {
+      await entrar(driver, luis);
+      await esperarTexto(driver, 'Hola, Luis');
+      await driver.get(`${APP}/lotes/${lote.id}/fotos`);
+      for (const [indice, ruta] of fotos.entries()) {
+        await (await archivoDeLaFoto(driver, indice + 1)).sendKeys(ruta);
+        await esperar(driver, By.css(`img[alt="Foto ${indice + 1} de la muestra"]`));
+      }
+
+      await (await boton(driver, 'Analizar la muestra')).click();
+
+      await esperarTexto(driver, `Resultado del lote ${lote.codigo}`);
+      await esperarTexto(driver, '87 de 100 marcados como sanos');
+      await esperarTexto(driver, 'Rango probable: entre 83,1 y 98,1 %');
+      expect(await driver.getCurrentUrl()).toBe(`${APP}/lotes/${lote.id}`);
     } finally {
       fotos.forEach((ruta) => rmSync(ruta, { force: true }));
       await driver.executeScript('localStorage.clear()');
