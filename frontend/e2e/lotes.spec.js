@@ -1,9 +1,9 @@
 /*
  * Nombre: lotes.spec.js
  * Descripción: Pruebas de punta a punta de los lotes (RF-04, RF-14, RNF-03): registrar un lote en la pantalla y
- *              verlo pendiente en el historial, el código repetido, la fecha posterior a hoy, las sugerencias de
- *              finca o proveedor sin tildes, con el alto de los demás campos y sin el botón «Clear», el historial
- *              sin lotes de otra empresa y sus páginas de 20.
+ *              verlo pendiente en el historial, el código repetido, la fecha posterior a hoy o de hace más de un
+ *              año, las sugerencias de finca o proveedor sin tildes, con el alto de los demás campos y sin el botón
+ *              «Clear», el historial sin lotes de otra empresa y sus páginas de 20.
  * Fecha de creación: 22/11/2026
  * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
@@ -13,6 +13,7 @@ import { randomUUID } from 'node:crypto';
 import {
   crearEmpresaConUsuarioFinal, expect, iniciarSesion, RECEPCION, registrarLotes, test,
 } from './ayudas.js';
+import { diaAnterior, diaEnColombia, haceUnAnioEnColombia } from './fechas.js';
 
 /**
  * Un código de lote nuevo en cada prueba y en cada navegador: las pruebas corren a la vez sobre la misma base.
@@ -22,19 +23,6 @@ import {
  */
 function codigoNuevo(prefijo = 'E2E') {
   return `${prefijo}-${randomUUID().slice(0, 8)}`;
-}
-
-/**
- * Hoy en Colombia, más unos días, en el formato de un campo de fecha (aaaa-mm-dd).
- *
- * @param {number} dias los días que se suman
- * @returns {string} la fecha
- */
-function enColombia(dias) {
-  const hoy = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date());
-  const fecha = new Date(`${hoy}T12:00:00Z`);
-  fecha.setUTCDate(fecha.getUTCDate() + dias);
-  return fecha.toISOString().slice(0, 10);
 }
 
 /**
@@ -103,12 +91,27 @@ test('RF-04 · C4 · una fecha de recepción posterior a hoy en Colombia se rech
   const { usuarioFinal } = await crearEmpresaConUsuarioFinal(request);
   await iniciarSesion(page, usuarioFinal);
   await page.goto('/lotes/nuevo');
-  await expect(page.getByLabel('Fecha de recepción')).toHaveAttribute('max', enColombia(0));
+  await expect(page.getByLabel('Fecha de recepción')).toHaveAttribute('max', diaEnColombia(0));
 
-  await registrarEnLaPantalla(page, { codigo: codigoNuevo('L'), fecha: enColombia(1) });
+  await registrarEnLaPantalla(page, { codigo: codigoNuevo('L'), fecha: diaEnColombia(1) });
   await expect(page.getByText('La fecha de recepción no puede ser posterior a hoy.')).toBeVisible();
 
-  await page.getByLabel('Fecha de recepción').fill(enColombia(0));
+  await page.getByLabel('Fecha de recepción').fill(diaEnColombia(0));
+  await page.getByRole('button', { name: 'Continuar a las fotos' }).click();
+  await expect(page.getByRole('heading', { name: 'Fotos de la muestra' })).toBeVisible();
+});
+
+test('RF-04 · una fecha de recepción de hace más de un año en Colombia se rechaza en la pantalla, y la de hace exactamente un año pasa (prueba de límite, de punta a punta)', async ({ page, request }) => {
+  const { usuarioFinal } = await crearEmpresaConUsuarioFinal(request);
+  const haceUnAnio = haceUnAnioEnColombia();
+  await iniciarSesion(page, usuarioFinal);
+  await page.goto('/lotes/nuevo');
+  await expect(page.getByLabel('Fecha de recepción')).toHaveAttribute('min', haceUnAnio);
+
+  await registrarEnLaPantalla(page, { codigo: codigoNuevo('L'), fecha: diaAnterior(haceUnAnio) });
+  await expect(page.getByText('La fecha de recepción no puede ser de hace más de un año.')).toBeVisible();
+
+  await page.getByLabel('Fecha de recepción').fill(haceUnAnio);
   await page.getByRole('button', { name: 'Continuar a las fotos' }).click();
   await expect(page.getByRole('heading', { name: 'Fotos de la muestra' })).toBeVisible();
 });

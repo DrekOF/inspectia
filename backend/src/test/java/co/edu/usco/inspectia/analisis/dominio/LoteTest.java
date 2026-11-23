@@ -2,9 +2,9 @@
  * Nombre: LoteTest.java
  * Descripción: Pruebas unitarias de las reglas del registro de un lote en el dominio, sin Spring (RF-04).
  * Fecha de creación: 10/11/2026
- * Actualización: 10/11/2026
+ * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis.dominio;
 
@@ -44,6 +44,28 @@ class LoteTest {
                 null, HOY)).isInstanceOf(FechaDeRecepcionFuturaExcepcion.class);
         assertThat(Lote.registrar(EMPRESA, USUARIO, "L-001", HOY, "Finca La Esperanza", null, HOY).getFechaRecepcion())
                 .isEqualTo(HOY);
+    }
+
+    @Test
+    @DisplayName("RF-04 · el dominio acepta una fecha de recepción de hace exactamente un año y rechaza la del día anterior (prueba de límite)")
+    void fechaNoAnteriorAUnAnio() {
+        LocalDate haceUnAnio = LocalDate.of(2025, 11, 9);
+
+        assertThat(Lote.registrar(EMPRESA, USUARIO, "L-001", haceUnAnio, "Finca La Esperanza", null, HOY)
+                .getFechaRecepcion()).isEqualTo(haceUnAnio);
+        assertThatThrownBy(() -> Lote.registrar(EMPRESA, USUARIO, "L-001", haceUnAnio.minusDays(1),
+                "Finca La Esperanza", null, HOY)).isInstanceOf(FechaDeRecepcionAntiguaExcepcion.class);
+    }
+
+    @Test
+    @DisplayName("RF-04 · si hoy es 29 de febrero, hace un año es el 28 de febrero del año anterior (prueba de límite)")
+    void haceUnAnioDesdeUnVeintinueveDeFebrero() {
+        LocalDate bisiesto = LocalDate.of(2028, 2, 29);
+
+        assertThat(Lote.registrar(EMPRESA, USUARIO, "L-001", LocalDate.of(2027, 2, 28), "Finca La Esperanza", null,
+                bisiesto).getFechaRecepcion()).isEqualTo(LocalDate.of(2027, 2, 28));
+        assertThatThrownBy(() -> Lote.registrar(EMPRESA, USUARIO, "L-001", LocalDate.of(2027, 2, 27),
+                "Finca La Esperanza", null, bisiesto)).isInstanceOf(FechaDeRecepcionAntiguaExcepcion.class);
     }
 
     @Test

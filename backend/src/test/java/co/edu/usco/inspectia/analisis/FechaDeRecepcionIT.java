@@ -1,15 +1,16 @@
 /*
  * Nombre: FechaDeRecepcionIT.java
- * Descripción: Prueba de límite de la fecha de recepción de un lote: no puede ser posterior a hoy, y «hoy»
- *              es el día en Colombia, no en UTC (RF-04 C4).
+ * Descripción: Pruebas de límite de la fecha de recepción de un lote: no puede ser posterior a hoy (RF-04 C4) ni
+ *              de hace más de un año (RF-04, restricción 4), y «hoy» es el día en Colombia, no en UTC.
  * Fecha de creación: 10/11/2026
- * Actualización: 10/11/2026
+ * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis;
 
 import static co.edu.usco.inspectia.analisis.ApiLotes.DATOS_INVALIDOS;
+import static co.edu.usco.inspectia.analisis.ApiLotes.FECHA_ANTIGUA;
 import static co.edu.usco.inspectia.analisis.ApiLotes.FECHA_FUTURA;
 import static co.edu.usco.inspectia.analisis.ApiLotes.datos;
 import static co.edu.usco.inspectia.usuario.sesion.ApiSesion.error;
@@ -52,6 +53,9 @@ class FechaDeRecepcionIT {
 
     /** Hoy en Colombia, con el reloj fijo. */
     private static final LocalDate HOY = LocalDate.of(2026, 11, 9);
+
+    /** Hace un año en Colombia, con el reloj fijo. Con un «hoy» en UTC sería el 10/11/2025. */
+    private static final LocalDate HACE_UN_ANIO = LocalDate.of(2025, 11, 9);
 
     /** El reloj del backend en estas pruebas: reemplaza al bean {@code reloj} de la aplicación. */
     @TestBean(name = "reloj", methodName = "relojDePrueba")
@@ -106,5 +110,31 @@ class FechaDeRecepcionIT {
 
         assertThat(resultado).hasStatus(HttpStatus.BAD_REQUEST);
         assertThat(errores(resultado)).containsExactly(error("fechaRecepcion", FECHA_FUTURA));
+    }
+
+    @Test
+    @DisplayName("RF-04 · la fecha de recepción puede ser de hace exactamente un año en Colombia, pero no del día anterior (prueba de límite)")
+    void noAnteriorAUnAnioEnColombia() {
+        MvcTestResult anterior = lotes.registrar(token,
+                datos("L-001", HACE_UN_ANIO.minusDays(1), "Finca La Esperanza", null));
+        MvcTestResult justo = lotes.registrar(token, datos("L-002", HACE_UN_ANIO, "Finca La Esperanza", null));
+
+        assertThat(anterior).hasStatus(HttpStatus.BAD_REQUEST);
+        assertThat(json(anterior)).containsEntry("detail", DATOS_INVALIDOS);
+        assertThat(errores(anterior)).containsExactly(error("fechaRecepcion", FECHA_ANTIGUA));
+        assertThat(justo).as("con un «hoy» en UTC, hace un año sería el 10/11/2025 y el 9 se rechazaría")
+                .hasStatus(HttpStatus.CREATED);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM lote", Integer.class)).isOne();
+    }
+
+    @Test
+    @DisplayName("RF-04 · una fecha de recepción de hace miles de años responde 400 con su mensaje y no llega a la base, que no la admite (antes respondía 500)")
+    void rechazaFechasMuyAntiguas() {
+        MvcTestResult resultado = lotes.registrar(token,
+                datos("L-001", LocalDate.of(-10000, 1, 1), "Finca La Esperanza", null));
+
+        assertThat(resultado).hasStatus(HttpStatus.BAD_REQUEST);
+        assertThat(errores(resultado)).containsExactly(error("fechaRecepcion", FECHA_ANTIGUA));
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM lote", Integer.class)).isZero();
     }
 }

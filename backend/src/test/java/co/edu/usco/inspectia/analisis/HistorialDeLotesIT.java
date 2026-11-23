@@ -132,7 +132,7 @@ class HistorialDeLotesIT {
 
         assertThat(lote).containsEntry("id", id.toString())
                 .containsEntry("codigo", "L-001")
-                .containsEntry("fechaRecepcion", "2026-11-02")
+                .containsEntry("fechaRecepcion", ApiLotes.RECEPCION.toString())
                 .containsEntry("origen", "Finca La Esperanza")
                 .containsEntry("estado", "PENDIENTE")
                 .containsEntry("usuario", Map.of("id", luis.toString(), "nombre", "Luis Gómez"))

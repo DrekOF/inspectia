@@ -22,7 +22,7 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 ## Resumen
 
 - **154 criterios de aceptación** en 26 fichas: 62 con prueba y 90 pendientes (2 eliminados).
-- **802 pruebas:** 273 de Java (33 generadas), 408 de JavaScript (73 generadas) y 121 de Python. Una prueba parametrizada cuenta una vez.
+- **810 pruebas:** 277 de Java (33 generadas), 412 de JavaScript (73 generadas) y 121 de Python. Una prueba parametrizada cuenta una vez.
 
 | Ficha | Criterios | Con prueba | Pendientes |
 |---|---:|---:|---:|
@@ -234,6 +234,8 @@ Otras pruebas de RF-03, que no cubren un criterio:
 
 Otras pruebas de RF-04, que no cubren un criterio:
 
+- [`FechaDeRecepcionIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/FechaDeRecepcionIT.java) · la fecha de recepción puede ser de hace exactamente un año en Colombia, pero no del día anterior (prueba de límite)
+- [`FechaDeRecepcionIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/FechaDeRecepcionIT.java) · una fecha de recepción de hace miles de años responde 400 con su mensaje y no llega a la base, que no la admite (antes respondía 500)
 - [`RegistroDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/RegistroDeLotesIT.java) · al escribir la finca o el proveedor, el sistema sugiere los que ya usó la empresa, sin distinguir mayúsculas y sin repetirlos
 - [`RegistroDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/RegistroDeLotesIT.java) · con el código de 30 caracteres, la finca o el proveedor de 120 y las observaciones de 500, el lote se registra (prueba de límite)
 - [`RegistroDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/RegistroDeLotesIT.java) · el código, la finca o el proveedor y las observaciones se guardan sin los espacios del inicio y del final; unas observaciones en blanco quedan vacías
@@ -244,18 +246,24 @@ Otras pruebas de RF-04, que no cubren un criterio:
 - [`RegistroDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/RegistroDeLotesIT.java) · se sugieren como máximo 10 fincas o proveedores
 - [`RegistroDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/RegistroDeLotesIT.java) · si la misma finca se escribió con tilde y sin ella el mismo número de veces, se sugiere una sola vez, con la forma más reciente
 - [`RegistroDeLotesIT`](../backend/src/test/java/co/edu/usco/inspectia/analisis/RegistroDeLotesIT.java) · una fecha de recepción que no tiene el formato aaaa-mm-dd se rechaza en su campo
+- [`LoteTest`](../backend/src/test/java/co/edu/usco/inspectia/analisis/dominio/LoteTest.java) · el dominio acepta una fecha de recepción de hace exactamente un año y rechaza la del día anterior (prueba de límite)
+- [`LoteTest`](../backend/src/test/java/co/edu/usco/inspectia/analisis/dominio/LoteTest.java) · si hoy es 29 de febrero, hace un año es el 28 de febrero del año anterior (prueba de límite)
 - [`TextosTest`](../backend/src/test/java/co/edu/usco/inspectia/comun/texto/TextosTest.java) · la clave de búsqueda no distingue mayúsculas, tildes ni los espacios del inicio y del final
 - [`TextosTest`](../backend/src/test/java/co/edu/usco/inspectia/comun/texto/TextosTest.java) · sin tildes y la clave de búsqueda dejan un texto vacío como llega
 - [`TextosTest`](../backend/src/test/java/co/edu/usco/inspectia/comun/texto/TextosTest.java) · sin tildes: «Paraíso» queda «Paraiso», «Peña» queda «Pena» y «Güiza» queda «Guiza»
 - [`lotes.spec.js`](../frontend/e2e/lotes.spec.js) · al escribir la finca sin tilde, la pantalla sugiere la que ya usó la empresa con tilde, y al elegirla la escribe (de punta a punta)
 - [`lotes.spec.js`](../frontend/e2e/lotes.spec.js) · el campo «Finca o proveedor» mide lo mismo que los demás campos, como en el prototipo, y no tiene el botón «Clear» sin traducir (de punta a punta)
+- [`lotes.spec.js`](../frontend/e2e/lotes.spec.js) · una fecha de recepción de hace más de un año en Colombia se rechaza en la pantalla, y la de hace exactamente un año pasa (prueba de límite, de punta a punta)
 - [`FotosDeLaMuestra.test.jsx`](../frontend/src/lote/FotosDeLaMuestra.test.jsx) · la página de las fotos nombra el lote, con su código y su finca o proveedor, y dice que quedó pendiente de análisis
 - [`FotosDeLaMuestra.test.jsx`](../frontend/src/lote/FotosDeLaMuestra.test.jsx) · los pasos del análisis muestran el primero listo y el segundo en curso
 - [`NuevoLote.test.jsx`](../frontend/src/lote/NuevoLote.test.jsx) · Cancelar vuelve al inicio sin registrar nada
 - [`NuevoLote.test.jsx`](../frontend/src/lote/NuevoLote.test.jsx) · al escribir la finca o el proveedor sugiere los que ya usó la empresa, y al elegir uno lo escribe
 - [`NuevoLote.test.jsx`](../frontend/src/lote/NuevoLote.test.jsx) · el código tiene como máximo 30 caracteres
 - [`NuevoLote.test.jsx`](../frontend/src/lote/NuevoLote.test.jsx) · el código, la fecha y la finca o el proveedor son obligatorios; las observaciones no
+- [`NuevoLote.test.jsx`](../frontend/src/lote/NuevoLote.test.jsx) · la fecha de recepción de hace exactamente un año en Colombia se acepta, y la del día anterior se marca antes de enviar (prueba de límite)
 - [`NuevoLote.test.jsx`](../frontend/src/lote/NuevoLote.test.jsx) · los pasos del análisis muestran que el lote va en el primero
+- [`fechas.test.js`](../frontend/src/lote/fechas.test.js) · hace un año es el mismo día del año anterior: la fecha de recepción más antigua que se acepta (prueba de límite)
+- [`fechas.test.js`](../frontend/src/lote/fechas.test.js) · si hoy es 29 de febrero, hace un año es el 28 de febrero, como en el backend (prueba de límite)
 
 ## RF-05 · Tomar o subir las fotos de la muestra del lote, con guía de captura
 

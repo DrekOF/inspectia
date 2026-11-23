@@ -3,9 +3,9 @@
  * Descripción: Llamadas a la API de lotes y sus mensajes, para las pruebas (RF-04, RF-14, RNF-03,
  *              RNF-04).
  * Fecha de creación: 10/11/2026
- * Actualización: 10/11/2026
+ * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis;
 
@@ -13,6 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import co.edu.usco.inspectia.usuario.sesion.ApiSesion;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -44,8 +45,11 @@ final class ApiLotes {
     static final String RUTA = "/api/v1/lotes";
     static final String ORIGENES = RUTA + "/origenes";
 
-    /** Una fecha de recepción que ya pasó, para los lotes que no prueban la fecha. */
-    static final LocalDate RECEPCION = LocalDate.of(2026, 11, 2);
+    /**
+     * Una fecha de recepción de hace una semana en Colombia, para los lotes que no prueban la fecha. Es relativa a
+     * hoy: estas pruebas usan el reloj real, y una fecha fija pasaría a ser de hace más de un año (RF-04).
+     */
+    static final LocalDate RECEPCION = LocalDate.now(ZoneId.of("America/Bogota")).minusWeeks(1);
 
     static final String DATOS_INVALIDOS = "Revisa los datos marcados.";
     static final String DATO_REPETIDO = "Ya existe un registro con esos datos.";
@@ -54,6 +58,7 @@ final class ApiLotes {
     static final String VALOR_INVALIDO = "El valor no es válido.";
     static final String CODIGO_REPETIDO = "Ya existe un lote con este código en la empresa.";
     static final String FECHA_FUTURA = "La fecha de recepción no puede ser posterior a hoy.";
+    static final String FECHA_ANTIGUA = "La fecha de recepción no puede ser de hace más de un año.";
 
     private final ApiSesion api;
 

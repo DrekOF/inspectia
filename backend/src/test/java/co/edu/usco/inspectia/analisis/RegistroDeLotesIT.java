@@ -4,9 +4,9 @@
  *              sin distinguir mayúsculas ni espacios, validaciones de los datos y sugerencias de finca o
  *              proveedor (RF-04).
  * Fecha de creación: 10/11/2026
- * Actualización: 10/11/2026
+ * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis;
 
@@ -93,7 +93,7 @@ class RegistroDeLotesIT {
         assertThat(resultado).hasStatus(HttpStatus.CREATED);
         Map<String, Object> lote = json(resultado);
         assertThat(lote).containsEntry("codigo", "L-001")
-                .containsEntry("fechaRecepcion", "2026-11-02")
+                .containsEntry("fechaRecepcion", RECEPCION.toString())
                 .containsEntry("origen", "Finca La Esperanza")
                 .containsEntry("observaciones", "Secado al sol durante 6 días")
                 .containsEntry("estado", "PENDIENTE")

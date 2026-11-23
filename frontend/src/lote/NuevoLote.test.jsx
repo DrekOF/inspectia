@@ -2,8 +2,9 @@
  * Nombre: NuevoLote.test.jsx
  * Descripción: Pruebas de la pantalla Nuevo lote (RF-04): registrar con datos válidos y pasar a las fotos, el
  *              código repetido, la fecha posterior a hoy, los datos obligatorios, las sugerencias de finca o
- *              proveedor, sin el botón «Clear», y Cancelar. Las pruebas de la fecha fijan la hora en las 10 de la
- *              noche del 9 de noviembre en Colombia, que en UTC ya es el 10.
+ *              proveedor, sin el botón «Clear», y Cancelar. La fecha queda fija, así las fechas escritas en las
+ *              pruebas no envejecen; las de los límites de la fecha de recepción la fijan en las 10 de la noche del 9
+ *              de noviembre en Colombia, que en UTC ya es el 10.
  * Fecha de creación: 10/11/2026
  * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
@@ -49,10 +50,16 @@ function conSugerencias(origenes) {
 }
 
 describe('Nuevo lote', () => {
+  // Solo se finge la fecha, el 10 de noviembre de 2026 a mediodía en Colombia: así la fecha de recepción de las
+  // pruebas, el 2 de noviembre, nunca queda de hace más de un año. Los temporizadores siguen siendo los de verdad,
+  // para user-event y las sugerencias.
   beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-11-10T17:00:00Z'));
     conSesion(CARLOS);
     conSugerencias([]);
   });
+  afterEach(() => vi.useRealTimers());
 
   it('RF-04 · C1 · con datos válidos registra el lote y pasa a las fotos de la muestra', async () => {
     let enviado;
@@ -89,12 +96,7 @@ describe('Nuevo lote', () => {
   });
 
   describe('a las 10 de la noche del 9 de noviembre en Colombia, que en UTC ya es el 10', () => {
-    // Solo se fija la fecha: los temporizadores siguen siendo los de verdad, para user-event y las sugerencias.
-    beforeEach(() => {
-      vi.useFakeTimers({ toFake: ['Date'] });
-      vi.setSystemTime(new Date('2026-11-10T03:00:00Z'));
-    });
-    afterEach(() => vi.useRealTimers());
+    beforeEach(() => vi.setSystemTime(new Date('2026-11-10T03:00:00Z')));
 
     it('RF-04 · C4 · una fecha de recepción posterior a hoy se marca antes de enviar, y el campo no ofrece fechas después de hoy', async () => {
       let enviados = 0;
@@ -127,6 +129,31 @@ describe('Nuevo lote', () => {
 
       expect(await screen.findByRole('heading', { name: 'Fotos de la muestra' })).toBeInTheDocument();
       expect(enviado.fechaRecepcion).toBe('2026-11-09');
+    });
+
+    it('RF-04 · la fecha de recepción de hace exactamente un año en Colombia se acepta, y la del día anterior se marca antes de enviar (prueba de límite)', async () => {
+      let enviado = null;
+      servidor.use(
+        http.post('/api/v1/lotes', async ({ request }) => {
+          enviado = await request.json();
+          return HttpResponse.json({ ...CREADO, fechaRecepcion: enviado.fechaRecepcion }, { status: 201 });
+        }),
+        http.get(`/api/v1/lotes/${CREADO.id}`, () => HttpResponse.json(CREADO)),
+      );
+      const { usuario } = abrirApp('/lotes/nuevo');
+
+      expect(screen.getByLabelText('Fecha de recepción')).toHaveAttribute('min', '2025-11-09');
+      await registrar(usuario, { fecha: '2025-11-08' });
+
+      expect(await screen.findByText('La fecha de recepción no puede ser de hace más de un año.')).toBeInTheDocument();
+      expect(screen.getByLabelText('Fecha de recepción')).toHaveAttribute('aria-invalid', 'true');
+      expect(enviado).toBeNull();
+
+      fireEvent.change(screen.getByLabelText('Fecha de recepción'), { target: { value: '2025-11-09' } });
+      await usuario.click(screen.getByRole('button', { name: 'Continuar a las fotos' }));
+
+      expect(await screen.findByRole('heading', { name: 'Fotos de la muestra' })).toBeInTheDocument();
+      expect(enviado.fechaRecepcion).toBe('2025-11-09');
     });
   });
 

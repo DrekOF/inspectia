@@ -5,13 +5,14 @@
  *              iniciar y cerrar sesión, buscar una fila en la lista de una pantalla generada, y una empresa propia
  *              con su usuario final y sus lotes, para las pruebas de los lotes (RF-04, RF-14).
  * Fecha de creación: 20/10/2026
- * Actualización: 22/11/2026
+ * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.3
+ * Versión: 1.4
  */
 import { randomUUID } from 'node:crypto';
 import { test as base, expect } from '@playwright/test';
 import { datos, empresaNueva } from './entorno/datos.js';
+import { diaEnColombia } from './fechas.js';
 
 /*
  * Los datos del entorno aislado que arma e2e/entorno (backend, base y usuarios de cada corrida): el
@@ -102,8 +103,11 @@ export async function crearEmpresa(api) {
   return { ...empresa, id: (await respuesta.json()).id };
 }
 
-/** Una fecha de recepción que ya pasó, para los lotes que no prueban la fecha (RF-04). */
-export const RECEPCION = '2026-11-02';
+/**
+ * Una fecha de recepción de hace una semana en Colombia, para los lotes que no prueban la fecha. Es relativa a
+ * hoy: una fecha fija pasaría a ser de hace más de un año, y la app la rechazaría (RF-04).
+ */
+export const RECEPCION = diaEnColombia(-7);
 
 /**
  * Una empresa nueva con un usuario final, creados por la API: así cada prueba de los lotes tiene los suyos y no ve

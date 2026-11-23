@@ -18,6 +18,7 @@ import {
   abrirNavegador, APP, boton, Browser, By, campo, campoDelGrupo, CELULAR, CONTRASENA, crearEmpresa, crearUsuario,
   datos, descartarConsola, desactivarUsuario, empresaNueva, entrar, escribirEn, esperar, esperarTexto, guardarFalla,
 } from './ayudas.js';
+import { diaEnColombia } from '../e2e/fechas.js';
 
 /**
  * Escribe una fecha (aaaa-mm-dd) en un campo de fecha. Con sendKeys, el formato depende del idioma del navegador;
@@ -212,7 +213,7 @@ describe.each(COMBINACIONES)('%s en %s', (_, navegador, __, celular) => {
       await esperarTexto(driver, 'Hola, Luis');
       await driver.get(`${APP}/lotes/nuevo`);
       await (await campo(driver, 'Código del lote')).sendKeys(codigo);
-      await escribirFecha(driver, await campo(driver, 'Fecha de recepción'), '2026-11-02');
+      await escribirFecha(driver, await campo(driver, 'Fecha de recepción'), diaEnColombia(-7));
       const origen = await campo(driver, 'Finca o proveedor');
       await origen.sendKeys('Finca La Esperanza');
       // Cierra las sugerencias de la finca, para que no tapen el botón.
