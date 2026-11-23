@@ -4,7 +4,7 @@ Descripción: Modelo de datos de InspectIA: diagrama entidad-relación, tablas c
 Fecha de creación: 13/10/2026
 Actualización: 23/11/2026
 Autor: Equipo InspectIA
-Versión: 1.8
+Versión: 1.9
 -->
 
 # Modelo de datos de InspectIA
@@ -249,7 +249,7 @@ En las tablas, «Oblig.» dice si el campo es obligatorio y «Único» si no se 
 | empresa_id | uuid, FK a empresa | Sí | — | RNF-03 |
 | muestra_id | uuid, FK a muestra | Sí | — | RF-05, D-25 |
 | numero | integer, de 1 a 3 | Sí | Único por muestra | RF-05, RF-09 |
-| ruta | varchar(255), llave en S3 | Sí | Sí | RF-05, D-16 |
+| ruta | varchar(255), llave en S3; en local, dentro de la carpeta de fotos (D-41) | Sí | Sí | RF-05, D-16, D-41 |
 | formato | lista: JPG, PNG | Sí | — | RF-05 |
 | tamano_bytes | integer, hasta 10 MB (10.485.760 bytes) | Sí | — | RF-05 |
 | estado | lista: CARGADA, APROBADA, POR_REPETIR | Sí | — | RF-06, RF-07, RF-09 |
