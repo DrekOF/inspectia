@@ -28,7 +28,7 @@ JSON con nombres en camelCase. Las posiciones son rectángulos sin rotación en 
 | `POST /revisar` | Multipart, campo `foto` (JPG o PNG). La revisión rápida de D-46: `{"estado": "APROBADA" \| "POR_REPETIR", "motivo": null \| "BORROSA" \| "POCA_LUZ" \| "GRANOS_PEGADOS", "granosEncontrados", "regionesPegadas": [{"x", "y", "ancho", "alto"}], "anchoImagen", "altoImagen"}`. |
 | `POST /analizar` | Multipart, campos `foto1`, `foto2` y, si hay, `foto3`. `{"modelo": {"nombre", "version"}, "fotos": [{"numero", "revision": {…como /revisar…}, "granos": [{"x", "y", "ancho", "alto", "clase": "SANO" \| "NO_SANO", "confianza"}]}]}`. 503 mientras el modelo carga. |
 
-- 400 `{"error": "IMAGEN_INVALIDA", "mensaje"}` si un archivo no es un JPG o PNG que se pueda leer; 413 `IMAGEN_MUY_GRANDE` si pasa de `INSPECTIA_TAMANO_MAXIMO`.
+- 400 `{"error": "IMAGEN_INVALIDA", "mensaje"}` si un archivo no es un JPG o PNG que se pueda leer o pasa de 120 megapíxeles (el tope de Pillow, unos 89, se sube a 120 de forma explícita en `imagen.py`); 413 `IMAGEN_MUY_GRANDE` si pasa de `INSPECTIA_TAMANO_MAXIMO`.
 - `granosEncontrados` cuenta los granos sueltos y completos: no cuenta los cortados por el borde ni los que forman una región de granos pegados.
 - Una foto `POR_REPETIR` va sin granos. El motivo se elige en este orden: poca luz, borrosa, granos pegados. `regionesPegadas` solo trae algo con el motivo `GRANOS_PEGADOS`.
 - La clase es `NO_SANO` si la probabilidad de mala es 0,5 o más, el umbral con que Julián midió el modelo (RF-08). La confianza es la probabilidad de la clase elegida × 100, con 2 decimales, de 50 a 100. `GRANOS_DUDOSOS`, el mínimo de 100 granos y la devolución de la muestra (RF-09, D-44) los decide el backend.
