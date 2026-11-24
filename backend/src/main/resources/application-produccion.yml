@@ -1,0 +1,38 @@
+# Nombre: application-produccion.yml
+# Descripción: El perfil produccion, el del despliegue en AWS (D-16): lo activa SPRING_PROFILES_ACTIVE=produccion en el
+#              docker-compose de producción. Exige el almacén en S3 y el servicio de IA (ComprobacionDeProduccion),
+#              toma la IP y el protocolo del cliente de CloudFront (EncabezadosDeCloudFront), escribe los registros en
+#              JSON para CloudWatch y cierra Swagger UI.
+# Fecha de creación: 24/11/2026
+# Actualización: 24/11/2026
+# Autor: Equipo InspectIA
+# Versión: 1.0
+#
+# Lo que no está aquí sale de application.yml y de las variables de entorno del compose. INSPECTIA_ARCHIVOS_ALMACEN=s3
+# e INSPECTIA_IA_CLASIFICADOR=servicio no tienen valor por defecto a propósito: si faltan, el servidor no arranca
+# (lo pidió Cristhian el 23/11/2026). Las claves (POSTGRES_PASSWORD e INSPECTIA_JWT_CLAVE) llegan de SSM.
+
+server:
+  # Los X-Forwarded-* no se leen: el principio de X-Forwarded-For lo escribe el navegador. La IP y el protocolo del
+  # cliente salen de CloudFront-Viewer-Address y CloudFront-Forwarded-Proto (EncabezadosDeCloudFront).
+  forward-headers-strategy: none
+
+logging:
+  structured:
+    format:
+      # Un evento por línea en JSON (formato ECS), con la excepción y su traza dentro: CloudWatch Logs lo guarda como un
+      # solo evento y Logs Insights lee sus campos (log.level, message, error.stack_trace).
+      console: ecs
+    ecs:
+      service:
+        name: inspectia-backend
+        environment: produccion
+
+springdoc:
+  # Swagger UI y la especificación OpenAPI quedan cerrados en AWS (decisión del despliegue): CloudFront solo pasa /api/*
+  # a la instancia, la CSP de la página no deja correr Swagger UI y no hace falta publicar el mapa de la API. La
+  # documentación se ve en el PC de desarrollo, en http://localhost:8080/swagger-ui.html.
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
