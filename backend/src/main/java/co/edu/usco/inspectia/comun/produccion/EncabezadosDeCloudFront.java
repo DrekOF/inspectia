@@ -29,9 +29,16 @@ import org.springframework.web.filter.OncePerRequestFilter;
  *
  * <p>No usa {@code X-Forwarded-For}: CloudFront agrega la IP del cliente al final de lo que mande el navegador, así que
  * el principio de ese encabezado lo puede escribir cualquiera. Los encabezados {@code CloudFront-*} los pone siempre
- * CloudFront y reemplaza los que mande el navegador; llegan si el comportamiento {@code /api/*} usa la política de
- * petición al origen {@code Managed-AllViewerAndCloudFrontHeaders-2022-06}. La instancia solo acepta tráfico de
- * CloudFront (su grupo de seguridad), así que nadie más puede mandarlos. Un valor que no se entiende se ignora.
+ * CloudFront y reemplaza los que mande el navegador. Llegan porque el comportamiento {@code /api/*} usa la política de
+ * petición al origen {@code Managed-AllViewerAndCloudFrontHeaders-2022-06} (ver infra/README.md, paso 9.5), que además
+ * pasa el {@code Host} de CloudFront: así el servidor arma las direcciones con el dominio público y no con el de la
+ * instancia. El filtro cambia el protocolo y la IP; el host lo toma tal como llega.
+ *
+ * <p>Límite: el grupo de seguridad de la instancia solo deja entrar a la lista de prefijos de CloudFront, pero esa lista
+ * es de todas las distribuciones de CloudFront, de cualquier cuenta. Una distribución ajena que apunte a la instancia
+ * puede mandar estos encabezados con el valor que quiera. Hoy no da acceso a nada (la API exige el token) y ninguna regla
+ * depende de la IP; cuando se use la IP para limitar intentos (P-17), hará falta un encabezado secreto de origen que
+ * solo ponga nuestra distribución y que este filtro exija. Un valor que no se entiende se ignora.
  */
 public class EncabezadosDeCloudFront extends OncePerRequestFilter {
 
