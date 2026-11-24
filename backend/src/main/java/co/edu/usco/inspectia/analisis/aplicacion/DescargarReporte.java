@@ -2,11 +2,11 @@
  * Nombre: DescargarReporte.java
  * Descripción: Caso de uso de descargar el reporte PDF de un lote analizado: la primera vez lo arma en español y en
  *              inglés y lo guarda en el almacén; después entrega el guardado, aunque la empresa cambie sus rangos
- *              (RF-15, D-25, D-50).
+ *              (RF-15, D-25, D-50). Si al reporte le falta un solo idioma, rehace solo ese y conserva el otro.
  * Fecha de creación: 24/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis.aplicacion;
 
@@ -18,6 +18,7 @@ import co.edu.usco.inspectia.comun.errores.ConflictoExcepcion;
 import co.edu.usco.inspectia.comun.errores.NoEncontradoExcepcion;
 import java.time.Clock;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,8 +36,10 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>La primera descarga bloquea el lote, como {@link GuardarAnalisis}, arma el reporte con lo guardado en los dos
  * idiomas (D-50), escribe sus dos archivos en el almacén y guarda su base en el lote. Las siguientes entregan el archivo
- * guardado: así se obtiene el mismo reporte aunque la empresa cambie sus rangos o sus nombres (RF-15 C4). Si falta el
- * archivo del idioma pedido, lo vuelve a armar con una base nueva y descarta la anterior.
+ * guardado: así se obtiene el mismo reporte aunque la empresa cambie sus rangos o sus nombres (RF-15 C4). Si falta solo
+ * el archivo del idioma pedido, arma solo ese con lo guardado, en la misma base, y el del otro idioma queda tal cual, así
+ * sigue entregando el mismo archivo (C4). Si faltan los dos, vuelve a armar el reporte con una base nueva y descarta la
+ * anterior.
  *
  * <p>Cuando termina la muestra 2, {@link GuardarAnalisis} descarta el reporte de la 1 y la siguiente descarga lo rehace
  * con el resultado de las dos (RF-15 C5, D-25).
@@ -139,7 +142,14 @@ public class DescargarReporte {
             if (almacen.describir(guardado).isPresent()) {
                 return new ReporteDelLote(nombre, almacen.leer(guardado));
             }
-            log.warn("Falta el archivo {} del reporte del lote {}: se arma de nuevo", guardado, loteId);
+            if (quedaOtroIdioma(datos.rutaDelReporte(), idioma)) {
+                log.warn("Falta el archivo {} del reporte del lote {}: se arma solo ese idioma", guardado, loteId);
+                byte[] pdf = generador.generar(contenido(empresaId, lote, datos), idioma);
+                almacen.guardar(guardado, pdf, TIPO);
+                return new ReporteDelLote(nombre, pdf);
+            }
+            log.warn("Faltan los archivos del reporte {} del lote {}: se arma de nuevo", datos.rutaDelReporte(),
+                    loteId);
             eventos.publishEvent(new ReporteDescartado(datos.rutaDelReporte()));
         }
         ContenidoDelReporte contenido = contenido(empresaId, lote, datos);
@@ -155,6 +165,13 @@ public class DescargarReporte {
         }
         lotes.guardarRutaDelReporte(empresaId, loteId, base);
         return new ReporteDelLote(nombre, pedido);
+    }
+
+    /** Si el almacén todavía tiene los archivos de los demás idiomas del reporte. */
+    private boolean quedaOtroIdioma(String base, IdiomaDelReporte pedido) {
+        return Arrays.stream(IdiomaDelReporte.values())
+                .filter(cada -> cada != pedido)
+                .allMatch(cada -> almacen.describir(llave(base, cada)).isPresent());
     }
 
     /** Lo que lleva el reporte: el lote, su empresa y sus muestras terminadas, con los granos de la suma (D-25). */
