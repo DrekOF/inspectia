@@ -5,7 +5,7 @@
     "fecha_creacion": "12/10/2026",
     "actualizacion": "24/11/2026",
     "autor": "Equipo InspectIA",
-    "version": "1.22"
+    "version": "1.23"
   },
   "rf": [
     {
@@ -177,7 +177,7 @@
       "encabezado": "Registrar un lote",
       "titulo": "Registrar un lote",
       "codigo": "RF-04",
-      "version": "1.2",
+      "version": "1.3",
       "fuente": "Proceso propuesto (TO-BE) y D-08.",
       "descripcion": "El usuario final registra un lote nuevo con sus datos básicos antes de fotografiar la muestra.",
       "justificacion": "Cada análisis pertenece a un lote; sin ese registro no hay historial ni reporte.",
@@ -186,7 +186,7 @@
         "b": [
           "El código del lote no se repite dentro de la misma empresa, sin distinguir mayúsculas ni espacios al inicio o al final.",
           "El lote queda asociado a la empresa y al usuario que lo registró (RNF-03).",
-          "Al escribir la finca o el proveedor, el sistema sugiere los que ya usó la empresa, para reutilizar el nombre que ya existe y que las estadísticas por finca no se partan (RF-16). Busca el texto en cualquier parte del nombre, sin distinguir mayúsculas, tildes ni los espacios del inicio y del final («paraiso» sugiere «Finca El Paraíso»). Los nombres que solo se diferencian en eso aparecen una sola vez, con la forma más usada y, si empatan, con la más reciente. Las sugerencias van en orden alfabético y son como máximo 10. Las tildes solo se ignoran en las sugerencias: las estadísticas agrupan la finca como dice RF-16.",
+          "Al escribir la finca o el proveedor, el sistema sugiere los que ya usó la empresa, para reutilizar el nombre que ya existe y que las estadísticas por finca no se partan (RF-16). Busca el texto en cualquier parte del nombre, sin distinguir mayúsculas, tildes ni los espacios del inicio y del final («paraiso» sugiere «Finca El Paraíso»). Los nombres que solo se diferencian en eso aparecen una sola vez, con la forma más usada y, si empatan, con la más reciente. Las sugerencias van en orden alfabético y son como máximo 10. Las estadísticas agrupan la finca de la misma forma, también sin distinguir tildes: «Paraíso» y «Paraiso» cuentan como una sola (RF-16). Lo decidió Cristhian el 23/11/2026.",
           "La fecha de recepción no puede ser de hace más de un año, con la fecha de Colombia: la de hace exactamente un año todavía vale y la del día anterior, no. Si hoy es 29 de febrero, hace un año es el 28 de febrero."
         ]
       },
@@ -720,7 +720,7 @@
       "encabezado": "Descargar el reporte en PDF",
       "titulo": "Descargar el reporte del lote en PDF",
       "codigo": "RF-15",
-      "version": "1.2",
+      "version": "1.3",
       "fuente": "D-15 (el reporte de cada lote se descarga en PDF) y D-39 (porcentaje corregido).",
       "descripcion": "Desde el resultado o desde el historial, el usuario descarga un PDF con el resultado del lote.",
       "justificacion": "La empresa necesita un soporte para archivarlo o compartirlo con sus compradores.",
@@ -730,7 +730,11 @@
           "El reporte aclara que la categoría es probable y que la oficial se confirma con la prueba de corte (D-10).",
           "El reporte indica el modelo que analizó cada muestra (D-18).",
           "Cuando termina la segunda muestra, el reporte se rehace con el resultado del lote (D-25).",
-          "El reporte muestra el porcentaje corregido con su margen y, por cada muestra, lo que contó el modelo («93 de 100 marcados como sanos»), con la frase de RF-11 que explica la diferencia (D-39)."
+          "El reporte muestra el porcentaje corregido con su margen y, por cada muestra, lo que contó el modelo («93 de 100 marcados como sanos»), con la frase de RF-11 que explica la diferencia (D-39).",
+          "Hay un PDF por idioma, en español y en inglés, con los textos de la página en ese idioma; la recomendación va como la escribió la empresa, también en el de inglés, como en la página (D-50). La primera descarga arma los dos a la vez, para que coincidan, y los guarda con la base que queda en `lote.reporte_ruta`: `<base>-es.pdf` y `<base>-en.pdf`. Si al reporte guardado le falta un solo idioma, se rehace solo ese, en la misma base, y el otro se conserva; si le faltan los dos, se rehace entero. Cuando termina la segunda muestra, los archivos del reporte anterior se borran después de guardar el resultado nuevo, y la siguiente descarga arma el de la suma.",
+          "El PDF se descarga por el backend, con la sesión, y no con un enlace temporal (D-50): `GET /api/v1/lotes/{id}/reporte?idioma=es|en`, para el usuario final y el administrador de empresa. Sin `idioma` usa el de `Accept-Language`; la página pide el de su idioma. Responde el archivo con su nombre, como `InspectIA-L-0143-es.pdf`, y sin guardarlo en caché. Un lote de otra empresa responde que no existe (RNF-03 C1); uno pendiente, 409 «Este lote todavía no tiene resultado: su reporte se descarga cuando termine el análisis.»; un idioma que no es `es` ni `en`, 400 en «idioma».",
+          "«Descargar PDF» va en el resultado del lote, para los dos roles, desde que el lote está analizado, también mientras se toma o se analiza la segunda muestra: en el PC, junto al título; en el celular, a todo el ancho, antes de «Nuevo lote». En el historial, cada lote analizado lleva un ícono para descargar su PDF junto a «Ver», en la tabla del PC y en la tarjeta del celular, como en el prototipo. Mientras baja, el botón o el ícono quedan ocupados y no piden otro, y al terminar se anuncia a los lectores de pantalla; si falla, un aviso dice el motivo (RNF-06 C3).",
+          "El PDF es tamaño carta, con la letra Roboto embebida (SIL OFL 1.1), así se ve igual en el PC y en el celular (C3), y las fechas van en hora de Colombia, como en la página. Trae también el NIT de la empresa y la finca o proveedor del lote. El pie dice cuándo se generó («hora de Colombia») y «Página n de m». Las fotos van reducidas a unos 1000 px y con los granos marcados como en la página (RF-11, D-42); una foto que no se puede leer no impide el reporte: en su lugar dice «La foto no está disponible.». La sugerencia de otra muestra va con su límite (D-47) y sin botón; el aviso de confianza baja usa el título de RF-09 C4. Un carácter que la letra no tiene, como un emoji, sale como «?»."
         ]
       },
       "prioridad": "Media",
@@ -757,14 +761,14 @@
         ]
       },
       "rnf": "RNF-03 (datos separados por empresa) y RNF-05 (PC y celular).",
-      "estado": "Aprobado",
-      "observaciones": ""
+      "estado": "Implementado",
+      "observaciones": "Pasó a «Implementado» con el PR del reporte PDF, las estadísticas y el modelo de IA (24/11/2026), que trajo prueba para todos sus criterios. Sin AWS, el PDF se guarda en la carpeta de D-41, sin enlaces firmados; en AWS, en S3, con la misma llave."
     },
     {
       "encabezado": "Consultar las estadísticas de la empresa",
       "titulo": "Consultar las estadísticas de la empresa",
       "codigo": "RF-16",
-      "version": "1.1",
+      "version": "1.2",
       "fuente": "Levantamiento inicial: estadísticas para tomar decisiones.",
       "descripcion": "El administrador de la empresa ve indicadores de los lotes analizados en un periodo.",
       "justificacion": "Permite ver la tendencia de la calidad y tomar decisiones con proveedores y procesos.",
@@ -773,7 +777,10 @@
         "b": [
           "Solo usa datos de la propia empresa (RNF-03).",
           "Usa el resultado de cada lote; con 2 muestras, el de la suma (D-25).",
-          "Agrupa la finca o el proveedor sin distinguir mayúsculas ni espacios al inicio o al final (RF-04)."
+          "Agrupa la finca o el proveedor sin distinguir mayúsculas, tildes ni espacios al inicio o al final, como las sugerencias de RF-04: «La Esperanza» y «la esperanza » son la misma finca (C4), y también «Paraíso» y «Paraiso». Lo decidió Cristhian el 23/11/2026: se unen en Java, como las sugerencias, sin cambiar `V1`. Cada finca se muestra con la forma más usada en el periodo y, si empatan, con la del resultado más reciente, sin los espacios del inicio y del final.",
+          "El periodo es por la fecha del resultado del lote, en días de Colombia y con las dos fechas incluidas, como los filtros del historial (RF-14). En la API, `GET /api/v1/estadisticas`, solo para el administrador de empresa, las dos fechas son opcionales: sin ellas cuenta todos los lotes analizados. En la pantalla son obligatorias y, al abrirla, van los últimos 12 meses: del día 1 del mes de hace 11 meses hasta hoy. Si «Hasta» es anterior a «Desde», se rechaza con un mensaje en «Hasta»; las fechas van de los años 0001 a 9999. El periodo va en la dirección de la página; uno que no sirve se ignora.",
+          "El promedio es la media de los porcentajes de los lotes, con 1 decimal y la mitad hacia arriba. Las 4 categorías salen siempre, en el orden de los rangos, con sus lotes y su % de los lotes, y con la nota de que la categoría es probable (D-10). La evolución va por mes de Colombia, del primer mes con lotes al último; los meses del medio sin lotes salen en la tabla con «Sin lotes» y sin columna en la gráfica. Las fincas van de mayor a menor promedio; si empatan, primero la de más lotes y después por nombre.",
+          "Cada gráfica va con una tabla que dice lo mismo, para los lectores de pantalla (RNF-06); en el celular, la evolución por mes va en barras horizontales. El prototipo no tiene esta pantalla: sigue el estilo del historial, con un solo color de serie."
         ]
       },
       "prioridad": "Media",
@@ -799,14 +806,14 @@
         ]
       },
       "rnf": "RNF-03 (datos separados por empresa) y RNF-04 (autenticación y permisos).",
-      "estado": "Aprobado",
-      "observaciones": ""
+      "estado": "Implementado",
+      "observaciones": "Pasó a «Implementado» con el PR del reporte PDF, las estadísticas y el modelo de IA (24/11/2026), que trajo prueba para todos sus criterios. Es un módulo por capas escrito a mano (D-21), que solo lee la tabla lote."
     },
     {
       "encabezado": "Consultar las métricas del modelo",
       "titulo": "Consultar las métricas del modelo",
       "codigo": "RF-17",
-      "version": "1.2",
+      "version": "1.3",
       "fuente": "D-14: métricas del modelo para el administrador de empresa.",
       "descripcion": "El administrador de la empresa ve las métricas del modelo en uso, medidas en el conjunto de prueba (F1-score macro, precisión y recall), y la confianza promedio de los análisis de su empresa.",
       "justificacion": "Permite saber qué tan confiable es el modelo antes de usar sus resultados en decisiones importantes.",
@@ -816,7 +823,9 @@
           "Las métricas de prueba son las del modelo en uso, tomadas de la comparación de los 5 modelos (D-18).",
           "El usuario final no ve métricas técnicas (sección 1, Usuarios).",
           "Además del F1 macro, la precisión y el recall macro, muestra la precisión y el recall de cada clase y la matriz de confusión del conjunto de prueba (RNF-07 C2), que guarda la tabla modelo (D-48).",
-          "Solo puede estar en uso un modelo con todas sus métricas y un F1 macro de 65 % o más (P-02): la base lo exige."
+          "Solo puede estar en uso un modelo con todas sus métricas y un F1 macro de 65 % o más (P-02): la base lo exige.",
+          "La confianza promedio (C2) es la media de la confianza de los granos de los análisis de la empresa, con 2 decimales, y dice de cuántos granos y muestras sale; sin análisis, lo dice sin cifra. Su periodo es opcional, como dicen las entradas: «Desde» y «Hasta» cuentan las muestras que terminaron entre esos días de Colombia, con los dos incluidos, como el historial; sin fechas, cuenta todos los análisis. Si «Hasta» es anterior a «Desde», se rechaza en «Hasta»; las fechas van de los años 0001 a 9999. El periodo va en la dirección de la página, «Ver confianza» lo aplica y «Todos los análisis» lo quita. Las métricas del modelo no cambian con el periodo.",
+          "La API es `GET /api/v1/modelo`, solo para el administrador de empresa. La pantalla muestra el modelo en uso con su nombre, su versión, su tipo y su F1, su precisión y su recall macro, con cuántos granos tiene el conjunto de prueba (la suma de la matriz: 334 con EfficientNet-B0); su matriz de confusión, en una tabla con la clase real en las filas; y la tabla comparativa de los modelos registrados, del mayor F1 macro al menor, con el tiempo por grano y el modelo en uso marcado «En uso». En el celular, la tabla va en una tarjeta por modelo. Las métricas van con 2 decimales, en el formato de cada idioma; la que un modelo no tiene, como las del clasificador falso, va con «—». Sin modelo en uso, la pantalla lo dice, sin matriz."
         ]
       },
       "prioridad": "Baja",
@@ -840,8 +849,8 @@
         ]
       },
       "rnf": "RNF-04 (autenticación y permisos) y RNF-07 (F1-score mínimo).",
-      "estado": "Aprobado",
-      "observaciones": ""
+      "estado": "Implementado",
+      "observaciones": "Pasó a «Implementado» con el PR del reporte PDF, las estadísticas y el modelo de IA (24/11/2026), que trajo prueba para todos sus criterios. Mientras el servicio de IA no use el modelo de Julián, puede no haber modelo en uso: el del clasificador falso no tiene métricas y la base no lo deja en uso (D-48); la pantalla lo dice."
     },
     {
       "encabezado": "Cambiar la propia contraseña",
@@ -929,7 +938,7 @@
       "titulo": "Mantener separados los datos de cada empresa",
       "codigo": "RNF-03",
       "tipo": "Seguridad",
-      "version": "1.1",
+      "version": "1.2",
       "descripcion": "Cada empresa solo ve y modifica sus propios datos: lotes, fotos, resultados, reportes, usuarios, rangos y estadísticas. Todos los registros guardan la empresa a la que pertenecen, en una sola base de datos compartida. Hay dos excepciones: el administrador de la plataforma, que no pertenece a ninguna empresa (D-13), y la tabla de modelos de IA, común a todas (D-18).",
       "prioridad": "Alta",
       "criterios": {
@@ -940,7 +949,8 @@
           "Solo el administrador de la plataforma puede no tener empresa: la base de datos rechaza un usuario de otro rol sin empresa.",
           "Hay pruebas de seguridad que lo verifican (RP-12)."
         ]
-      }
+      },
+      "observaciones": "C3: el reporte PDF no se abre con un enlace temporal, sino por el backend con la sesión (`GET /api/v1/lotes/{id}/reporte`), que revisa la empresa de cada petición (D-50). Es más estricto que lo que dice C3: el PDF no tiene enlace que se pueda copiar ni el bucket aparece en la página. Las fotos sí siguen con enlaces temporales (D-41)."
     },
     {
       "encabezado": "Autenticación y permisos por rol",

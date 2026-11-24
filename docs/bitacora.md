@@ -4,7 +4,7 @@ Descripción: Registro paso a paso de cómo se construyó InspectIA, para la sus
 Fecha de creación: 12/10/2026
 Actualización: 24/11/2026
 Autor: Equipo InspectIA
-Versión: 1.26
+Versión: 1.27
 -->
 
 # Bitácora de construcción (RP-24)
@@ -1749,6 +1749,190 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
     98,9 %, `filtros.js` 94,3 % (era 80,5 % antes de `filtros.test.js`) y `api/fotos.js` 93,3 %; los que sobreviven
     no cambian lo que hace la página, como el nombre interno de una regla de Yup.
 - Archivos o PR: la rama `feature/RF-14-segunda-muestra` y su PR hacia `main`.
+
+## 24/11/2026 · RF-15, RF-16 y RF-17: el reporte PDF, las estadísticas y el modelo de IA
+
+- Quién: Cristhian Sánchez (`DrekOF`), con Claude Code.
+- Qué se hizo:
+  - **El PR del frente C, en la rama `feature/RF-15-16-17-reporte-estadisticas-modelo`** (desde `56014b1`). Las tres
+    funciones se escribieron a la vez, cada una en su worktree, y se unieron en esta rama:
+    1. **RF-15, el reporte PDF:** `72e5c2a` las pruebas en rojo (el armado con PDFBox, el caso de uso, el endpoint,
+       el botón y la descarga de punta a punta), `49a4982` el reporte con Apache PDFBox y Roboto embebida, un archivo
+       por idioma, y `GET /api/v1/lotes/{id}/reporte`, y `ed08458` «Descargar PDF» en el resultado del lote.
+    2. **RF-16, las estadísticas** (rama `trabajo/estadisticas`, unida en `acae445`): `29c4fb3` las pruebas del
+       cálculo y de la API en rojo, `131770e` el módulo por capas con `GET /api/v1/estadisticas`, `dd3977a` las
+       pruebas de la pantalla en rojo, `c237df8` la pantalla, `59e7240` las pruebas de punta a punta y `f8ea330`
+       «Ver estadísticas» con el mismo periodo, que las vuelve a pedir.
+    3. **RF-17, el modelo de IA** (rama `trabajo/modelo`, unida en `71a9a3c`): `4a16f72` las pruebas del backend en
+       rojo, `9e2227f` la API, `c6b7f97` las pruebas del frontend y de punta a punta en rojo, `2d2d6d5` la pantalla,
+       `4cfcef1` las pruebas de accesibilidad y de celular que la visitan y `855185b` Stryker sobre su lógica.
+    4. **Las correcciones de la revisión**, de `750035c` a `da046a2`: 13 commits; los que cambian el código van
+       después de sus pruebas en rojo.
+    5. Esta entrada de la bitácora, D-50, las fichas, los README y los casos de prueba.
+  - **El reporte PDF (RF-15):** en un lote analizado, «Descargar PDF» en el resultado, para los dos roles, también
+    mientras se toma la segunda muestra, y un ícono de PDF en cada lote analizado del historial, como en el
+    prototipo. El PDF trae la empresa con su NIT, el código, la finca y las fechas del lote; el porcentaje corregido
+    con su rango probable (D-43), los granos sanos y no sanos y lo que contó el modelo (D-39); la categoría probable
+    con la nota de la prueba de corte (D-10), la recomendación, la sugerencia con su límite (D-47) y el aviso de
+    confianza baja; y cada muestra con su analista, su modelo y sus fotos con los granos marcados como en la página
+    (RF-11, D-42). Es tamaño carta, con Roboto embebida, y las fechas van en hora de Colombia.
+    - **Un PDF por idioma (D-50):** la primera descarga arma el de español y el de inglés a la vez y los guarda;
+      `lote.reporte_ruta` guarda la base y los archivos son `<base>-es.pdf` y `<base>-en.pdf`, sin cambiar `V1`. Las
+      siguientes descargas entregan los mismos bytes, aunque la empresa cambie sus rangos o su nombre (C4).
+    - **La segunda muestra (C5):** al guardar su resultado, el lote olvida la ruta y, después de confirmar la
+      transacción, se borran los dos archivos anteriores (`ReporteDescartado` y `BorrarReportesDescartados`, como
+      `ArchivoReemplazado` con las fotos). Si la transacción de una descarga se deshace, se borran los recién armados.
+    - **Por el backend, con la sesión:** el PDF no tiene enlace temporal. Un lote de otra empresa responde 404
+      (RNF-03 C1); uno pendiente, 409; un idioma que no es `es` ni `en`, 400. Es más estricto que RNF-03 C3, que
+      habla de enlaces temporales: queda anotado en D-50 y en las observaciones de RNF-03, sin cambiar el criterio.
+    - **El puerto nuevo `GeneradorDeReporte`** y el caso de uso `DescargarReporte`, en el núcleo hexagonal del
+      análisis; el adaptador `adaptadores/pdf/`. `AlmacenDeArchivos` gana `guardar(llave, contenido, tipo)`, y la
+      carpeta de D-41 guarda también los reportes, pero solo firma enlaces de fotos.
+  - **Las estadísticas (RF-16):** la pantalla «Estadísticas» de la administradora de empresa, con el periodo (por
+    defecto, los últimos 12 meses), los lotes analizados, el promedio de granos sanos, los lotes por categoría, la
+    evolución por mes y el promedio por finca o proveedor; cada gráfica va con su tabla y, sin lotes, un mensaje en
+    su lugar. El módulo `estadistica.lotes` va por capas, a mano (D-21), y solo lee la tabla `lote` de la empresa de
+    la sesión. Las fincas se unen sin distinguir mayúsculas, tildes ni espacios, como las sugerencias de RF-04: lo
+    decidió Cristhian el 23/11/2026, y ahora lo dicen las restricciones de RF-04 y RF-16, que decían lo contrario.
+  - **El modelo de IA (RF-17):** la pantalla «Modelo de IA» de la administradora de empresa, con el modelo en uso y
+    su F1, su precisión y su recall macro, la matriz de confusión en una tabla, la tabla comparativa de los modelos
+    (D-18, D-48) y la confianza promedio de los análisis de la empresa, de todos o de un periodo opcional. El módulo
+    `estadistica.modelo` va por capas, a mano, con `GET /api/v1/modelo`.
+  - **Las fichas:** RF-15, RF-16 y RF-17 pasan a «Implementado» (D-29): `casos_de_prueba.py comprobar` confirma que
+    todos sus criterios tienen prueba. Sus restricciones suman lo que hace el código y la ficha no decía (RF-15 de la
+    5 a la 8, RF-16 de la 4 a la 6 y RF-17 la 5 y la 6); RF-04 cambia el final de su restricción 3 y RF-16 su
+    restricción 3, por la decisión de las fincas; RNF-03 suma sus observaciones, con la nota de D-50 sobre C3.
+  - **Los README:** el principal suma Apache PDFBox 3.0.8 y Roboto (SIL OFL 1.1) a la tabla de versiones, y qué
+    hacen el reporte PDF, las estadísticas y el modelo de IA; el del frontend, `src/estadistica/` y `src/modelo/`,
+    lo nuevo de `src/lote/`, las rutas que ya no están pendientes y las ayudas nuevas de punta a punta.
+  - **Decisiones pequeñas,** tomadas con el prototipo y las fichas:
+    - **El reporte PDF:**
+      - **La librería:** Apache PDFBox 3.0.8, con licencia Apache 2.0, como Spring, y que lee el texto de sus propios
+        PDF, con lo que las pruebas comparan las cifras con las de la página. OpenPDF tiene licencia LGPL o MPL y
+        extrae peor el texto.
+      - **La letra:** Roboto, la del prototipo, sacada del paquete `@fontsource/roboto` 5.3.0 que ya usaba la página,
+        sin descargar nada. Un carácter que no tiene, como un emoji, sale como «?».
+      - **El botón** dice «Descargar PDF», como el prototipo y el proceso de la ficha; en el PC va junto al título, y
+        en el celular, a todo el ancho, antes de «Nuevo lote».
+      - **El ícono del historial** va junto a «Ver», de 40 px en la tabla y de 44 px en la tarjeta del celular, con el
+        nombre «Descargar el PDF del lote {código}». Mientras baja queda ocupado y se anuncia en una región
+        `aria-live`, sin otro `role="status"` que choque con el del total.
+      - **Tamaño carta,** el de las impresoras de Colombia; el pie dice «(hora de Colombia)» y «Página n de m».
+      - **La sugerencia** sale sin botón, y **el aviso de confianza baja** usa el título de RF-09 C4 con una frase
+        general, porque el porcentaje máximo de dudosos se copia en cada muestra.
+      - **La recomendación** va como la escribió la empresa, también en el PDF en inglés, como en la página.
+      - **Las fotos** se reducen a unos 1000 px antes de entrar al PDF: cada PDF de ejemplo pesa unos 170 KB. Una foto
+        que no se puede leer no impide el reporte: dice «La foto no está disponible.».
+      - **El idioma:** sin `idioma`, el endpoint usa `Accept-Language`; la página pide el suyo.
+      - **El nombre del archivo:** `InspectIA-<código>-es.pdf`; lo que no se puede escribir en un nombre, como `/` o un
+        espacio, va como `_`.
+      - **Si falta un solo idioma,** se rehace solo ese en la misma base y se conserva el otro, para que C4 se siga
+        cumpliendo; si faltan los dos, se rehacen con otra base.
+    - **Las estadísticas:**
+      - **El estilo:** el prototipo no tiene esta pantalla; sigue el del historial, con tarjetas, tablas y un solo
+        color de serie (el primario). La gráfica por mes es SVG, sin librerías: columnas en el PC y barras en el
+        celular, oculta a los lectores de pantalla porque su tabla dice lo mismo.
+      - **El periodo:** los últimos 12 meses por defecto (del día 1 del mes de hace 11 meses hasta hoy); en la
+        pantalla las dos fechas son obligatorias y en la API, opcionales. Se interpreta con `FiltrosDelHistorial`,
+        así los días de Colombia son los del historial.
+      - **El promedio** es la media de los porcentajes de los lotes, con 1 decimal y la mitad hacia arriba.
+      - **Las fincas** van de mayor a menor promedio y, si empatan, primero la de más lotes y después por nombre. Cada
+        una se muestra con la forma más usada en el periodo y, si empatan, con la del resultado más reciente.
+      - **Los meses del medio sin lotes** salen en la tabla con «Sin lotes» y sin columna en la gráfica.
+      - **Las categorías** llevan una columna «% de los lotes» y la nota «La categoría es probable: la oficial se
+        confirma con la prueba de corte.».
+      - **Los textos nuevos:** «Desde» y «Hasta» (en el historial es «Resultado desde»), «Ver estadísticas» y «No hay
+        lotes analizados en este periodo. Elige otro periodo para ver sus estadísticas.».
+      - **Lo interno:** el subpaquete `estadistica.lotes`, `JdbcClient` en lugar de JPA, y el campo `sinLotes` en la
+        respuesta, para C2.
+    - **El modelo de IA:**
+      - **El periodo opcional de la confianza,** que dicen las entradas de la ficha y no tenía criterio: «Desde» y
+        «Hasta» cuentan por la fecha en que terminó cada muestra, no por la del resultado del lote, en días de
+        Colombia y con las dos incluidas. Sin fechas, cuenta todos los análisis; «Todos los análisis» quita el periodo.
+        `PeriodoDeConsulta` valida el periodo igual en las estadísticas y en el modelo, y `MarcarErroresDelPeriodo`
+        marca los errores del backend en su campo en las dos pantallas.
+      - **Las métricas** van con 2 decimales, como las guarda la base, en el formato de cada idioma; una que el
+        modelo no tiene, como las del clasificador falso, va con «—».
+      - **La tabla comparativa** va del mayor F1 macro al menor, con el chip «En uso», con un chulo, en el modelo en
+        uso; en el celular, una tarjeta por modelo.
+      - **Sin modelo en uso** la pantalla lo dice, sin matriz: el del clasificador falso no tiene métricas y la base
+        no lo deja en uso (D-48).
+  - **Queda fuera:**
+    - **Unir los tres frentes:** el frente B también agrega `guardar(llave, contenido, tipo)` en `AlmacenEnCarpeta`,
+      con su propia validación de llaves (`LlavesDeArchivos`); al unir, queda uno solo que no pise un archivo, y los
+      enlaces, solo para fotos. Si el frente A construye a mano `GuardarAnalisis` (que ahora recibe un
+      `ApplicationEventPublisher`) o `MetricasDelModeloServicio` (que recibe `ConfianzaDeLosAnalisisRepositorio`) en
+      sus pruebas, no compila hasta ajustarlas.
+    - **Una foto PNG con su orientación en el bloque `eXIf`** no se gira en el PDF; solo se gira el EXIF de los JPG.
+    - **La descripción de `lote.reporte_ruta`** en `specs/entidades/lote.json` y en `specs/modelo-datos.md` sigue
+      diciendo «llave en S3»: cambiar `lote.json` cambia el header de `V1` (P-16). D-50 dice que guarda la base.
+    - **El texto de RNF-03 C3** no cambia: si Cristhian quiere, se ajusta a la descarga por el backend.
+    - **Nadie miró todavía las pantallas nuevas en un navegador:** las de punta a punta, con axe y a 360 px, las
+      corre la CI.
+    - **La prueba de estrés (RNF-01 y RNF-02) contra AWS,** al final, con los tres frentes desplegados.
+  - **Problemas encontrados:**
+    - **Apache PDFBox no lee WOFF,** y el paquete de la página solo trae Roboto en WOFF: se pasó a TTF descomprimiendo
+      sus tablas, sin cambiarlas.
+    - **Las marcas de las pruebas solo admiten un criterio:** C1, C2 y C4 de RF-16 van en pruebas separadas.
+    - **Al unir las ramas** se juntaron `Rutas.jsx` (las pantallas del análisis, la del modelo y las de las
+      estadísticas), los bloques de los textos en `es.js`, `en.js` y los `.properties`, y `Marco.test.jsx`: su prueba
+      de las secciones pendientes se quedó sin secciones y se borró.
+    - **Las pruebas en rojo del periodo de RF-17** no compilaban (`36e6697`): el análisis con instante se llamaba
+      distinto y la verificación usaba el repositorio que no era.
+  - **Resultado,** sobre `da046a2`, el último commit con código. Por el plazo, solo se corrieron en el PC las pruebas
+    rápidas de lo que cambió, y una sola suite pesada a la vez:
+    - **Backend:** `./mvnw test` completo, 314 pruebas, con el reporte (`ed08458`). Después de las correcciones:
+      `AlmacenEnCarpetaTest` 8, `DescargarReporteTest` 11, `MetricasDelModeloServicioTest` 7,
+      `CalculoDeEstadisticasTest` 10, `GuardarAnalisisTest` 13, `BorrarReportesDescartadosTest` 2,
+      `ConfiguracionDelAlmacenEnCarpetaTest` 2 y `VerificacionDeClasesTest` 1. Integración con PostgreSQL:
+      `ReporteDelLoteIT` 8, `EstadisticasIT` 12 y `MetricasDelModeloIT` 12.
+    - **Frontend:** Vitest de `src/modelo`, `src/estadistica`, `src/i18n`, `src/api`, `Historial.test.jsx` y
+      `ReporteEnElHistorial.test.jsx` (124 pruebas en 10 archivos), más `DescargarReporte.test.jsx` y
+      `ResultadoDelLote.test.jsx`; ESLint de los archivos cambiados.
+    - **Para la CI:** `./mvnw verify` completo, `npm test`, el build, Playwright y Selenium. Las pruebas nuevas de
+      punta a punta (`reporte.spec.js`, `estadisticas.spec.js` y `modelo.spec.js`) no se corrieron en el PC.
+    - **Generador:** 123 pruebas y `generar.py comprobar`.
+    - **Casos de prueba:** 1443 pruebas y 33 criterios sin prueba (eran 45). Pasan `casos_de_prueba.py comprobar` y
+      `generar.py comprobar`, con RF-15, RF-16 y RF-17 en «Implementado».
+- Por qué: el reporte, las estadísticas y las métricas del modelo eran las funciones que le faltaban a la versión 1,
+  y el jueves 26/11 todo tiene que estar desplegado en AWS. El PDF es el soporte que la empresa archiva o comparte con
+  sus compradores (D-15); las estadísticas muestran la tendencia de la calidad por finca y por mes, y la pantalla del
+  modelo dice qué tan confiable es antes de usar sus resultados (D-14).
+- Cómo se pidió:
+  - **El 24/11/2026,** Cristhian cambió el plan: «Cambio de plan: el jueves 26/11 todo tiene que estar desplegado en
+    AWS y funcionando, como en el diagrama de arquitectura (D-16, 02_Analisis_Diseno/InspectIA_Despliegue_AWS.pdf).
+    Nada a medias.» Pidió trabajar «en tres frentes a la vez, cada uno en su rama, con worktrees y agentes aparte»:
+    el servicio de IA con el modelo de Julián, el código del despliegue (los recursos de AWS los crea él en la
+    consola: «No escribas Terraform ni CloudFormation, ni crees nada en AWS») y, el tercero, este PR: «Las funciones
+    que faltan: el PDF (RF-15), las estadísticas (RF-16) y la pantalla del modelo (RF-17). Al final, la prueba de
+    estrés (RNF-01 y RNF-02) contra AWS.» Y para el tiempo: «en mi PC corre solo las pruebas rápidas de lo que
+    cambias; las de punta a punta, que las corra la CI. Nunca corras dos suites pesadas a la vez. La revisión antes
+    de cada PR, con un solo revisor.»
+  - **Las decisiones de antes:** el PDF por idioma, sin cambiar `V1` («Uno por idioma»), y unir «Paraíso» y
+    «Paraiso» en Java, como las sugerencias, sin tocar `V1`, las tomó Cristhian el 23/11/2026; esta última quedó en
+    «Queda fuera» del PR 1 y ahora entra en las fichas.
+  - **La forma de trabajo** es la del 22/11/2026: una sola parada por PR, las decisiones pequeñas anotadas aquí y en
+    el PR. Claude Code repartió el frente en tres agentes, uno por función, cada uno en su worktree y con sus pruebas
+    antes del código; el del reporte trabajó en la rama del PR, y los de las estadísticas y el modelo, en
+    `trabajo/estadisticas` y `trabajo/modelo`, que después se unieron. El del modelo no dejó informe: su parte se
+    toma de sus commits.
+  - **La revisión antes del PR,** con un solo revisor, como pidió Cristhian, leyó todo el PR sin cambiar nada y corrió
+    las pruebas rápidas y las de integración de las tres funciones. Encontró 8 hallazgos:
+    1. las pruebas de RF-16 C4 unían las tildes, que la ficha excluía; se resolvió con la decisión de Cristhian del
+       23/11/2026: C4 prueba «La Esperanza» y «la esperanza », y las tildes van en su propia prueba, sin criterio;
+    2. `docs/casos-de-prueba.md` no estaba al día, lo que hace el commit de la documentación;
+    3. `AlmacenEnCarpeta` dejaba firmar un enlace de vista para un reporte: ahora solo firma enlaces de fotos;
+    4. faltaba descargar el PDF desde el historial, como dicen la descripción de RF-15 y el prototipo: el ícono;
+    5. RNF-03 C3 habla de enlaces temporales y el PDF se baja por el backend: anotado en D-50 y en RNF-03;
+    6. dos marcas no comprobaban su criterio tal como está escrito: la del botón en el celular deja de ser RF-15 C3,
+       que cubre `GeneradorDeReporteEnPdfTest`, y la de las tildes deja de ser RF-16 C4;
+    7. RF-17 no tenía el periodo opcional de la confianza: ahora lo tiene, en la API y en la pantalla;
+    8. a un reporte al que le faltaba un solo idioma se le rehacían los dos, y el otro cambiaba: ahora se rehace solo
+       el que falta.
+
+    Otro agente corrigió el 1 (solo las pruebas), el 3, el 4, el 6, el 7 y el 8, con sus pruebas en rojo antes del
+    código; el 2 y el 5 son de este commit.
+- Archivos o PR: la rama `feature/RF-15-16-17-reporte-estadisticas-modelo` y su PR hacia `main`.
 
 ## Plantilla para nuevas entradas
 
