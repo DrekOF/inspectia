@@ -1,14 +1,15 @@
 # Nombre: ci.yml
 # Descripción: Integración continua de InspectIA (RP-18 y RP-19). En cada PR hacia main, en cada push a main y a
-#              mano, compila y prueba el generador, el backend y el frontend, y corre las pruebas de punta a punta
+#              mano, compila y prueba el generador, el backend, el frontend y el servicio de IA (con el modelo real
+#              de la release de Julián, comprobado por su SHA-256), y corre las pruebas de punta a punta
 #              (Playwright y Selenium) en el entorno aislado; Selenium, sin Edge, que se prueba en Windows. Si un job
 #              falla en main, abre un issue asignado a quien hizo el push, o comenta en el que ya está abierto por esa
 #              falla; cuando el job vuelve a pasar en main, lo cierra. Stryker no corre aquí: tarda mucho y se corre a
 #              mano.
 # Fecha de creación: 04/11/2026
-# Actualización: 09/11/2026
+# Actualización: 24/11/2026
 # Autor: Equipo InspectIA
-# Versión: 1.0
+# Versión: 1.1
 
 name: CI
 
@@ -99,6 +100,44 @@ jobs:
       - name: Build
         run: npm run build
 
+  ia-servicio:
+    name: Servicio de IA
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      # El SavedModel de EfficientNet-B0 de la release pública de Julián (D-40); su SHA-256 es el de modelos.json.
+      MODELO_URL: https://github.com/JulianSilvaMorales/Proyecto_IA-Cacao-Beans-/releases/download/modelos-v1.0/inspectia_EfficientNet-B0_v1.0_savedmodel.zip
+      MODELO_SHA256: eb9a64394c51fdff8fc16e01fff71e3b3693bc36e43cafb0ddbb34ca5b765bfb
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: ia-servicio/requirements*.txt
+      - name: Dependencias
+        run: python -m pip install -r ia-servicio/requirements-dev.txt
+      - name: Modelo en caché
+        id: cache-modelo
+        uses: actions/cache@v6
+        with:
+          path: ${{ runner.temp }}/modelo
+          key: modelo-${{ env.MODELO_SHA256 }}
+      - name: Bajar el modelo y comprobar su SHA-256
+        run: |
+          mkdir -p "$RUNNER_TEMP/modelo"
+          archivo="$RUNNER_TEMP/modelo/${MODELO_URL##*/}"
+          if [ ! -f "$archivo" ]; then
+            curl -fsSL --retry 3 -o "$archivo" "$MODELO_URL"
+          fi
+          echo "$MODELO_SHA256  $archivo" | sha256sum --check --strict
+          grep -q "$MODELO_SHA256" ia-servicio/modelos.json
+          echo "INSPECTIA_MODELO_PRUEBA=$archivo" >> "$GITHUB_ENV"
+      # Con el modelo, también corre la prueba de paridad con inferencia.py de Julián (test_paridad.py).
+      - name: Pruebas
+        working-directory: ia-servicio
+        run: python -m pytest -rs
+
   punta-a-punta:
     name: De punta a punta
     # Empieza solo si los otros pasan: así no se gastan sus minutos cuando ya falló algo más barato.
@@ -173,7 +212,7 @@ jobs:
 
   aviso:
     name: Aviso de fallas
-    needs: [generador, backend, frontend, punta-a-punta]
+    needs: [generador, backend, frontend, ia-servicio, punta-a-punta]
     # Solo en main, también cuando algo falló; no si alguien canceló la corrida.
     if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-24.04
@@ -194,10 +233,10 @@ jobs:
       - name: Abrir, comentar o cerrar el issue de cada job
         run: |
           # Cada job, con el nombre que se ve en GitHub. Hay un issue por job: así una falla repetida es la misma.
-          declare -A NOMBRES=([generador]='Generador' [backend]='Backend' [frontend]='Frontend' [punta-a-punta]='De punta a punta')
+          declare -A NOMBRES=([generador]='Generador' [backend]='Backend' [frontend]='Frontend' [ia-servicio]='Servicio de IA' [punta-a-punta]='De punta a punta')
           commit="${COMMIT:0:7} «${MENSAJE%%$'\n'*}»"
           gh label create ci --color B60205 --description 'Falla de la integración continua' --force
-          for job in generador backend frontend punta-a-punta; do
+          for job in generador backend frontend ia-servicio punta-a-punta; do
             resultado=$(jq -r --arg job "$job" '.[$job].result' <<< "$RESULTADOS")
             titulo="La CI falla en $RAMA: ${NOMBRES[$job]}"
             abierto=$(gh issue list --state open --label ci --limit 100 --json number,title \
