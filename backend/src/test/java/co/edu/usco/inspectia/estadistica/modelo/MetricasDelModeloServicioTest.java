@@ -95,7 +95,7 @@ class MetricasDelModeloServicioTest {
 
         MetricasDelModeloRespuesta respuesta = servicio.consultar(EMPRESA, null, null);
 
-        verify(repositorio).confianzaDe(EMPRESA);
+        verify(confianzas).confianzaDe(EMPRESA, null, null);
         assertThat(respuesta.confianza()).isEqualTo(new ConfianzaPromedioRespuesta(new BigDecimal("88.60"), 200, 2));
     }
 

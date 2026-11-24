@@ -168,11 +168,11 @@ class MetricasDelModeloIT {
     @Test
     @DisplayName("RF-17 · con un periodo, la confianza promedio usa solo las muestras que terminaron en esos días de Colombia, con los dos incluidos (prueba de límite)")
     void laConfianzaDeUnPeriodo() {
-        insertarAnalisis(cacaos, luis, "L-001", "2026-11-19T23:59:59.999999-05:00", "10.00");
-        insertarAnalisis(cacaos, luis, "L-002", "2026-11-20T00:00:00-05:00", "80.00");
-        insertarAnalisis(cacaos, luis, "L-003", "2026-11-20T23:59:59.999999-05:00", "90.00", "70.00");
-        insertarAnalisis(cacaos, luis, "L-004", "2026-11-21T00:00:00-05:00", "20.00");
-        insertarAnalisis(andino, pedro, "A-001", "2026-11-20T10:00:00-05:00", "5.00");
+        insertarAnalisisTerminado(cacaos, luis, "L-001", "2026-11-19T23:59:59.999999-05:00", "10.00");
+        insertarAnalisisTerminado(cacaos, luis, "L-002", "2026-11-20T00:00:00-05:00", "80.00");
+        insertarAnalisisTerminado(cacaos, luis, "L-003", "2026-11-20T23:59:59.999999-05:00", "90.00", "70.00");
+        insertarAnalisisTerminado(cacaos, luis, "L-004", "2026-11-21T00:00:00-05:00", "20.00");
+        insertarAnalisisTerminado(andino, pedro, "A-001", "2026-11-20T10:00:00-05:00", "5.00");
 
         Map<String, Object> delDia = confianza(consultarOk(api.token(ANA), "desde=2026-11-20&hasta=2026-11-20"));
         Map<String, Object> desde = confianza(consultarOk(api.token(ANA), "desde=2026-11-20"));
@@ -188,7 +188,7 @@ class MetricasDelModeloIT {
     @Test
     @DisplayName("RF-17 · un periodo sin análisis deja la confianza vacía y las métricas del modelo siguen iguales")
     void periodoSinAnalisis() {
-        insertarAnalisis(cacaos, luis, "L-001", "2026-11-20T10:00:00-05:00", "90.00");
+        insertarAnalisisTerminado(cacaos, luis, "L-001", "2026-11-20T10:00:00-05:00", "90.00");
 
         Map<String, Object> respuesta = consultarOk(api.token(ANA), "desde=2026-10-01&hasta=2026-10-31");
 
@@ -303,7 +303,7 @@ class MetricasDelModeloIT {
      * @param confianzas la confianza de cada grano, en porcentaje
      */
     private void insertarAnalisis(UUID empresa, UUID usuario, String codigo, String... confianzas) {
-        insertarAnalisis(empresa, usuario, codigo, OffsetDateTime.now().toString(), confianzas);
+        insertarAnalisisTerminado(empresa, usuario, codigo, OffsetDateTime.now().toString(), confianzas);
     }
 
     /**
@@ -315,7 +315,7 @@ class MetricasDelModeloIT {
      * @param terminada cuándo terminó la muestra, como {@code 2026-11-20T10:00:00-05:00}
      * @param confianzas la confianza de cada grano, en porcentaje
      */
-    private void insertarAnalisis(UUID empresa, UUID usuario, String codigo, String terminada,
+    private void insertarAnalisisTerminado(UUID empresa, UUID usuario, String codigo, String terminada,
             String... confianzas) {
         UUID lote = jdbc.queryForObject("""
                 INSERT INTO lote (empresa_id, codigo, fecha_recepcion, origen, usuario_id)
