@@ -156,7 +156,7 @@ La memoria del proceso crece con el lote de clasificación y no baja después de
 | 32 | 449 MB | 1023 a 1028 MB | 2,34 a 2,54 s |
 | 64 | 454 MB | 1589 a 1594 MB | 2,88 a 3,17 s |
 
-Con 64 el proceso pasa de 1,5 GB, el límite del contenedor en producción, antes de abrir las fotos de 12 MP de `/analizar` (cada una ocupa de 150 a 250 MB mientras se revisa). Con 16 queda en unos 0,75 GB y el tiempo casi no cambia. La medición es de Windows x86; en la t4g.medium (arm64) hay que confirmarla con `docker stats` junto con RNF-01 C3.
+Con 64 el proceso pasa de 1,5 GB, el límite del contenedor en producción, antes de abrir las fotos de 12 MP de `/analizar` (cada una ocupa de 150 a 250 MB mientras se revisa). Con 16 queda en unos 0,75 GB y el tiempo casi no cambia. Además, el servicio lee, revisa y clasifica a lo sumo 2 fotos o análisis a la vez (`TRABAJOS_A_LA_VEZ` en `api.py`); los demás esperan su turno. La medición es de Windows x86; en la t4g.medium (arm64) hay que confirmarla con `docker stats` junto con RNF-01 C3.
 
 ## Dataset
 

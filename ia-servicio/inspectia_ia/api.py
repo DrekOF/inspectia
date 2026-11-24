@@ -1,10 +1,11 @@
 # Nombre: api.py
 # Descripción: API HTTP del servicio de IA (FastAPI): salud, catálogo de modelos, revisión rápida de una foto y
-#              análisis de las fotos de una muestra (RF-06, RF-07, RF-08, D-18, D-46).
+#              análisis de las fotos de una muestra (RF-06, RF-07, RF-08, D-18, D-46), con a lo sumo 2 trabajos a
+#              la vez (RNF-01).
 # Fecha de creación: 24/11/2026
 # Actualización: 24/11/2026
 # Autor: Equipo InspectIA
-# Versión: 1.0
+# Versión: 1.1
 """API del servicio de IA.
 
 Escucha solo dentro de la red de Docker (el backend la llama en ``http://ia-servicio:8000``). Los nombres del JSON
@@ -15,6 +16,10 @@ van en camelCase, como la API del backend, y las posiciones en píxeles de la fo
 - ``POST /revisar`` (campo ``foto``): la revisión rápida de D-46 (luz, nitidez, granos pegados y cuántos granos).
 - ``POST /analizar`` (campos ``foto1``, ``foto2`` y, si hay, ``foto3``): la revisión, la separación y la
   clasificación de cada foto (RF-06 a RF-08). Una foto por repetir va sin granos.
+
+Las rutas son síncronas y corren en el grupo de hilos de AnyIO (40 hilos), pero a lo sumo ``TRABAJOS_A_LA_VEZ``
+revisiones o análisis leen, revisan y clasifican a la vez; los demás esperan su turno. Cada foto de 12 MP abierta
+ocupa de 150 a 250 MB, y el contenedor tiene 1,5 GB (RNF-01).
 """
 
 import logging
@@ -34,6 +39,9 @@ from inspectia_ia.modelos import origen_desde_uri, preparar_modelo
 from inspectia_ia.separacion import APROBADA, recortar, revisar
 
 log = logging.getLogger(__name__)
+
+TRABAJOS_A_LA_VEZ = 2
+"""Cuántas revisiones (``/revisar``) o análisis (``/analizar``) leen, revisan y clasifican fotos a la vez."""
 
 
 class ImagenMuyGrande(ValueError):
@@ -77,7 +85,7 @@ def _leer(archivo, maximo):
     return contenido
 
 
-def crear_app(configuracion=None, obtener=None, cargar=None, al_fallar=_terminar):
+def crear_app(configuracion=None, obtener=None, cargar=None, al_fallar=_terminar, trabajos_a_la_vez=TRABAJOS_A_LA_VEZ):
     """Arma la aplicación.
 
     Al arrancar, lee ``modelos.json``, obtiene el modelo en uso y comprueba su SHA-256 antes de atender: si algo
@@ -88,6 +96,7 @@ def crear_app(configuracion=None, obtener=None, cargar=None, al_fallar=_terminar
         obtener: función que recibe la entrada del catálogo y devuelve la carpeta del modelo, ya comprobado.
         cargar: función que recibe esa carpeta y devuelve el clasificador (con ``clasificar``).
         al_fallar: qué hacer si la carga en segundo plano falla (por defecto, terminar el proceso).
+        trabajos_a_la_vez (int): cuántas revisiones o análisis trabajan a la vez; los demás esperan su turno.
 
     Returns:
         fastapi.FastAPI: la aplicación.
@@ -97,6 +106,7 @@ def crear_app(configuracion=None, obtener=None, cargar=None, al_fallar=_terminar
     cargar = cargar or _cargar_por_defecto(configuracion)
     catalogo = catalogo_mod.cargar(configuracion.catalogo)
     estado = Estado()
+    turnos = threading.BoundedSemaphore(trabajos_a_la_vez)
 
     @asynccontextmanager
     async def ciclo_de_vida(_app):
@@ -150,9 +160,10 @@ def crear_app(configuracion=None, obtener=None, cargar=None, al_fallar=_terminar
 
     @app.post('/revisar', summary='Revisión rápida de una foto: luz, nitidez, granos pegados y granos (D-46)')
     def revisar_foto(foto: UploadFile = File(...)):
-        inicio = time.perf_counter()
-        imagen = leer_foto(_leer(foto, configuracion.tamano_maximo))
-        revision = revisar(imagen, configuracion.umbrales)
+        contenido = _leer(foto, configuracion.tamano_maximo)
+        with turnos:
+            inicio = time.perf_counter()
+            revision = revisar(leer_foto(contenido), configuracion.umbrales)
         log.info('Revisión: %s %s, %d granos, luz %.0f, nitidez %.0f, en %.0f ms', revision.estado,
                  revision.motivo or '', len(revision.granos), revision.luz, revision.nitidez,
                  (time.perf_counter() - inicio) * 1000)
@@ -163,18 +174,21 @@ def crear_app(configuracion=None, obtener=None, cargar=None, al_fallar=_terminar
                  foto3: UploadFile | None = File(None)):
         if estado.clasificador is None:
             return no_listo()
-        inicio = time.perf_counter()
-        fotos = [(n, f) for n, f in ((1, foto1), (2, foto2), (3, foto3)) if f is not None]
+        fotos = [(n, _leer(f, configuracion.tamano_maximo))
+                 for n, f in ((1, foto1), (2, foto2), (3, foto3)) if f is not None]
         resultados, recortes = [], []
-        for numero, archivo in fotos:
-            imagen = leer_foto(_leer(archivo, configuracion.tamano_maximo))
-            revision = revisar(imagen, configuracion.umbrales)
-            granos = revision.granos if revision.estado == APROBADA else []
-            recortes += [cv2.cvtColor(recortar(imagen, g.contorno), cv2.COLOR_BGR2RGB) for g in granos]
-            resultados.append((numero, revision, granos))
-        separado = time.perf_counter()
-        clasificaciones = iter(estado.clasificador.clasificar(recortes))
-        fin = time.perf_counter()
+        with turnos:
+            inicio = time.perf_counter()
+            for numero, contenido in fotos:
+                imagen = leer_foto(contenido)
+                revision = revisar(imagen, configuracion.umbrales)
+                granos = revision.granos if revision.estado == APROBADA else []
+                recortes += [cv2.cvtColor(recortar(imagen, g.contorno), cv2.COLOR_BGR2RGB) for g in granos]
+                resultados.append((numero, revision, granos))
+                del imagen  # la foto completa no se guarda mientras se lee la siguiente
+            separado = time.perf_counter()
+            clasificaciones = iter(estado.clasificador.clasificar(recortes))
+            fin = time.perf_counter()
         log.info('Análisis: %d fotos, %d granos; separación %.0f ms, clasificación %.0f ms', len(fotos),
                  len(recortes), (separado - inicio) * 1000, (fin - separado) * 1000)
         respuesta = []
