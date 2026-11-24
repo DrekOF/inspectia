@@ -4,9 +4,9 @@
  *              una clave de tokens nueva en cada corrida, una carpeta temporal para las fotos (D-41), la cola de
  *              análisis a mano y un clasificador de granos programable (RNF-02 C3).
  * Fecha de creación: 13/10/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.3
+ * Versión: 1.4
  */
 package co.edu.usco.inspectia;
 
@@ -19,6 +19,7 @@ import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.Comparator;
 import java.util.stream.Stream;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Bean;
@@ -40,7 +41,9 @@ import org.testcontainers.utility.DockerImageName;
  *   <li>La cola de análisis a mano (RNF-02 C3): ningún hilo la atiende solo, porque podría atender una muestra
  *       mientras otra prueba borra los datos. Las pruebas la atienden con {@code AtenderCola.atenderUna()}.</li>
  *   <li>Un clasificador de granos programable ({@link ClasificadorProgramable}), que gana al falso: cada prueba
- *       puede pedirle otro modelo, pocos granos o un fallo sin crear otro contexto de Spring ni otro contenedor.</li>
+ *       puede pedirle otro modelo, pocos granos o un fallo sin crear otro contexto de Spring ni otro contenedor. Solo
+ *       con el clasificador falso: las pruebas del servicio de IA ({@code inspectia.ia.clasificador=servicio}) usan el
+ *       cliente HTTP de verdad contra un servidor de prueba.</li>
  * </ul>
  */
 @TestConfiguration(proxyBeanMethods = false)
@@ -103,6 +106,7 @@ public class ConfiguracionContenedores {
      */
     @Bean
     @Primary
+    @ConditionalOnProperty(prefix = "inspectia.ia", name = "clasificador", havingValue = "falso")
     ClasificadorProgramable clasificadorProgramable() {
         return new ClasificadorProgramable();
     }
