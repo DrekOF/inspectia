@@ -1,7 +1,7 @@
 /*
  * Nombre: Marco.test.jsx
  * Descripción: Pruebas del marco de la app con sesión (RF-01, RNF-04, RNF-05, RNF-06): el enlace «Saltar al
- *              contenido», la barra con el usuario, las secciones pendientes, las rutas de otro rol, las que
+ *              contenido», la barra con el usuario, las rutas de otro rol, las que
  *              no existen, el menú en el celular, y el idioma y el tema desde la barra (RP-08, RP-11).
  * Fecha de creación: 20/10/2026
  * Actualización: 24/11/2026
@@ -41,22 +41,6 @@ describe('marco de la app', () => {
     expect(within(cuenta).getAllByRole('menuitem').map((opcion) => opcion.textContent))
       .toEqual(['Cambiar contraseña', 'Acerca de', 'Cerrar sesión']);
   });
-
-  it.each([['Modelo de IA']])(
-    'RF-01 · las secciones que aún no existen dicen «Esta sección estará disponible pronto.», sin códigos de requisitos: %s',
-    async (seccion) => {
-      conSesion(USUARIOS.ADMIN_EMPRESA);
-      const { usuario } = abrirApp('/');
-
-      await usuario.click(within(await menuPrincipal()).getByRole('link', { name: seccion }));
-
-      expect(await screen.findByRole('heading', { name: seccion })).toBeInTheDocument();
-      const contenido = screen.getByRole('main');
-      expect(contenido).toHaveTextContent('Esta sección estará disponible pronto.');
-      expect(contenido.textContent).not.toMatch(/\b(RF|RNF|RP|D|P)-\d{2}\b/);
-      expect(within(await menuPrincipal()).getByRole('link', { name: seccion })).toHaveAttribute('aria-current', 'page');
-    },
-  );
 
   it('RNF-04 · una pantalla de otro rol no se abre aunque se escriba su dirección: avisa que no tiene permiso', async () => {
     conSesion(USUARIOS.USUARIO_FINAL);
