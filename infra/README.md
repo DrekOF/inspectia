@@ -170,7 +170,7 @@ Nada de esto se crea con código (ni Terraform ni CloudFormation): se crea una v
 3. Si todo pasó, el job **Despliegue en AWS**:
    - revisa que las dos imágenes del commit estén en ECR;
    - enciende la instancia si estaba apagada (el horario la vuelve a apagar a su hora);
-   - le manda por SSM (Run Command, sin SSH) `infra/produccion` y los SQL de `infra/bd`, que quedan en `/opt/inspectia`, y corre `actualizar.sh` con la etiqueta del commit: lee los secretos de SSM, baja las imágenes de ECR y levanta todo, esperando a que los tres servicios estén sanos. Si no quedan sanos, el job falla y la página no se publica;
+   - le manda por SSM (Run Command, sin SSH) `infra/produccion` y los SQL de `infra/bd`, que quedan en `/opt/inspectia`, y corre `actualizar.sh` con la etiqueta del commit: lee los secretos de SSM, baja las imágenes de ECR y levanta todo, esperando a que los tres servicios estén sanos. Solo cuando quedan sanos anota la etiqueta nueva en `/opt/inspectia/.env`. Si no quedan sanos, vuelve sola a la versión anterior (la que dice `.env`), el job falla y la página nueva no se publica: el sitio sigue con la versión anterior. Si la nueva aplicó una migración de Flyway, puede que la anterior no arranque con esa base: el registro del job lo dice y hay que seguir «Volver atrás»;
    - compila la página y la sube al bucket web (`assets/` con caché de un año, `index.html` sin caché), invalida CloudFront y comprueba por CloudFront la página, una ruta de React y la API.
 4. Si algo falla en `main`, el job **Aviso de fallas** abre el issue, como siempre.
 
@@ -345,6 +345,7 @@ sudo /opt/inspectia/restaurar-respaldo.sh --prueba ultimo    # la restaura apart
 - **Volver a levantar todo:** `sudo systemctl restart inspectia`.
 - **Si algo falla:**
   - El job de despliegue dice que falta la imagen de `inspectia/ia-servicio`: el Dockerfile del servicio de IA todavía no está en `main`.
+  - El job de despliegue falla con «no quedó sano. Sigue la versión anterior, …, sana»: el sitio sigue con la versión anterior. Mira el registro del job (o `/var/log/inspectia/actualizar.log`), corrige y haz un commit nuevo. Si dice que la anterior tampoco arrancó, ve a «Volver atrás».
   - `actualizar.sh` dice que un parámetro no es válido: revisa el paso 5.
   - El servicio de IA no queda sano: mira su registro; si no encuentra el modelo o su SHA-256 no coincide, revisa el paso 15.
   - Con la sesión iniciada, todo responde 401: CloudFront no está pasando el encabezado `Authorization`. Revisa que `/api/*` tenga **CachingDisabled** y **AllViewerExceptHostHeader**. Si aun así no pasa, crea una cache policy `inspectia-api` con TTL mínimo 0, por defecto 0 y máximo 1, y el encabezado `Authorization` en la clave de caché, y úsala en `/api/*` en lugar de CachingDisabled.

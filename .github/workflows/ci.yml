@@ -281,7 +281,8 @@ jobs:
         with:
           role-to-assume: ${{ vars.AWS_ROL_GITHUB }}
           aws-region: us-east-1
-      # Primero el servidor: si no queda sano, la página nueva no se publica y todo sigue en la versión anterior.
+      # Primero el servidor: si la versión nueva no queda sana, actualizar.sh vuelve sola a la anterior, el job falla y la
+      # página nueva no se publica. Si la anterior tampoco arranca (por ejemplo, tras una migración), el registro lo dice.
       - name: Actualizar la instancia por SSM
         run: bash infra/aws/actualizar-instancia.sh "$EC2_INSTANCIA" "$GITHUB_SHA"
       # Los archivos de assets/ llevan su hash en el nombre: caché de un año. Los viejos se dejan, por si una pestaña

@@ -3,9 +3,10 @@
 # Descripción: Levanta o actualiza InspectIA en la instancia (D-16): lee de SSM la clave de los tokens y la
 #              contraseña de la base con el rol de la instancia y las deja solo en memoria (/run/inspectia/secretos,
 #              permisos 400), inicia sesión en ECR, baja las imágenes de la etiqueta pedida y levanta el compose,
-#              esperando a que los tres servicios estén sanos. Lo corren el despliegue de la CI (por SSM, con la
-#              etiqueta del commit) y el servicio inspectia de systemd al encender la instancia (sin etiqueta: usa la
-#              última desplegada).
+#              esperando a que los tres servicios estén sanos. Si una versión nueva no queda sana, vuelve sola a la
+#              anterior, y solo anota la nueva en /opt/inspectia/.env cuando quedó sana. Lo corren el despliegue de la
+#              CI (por SSM, con la etiqueta del commit) y el servicio inspectia de systemd al encender la instancia
+#              (sin etiqueta: usa la última desplegada).
 # Fecha de creación: 24/11/2026
 # Actualización: 24/11/2026
 # Autor: Equipo InspectIA
@@ -71,31 +72,56 @@ escribir_secreto POSTGRES_PASSWORD /inspectia/postgres-contrasena '^[A-Za-z0-9._
     'de 20 caracteres o más, solo letras sin tildes, números y . _ ~ + -'
 umask 022
 
-paso 'Etiqueta y cuenta en /opt/inspectia/.env (sin secretos)'
-anterior=$(valor_en_env ETIQUETA)
-if [ "$anterior" = "$etiqueta" ]; then
+# La etiqueta que está corriendo (la de .env) y la que queda como anterior. Si se vuelve a levantar la misma, como al
+# encender la instancia, no hay a cuál volver si falla: systemd lo reintenta.
+actual=$(valor_en_env ETIQUETA)
+if [ "$actual" = "$etiqueta" ]; then
     anterior=$(valor_en_env ETIQUETA_ANTERIOR)
+    volver_a=''
+else
+    anterior=$actual
+    volver_a=$actual
 fi
+
+paso "Sesión en ECR ($registro)"
+aws ecr get-login-password | docker login --username AWS --password-stdin "$registro" > /dev/null
+
+# Levanta los contenedores con una etiqueta y espera a que los tres estén sanos. La cuenta y la etiqueta van por el
+# entorno, que en compose gana sobre .env: así .env sigue con la versión que funciona hasta que la nueva queda sana.
+# --pull missing: baja las imágenes de la etiqueta si no están (al encender ya están y no baja nada).
+# --wait: el servicio de IA puede tardar unos minutos si baja el modelo de S3.
+#   $1: etiqueta
+levantar() {
+    AWS_CUENTA=$cuenta ETIQUETA=$1 compose up -d --pull missing --remove-orphans --wait --wait-timeout 900
+}
+
+# Muestra el estado y los últimos registros, para el registro del despliegue.
+mostrar_estado() {
+    AWS_CUENTA=$cuenta ETIQUETA=$1 compose ps -a || true
+    AWS_CUENTA=$cuenta ETIQUETA=$1 compose logs --no-color --tail 80 backend ia-servicio || true
+}
+
+paso 'Imágenes y contenedores'
+if ! levantar "$etiqueta"; then
+    paso "InspectIA $etiqueta no arrancó. Estado y últimos registros:"
+    mostrar_estado "$etiqueta"
+    [ -n "$volver_a" ] || fallar "InspectIA $etiqueta no quedó sano."
+    paso "Vuelve a la versión anterior, $volver_a"
+    if ! levantar "$volver_a"; then
+        mostrar_estado "$volver_a"
+        fallar "InspectIA $etiqueta no quedó sano y la versión anterior, $volver_a, tampoco arrancó. Si la nueva aplicó una migración de Flyway, la anterior no arranca con esa base: ver infra/README.md, «Volver atrás»."
+    fi
+    fallar "InspectIA $etiqueta no quedó sano. Sigue la versión anterior, $volver_a, sana; /opt/inspectia/.env no cambió."
+fi
+
+paso 'Etiqueta y cuenta en /opt/inspectia/.env (sin secretos), ahora que la versión quedó sana'
 cat > "$DIR_INSPECTIA/.env.nuevo" <<FIN
-# Lo escribe actualizar.sh en cada despliegue. Sin secretos: esos están en $SECRETOS, en memoria.
+# Lo escribe actualizar.sh cuando una versión queda sana. Sin secretos: esos están en $SECRETOS, en memoria.
 AWS_CUENTA=$cuenta
 ETIQUETA=$etiqueta
 ETIQUETA_ANTERIOR=$anterior
 FIN
 mv -f "$DIR_INSPECTIA/.env.nuevo" "$DIR_INSPECTIA/.env"
-
-paso "Sesión en ECR ($registro)"
-aws ecr get-login-password | docker login --username AWS --password-stdin "$registro" > /dev/null
-
-paso 'Imágenes y contenedores'
-# --pull missing: baja las imágenes de la etiqueta si no están (al encender ya están y no baja nada).
-# --wait: espera a que los tres estén sanos; el servicio de IA puede tardar unos minutos si baja el modelo de S3.
-if ! compose up -d --pull missing --remove-orphans --wait --wait-timeout 900; then
-    paso 'No arrancó. Estado y últimos registros:'
-    compose ps -a || true
-    compose logs --no-color --tail 80 backend ia-servicio || true
-    fallar "InspectIA $etiqueta no quedó sano. La versión anterior era «$anterior»."
-fi
 
 paso 'Limpieza de imágenes viejas (las de más de 3 días que nadie usa)'
 docker image prune -af --filter 'until=72h' > /dev/null || true
