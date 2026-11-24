@@ -3,13 +3,13 @@
     "nombre": "modelo.json",
     "descripcion": "Entidad modelo: los modelos de IA de la comparación de D-18, con el elegido marcado en uso. Entrada del generador (RP-23); formato en specs/entidades/README.md.",
     "fecha_creacion": "13/10/2026",
-    "actualizacion": "13/10/2026",
+    "actualizacion": "23/11/2026",
     "autor": "Equipo InspectIA",
-    "version": "1.0"
+    "version": "1.1"
   },
   "entidad": "modelo",
   "clase": "Modelo",
-  "descripcion": "Modelo de IA. La tabla guarda la comparación de D-18: los 5 modelos de Julián (2 transformers y 3 CNN, RP-25), con el elegido marcado en uso. Es común a todas las empresas (RNF-03). Las filas las carga el script de base de datos (RP-15); en desarrollo, también el clasificador falso, sin métricas.",
+  "descripcion": "Modelo de IA. La tabla guarda la comparación de D-18: los 5 modelos de Julián (2 transformers y 3 CNN, RP-25), con el elegido marcado en uso. Es común a todas las empresas (RNF-03). Las filas las carga el script de base de datos (RP-15); en desarrollo, también el clasificador falso, con los recall de EfficientNet-B0 y sin las demás métricas. Los recall de cada clase corrigen el porcentaje del lote (D-39): todo modelo los tiene.",
   "etiquetas": {
     "es": { "singular": "Modelo de IA", "plural": "Modelos de IA" },
     "en": { "singular": "AI model", "plural": "AI models" }
@@ -76,6 +76,26 @@
       "fichas": ["RF-17", "RNF-07"]
     },
     {
+      "nombre": "recall_sano",
+      "tipo": "decimal",
+      "precision": 5,
+      "escala": 2,
+      "obligatorio": true,
+      "validaciones": { "min": 0, "max": 100 },
+      "etiquetas": { "es": "Recall de sano (%)", "en": "Healthy recall (%)" },
+      "fichas": ["RF-10", "D-39"]
+    },
+    {
+      "nombre": "recall_no_sano",
+      "tipo": "decimal",
+      "precision": 5,
+      "escala": 2,
+      "obligatorio": true,
+      "validaciones": { "min": 0, "max": 100 },
+      "etiquetas": { "es": "Recall de no sano (%)", "en": "Unhealthy recall (%)" },
+      "fichas": ["RF-10", "D-39"]
+    },
+    {
       "nombre": "tiempo_por_grano_ms",
       "tipo": "decimal",
       "precision": 8,
@@ -111,6 +131,12 @@
       "sql": "num_nonnulls(tipo, f1_macro, precision_macro, recall_macro, tiempo_por_grano_ms) IN (0, 5)",
       "descripcion": "Los modelos de la comparación traen tipo, métricas y tiempo por grano; solo el clasificador falso de desarrollo los deja vacíos.",
       "fichas": ["D-18"]
+    },
+    {
+      "nombre": "modelo_mejor_que_el_azar",
+      "sql": "recall_sano + recall_no_sano > 100",
+      "descripcion": "La corrección del porcentaje divide por recall_sano + recall_no_sano - 100: un modelo que no es mejor que el azar no corrige nada (D-39).",
+      "fichas": ["RF-10", "D-39"]
     }
   ]
 }

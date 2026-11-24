@@ -1,11 +1,11 @@
 /*
  * Nombre: AlmacenEnCarpeta.java
  * Descripción: El puerto AlmacenDeArchivos en una carpeta del servidor (D-41): enlaces firmados relativos a la página,
- *              llaves que no salen de la carpeta y archivos que no se pisan.
+ *              llaves que no salen de la carpeta, archivos que no se pisan y la lectura de una foto para clasificarla.
  * Fecha de creación: 23/11/2026
  * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis.adaptadores.carpeta;
 
@@ -96,6 +96,15 @@ public class AlmacenEnCarpeta implements AlmacenDeArchivos {
         try (InputStream contenido = Files.newInputStream(archivo)) {
             byte[] primeros = contenido.readNBytes(FormatoDeFoto.BYTES_PARA_RECONOCER);
             return Optional.of(new ArchivoGuardado(Files.size(archivo), primeros));
+        } catch (IOException excepcion) {
+            throw new UncheckedIOException(excepcion);
+        }
+    }
+
+    @Override
+    public byte[] leer(String llave) {
+        try {
+            return Files.readAllBytes(ruta(llave));
         } catch (IOException excepcion) {
             throw new UncheckedIOException(excepcion);
         }

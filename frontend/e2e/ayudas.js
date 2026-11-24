@@ -3,17 +3,18 @@
  * Descripción: Ayudas de las pruebas de punta a punta con Playwright: los datos del entorno aislado, la persona
  *              de cada rol, crear usuarios y empresas propios por la API para las pruebas que cambian datos,
  *              iniciar y cerrar sesión, buscar una fila en la lista de una pantalla generada, una empresa propia
- *              con su usuario final y sus lotes, para las pruebas de los lotes (RF-04, RF-14), y subir fotos de la
- *              muestra en la pantalla o por la API (RF-05).
+ *              con su usuario final y sus lotes, para las pruebas de los lotes (RF-04, RF-14), subir fotos de la
+ *              muestra en la pantalla o por la API (RF-05), y analizar un lote por la API (RF-10).
  * Fecha de creación: 20/10/2026
  * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.5
+ * Versión: 1.6
  */
 import { randomUUID } from 'node:crypto';
 import { test as base, expect } from '@playwright/test';
 import { datos, empresaNueva } from './entorno/datos.js';
 import { diaEnColombia } from './fechas.js';
+import { png } from './imagenes.js';
 
 /*
  * Los datos del entorno aislado que arma e2e/entorno (backend, base y usuarios de cada corrida): el
@@ -174,6 +175,41 @@ export async function subirFotosPorLaApi(api, persona, loteId, fotos) {
       { data: { llave: enlace.llave }, headers: autorizacion });
     expect(confirmada.status(), `confirmación de la foto ${numero}`).toBe(200);
   }
+}
+
+/**
+ * Envía a analizar la muestra de un lote por la API, como «Analizar la muestra», y espera a que termine (RF-10).
+ *
+ * @param {import('@playwright/test').APIRequestContext} api el cliente de la API de Playwright
+ * @param {{ correo: string, contrasena: string }} persona el usuario final
+ * @param {string} loteId el lote, con 2 o 3 fotos ya subidas
+ */
+export async function analizarPorLaApi(api, persona, loteId) {
+  const autorizacion = { Authorization: `Bearer ${await tokenDe(api, persona)}` };
+  const envio = await api.post(`/api/v1/lotes/${loteId}/analisis`, { headers: autorizacion });
+  expect(envio.status(), 'enviar la muestra').toBe(202);
+  await expect.poll(async () => {
+    const avance = await api.get(`/api/v1/lotes/${loteId}/analisis`, { headers: autorizacion });
+    return (await avance.json()).estado;
+  }, { message: 'el análisis termina', timeout: 30_000 }).toBe('TERMINADA');
+}
+
+/**
+ * Un lote analizado por la API: lo registra, le sube una foto de 100 px de alto por cada ancho y lo analiza. El
+ * clasificador falso da 50 granos por foto, y son no sanos tantos como el ancho módulo 50: con 106 y 107, 87 de 100
+ * sanos, que corregido da 90,6 % (Estándar, con sugerencia).
+ *
+ * @param {import('@playwright/test').APIRequestContext} api el cliente de la API de Playwright
+ * @param {{ correo: string, contrasena: string }} persona el usuario final
+ * @param {number[]} [anchos] el ancho de cada foto
+ * @returns {Promise<object>} el lote, como lo responde la API al registrarlo
+ */
+export async function loteAnalizado(api, persona, anchos = [106, 107]) {
+  const [lote] = await registrarLotes(api, persona, [{ codigo: `R-${randomUUID().slice(0, 8)}` }]);
+  await subirFotosPorLaApi(api, persona, lote.id,
+    anchos.map((ancho, indice) => ({ numero: indice + 1, archivo: png({ ancho, alto: 100 }) })));
+  await analizarPorLaApi(api, persona, lote.id);
+  return lote;
 }
 
 /**

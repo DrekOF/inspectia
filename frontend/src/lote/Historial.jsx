@@ -3,12 +3,13 @@
  * Descripción: La pantalla Historial de lotes (RF-14), como en el prototipo: los lotes de la empresa, del último
  *              movimiento al más antiguo, con la fecha del resultado, el código, la finca o el proveedor, el
  *              estado, el porcentaje de granos sanos, la categoría probable y quién lo registró. En el PC van en
- *              una tabla y en el celular, en tarjetas (RNF-05), por páginas de 20. El usuario final retoma un lote
- *              pendiente con «Continuar» (RF-14 C5); la administradora solo consulta.
+ *              una tabla y en el celular, en tarjetas (RNF-05), por páginas de 20. Los dos roles abren el detalle de
+ *              un lote analizado con «Ver» (RF-14 C3); el usuario final retoma un lote pendiente con «Continuar»
+ *              (RF-14 C5), y la administradora no.
  * Fecha de creación: 22/11/2026
  * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.2
+ * Versión: 1.3
  */
 import Add from '@mui/icons-material/Add';
 import Check from '@mui/icons-material/Check';
@@ -102,22 +103,35 @@ function Estado({ lote, texto }) {
 }
 
 /**
- * «Continuar» de un lote pendiente: lleva a las fotos de su muestra (RF-14 C5). Su nombre dice el lote y empieza por
- * el texto que se ve (D-32). En la tabla es un botón de texto de 40 px, como en el prototipo; en la tarjeta, un botón
- * con borde a todo el ancho, de 44 px (RNF-05).
+ * La acción de un lote: «Ver», que abre el detalle de un lote analizado, para los dos roles (RF-14 C3), o
+ * «Continuar», que lleva a las fotos de un lote pendiente, solo para el usuario final (RF-14 C5). Su nombre dice el
+ * lote y empieza por el texto que se ve (D-32). En la tabla es un botón de texto de 40 px, como en el prototipo; en la
+ * tarjeta, un botón con borde a todo el ancho, de 44 px (RNF-05).
  *
- * @param {{ lote: import('../api/lotes.js').Lote, enTarjeta?: boolean }} props el lote y dónde va
- * @returns {import('react').ReactElement} el enlace
+ * @param {{ lote: import('../api/lotes.js').Lote, registra: boolean, enTarjeta?: boolean }} props el lote, si la
+ *   sesión es del usuario final y dónde va
+ * @returns {import('react').ReactElement|null} el enlace, o nada si el lote no tiene acción para ese rol
  */
-function Continuar({ lote, enTarjeta = false }) {
+function AccionDelLote({ lote, registra, enTarjeta = false }) {
   const { t } = useTranslation();
+  let accion = null;
+  if (lote.estado === 'ANALIZADO') {
+    accion = { ruta: `/lotes/${lote.id}`, texto: t('historial.ver'), nombre: t('historial.verLote', { codigo: lote.codigo }) };
+  } else if (registra) {
+    accion = {
+      ruta: `/lotes/${lote.id}/fotos`, texto: t('historial.continuar'),
+      nombre: t('historial.continuarLote', { codigo: lote.codigo }),
+    };
+  }
+  if (!accion) {
+    return null;
+  }
   return (
-    <Button component={Link} to={`/lotes/${lote.id}/fotos`} variant={enTarjeta ? 'outlined' : 'text'}
-      aria-label={t('historial.continuarLote', { codigo: lote.codigo })}
+    <Button component={Link} to={accion.ruta} variant={enTarjeta ? 'outlined' : 'text'} aria-label={accion.nombre}
       sx={enTarjeta
         ? { minHeight: medidas.zonaTactil, mt: 0.75 }
         : { minHeight: medidas.boton.altoEnTabla, px: '10px', textDecoration: 'underline' }}>
-      {t('historial.continuar')}
+      {accion.texto}
     </Button>
   );
 }
@@ -125,7 +139,7 @@ function Continuar({ lote, enTarjeta = false }) {
 /**
  * Los lotes en el PC: una tabla con su título para los lectores de pantalla. En una ventana angosta, la caja de la
  * tabla se desplaza a los lados; por eso recibe el foco, con el nombre de la tabla, y se recorre con las flechas
- * del teclado (WCAG 2.1.1). Para el usuario final, la última columna tiene las acciones de cada lote.
+ * del teclado (WCAG 2.1.1). La última columna tiene las acciones de cada lote.
  *
  * @param {{ lotes: import('../api/lotes.js').Lote[], region: string, registra: boolean }} props los lotes de la
  *   página, la región y si la sesión es del usuario final, que registra y retoma lotes
@@ -142,7 +156,7 @@ function Tabla({ lotes, region, registra }) {
         <TableHead>
           <TableRow>
             {COLUMNAS.map(([dato, clave]) => <TableCell key={dato}>{t(clave)}</TableCell>)}
-            {registra && <TableCell align="right">{t('crud.acciones')}</TableCell>}
+            <TableCell align="right">{t('crud.acciones')}</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -155,11 +169,9 @@ function Tabla({ lotes, region, registra }) {
                     {dato === 'estado' ? <Estado lote={lote} texto={datos.estado} /> : datos[dato]}
                   </TableCell>
                 ))}
-                {registra && (
-                  <TableCell align="right" sx={{ py: 1 }}>
-                    {lote.estado === 'PENDIENTE' && <Continuar lote={lote} />}
-                  </TableCell>
-                )}
+                <TableCell align="right" sx={{ py: 1 }}>
+                  <AccionDelLote lote={lote} registra={registra} />
+                </TableCell>
               </TableRow>
             );
           })}
@@ -170,8 +182,8 @@ function Tabla({ lotes, region, registra }) {
 }
 
 /**
- * Los lotes en el celular: una tarjeta por lote, con su código y su estado arriba (RNF-05). Para el usuario final,
- * la de un lote pendiente lleva «Continuar» al pie.
+ * Los lotes en el celular: una tarjeta por lote, con su código y su estado arriba (RNF-05). La de un lote analizado
+ * lleva «Ver» al pie y, para el usuario final, la de un lote pendiente lleva «Continuar».
  *
  * @param {{ lotes: import('../api/lotes.js').Lote[], region: string, registra: boolean }} props los lotes de la
  *   página, la región y si la sesión es del usuario final, que registra y retoma lotes
@@ -198,7 +210,7 @@ function Tarjetas({ lotes, region, registra }) {
                 {datos[dato]}
               </Typography>
             ))}
-            {registra && lote.estado === 'PENDIENTE' && <Continuar lote={lote} enTarjeta />}
+            <AccionDelLote lote={lote} registra={registra} enTarjeta />
           </Box>
         );
       })}

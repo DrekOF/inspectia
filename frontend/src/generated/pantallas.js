@@ -5,10 +5,10 @@
  *              Archivo generado por generador/ (RP-23): no se edita a mano; se cambia el JSON
  *              o la plantilla, y se regenera.
  * Fecha de creación: 13/10/2026
- * Actualización: 27/10/2026
+ * Actualización: 23/11/2026
  * Autor: Equipo InspectIA (generado por generador/ v1.10)
  * Versión: 1.10
- * Entidades: empresa 1.3, foto 1.0, grano 1.0, lote 1.0, modelo 1.0, muestra 1.0, rango_recomendacion 1.3, usuario 1.8
+ * Entidades: empresa 1.3, foto 1.0, grano 1.0, lote 1.1, modelo 1.1, muestra 1.1, rango_recomendacion 1.3, usuario 1.8
  */
 import { lazy } from 'react';
 

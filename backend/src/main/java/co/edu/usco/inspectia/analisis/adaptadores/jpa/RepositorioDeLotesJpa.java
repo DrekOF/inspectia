@@ -1,18 +1,23 @@
 /*
  * Nombre: RepositorioDeLotesJpa.java
- * Descripción: Implementa con JPA el puerto de los lotes guardados (RF-04, RF-14, D-21).
+ * Descripción: Implementa con JPA el puerto de los lotes guardados (RF-04, RF-10, RF-12, RF-14, D-21).
  * Fecha de creación: 10/11/2026
  * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 package co.edu.usco.inspectia.analisis.adaptadores.jpa;
 
 import co.edu.usco.inspectia.analisis.aplicacion.OrigenUsado;
 import co.edu.usco.inspectia.analisis.aplicacion.RepositorioDeLotes;
+import co.edu.usco.inspectia.analisis.aplicacion.ResultadoGuardado;
 import co.edu.usco.inspectia.analisis.aplicacion.VistaDeLote;
 import co.edu.usco.inspectia.analisis.dominio.EstadoDeLote;
 import co.edu.usco.inspectia.analisis.dominio.Lote;
+import co.edu.usco.inspectia.analisis.dominio.ResultadoDelLote;
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -78,5 +83,29 @@ public class RepositorioDeLotesJpa implements RepositorioDeLotes {
     @Override
     public Optional<EstadoDeLote> estadoParaActualizar(UUID empresaId, UUID id) {
         return lotes.paraActualizar(empresaId, id).map(LoteEntidad::getEstado);
+    }
+
+    /**
+     * Guarda el resultado en la fila ya bloqueada del lote y lo manda a la base en seguida: si la base lo rechaza, el
+     * error sale aquí y la transacción se deshace entera.
+     */
+    @Override
+    public void guardarResultado(UUID empresaId, UUID id, ResultadoDelLote resultado, Instant fechaResultado) {
+        LoteEntidad lote = lotes.paraActualizar(empresaId, id)
+                .orElseThrow(() -> new IllegalStateException("El lote " + id + " no existe"));
+        lote.setEstado(EstadoDeLote.ANALIZADO);
+        lote.setPorcentajeSanos(resultado.porcentajeSanos());
+        lote.setMargen(resultado.margen());
+        lote.setCategoria(resultado.categoria());
+        lote.setRecomendacion(resultado.recomendacion());
+        lote.setSugerirOtraMuestra(resultado.sugerirOtraMuestra());
+        lote.setAvisoConfianzaBaja(resultado.avisoConfianzaBaja());
+        lote.setFechaResultado(OffsetDateTime.ofInstant(fechaResultado, ZoneOffset.UTC));
+        lotes.saveAndFlush(lote);
+    }
+
+    @Override
+    public Optional<ResultadoGuardado> resultado(UUID empresaId, UUID id) {
+        return lotes.resultado(empresaId, id);
     }
 }

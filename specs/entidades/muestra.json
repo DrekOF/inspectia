@@ -3,9 +3,9 @@
     "nombre": "muestra.json",
     "descripcion": "Entidad muestra: cada muestra de un lote, con sus conteos, su modelo y la copia de los parámetros. Entrada del generador (RP-23); formato en specs/entidades/README.md.",
     "fecha_creacion": "13/10/2026",
-    "actualizacion": "13/10/2026",
+    "actualizacion": "23/11/2026",
     "autor": "Equipo InspectIA",
-    "version": "1.0"
+    "version": "1.1"
   },
   "entidad": "muestra",
   "clase": "Muestra",
@@ -162,6 +162,12 @@
       "sql": "granos_sanos IS NULL OR granos_sanos <= total_granos",
       "descripcion": "Los granos sanos no pueden ser más que el total.",
       "fichas": ["RF-10"]
+    }
+  ],
+  "indices": [
+    {
+      "atributos": ["estado", "fecha_envio"],
+      "fichas": ["RNF-02"]
     }
   ]
 }

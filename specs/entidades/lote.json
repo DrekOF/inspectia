@@ -3,9 +3,9 @@
     "nombre": "lote.json",
     "descripcion": "Entidad lote: los lotes de cacao que analiza cada empresa, con su resultado. Entrada del generador (RP-23); formato en specs/entidades/README.md.",
     "fecha_creacion": "13/10/2026",
-    "actualizacion": "13/10/2026",
+    "actualizacion": "23/11/2026",
     "autor": "Equipo InspectIA",
-    "version": "1.0"
+    "version": "1.1"
   },
   "entidad": "lote",
   "clase": "Lote",
@@ -91,6 +91,16 @@
       "fichas": ["RF-10", "D-25"]
     },
     {
+      "nombre": "margen",
+      "tipo": "decimal",
+      "precision": 4,
+      "escala": 1,
+      "obligatorio": false,
+      "validaciones": { "min": 0, "max": 100 },
+      "etiquetas": { "es": "Margen (puntos)", "en": "Margin (points)" },
+      "fichas": ["RF-10", "P-19"]
+    },
+    {
       "nombre": "categoria",
       "tipo": "lista",
       "valores_de": "rango_recomendacion.categoria",
@@ -150,7 +160,7 @@
   "checks": [
     {
       "nombre": "lote_resultado_segun_estado",
-      "sql": "(estado = 'PENDIENTE' AND num_nonnulls(porcentaje_sanos, categoria, recomendacion, sugerir_otra_muestra, aviso_confianza_baja, fecha_resultado, reporte_ruta) = 0) OR (estado = 'ANALIZADO' AND num_nonnulls(porcentaje_sanos, categoria, recomendacion, sugerir_otra_muestra, aviso_confianza_baja, fecha_resultado) = 6)",
+      "sql": "(estado = 'PENDIENTE' AND num_nonnulls(porcentaje_sanos, margen, categoria, recomendacion, sugerir_otra_muestra, aviso_confianza_baja, fecha_resultado, reporte_ruta) = 0) OR (estado = 'ANALIZADO' AND num_nonnulls(porcentaje_sanos, margen, categoria, recomendacion, sugerir_otra_muestra, aviso_confianza_baja, fecha_resultado) = 7)",
       "descripcion": "Un lote pendiente no tiene resultado; uno analizado lo tiene completo (el PDF es opcional).",
       "fichas": ["RF-12", "D-25"]
     }

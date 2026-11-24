@@ -2,9 +2,9 @@
  * Nombre: EsquemaIT.java
  * Descripción: Pruebas del esquema que genera el generador (V1__esquema_inicial.sql) en PostgreSQL 18.
  * Fecha de creación: 13/10/2026
- * Actualización: 13/10/2026
+ * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 package co.edu.usco.inspectia;
 
@@ -92,12 +92,44 @@ class EsquemaIT {
     @Test
     @DisplayName("D-18 · solo un modelo puede estar en uso")
     void unSoloModeloEnUso() {
-        jdbc.update("INSERT INTO modelo (nombre, version, en_uso) VALUES ('clasificador-falso', '0.1', true)");
+        jdbc.update("INSERT INTO modelo (nombre, version, recall_sano, recall_no_sano, en_uso) "
+                + "VALUES ('EfficientNet-B0', '1.0', 91.20, 53.40, true)");
 
-        assertThatThrownBy(() -> jdbc.update(
-                "INSERT INTO modelo (nombre, version, en_uso) VALUES ('otro', '0.1', true)"))
+        assertThatThrownBy(() -> jdbc.update("INSERT INTO modelo (nombre, version, recall_sano, recall_no_sano, "
+                + "en_uso) VALUES ('ResNet-50', '1.0', 87.40, 52.10, true)"))
                 .isInstanceOf(DataIntegrityViolationException.class)
                 .hasMessageContaining("modelo_en_uso_unico");
+    }
+
+    @Test
+    @DisplayName("D-39 · la base rechaza un modelo sin el recall de cada clase: sin ellos no se corrige el porcentaje")
+    void modeloConSusRecall() {
+        assertThatThrownBy(() -> jdbc.update("INSERT INTO modelo (nombre, version, recall_sano) "
+                + "VALUES ('sin-recall', '1.0', 91.20)"))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("recall_no_sano");
+    }
+
+    @Test
+    @DisplayName("D-39 · la base rechaza un modelo cuyos recall suman 100 o menos: la corrección dividiría por cero")
+    void modeloMejorQueElAzar() {
+        assertThatThrownBy(() -> jdbc.update("INSERT INTO modelo (nombre, version, recall_sano, recall_no_sano) "
+                + "VALUES ('al-azar', '1.0', 50.00, 50.00)"))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("modelo_mejor_que_el_azar");
+    }
+
+    @Test
+    @DisplayName("P-19 · un lote analizado guarda su margen: sin él, la base lo rechaza")
+    void loteAnalizadoConMargen() {
+        UUID empresa = crearEmpresa("900123456-8");
+        UUID lote = crearLote(empresa, crearUsuario(empresa, "ana@a.co"), "L-001");
+
+        assertThatThrownBy(() -> jdbc.update("UPDATE lote SET estado = 'ANALIZADO', porcentaje_sanos = 90.6, "
+                + "categoria = 'ESTANDAR', recomendacion = 'Apto', sugerir_otra_muestra = true, "
+                + "aviso_confianza_baja = false, fecha_resultado = now() WHERE id = ?", lote))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("lote_resultado_segun_estado");
     }
 
     @Test

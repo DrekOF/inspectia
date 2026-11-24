@@ -5,7 +5,7 @@
     "fecha_creacion": "12/10/2026",
     "actualizacion": "23/11/2026",
     "autor": "Equipo InspectIA",
-    "version": "1.20"
+    "version": "1.21"
   },
   "rf": [
     {
@@ -221,7 +221,7 @@
       "encabezado": "Tomar o subir las fotos de la muestra",
       "titulo": "Tomar o subir las fotos de la muestra del lote, con guía de captura",
       "codigo": "RF-05",
-      "version": "1.2",
+      "version": "1.3",
       "fuente": "D-08 (captura del lote), D-23 y D-26 (tamaño de la muestra) y D-25 (segunda muestra).",
       "descripcion": "El usuario toma con la cámara del celular, o sube desde el PC, 2 o 3 fotos de cada muestra del lote, siguiendo una guía de captura. Un lote tiene una muestra, o dos si la app sugiere otra (D-25).",
       "justificacion": "La calidad de las fotos define la calidad del resultado; la guía evita fotos que no sirven.",
@@ -260,8 +260,8 @@
         ]
       },
       "rnf": "RNF-05 (PC y celular) y RNF-06 (facilidad de uso).",
-      "estado": "Aprobado",
-      "observaciones": "La guía se ajusta con la prueba de fotos reales (P-12)."
+      "estado": "Implementado",
+      "observaciones": "La guía se ajusta con la prueba de fotos reales (P-12). Pasó a «Implementado» con el PR del resultado (23/11/2026), que trajo el «al menos 2» de C2 con «Analizar la muestra»."
     },
     {
       "encabezado": "Validar la nitidez y la luz de cada foto",
@@ -457,7 +457,7 @@
       "encabezado": "Calcular el % de granos sanos",
       "titulo": "Calcular el porcentaje de granos sanos del lote",
       "codigo": "RF-10",
-      "version": "1.2",
+      "version": "1.3",
       "fuente": "D-02 (el resultado del lote se expresa como porcentaje de granos sanos), D-25 (suma de 2 muestras) y D-39 (corrección con los recall del modelo).",
       "descripcion": "El sistema calcula el porcentaje de granos sanos del lote. Primero cuenta lo que clasificó el modelo: granos sanos dividido por el total de granos clasificados, por 100 (el porcentaje contado). Después lo corrige con los recall del modelo que analizó la muestra, porque sus errores sesgan el porcentaje (D-39). Si el lote tiene 2 muestras, suma los granos de las dos (D-25).",
       "justificacion": "Es el resultado principal con el que la empresa decide qué hacer con el lote (D-02).",
@@ -469,7 +469,9 @@
           "Con 2 muestras se suman los granos; no se promedian los porcentajes (D-25).",
           "El porcentaje contado se corrige con `p_real = (p_obs − (1 − recall_mala)) / (recall_sana − (1 − recall_mala))`, limitado a [0, 1], con los recall del modelo que analizó la muestra; mala es la clase no sano (D-39). Con EfficientNet-B0 (recall sana 0,912 y mala 0,534) queda `(p_obs − 0,466) / 0,446`.",
           "Si las 2 muestras las analizaron modelos distintos, la suma se corrige con los recall de cada muestra: `(S − Σ nᵢ·(1 − recall_malaᵢ)) / Σ nᵢ·(recall_sanaᵢ − (1 − recall_malaᵢ))`, limitado a [0, 1], donde S es el total de granos sanos y nᵢ el total de granos de cada muestra. Con un solo modelo es la misma fórmula (D-39).",
-          "El porcentaje corregido se muestra con su margen; cómo se calcula lo define P-19."
+          "El porcentaje corregido se muestra con su margen; cómo se calcula lo define P-19.",
+          "Los porcentajes se calculan con aritmética exacta y se redondean una sola vez, al final, a un decimal y hacia arriba en el empate: 377 de 400 da 94,3 %.",
+          "El margen se calcula como dice P-19, se redondea a un decimal y se guarda con el resultado del lote. Se muestra como el rango probable, recortado a 0–100 % (D-43)."
         ]
       },
       "prioridad": "Alta",
@@ -506,14 +508,14 @@
         ]
       },
       "rnf": "RNF-01 (tiempo de respuesta).",
-      "estado": "Aprobado",
-      "observaciones": "Es una regla del núcleo hexagonal del módulo de análisis (D-21). El margen del porcentaje corregido y cuándo sugerir otra muestra se definen en P-19."
+      "estado": "Implementado",
+      "observaciones": "Es una regla del núcleo hexagonal del módulo de análisis (D-21). El margen del porcentaje corregido y cuándo sugerir otra muestra se definen en P-19. Pasó a «Implementado» con el PR del resultado (23/11/2026), con el clasificador falso: el cálculo no depende de quién clasifica los granos, y el servicio de IA real llega con RF-08."
     },
     {
       "encabezado": "Mostrar la foto con cada grano marcado",
       "titulo": "Mostrar el resultado con la foto marcada (cada grano sano o no sano)",
       "codigo": "RF-11",
-      "version": "1.1",
+      "version": "1.2",
       "fuente": "Proceso propuesto (TO-BE) y D-39 (porcentaje corregido).",
       "descripcion": "El sistema muestra el porcentaje corregido de granos sanos, con su margen (RF-10, D-39), y cada foto con los granos marcados: en verde los sanos y en rojo los no sanos. Junto a las fotos se ve lo que contó el modelo, por ejemplo «93 de 100 marcados como sanos».",
       "justificacion": "Ver qué granos se marcaron da confianza en el resultado y ayuda a retirar a mano los defectuosos.",
@@ -521,7 +523,8 @@
       "restricciones": {
         "b": [
           "Además del color, cada grano lleva un símbolo, para quienes no distinguen colores (RP-08).",
-          "Como el porcentaje corregido no coincide con los granos marcados, una frase corta explica la diferencia: «El porcentaje corrige los errores conocidos del modelo» (D-39)."
+          "Como el porcentaje corregido no coincide con los granos marcados, una frase corta explica la diferencia: «El porcentaje corrige los errores conocidos del modelo» (D-39).",
+          "Un grano dudoso conserva el color y el símbolo de su clase y lleva además una marca «?» (D-42). La página no recibe la confianza: solo si el grano es dudoso."
         ]
       },
       "prioridad": "Media",
@@ -549,14 +552,14 @@
         ]
       },
       "rnf": "RNF-05 (PC y celular) y RNF-06 (facilidad de uso).",
-      "estado": "Aprobado",
-      "observaciones": "La confianza promedio la ve el administrador de empresa en RF-17."
+      "estado": "Implementado",
+      "observaciones": "La confianza promedio la ve el administrador de empresa en RF-17. Pasó a «Implementado» con el PR del resultado (23/11/2026), con el clasificador falso: la pantalla marca los granos que guardó el backend, sin depender de quién los clasificó; el servicio de IA real llega con RF-08."
     },
     {
       "encabezado": "Generar la recomendación",
       "titulo": "Generar la recomendación según los rangos de la empresa",
       "codigo": "RF-12",
-      "version": "1.2",
+      "version": "1.3",
       "fuente": "D-10, D-24 y D-25 (criterios de la recomendación), D-39 (porcentaje corregido) y anexo A.3.",
       "descripcion": "Según el porcentaje corregido de granos sanos (RF-10, D-39) y los rangos de la empresa, el sistema asigna una categoría probable y una acción sugerida.",
       "justificacion": "Convierte el porcentaje en una decisión: vender, seleccionar a mano o revisar el proceso.",
@@ -567,7 +570,8 @@
           "Usa el porcentaje corregido de RF-10, ya redondeado a un decimal (D-39).",
           "La categoría se presenta como probable: la oficial se confirma con la prueba de corte (D-10).",
           "Si el porcentaje queda a menos de 1 punto de un límite de la empresa (por defecto, 96, 90 u 82 %), se sugiere analizar otra muestra (D-24).",
-          "Un lote tiene como máximo 2 muestras: la segunda solo se habilita cuando la app la sugiere, y con 2 muestras ya no se sugiere otra (D-25)."
+          "Un lote tiene como máximo 2 muestras: la segunda solo se habilita cuando la app la sugiere, y con 2 muestras ya no se sugiere otra (D-25).",
+          "Para sugerir otra muestra cuentan los límites de Premium o Especial, Estándar y Corriente; el 0 de Fuera de norma no."
         ]
       },
       "prioridad": "Alta",

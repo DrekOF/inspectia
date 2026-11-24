@@ -1,11 +1,12 @@
 /*
  * Nombre: ApiFotos.java
  * Descripción: Llamadas a la API de las fotos de un lote y a sus enlaces firmados, sus mensajes, y fotos JPG y PNG
- *              hechas en la misma prueba, para las pruebas (RF-05, RF-14 C5, RNF-03, RNF-04, D-41).
+ *              hechas en la misma prueba, también de un tamaño dado para el clasificador falso, para las pruebas
+ *              (RF-05, RF-14 C5, RNF-03, RNF-04, D-41).
  * Fecha de creación: 23/11/2026
  * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis;
 
@@ -146,8 +147,20 @@ final class ApiFotos {
         return "%PDF-1.7\n%prueba de InspectIA\n".getBytes(StandardCharsets.US_ASCII);
     }
 
+    /**
+     * Una foto PNG de ese tamaño, hecha en la prueba. El clasificador falso cuenta sus granos por el tamaño: tantos no
+     * sanos como {@code ancho mod 50} y tantos dudosos como {@code alto mod 50}, de 50 granos.
+     */
+    static byte[] png(int ancho, int alto) {
+        return imagen("png", ancho, alto);
+    }
+
     private static byte[] imagen(String formato) {
-        BufferedImage imagen = new BufferedImage(2, 2, BufferedImage.TYPE_INT_RGB);
+        return imagen(formato, 2, 2);
+    }
+
+    private static byte[] imagen(String formato, int ancho, int alto) {
+        BufferedImage imagen = new BufferedImage(ancho, alto, BufferedImage.TYPE_INT_RGB);
         imagen.setRGB(0, 0, 0x6B3F22);
         ByteArrayOutputStream salida = new ByteArrayOutputStream();
         try {

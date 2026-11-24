@@ -6,7 +6,7 @@
  * Fecha de creación: 23/11/2026
  * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis;
 
@@ -241,8 +241,9 @@ class FotosDeLaMuestraIT {
     @Test
     @DisplayName("RF-05 · no se suben fotos a un lote que ya no está pendiente de análisis: responde 409 con el motivo")
     void soloLotesPendientes() {
-        jdbc.update("UPDATE lote SET estado = 'ANALIZADO', porcentaje_sanos = 93.0, categoria = 'ESTANDAR', "
-                + "recomendacion = 'Apto para la venta', sugerir_otra_muestra = false, aviso_confianza_baja = false, "
+        jdbc.update("UPDATE lote SET estado = 'ANALIZADO', porcentaje_sanos = 93.0, margen = 5.7, "
+                + "categoria = 'ESTANDAR', recomendacion = 'Apto para la venta', sugerir_otra_muestra = false, "
+                + "aviso_confianza_baja = false, "
                 + "fecha_resultado = now() WHERE id = ?", lote);
 
         MvcTestResult resultado = fotos.pedirSubida(token, lote, 1, JPG, 1_000);

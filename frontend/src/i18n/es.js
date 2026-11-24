@@ -6,7 +6,7 @@
  * Fecha de creación: 20/10/2026
  * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.6
+ * Versión: 1.7
  */
 
 /** Textos en español, por clave. en.js tiene las mismas claves (i18n.test.js lo revisa). */
@@ -178,10 +178,12 @@ export default {
   'historial.pagina': 'Página {pagina}',
   'historial.continuar': 'Continuar',
   'historial.continuarLote': 'Continuar el lote {codigo}',
+  'historial.ver': 'Ver',
+  'historial.verLote': 'Ver el lote {codigo}',
   'fotos.titulo': 'Fotos de la muestra',
   'fotos.descripcion': 'Lote {codigo} · {origen}. Sube 2 o 3 fotos; si sales ahora, el lote queda pendiente y lo retomas desde el Historial.',
   'fotos.descripcionSinSubir': 'Lote {codigo} · {origen}.',
-  'fotos.verElResultado': 'Consulta su resultado en el Historial.',
+  'fotos.verElResultado': 'Ver el resultado',
   'fotos.tusFotos': 'Tus fotos',
   'fotos.foto': 'Foto {numero}',
   'fotos.fotoOpcional': 'Foto {numero} (opcional)',
@@ -201,4 +203,60 @@ export default {
   'guia.luz': 'Luz difusa, sin sombras fuertes.',
   'guia.arriba': 'Toma la foto desde arriba, con el celular quieto.',
   'guia.formato': 'JPG o PNG, de hasta 10 MB cada una.',
+
+  // «Analizar la muestra», al pie de «Tus fotos» (RF-05 C2)
+  'analizar.boton': 'Analizar la muestra',
+  'analizar.esperaSubida': 'Espera a que termine de subir la foto {numero}.',
+  'analizar.esperaSubidas': 'Espera a que terminen de subir las fotos.',
+
+  // Espera del análisis, en la página del resultado (RNF-01 C4, RNF-02 C3)
+  'espera.titulo': 'Análisis de la muestra',
+  'espera.avance': 'Avance del análisis',
+  'espera.EN_ESPERA': 'Tu análisis está en espera: empieza apenas termine el que va antes.',
+  'espera.EN_PROCESO': 'Analizando la muestra…',
+  'espera.tarda': 'Está tardando más de lo normal. Puedes esperar aquí o volver al Historial: el resultado queda guardado.',
+  'espera.irAlHistorial': 'Ir al Historial',
+  'espera.fallo': 'El análisis de la muestra no terminó: la muestra volvió a quedar pendiente.',
+  'espera.falloQueHacer': 'Revisa las fotos y pulsa otra vez «Analizar la muestra».',
+  'espera.falloAdmin': 'Un usuario final de tu empresa puede revisar las fotos y enviarla de nuevo.',
+  'espera.volverALasFotos': 'Volver a las fotos',
+
+  // Resultado y detalle de un lote (RF-10, RF-11, RF-12, RF-14 C3, D-42, D-43)
+  'resultado.titulo': 'Resultado del lote {codigo}',
+  'resultado.tituloSinLote': 'Resultado del lote',
+  'resultado.datos': '{origen} · Recibido el {recepcion}',
+  'resultado.datosAnalizado': '{origen} · Recibido el {recepcion} · Analizado el {dia} a las {hora}',
+  'resultado.sinResultado': 'Este lote todavía no tiene resultado.',
+  'resultado.listo': 'Listo: este es el resultado del lote {codigo}.',
+  'resultado.resumen': 'Resumen del resultado',
+  'resultado.deGranosSanos': 'de granos sanos',
+  'resultado.rango': 'Rango probable: entre {desde} y {hasta} %',
+  'resultado.granos': 'Granos',
+  'resultado.sanos': 'Sanos',
+  'resultado.noSanos': 'No sanos',
+  'resultado.marcados': '{sanos} de {total} marcados como sanos',
+  'resultado.corrige': 'El porcentaje corrige los errores conocidos del modelo.',
+  'resultado.nota': 'Es una categoría probable: la oficial se confirma con la prueba de corte.',
+  'resultado.sugerencia': 'El resultado quedó a menos de 1 punto del límite de una categoría.',
+  'resultado.sugerenciaDetalle': 'Conviene analizar otra muestra del mismo lote para confirmarlo: el resultado sumará los granos de las dos muestras.',
+  'resultado.fotosMarcadas': 'Fotos marcadas',
+  'resultado.muestra': 'Muestra {numero}',
+  'resultado.analizadaPor': 'Analizada por {nombre}',
+  'resultado.modelo': 'Modelo de IA: {nombre} {version}',
+  'resultado.pestanas': 'Fotos de la muestra {numero}',
+  'resultado.pestana': 'Foto {numero}',
+  'resultado.granosDeLaPestana_one': '{count} grano',
+  'resultado.granosDeLaPestana_many': '{count} granos',
+  'resultado.granosDeLaPestana_other': '{count} granos',
+  'resultado.imagen': 'Foto {numero} de la muestra, con sus granos marcados',
+  'resultado.granosDeLaFoto': 'Granos de la foto {numero}',
+  'resultado.grano.SANO': 'Grano {numero}: sano',
+  'resultado.grano.NO_SANO': 'Grano {numero}: no sano',
+  'resultado.granoDudoso': '{grano}, dudoso',
+  'resultado.claseDudosa': '{clase} · dudoso',
+  'resultado.dudoso': 'Dudoso',
+  'resultado.leyenda': 'Leyenda de las marcas',
+  'resultado.ayudaPc': 'Pasa el cursor sobre un grano o tócalo para ver su clase.',
+  'resultado.ayudaCelular': 'Toca un grano para ver su clase.',
+  'resultado.ayudaTeclado': 'Con el teclado, entra a la foto con Tab y pasa de un grano a otro con las flechas.',
 };

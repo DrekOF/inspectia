@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
 Nombre: pom.xml
-Descripción: Proyecto Maven del servidor de InspectIA: Spring Boot 4.1.1 con Java 25 (D-21). Las versiones las fija el BOM de Spring Boot, salvo springdoc.
+Descripción: Proyecto Maven del servidor de InspectIA: Spring Boot 4.1.1 con Java 25 (D-21). Las versiones las fija el BOM de Spring Boot, salvo springdoc y PIT. El perfil «mutacion» corre a mano las pruebas de mutación del dominio del análisis (RF-10 C7, RP-12).
 Fecha de creación: 13/10/2026
-Actualización: 14/10/2026
+Actualización: 23/11/2026
 Autor: Equipo InspectIA
-Versión: 1.1
+Versión: 1.2
 -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
@@ -25,6 +25,9 @@ Versión: 1.1
 	<properties>
 		<java.version>25</java.version>
 		<springdoc.version>3.1.1</springdoc.version>
+		<!-- Pruebas de mutación (perfil «mutacion»): PIT y su complemento para JUnit 5 y 6 -->
+		<pitest.version>1.30.2</pitest.version>
+		<pitest-junit5.version>1.2.3</pitest-junit5.version>
 	</properties>
 
 	<dependencies>
@@ -211,5 +214,69 @@ Versión: 1.1
 			</plugin>
 		</plugins>
 	</build>
+
+	<profiles>
+		<!--
+		Pruebas de mutación del dominio del análisis (RF-10 C7, RP-12), con PIT. Se corren a mano, como
+		«npm run test:mutacion» en el frontend, y no en la CI: ./mvnw -Pmutacion test. Después de las pruebas
+		unitarias, PIT cambia el código de analisis.dominio (operadores, límites, retornos) y revisa que alguna prueba
+		del dominio falle con cada cambio. El informe queda en target/pit-reports/index.html; si quedan vivos más
+		mutantes de los que permite mutationThreshold, falla.
+		-->
+		<profile>
+			<id>mutacion</id>
+			<dependencies>
+				<!-- El lanzador de JUnit que usa PIT; su versión la fija el BOM de Spring Boot -->
+				<dependency>
+					<groupId>org.junit.platform</groupId>
+					<artifactId>junit-platform-launcher</artifactId>
+					<scope>test</scope>
+				</dependency>
+			</dependencies>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.pitest</groupId>
+						<artifactId>pitest-maven</artifactId>
+						<version>${pitest.version}</version>
+						<dependencies>
+							<dependency>
+								<groupId>org.pitest</groupId>
+								<artifactId>pitest-junit5-plugin</artifactId>
+								<version>${pitest-junit5.version}</version>
+							</dependency>
+						</dependencies>
+						<configuration>
+							<targetClasses>
+								<param>co.edu.usco.inspectia.analisis.dominio.*</param>
+							</targetClasses>
+							<targetTests>
+								<param>co.edu.usco.inspectia.analisis.dominio.*</param>
+							</targetTests>
+							<mutators>
+								<mutator>STRONGER</mutator>
+							</mutators>
+							<!-- Los que sobreviven son equivalentes, como «num ≤ 0» por «num < 0»: con num = 0 dan 0,0 -->
+							<mutationThreshold>95</mutationThreshold>
+							<outputFormats>
+								<param>HTML</param>
+								<param>XML</param>
+							</outputFormats>
+							<timestampedReports>false</timestampedReports>
+						</configuration>
+						<executions>
+							<execution>
+								<id>mutacion-del-dominio</id>
+								<phase>test</phase>
+								<goals>
+									<goal>mutationCoverage</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
 
 </project>

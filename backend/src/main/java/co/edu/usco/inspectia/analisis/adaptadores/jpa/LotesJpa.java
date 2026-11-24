@@ -1,15 +1,16 @@
 /*
  * Nombre: LotesJpa.java
- * Descripción: Repositorio de Spring Data de la tabla lote, con las consultas del registro, el historial y
- *              las sugerencias de finca o proveedor (RF-04, RF-14, RNF-03).
+ * Descripción: Repositorio de Spring Data de la tabla lote, con las consultas del registro, el historial, las
+ *              sugerencias de finca o proveedor y el resultado guardado (RF-04, RF-14, RNF-03).
  * Fecha de creación: 10/11/2026
  * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 package co.edu.usco.inspectia.analisis.adaptadores.jpa;
 
 import co.edu.usco.inspectia.analisis.aplicacion.OrigenUsado;
+import co.edu.usco.inspectia.analisis.aplicacion.ResultadoGuardado;
 import co.edu.usco.inspectia.analisis.aplicacion.VistaDeLote;
 import co.edu.usco.inspectia.analisis.dominio.EstadoDeLote;
 import jakarta.persistence.LockModeType;
@@ -100,4 +101,16 @@ public interface LotesJpa extends JpaRepository<LoteEntidad, UUID> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select l from LoteEntidad l where l.id = :id and l.empresaId = :empresa")
     Optional<LoteEntidad> paraActualizar(@Param("empresa") UUID empresa, @Param("id") UUID id);
+
+    /**
+     * El resultado guardado de un lote de la empresa, tal cual, sin recalcularlo (RF-14 C3).
+     *
+     * @param empresa la empresa
+     * @param id el lote
+     * @return el resultado, o vacío si no existe o es de otra empresa
+     */
+    @Query("select new co.edu.usco.inspectia.analisis.aplicacion.ResultadoGuardado(l.id, l.codigo, l.fechaRecepcion, "
+            + "l.origen, l.estado, l.fechaResultado, l.porcentajeSanos, l.margen, l.categoria, l.recomendacion, "
+            + "l.sugerirOtraMuestra, l.avisoConfianzaBaja) from LoteEntidad l where l.id = :id and l.empresaId = :empresa")
+    Optional<ResultadoGuardado> resultado(@Param("empresa") UUID empresa, @Param("id") UUID id);
 }

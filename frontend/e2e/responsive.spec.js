@@ -2,17 +2,17 @@
  * Nombre: responsive.spec.js
  * Descripción: Pruebas de punta a punta del diseño para PC y celular (RNF-05): ninguna pantalla se desplaza a
  *              los lados desde 360 px de ancho, también las de los lotes (RF-04, RF-14), con el historial en 7
- *              páginas y las fotos de la muestra con una foto subida y un error a la vista (RF-05), y las pruebas
- *              corren en tamaño de PC y de celular.
+ *              páginas, las fotos de la muestra con una foto subida y un error a la vista (RF-05) y el resultado de un
+ *              lote (RF-10, RF-11), y las pruebas corren en tamaño de PC y de celular.
  * Fecha de creación: 20/10/2026
  * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.3
+ * Versión: 1.4
  */
 import { randomUUID } from 'node:crypto';
 import {
-  casillaDeFoto, crearEmpresaConUsuarioFinal, datos, expect, iniciarSesion, registrarLotes, seVeLaImagen,
-  subirFotosPorLaApi, test,
+  casillaDeFoto, crearEmpresaConUsuarioFinal, datos, expect, iniciarSesion, loteAnalizado, registrarLotes,
+  seVeLaImagen, subirFotosPorLaApi, test,
 } from './ayudas.js';
 import { png } from './imagenes.js';
 
@@ -47,7 +47,7 @@ test('RNF-05 · C1 · ninguna pantalla se desplaza a los lados desde 360 px de a
   }
 });
 
-test('RNF-05 · C1 · las pantallas de los lotes no se desplazan a los lados desde 360 px de ancho, tampoco el historial con 7 páginas ni las fotos con un error a la vista', async ({ page, request }) => {
+test('RNF-05 · C1 · las pantallas de los lotes no se desplazan a los lados desde 360 px de ancho, tampoco el historial con 7 páginas, las fotos con un error a la vista ni el resultado', async ({ page, request }) => {
   // Registrar 121 lotes por la API toma unos segundos más que las demás pruebas.
   test.slow();
   const { usuarioFinal } = await crearEmpresaConUsuarioFinal(request);
@@ -57,6 +57,7 @@ test('RNF-05 · C1 · las pantallas de los lotes no se desplazan a los lados des
     Array.from({ length: 121 }, (_, indice) => ({ codigo: `${prefijo}-${indice + 1}` })));
   const ultimo = lotes.at(-1);
   await subirFotosPorLaApi(request, usuarioFinal, ultimo.id, [{ numero: 1, archivo: png() }]);
+  const analizado = await loteAnalizado(request, usuarioFinal, [106, 107]);
   await page.setViewportSize({ width: 360, height: 740 });
   await iniciarSesion(page, usuarioFinal);
 
@@ -65,7 +66,8 @@ test('RNF-05 · C1 · las pantallas de los lotes no se desplazan a los lados des
   await sinDesplazamientoLateral(page, 'Nuevo lote');
   await page.goto('/historial');
   await expect(page.getByText(ultimo.codigo, { exact: true })).toBeVisible();
-  await expect(page.getByText('121 lotes · 20 por página')).toBeVisible();
+  // Más el analizado: 122 lotes, todavía en 7 páginas.
+  await expect(page.getByText('122 lotes · 20 por página')).toBeVisible();
   await sinDesplazamientoLateral(page, 'Historial, con 7 páginas');
   await page.goto(`/lotes/${ultimo.id}/fotos`);
   await expect(page.getByRole('region', { name: 'Guía de captura' })).toBeVisible();
@@ -75,6 +77,9 @@ test('RNF-05 · C1 · las pantallas de los lotes no se desplazan a los lados des
     buffer: png({ bytes: 10_485_761 }) });
   await expect(casillaDeFoto(page, 2).getByRole('alert')).toBeVisible();
   await sinDesplazamientoLateral(page, 'Fotos de la muestra, con una foto subida y otra rechazada');
+  await page.goto(`/lotes/${analizado.id}`);
+  await expect(page.getByRole('group', { name: 'Granos de la foto 1' }).getByRole('button')).toHaveCount(50);
+  await sinDesplazamientoLateral(page, 'Resultado del lote');
 });
 
 test('RNF-05 · C3 · las pruebas corren en tamaño de PC y de celular: en PC el menú está a la vista y en el celular, detrás del botón', async ({ page, isMobile }) => {

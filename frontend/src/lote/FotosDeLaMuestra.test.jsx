@@ -9,7 +9,7 @@
  * Fecha de creación: 10/11/2026
  * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.2
+ * Versión: 1.3
  */
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
@@ -428,7 +428,7 @@ describe('Fotos de la muestra', () => {
 
     expect(await screen.findByText('Este lote ya no está pendiente de análisis: sus fotos no se pueden cambiar.'))
       .toBeInTheDocument();
-    expect(screen.getByText('Consulta su resultado en el Historial.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Ver el resultado' })).toHaveAttribute('href', `/lotes/${LOTE_PENDIENTE.id}`);
     expect(screen.getByText('Lote L-0139 · La Estrella.')).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: 'Guía de captura' })).not.toBeInTheDocument();
     expect(screen.queryByRole('list', { name: 'Pasos del análisis' })).not.toBeInTheDocument();

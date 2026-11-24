@@ -3,13 +3,14 @@
  * Descripción: Pruebas con Selenium de los flujos principales (RP-14): entrar con el menú del rol, los datos
  *              errados, cambiar la contraseña, registrar una empresa, crear un usuario que entra, guardar unos
  *              rangos propios y restaurar los de D-10, registrar un lote que pasa a las fotos y queda pendiente
- *              en el historial, y subir dos fotos y volver a ellas con «Continuar», en Chrome y en Edge, en tamaño de
- *              PC y de celular (RNF-05). Con INSPECTIA_E2E_SIN_EDGE=1 salta Edge, como en la CI. Si una falla,
- *              guarda su captura y la consola del navegador en reports/selenium.
+ *              en el historial, subir dos fotos y volver a ellas con «Continuar», y analizar la muestra y ver su
+ *              resultado, en Chrome y en Edge, en tamaño de PC y de celular (RNF-05). Con INSPECTIA_E2E_SIN_EDGE=1
+ *              salta Edge, como en la CI. Cada prueba empieza sin sesión. Si una falla, guarda su captura y la
+ *              consola del navegador en reports/selenium.
  * Fecha de creación: 20/10/2026
  * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.6
+ * Versión: 1.7
  */
 import { randomUUID } from 'node:crypto';
 import { rmSync, writeFileSync } from 'node:fs';
@@ -19,8 +20,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { Key } from 'selenium-webdriver';
 import {
   abrirNavegador, APP, archivoDeLaFoto, boton, Browser, By, campo, campoDelGrupo, CELULAR, CONTRASENA, crearEmpresa,
-  crearUsuario, datos, descartarConsola, desactivarUsuario, empresaNueva, entrar, escribirEn, esperar, esperarTexto,
-  guardarFalla, registrarLote,
+  crearUsuario, datos, descartarConsola, desactivarUsuario, empresaNueva, entrar, escribirEn, esperar, esperarQueEntre,
+  esperarTexto, guardarFalla, registrarLote, sinSesion,
 } from './ayudas.js';
 import { diaEnColombia } from '../e2e/fechas.js';
 import { png } from '../e2e/imagenes.js';
@@ -66,6 +67,7 @@ describe.each(COMBINACIONES)('%s en %s', (_, navegador, __, celular) => {
   // Si la prueba falla, su captura y la consola del navegador quedan en reports/selenium, para explicar las
   // fallas intermitentes.
   beforeEach(async ({ onTestFailed }) => {
+    await sinSesion(driver);
     await descartarConsola(driver);
     onTestFailed(async ({ task }) => {
       const guardados = await guardarFalla(driver, task);
@@ -74,7 +76,7 @@ describe.each(COMBINACIONES)('%s en %s', (_, navegador, __, celular) => {
   });
 
   /**
-   * El menú principal; en el celular, después de pulsar «Abrir el menú».
+   * El menú principal; en el celular, después de pulsar «Abrir el menú» y de que termine de entrar.
    *
    * @returns {Promise<import('selenium-webdriver').WebElement>} el menú
    */
@@ -82,7 +84,9 @@ describe.each(COMBINACIONES)('%s en %s', (_, navegador, __, celular) => {
     if (celular) {
       await (await boton(driver, 'Abrir el menú')).click();
     }
-    return esperar(driver, By.css('nav[aria-label="Menú principal"]'));
+    const nav = await esperar(driver, By.css('nav[aria-label="Menú principal"]'));
+    await esperarQueEntre(driver, nav);
+    return nav;
   }
 
   it('RF-01 · C1 · el administrador de empresa entra y ve el menú de su rol (Selenium)', async () => {
@@ -269,6 +273,40 @@ describe.each(COMBINACIONES)('%s en %s', (_, navegador, __, celular) => {
       await seVe(1);
       await seVe(2);
       expect(await driver.getCurrentUrl()).toBe(`${APP}/lotes/${lote.id}/fotos`);
+    } finally {
+      fotos.forEach((ruta) => rmSync(ruta, { force: true }));
+      await driver.executeScript('localStorage.clear()');
+      await desactivarUsuario(luis.id);
+    }
+  });
+
+  it('RF-10 · el usuario final sube dos fotos, pulsa «Analizar la muestra» y ve el resultado: 87 de 100 sanos dan 90,6 % (Selenium)', async () => {
+    const luis = await crearUsuario();
+    const lote = await registrarLote(luis, `S-${randomUUID().slice(0, 8)}`, diaEnColombia(-7));
+    // El clasificador falso marca como no sanos tantos granos como el ancho de la foto módulo 50: 6 y 7 de 100.
+    const fotos = [106, 107].map((ancho) => {
+      const ruta = join(tmpdir(), `inspectia-selenium-${randomUUID().slice(0, 8)}-${ancho}.png`);
+      writeFileSync(ruta, png({ ancho, alto: 100 }));
+      return ruta;
+    });
+    try {
+      await entrar(driver, luis);
+      await esperarTexto(driver, 'Hola, Luis');
+      await driver.get(`${APP}/lotes/${lote.id}/fotos`);
+      for (const [indice, ruta] of fotos.entries()) {
+        await (await archivoDeLaFoto(driver, indice + 1)).sendKeys(ruta);
+        await esperar(driver, By.css(`img[alt="Foto ${indice + 1} de la muestra"]`));
+      }
+
+      await (await boton(driver, 'Analizar la muestra')).click();
+
+      // El título de la página, no el de la pestaña del navegador, que dice lo mismo y no se ve.
+      await esperar(driver, By.xpath(`//h1[normalize-space()='Resultado del lote ${lote.codigo}']`));
+      // La cifra grande lleva un espacio sin corte antes de «%», que normalize-space de XPath no cambia: se busca sin él.
+      await esperarTexto(driver, '90,6');
+      await esperarTexto(driver, '87 de 100 marcados como sanos');
+      await esperarTexto(driver, 'Rango probable: entre 83,1 y 98,1 %');
+      expect(await driver.getCurrentUrl()).toBe(`${APP}/lotes/${lote.id}`);
     } finally {
       fotos.forEach((ruta) => rmSync(ruta, { force: true }));
       await driver.executeScript('localStorage.clear()');

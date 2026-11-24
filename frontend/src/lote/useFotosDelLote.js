@@ -3,10 +3,11 @@
  * Descripción: Las fotos de la muestra en curso de un lote, para la página de las fotos (RF-05, RF-14 C5): las pide
  *              al entrar, otra vez con «Reintentar» y una sola vez más si una imagen no carga porque su enlace
  *              venció, y suma las que se confirman. Una lista pedida antes de una confirmación no la deshace.
+ *              También dice el número y el estado de la muestra, para saber si ya se envió al análisis (RNF-02 C3).
  * Fecha de creación: 23/11/2026
  * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { fotosDelLote } from '../api/fotos.js';
@@ -23,16 +24,18 @@ import { fotosDelLote } from '../api/fotos.js';
  * @property {boolean} cargada si ya llegó una lista
  * @property {Error|null} error el error de la última lista, si falló
  * @property {Record<number, Entrada>} porNumero las fotos, por su número
+ * @property {number|null} muestra el número de la muestra en curso, según la última lista
+ * @property {string|null} estado el estado de la muestra en curso, según la última lista, como EN_ESPERA
  */
 
 /** @type {Estado} */
-const INICIAL = { respondida: -1, cargada: false, error: null, porNumero: {} };
+const INICIAL = { respondida: -1, cargada: false, error: null, porNumero: {}, muestra: null, estado: null };
 
 /**
  * Suma lo que pasó a lo que se sabe de las fotos.
  *
  * @param {Estado} estado lo que se sabía
- * @param {{ tipo: 'lista', recarga: number, orden: number, fotos: import('../api/fotos.js').Foto[] }
+ * @param {{ tipo: 'lista', recarga: number, orden: number, datos: import('../api/fotos.js').FotosDeLaMuestra }
  *   | { tipo: 'error', recarga: number, error: Error }
  *   | { tipo: 'confirmada', orden: number, foto: import('../api/fotos.js').Foto }} accion lo que pasó
  * @returns {Estado} lo que se sabe ahora
@@ -42,10 +45,13 @@ function reducir(estado, accion) {
     // Las fotos confirmadas después de pedir la lista siguen: la lista todavía no las tenía.
     const porNumero = Object.fromEntries(Object.entries(estado.porNumero)
       .filter(([, entrada]) => entrada.orden > accion.orden));
-    for (const foto of accion.fotos) {
+    for (const foto of accion.datos.fotos) {
       porNumero[foto.numero] ??= { foto, orden: accion.orden };
     }
-    return { respondida: accion.recarga, cargada: true, error: null, porNumero };
+    return {
+      respondida: accion.recarga, cargada: true, error: null, porNumero, muestra: accion.datos.muestra,
+      estado: accion.datos.estado,
+    };
   }
   if (accion.tipo === 'error') {
     return { ...estado, respondida: accion.recarga, error: accion.error };
@@ -59,10 +65,10 @@ function reducir(estado, accion) {
  * @param {import('../api/cliente.js').Pedir} pedir la función del cliente de la API
  * @param {string} loteId el lote
  * @returns {{ cargada: boolean, cargando: boolean, error: Error|null,
- *   fotos: Record<number, import('../api/fotos.js').Foto>, recargar: () => void,
- *   confirmada: (foto: import('../api/fotos.js').Foto) => void, vistaFallida: () => void }} las fotos, si ya llegaron
- *   o se están pidiendo, el error de la lista, y qué hacer para pedirlas otra vez, al confirmar una foto y cuando
- *   una imagen no carga
+ *   fotos: Record<number, import('../api/fotos.js').Foto>, muestra: number|null, estado: string|null,
+ *   recargar: () => void, confirmada: (foto: import('../api/fotos.js').Foto) => void, vistaFallida: () => void }} las
+ *   fotos, si ya llegaron o se están pidiendo, el error de la lista, el número y el estado de la muestra, y qué hacer
+ *   para pedirlas otra vez, al confirmar una foto y cuando una imagen no carga
  */
 export function useFotosDelLote(pedir, loteId) {
   const [estado, despachar] = useReducer(reducir, INICIAL);
@@ -75,7 +81,7 @@ export function useFotosDelLote(pedir, loteId) {
     turnos.current += 1;
     const orden = turnos.current;
     fotosDelLote(pedir, loteId)
-      .then((datos) => vigente && despachar({ tipo: 'lista', recarga: recargas, orden, fotos: datos.fotos }))
+      .then((datos) => vigente && despachar({ tipo: 'lista', recarga: recargas, orden, datos }))
       .catch((error) => vigente && despachar({ tipo: 'error', recarga: recargas, error }));
     return () => {
       vigente = false;
@@ -99,6 +105,6 @@ export function useFotosDelLote(pedir, loteId) {
   const fotos = Object.fromEntries(Object.entries(estado.porNumero).map(([numero, { foto }]) => [numero, foto]));
   return {
     cargada: estado.cargada, cargando: estado.respondida !== recargas, error: estado.error, fotos,
-    recargar, confirmada, vistaFallida,
+    muestra: estado.muestra, estado: estado.estado, recargar, confirmada, vistaFallida,
   };
 }

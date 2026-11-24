@@ -1,11 +1,11 @@
 /*
  * Nombre: ReglasDeFotosTest.java
  * Descripción: Pruebas unitarias de las reglas de las fotos en el dominio, sin Spring (RF-05 C2 y C3): el tamaño, el
- *              formato por sus primeros bytes y el número de la foto.
+ *              formato por sus primeros bytes, el número de la foto y cuántas hacen falta para analizar la muestra.
  * Fecha de creación: 23/11/2026
  * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis.dominio;
 
@@ -67,6 +67,16 @@ class ReglasDeFotosTest {
     }
 
     @Test
+    @DisplayName("RF-05 · C2 · para analizar la muestra hacen falta al menos 2 fotos y como máximo 3: con 1 no alcanza (prueba de límite)")
+    void alMenosDosFotos() {
+        assertThat(ReglasDeFotos.alcanzanParaAnalizar(0)).isFalse();
+        assertThat(ReglasDeFotos.alcanzanParaAnalizar(1)).isFalse();
+        assertThat(ReglasDeFotos.alcanzanParaAnalizar(2)).isTrue();
+        assertThat(ReglasDeFotos.alcanzanParaAnalizar(3)).isTrue();
+        assertThat(ReglasDeFotos.alcanzanParaAnalizar(4)).isFalse();
+    }
+
+    @Test
     @DisplayName("RF-05 · el formato de una extensión y su tipo: jpg es image/jpeg y png es image/png")
     void extensionYTipo() {
         assertThat(FormatoDeFoto.deExtension("jpg")).contains(FormatoDeFoto.JPG);
@@ -74,5 +84,8 @@ class ReglasDeFotosTest {
         assertThat(FormatoDeFoto.deExtension("jpeg")).isEmpty();
         assertThat(FormatoDeFoto.JPG.getTipo()).isEqualTo("image/jpeg");
         assertThat(FormatoDeFoto.PNG.getTipo()).isEqualTo("image/png");
+        assertThat(FormatoDeFoto.JPG.getExtension()).isEqualTo("jpg");
+        assertThat(FormatoDeFoto.PNG.getExtension()).isEqualTo("png");
+        assertThat(FormatoDeFoto.JPG.empiezaComo(null)).as("un archivo sin bytes no es JPG").isFalse();
     }
 }

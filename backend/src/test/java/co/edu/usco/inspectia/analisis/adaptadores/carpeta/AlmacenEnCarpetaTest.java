@@ -1,11 +1,12 @@
 /*
  * Nombre: AlmacenEnCarpetaTest.java
  * Descripción: Pruebas unitarias del almacén de las fotos en una carpeta (D-41): los enlaces relativos, las llaves que
- *              no salen de la carpeta, los archivos que no se pisan y el borrado que no falla.
+ *              no salen de la carpeta, los archivos que no se pisan, la lectura para el clasificador y el borrado que
+ *              no falla.
  * Fecha de creación: 23/11/2026
  * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis.adaptadores.carpeta;
 
@@ -16,6 +17,7 @@ import co.edu.usco.inspectia.RelojDePrueba;
 import co.edu.usco.inspectia.analisis.aplicacion.ArchivoGuardado;
 import co.edu.usco.inspectia.analisis.aplicacion.EnlaceTemporal;
 import co.edu.usco.inspectia.comun.errores.ConflictoExcepcion;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -104,5 +106,16 @@ class AlmacenEnCarpetaTest {
 
         assertThat(almacen.describir(LLAVE)).isEmpty();
         assertThat(almacen.existe(LLAVE)).isFalse();
+    }
+
+    @Test
+    @DisplayName("D-41 · leer una foto guardada devuelve todo su contenido, para mandárselo al clasificador; una que no está, no se puede leer")
+    void leer() {
+        almacen.guardar(LLAVE, JPG);
+
+        assertThat(almacen.leer(LLAVE)).isEqualTo(JPG);
+        almacen.borrar(LLAVE);
+        assertThatThrownBy(() -> almacen.leer(LLAVE)).isInstanceOf(UncheckedIOException.class);
+        assertThatThrownBy(() -> almacen.leer("../" + LLAVE)).isInstanceOf(IllegalArgumentException.class);
     }
 }
