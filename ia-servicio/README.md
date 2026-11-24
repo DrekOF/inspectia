@@ -4,7 +4,7 @@ Descripción: Servicio de IA de InspectIA: qué hace, su API, cómo correrlo en 
 Fecha de creación: 12/10/2026
 Actualización: 24/11/2026
 Autor: Equipo InspectIA
-Versión: 2.0
+Versión: 2.1
 -->
 
 # ia-servicio
@@ -86,7 +86,7 @@ En Linux o macOS, `ia-servicio/.venv/bin/python`.
 | `INSPECTIA_MODELOS_CACHE` | `/var/lib/inspectia/modelos` | Carpeta de la caché (un volumen de Docker). |
 | `AWS_REGION` | — | `us-east-1` en AWS. Las credenciales salen del rol de la instancia (IMDSv2), nunca de archivos. |
 | `INSPECTIA_HILOS` | 0 (los de TensorFlow) | Hilos de CPU de TensorFlow. |
-| `INSPECTIA_LOTE_CLASIFICACION` | 64 | Recortes por llamada al modelo. |
+| `INSPECTIA_LOTE_CLASIFICACION` | 16 | Recortes por llamada al modelo. Con 16 el servicio cabe en el límite de memoria del contenedor (ver «Memoria»). |
 | `INSPECTIA_TAMANO_MAXIMO` | 20971520 (20 MB) | Tamaño máximo de una foto. |
 | `INSPECTIA_LUZ_MINIMA` | 110 | Umbral de luz (RF-06 C2). |
 | `INSPECTIA_NITIDEZ_MINIMA` | 100 | Umbral de nitidez (RF-06 C1). |
@@ -145,6 +145,18 @@ En el PC de desarrollo (Intel Core Ultra 9 275HX, Windows 11, Python 3.12.16, Te
 | Cargar el modelo al arrancar | 4,5 s | 4,4 s |
 
 Con 2 hilos son unos 13 ms por grano, cerca de la estimación de Julián para la t4g.medium (19 ms). RNF-01 pide 8 s para todo el análisis (subir las fotos, este servicio y la respuesta) y se mide en la t4g.medium real (RNF-01 C3): su procesador ARM (Graviton2) es más lento por núcleo que el de este PC, así que allí el servicio puede tardar el doble. Hay que medirlo al desplegar.
+
+### Memoria
+
+La memoria del proceso crece con el lote de clasificación y no baja después de cada análisis (TensorFlow guarda lo que reservó). Medido en el mismo PC, con el modelo real, 2 hilos y 150 recortes reales del conjunto de prueba (de 396 × 666 a 481 × 603 px), en 3 vueltas seguidas:
+
+| Lote | Memoria en uso tras cargar el modelo | Memoria en uso tras 150 granos | Clasificar 150 granos |
+|---|---|---|---|
+| 16 (por defecto) | 454 MB | 742 a 745 MB | 3,07 a 3,33 s |
+| 32 | 449 MB | 1023 a 1028 MB | 2,34 a 2,54 s |
+| 64 | 454 MB | 1589 a 1594 MB | 2,88 a 3,17 s |
+
+Con 64 el proceso pasa de 1,5 GB, el límite del contenedor en producción, antes de abrir las fotos de 12 MP de `/analizar` (cada una ocupa de 150 a 250 MB mientras se revisa). Con 16 queda en unos 0,75 GB y el tiempo casi no cambia. La medición es de Windows x86; en la t4g.medium (arm64) hay que confirmarla con `docker stats` junto con RNF-01 C3.
 
 ## Dataset
 

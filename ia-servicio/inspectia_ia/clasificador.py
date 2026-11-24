@@ -4,7 +4,7 @@
 # Fecha de creación: 24/11/2026
 # Actualización: 24/11/2026
 # Autor: Equipo InspectIA
-# Versión: 1.0
+# Versión: 1.1
 """Clasificación de los granos con el modelo elegido (RF-08, D-18, D-40).
 
 El modelo de la release ``modelos-v1.0`` recibe el recorte de un grano ya vuelto cuadrado y reducido a 224 x 224
@@ -110,7 +110,7 @@ class ClasificadorSavedModel:
     línea falla, porque el modelo se libera antes de usarse (lección 13 de Julián).
     """
 
-    def __init__(self, carpeta, hilos=0, lote=64):
+    def __init__(self, carpeta, hilos=0, lote=16):
         """Carga el modelo.
 
         Args:

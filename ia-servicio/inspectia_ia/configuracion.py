@@ -4,7 +4,7 @@
 # Fecha de creación: 24/11/2026
 # Actualización: 24/11/2026
 # Autor: Equipo InspectIA
-# Versión: 1.0
+# Versión: 1.1
 """Configuración del servicio de IA.
 
 Todo sale de variables de entorno, con un valor por defecto justificado en ``ia-servicio/README.md``. Los
@@ -74,8 +74,9 @@ class Configuracion:
     hilos: int = 0
     """Hilos de TensorFlow para la clasificación; 0 deja los que elija TensorFlow (todos los núcleos)."""
 
-    lote_clasificacion: int = 64
-    """Cuántos recortes clasifica el modelo de una vez."""
+    lote_clasificacion: int = 16
+    """Cuántos recortes clasifica el modelo de una vez. Con 16, 150 granos usan unos 0,8 GB y tardan lo mismo que
+    con 64, que pasa de 1,5 GB, el límite del contenedor (medido; ver ``ia-servicio/README.md``)."""
 
     tamano_maximo: int = 20 * 1024 * 1024
     """Tamaño máximo de una foto, en bytes. El backend acepta hasta 10 MB (D-41); aquí hay margen."""
