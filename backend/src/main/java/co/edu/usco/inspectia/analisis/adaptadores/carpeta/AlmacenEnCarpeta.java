@@ -2,11 +2,12 @@
  * Nombre: AlmacenEnCarpeta.java
  * Descripción: El puerto AlmacenDeArchivos en una carpeta del servidor (D-41): enlaces firmados relativos a la página,
  *              llaves que no salen de la carpeta y que llevan la muestra para la que se pidieron (D-25), archivos que
- *              no se pisan y la lectura de una foto para clasificarla.
+ *              no se pisan, la lectura de una foto para clasificarla y los archivos del reporte PDF de un lote, uno
+ *              por idioma (RF-15, D-50).
  * Fecha de creación: 23/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.2
+ * Versión: 1.3
  */
 package co.edu.usco.inspectia.analisis.adaptadores.carpeta;
 
@@ -32,8 +33,9 @@ import java.util.regex.Pattern;
  * El almacén de los archivos en una carpeta del servidor (D-41), que hace las veces de S3 mientras no haya despliegue
  * en AWS. Los enlaces son relativos a la página ({@value #RUTA}), así pasan por el mismo origen (D-31). Las llaves las
  * arma el caso de uso: {@code <empresa>/<lote>/m<muestra>-<uuid>.<jpg|png>}, con la muestra 1 o 2 para la que se
- * pidió el enlace (D-25); una llave con otra forma, como la de antes sin la muestra, o que saldría de la carpeta, no
- * se acepta. Un archivo ya subido no se pisa.
+ * pidió el enlace (D-25), y {@code reportes/<empresa>/<lote>/<uuid>-<es|en>.pdf} para el reporte PDF de un lote
+ * (RF-15, D-50). Una llave con otra forma, como la de antes sin la muestra, o que saldría de la carpeta, no se acepta.
+ * Un archivo ya subido o guardado no se pisa.
  */
 public class AlmacenEnCarpeta implements AlmacenDeArchivos {
 
@@ -48,6 +50,13 @@ public class AlmacenEnCarpeta implements AlmacenDeArchivos {
      */
     private static final Pattern LLAVE = Pattern.compile(
             "^" + UUID + "/" + UUID + "/m[12]-" + UUID + "\\.(jpg|png)$");
+
+    /**
+     * La forma de la llave de un archivo del reporte PDF de un lote (RF-15, D-50): la carpeta {@code reportes}, la
+     * empresa, el lote y el nombre del archivo, con un UUID y su idioma, como {@code <uuid>-es.pdf}.
+     */
+    private static final Pattern LLAVE_DE_REPORTE = Pattern.compile(
+            "^reportes/" + UUID + "/" + UUID + "/" + UUID + "-(es|en)\\.pdf$");
 
     private final Path raiz;
     private final FirmaDeEnlaces firma;
@@ -126,6 +135,21 @@ public class AlmacenEnCarpeta implements AlmacenDeArchivos {
     }
 
     /**
+     * Guarda un archivo que arma el servidor, como el reporte PDF de un lote (RF-15). El tipo no se guarda: en la
+     * carpeta lo dice la extensión de la llave. No pisa un archivo que ya está.
+     *
+     * @throws IllegalStateException si ya hay un archivo con esa llave
+     */
+    @Override
+    public void guardar(String llave, byte[] contenido, String tipo) {
+        try {
+            escribir(llave, contenido);
+        } catch (FileAlreadyExistsException excepcion) {
+            throw new IllegalStateException("Ya hay un archivo con la llave " + llave, excepcion);
+        }
+    }
+
+    /**
      * Si ya se subió un archivo con esa llave.
      *
      * @param llave la llave
@@ -144,6 +168,19 @@ public class AlmacenEnCarpeta implements AlmacenDeArchivos {
      * @throws ConflictoExcepcion si ya se subió un archivo con esa llave (409)
      */
     public void guardar(String llave, byte[] contenido) {
+        try {
+            escribir(llave, contenido);
+        } catch (FileAlreadyExistsException excepcion) {
+            throw new ConflictoExcepcion("foto.ya_subida");
+        }
+    }
+
+    /**
+     * Escribe un archivo primero en un temporal de la misma carpeta y después le pone su nombre, sin reemplazar.
+     *
+     * @throws FileAlreadyExistsException si ya hay un archivo con esa llave
+     */
+    private void escribir(String llave, byte[] contenido) throws FileAlreadyExistsException {
         Path destino = ruta(llave);
         Path temporal = null;
         try {
@@ -152,7 +189,7 @@ public class AlmacenEnCarpeta implements AlmacenDeArchivos {
             Files.write(temporal, contenido);
             Files.move(temporal, destino);
         } catch (FileAlreadyExistsException excepcion) {
-            throw new ConflictoExcepcion("foto.ya_subida");
+            throw excepcion;
         } catch (IOException excepcion) {
             throw new UncheckedIOException(excepcion);
         } finally {
@@ -176,8 +213,9 @@ public class AlmacenEnCarpeta implements AlmacenDeArchivos {
     }
 
     private static String revisada(String llave) {
-        if (llave == null || !LLAVE.matcher(llave).matches()) {
-            throw new IllegalArgumentException("La llave no tiene la forma <empresa>/<lote>/m<muestra>-<archivo>");
+        if (llave == null || !(LLAVE.matcher(llave).matches() || LLAVE_DE_REPORTE.matcher(llave).matches())) {
+            throw new IllegalArgumentException("La llave no tiene la forma <empresa>/<lote>/m<muestra>-<archivo> ni "
+                    + "reportes/<empresa>/<lote>/<archivo>-<idioma>.pdf");
         }
         return llave;
     }

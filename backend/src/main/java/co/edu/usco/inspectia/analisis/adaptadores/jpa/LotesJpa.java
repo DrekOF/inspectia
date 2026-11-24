@@ -2,14 +2,16 @@
  * Nombre: LotesJpa.java
  * Descripción: Repositorio de Spring Data de la tabla lote, con las consultas del registro, el lote como se consulta,
  *              las sugerencias de finca o proveedor, quienes registraron lotes, la sugerencia de otra muestra y el
- *              resultado guardado con su límite (RF-04, RF-14, RNF-03, D-25, D-47).
+ *              resultado guardado con su límite, y la empresa y la base del reporte PDF (RF-04, RF-14, RF-15, RNF-03,
+ *              D-25, D-47, D-50).
  * Fecha de creación: 10/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.3
+ * Versión: 1.4
  */
 package co.edu.usco.inspectia.analisis.adaptadores.jpa;
 
+import co.edu.usco.inspectia.analisis.aplicacion.DatosDelReporte;
 import co.edu.usco.inspectia.analisis.aplicacion.OrigenUsado;
 import co.edu.usco.inspectia.analisis.aplicacion.Registrador;
 import co.edu.usco.inspectia.analisis.aplicacion.ResultadoGuardado;
@@ -132,4 +134,16 @@ public interface LotesJpa extends JpaRepository<LoteEntidad, UUID> {
             + "l.sugerirOtraMuestra, l.limiteSugerencia, l.categoriaDelLimite, l.avisoConfianzaBaja) "
             + "from LoteEntidad l where l.id = :id and l.empresaId = :empresa")
     Optional<ResultadoGuardado> resultado(@Param("empresa") UUID empresa, @Param("id") UUID id);
+
+    /**
+     * El nombre y el NIT de la empresa de un lote, como están hoy, y la base de su reporte PDF (RF-15, D-50). La llave
+     * foránea del lote asegura que la empresa es la suya (RNF-03).
+     *
+     * @param empresa la empresa
+     * @param id el lote
+     * @return los datos, o vacío si el lote no existe o es de otra empresa
+     */
+    @Query("select new co.edu.usco.inspectia.analisis.aplicacion.DatosDelReporte(e.nombre, e.nit, l.reporteRuta) "
+            + "from LoteEntidad l join Empresa e on e.id = l.empresaId where l.id = :id and l.empresaId = :empresa")
+    Optional<DatosDelReporte> datosDelReporte(@Param("empresa") UUID empresa, @Param("id") UUID id);
 }
