@@ -7,7 +7,7 @@
  * Fecha de creación: 24/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.estadistica.lotes;
 
@@ -256,7 +256,7 @@ class EstadisticasIT {
     }
 
     @Test
-    @DisplayName("RF-16 · C4 · «La Esperanza» y «la esperanza », y «Paraíso» y «Paraiso», cuentan como la misma finca en el promedio por finca o proveedor")
+    @DisplayName("RF-16 · C4 · «La Esperanza» y «la esperanza » cuentan como la misma finca en el promedio por finca o proveedor")
     void mismaFinca() {
         UUID conEspacio = analizado(tokenDeLuis, "L-001", "La Esperanza", "90.0", "ESTANDAR",
                 "2026-11-02T10:00-05:00");
@@ -264,18 +264,31 @@ class EstadisticasIT {
         // La API guarda el origen sin los espacios del final; un lote guardado con ellos también cuenta como la misma
         // finca. Las dos formas empatan con un lote cada una: se muestra la del resultado más reciente.
         jdbc.update("UPDATE lote SET origen = 'la esperanza ' WHERE id = ?", conEspacio);
-        analizado(tokenDeLuis, "L-003", "Paraíso", "80.0", "CORRIENTE", "2026-11-04T10:00-05:00");
-        analizado(tokenDeLuis, "L-004", "Paraiso", "82.0", "CORRIENTE", "2026-11-05T10:00-05:00");
-        analizado(tokenDeLuis, "L-005", "paraíso", "84.0", "CORRIENTE", "2026-11-06T10:00-05:00");
+        analizado(tokenDeLuis, "L-003", "Bellavista", "80.0", "CORRIENTE", "2026-11-04T10:00-05:00");
 
         String cifras = estadisticasOk("desde=2026-11-01&hasta=2026-11-30");
 
         assertThat(JsonPath.<List<String>>read(cifras, "$.porOrigen[*].origen"))
-                .containsExactly("La Esperanza", "paraíso");
+                .containsExactly("La Esperanza", "Bellavista");
         assertThat(JsonPath.<List<Number>>read(cifras, "$.porOrigen[*].lotes")).extracting(Number::longValue)
-                .containsExactly(2L, 3L);
+                .containsExactly(2L, 1L);
         assertThat(decimal(cifras, "$.porOrigen[0].promedioSanos")).isEqualByComparingTo("91.0");
-        assertThat(decimal(cifras, "$.porOrigen[1].promedioSanos")).isEqualByComparingTo("82.0");
+        assertThat(decimal(cifras, "$.porOrigen[1].promedioSanos")).isEqualByComparingTo("80.0");
+    }
+
+    @Test
+    @DisplayName("RF-16 · «Paraíso», «Paraiso» y «paraíso» cuentan como la misma finca: las tildes no la separan, como en las sugerencias (decisión de Cristhian del 23/11/2026)")
+    void mismaFincaConYSinTildes() {
+        analizado(tokenDeLuis, "L-001", "Paraíso", "80.0", "CORRIENTE", "2026-11-04T10:00-05:00");
+        analizado(tokenDeLuis, "L-002", "Paraiso", "82.0", "CORRIENTE", "2026-11-05T10:00-05:00");
+        analizado(tokenDeLuis, "L-003", "paraíso", "84.0", "CORRIENTE", "2026-11-06T10:00-05:00");
+
+        String cifras = estadisticasOk("desde=2026-11-01&hasta=2026-11-30");
+
+        assertThat(JsonPath.<List<String>>read(cifras, "$.porOrigen[*].origen")).containsExactly("paraíso");
+        assertThat(JsonPath.<List<Number>>read(cifras, "$.porOrigen[*].lotes")).extracting(Number::longValue)
+                .containsExactly(3L);
+        assertThat(decimal(cifras, "$.porOrigen[0].promedioSanos")).isEqualByComparingTo("82.0");
     }
 
     @Test

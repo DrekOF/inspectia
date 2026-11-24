@@ -2,7 +2,8 @@
  * Nombre: estadisticas.spec.js
  * Descripción: Pruebas de punta a punta de la pantalla Estadísticas (RF-16): las cifras coinciden con los lotes del
  *              historial en el mismo periodo (C1), un periodo sin lotes muestra un mensaje en lugar de gráficas vacías
- *              (C2), el usuario final no entra (C3) y «Paraíso» y «Paraiso» cuentan como la misma finca (C4), cada
+ *              (C2), el usuario final no entra (C3) y «La Esperanza» y «la esperanza » cuentan como la misma finca
+ *              (C4); además, «Paraíso» y «Paraiso» también cuentan como una (las tildes no la separan), cada
  *              prueba con una empresa propia y sus lotes analizados por la API. También que la pantalla con datos no se desplaza a los
  *              lados desde 360 px y no tiene fallas de accesibilidad WCAG AA. Las fotos se hacen en la prueba (RNF-08).
  *              Si la preparación cruza la medianoche de Colombia, la prueba de las cifras se salta: sus lotes no
@@ -10,7 +11,7 @@
  * Fecha de creación: 24/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 import AxeBuilder from '@axe-core/playwright';
 import {
@@ -106,7 +107,8 @@ test('RF-16 · C1 · las cifras coinciden con los lotes del historial en el mism
     expect(categorias.find(([texto]) => texto === nombre), nombre).toEqual([nombre, String(enElHistorial), '25,0 %']);
   }
 
-  // Cada finca una vez, con sus 2 lotes (C4); la forma que se ve es la del resultado más reciente.
+  // Cada finca una vez, con sus 2 lotes, sin distinguir mayúsculas (C4) ni tildes; la forma que se ve es la del
+  // resultado más reciente.
   const fincas = await filasDe(page, 'Promedio por finca o proveedor');
   expect(fincas).toHaveLength(2);
   expect(fincas).toContainEqual(['Paraiso', porcentaje(promedioEnDecimas(deLaFinca(/^para[ií]so$/i))), '2']);
@@ -123,7 +125,24 @@ test('RF-16 · C1 · las cifras coinciden con los lotes del historial en el mism
   expect(revision.violations.map((falla) => `${falla.id}: ${falla.help}`)).toEqual([]);
 });
 
-test('RF-16 · C4 · «Paraíso» y «Paraiso» cuentan como la misma finca en el promedio por finca o proveedor (de punta a punta)', async ({ page, request }) => {
+test('RF-16 · C4 · «La Esperanza» y «la esperanza » cuentan como la misma finca en el promedio por finca o proveedor (de punta a punta)', async ({ page, request }) => {
+  test.slow();
+  const { empresa, usuarioFinal } = await crearEmpresaConUsuarioFinal(request);
+  await loteAnalizado(request, usuarioFinal, [106, 107], { origen: 'La Esperanza' });
+  await loteAnalizado(request, usuarioFinal, [103, 104], { origen: 'la esperanza ' });
+  await iniciarSesion(page, empresa.administrador);
+
+  // El periodo por defecto, los últimos 12 meses, trae los lotes de hoy.
+  await page.goto('/estadisticas');
+
+  // Una sola fila con los 2 lotes; la forma que se ve es la del resultado más reciente, sin el espacio del final.
+  const fincas = await filasDe(page, 'Promedio por finca o proveedor');
+  expect(fincas).toHaveLength(1);
+  expect(fincas[0][0]).toBe('la esperanza');
+  expect(fincas[0][2]).toBe('2');
+});
+
+test('RF-16 · «Paraíso» y «Paraiso» también cuentan como la misma finca: las tildes no la separan, como en las sugerencias (de punta a punta)', async ({ page, request }) => {
   test.slow();
   const { empresa, usuarioFinal } = await crearEmpresaConUsuarioFinal(request);
   await loteAnalizado(request, usuarioFinal, [106, 107], { origen: 'Paraíso' });

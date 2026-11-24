@@ -7,7 +7,7 @@
  * Fecha de creación: 24/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.estadistica.lotes;
 
@@ -118,24 +118,38 @@ class CalculoDeEstadisticasTest {
     }
 
     @Test
-    @DisplayName("RF-16 · C4 · «La Esperanza» y «la esperanza » cuentan como la misma finca, y «Paraíso» y «Paraiso» también: sin distinguir mayúsculas, tildes ni los espacios del inicio y del final")
+    @DisplayName("RF-16 · C4 · «La Esperanza» y «la esperanza » cuentan como la misma finca: sin distinguir mayúsculas ni los espacios del inicio y del final")
     void mismaFincaEscritaDeOtraForma() {
         Estadisticas estadisticas = calcular(
                 lote("La Esperanza", "90.0", "ESTANDAR", "2026-11-10T10:00-05:00"),
                 lote("la esperanza ", "92.0", "ESTANDAR", "2026-11-11T10:00-05:00"),
+                lote("  LA ESPERANZA", "94.0", "ESTANDAR", "2026-11-12T10:00-05:00"),
+                lote("Bellavista", "80.0", "CORRIENTE", "2026-11-13T10:00-05:00"));
+
+        assertThat(estadisticas.porOrigen()).hasSize(2);
+        assertThat(estadisticas.porOrigen()).extracting(PromedioPorOrigen::lotes).containsExactly(3L, 1L);
+        assertThat(estadisticas.porOrigen()).extracting(PromedioPorOrigen::promedioSanos)
+                .usingElementComparator(BigDecimal::compareTo)
+                .containsExactly(new BigDecimal("92.0"), new BigDecimal("80.0"));
+    }
+
+    @Test
+    @DisplayName("RF-16 · «Paraíso» y «Paraiso» también cuentan como la misma finca: las tildes no la separan, como en las sugerencias (decisión de Cristhian del 23/11/2026)")
+    void mismaFincaConYSinTildes() {
+        Estadisticas estadisticas = calcular(
                 lote("Paraíso", "80.0", "CORRIENTE", "2026-11-12T10:00-05:00"),
                 lote("Paraiso", "82.0", "CORRIENTE", "2026-11-13T10:00-05:00"),
                 lote("  PARAÍSO", "84.0", "CORRIENTE", "2026-11-14T10:00-05:00"));
 
-        assertThat(estadisticas.porOrigen()).hasSize(2);
-        assertThat(estadisticas.porOrigen()).extracting(PromedioPorOrigen::lotes).containsExactly(2L, 3L);
+        assertThat(estadisticas.porOrigen()).hasSize(1);
+        assertThat(estadisticas.porOrigen()).extracting(PromedioPorOrigen::lotes).containsExactly(3L);
         assertThat(estadisticas.porOrigen()).extracting(PromedioPorOrigen::promedioSanos)
                 .usingElementComparator(BigDecimal::compareTo)
-                .containsExactly(new BigDecimal("91.0"), new BigDecimal("82.0"));
+                .containsExactly(new BigDecimal("82.0"));
     }
 
     @Test
-    @DisplayName("RF-16 · C4 · la finca se muestra con la forma más usada en el periodo y, si empatan, con la del resultado más reciente, sin los espacios del inicio y del final")
+    @DisplayName("RF-16 · la finca se muestra con la forma más usada en el periodo y, si empatan, con la del resultado más reciente, sin los espacios del inicio y del final")
     void formaQueSeMuestra() {
         Estadisticas estadisticas = calcular(
                 lote("Paraiso", "80.0", "CORRIENTE", "2026-11-12T10:00-05:00"),
