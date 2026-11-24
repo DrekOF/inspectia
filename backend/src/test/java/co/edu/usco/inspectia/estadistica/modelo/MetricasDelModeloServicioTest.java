@@ -2,21 +2,29 @@
  * Nombre: MetricasDelModeloServicioTest.java
  * Descripción: Pruebas unitarias del servicio del modelo de IA con Mockito (RF-17): cada modelo pasa a la respuesta con
  *              sus métricas, su matriz de confusión y si está en uso, y la confianza promedio se pide solo con la
- *              empresa de la sesión (RNF-03).
+ *              empresa de la sesión (RNF-03) y, si se pide, con el periodo en días de Colombia, que se valida como
+ *              el de las estadísticas.
  * Fecha de creación: 24/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.estadistica.modelo;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import co.edu.usco.inspectia.comun.errores.CampoInvalido;
+import co.edu.usco.inspectia.comun.errores.ReglaIncumplidaExcepcion;
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
@@ -40,6 +48,9 @@ class MetricasDelModeloServicioTest {
     @Mock
     private MetricasDelModeloRepositorio repositorio;
 
+    @Mock
+    private ConfianzaDeLosAnalisisRepositorio confianzas;
+
     @InjectMocks
     private MetricasDelModeloServicio servicio;
 
@@ -49,9 +60,9 @@ class MetricasDelModeloServicioTest {
         List<ModeloComparado> modelos = List.of(efficientNet(), falso());
         ConfianzaDeLaEmpresa sinAnalisis = confianza(null, 0, 0);
         when(repositorio.comparados()).thenReturn(modelos);
-        when(repositorio.confianzaDe(EMPRESA)).thenReturn(sinAnalisis);
+        when(confianzas.confianzaDe(EMPRESA, null, null)).thenReturn(sinAnalisis);
 
-        MetricasDelModeloRespuesta respuesta = servicio.consultar(EMPRESA);
+        MetricasDelModeloRespuesta respuesta = servicio.consultar(EMPRESA, null, null);
 
         assertThat(respuesta.modelos()).hasSize(2);
         ModeloMedidoRespuesta modelo = respuesta.modelos().get(0);
@@ -67,9 +78,9 @@ class MetricasDelModeloServicioTest {
         List<ModeloComparado> modelos = List.of(falso());
         ConfianzaDeLaEmpresa sinAnalisis = confianza(null, 0, 0);
         when(repositorio.comparados()).thenReturn(modelos);
-        when(repositorio.confianzaDe(EMPRESA)).thenReturn(sinAnalisis);
+        when(confianzas.confianzaDe(EMPRESA, null, null)).thenReturn(sinAnalisis);
 
-        ModeloMedidoRespuesta modelo = servicio.consultar(EMPRESA).modelos().get(0);
+        ModeloMedidoRespuesta modelo = servicio.consultar(EMPRESA, null, null).modelos().get(0);
 
         assertThat(modelo).isEqualTo(new ModeloMedidoRespuesta(FALSO, "clasificador-falso", "1.0", null, false, null,
                 null, null, new BigDecimal("91.20"), new BigDecimal("53.40"), null, null, null, null));
@@ -80,9 +91,9 @@ class MetricasDelModeloServicioTest {
     void laConfianzaEsDeLaEmpresa() {
         ConfianzaDeLaEmpresa conAnalisis = confianza(new BigDecimal("88.60"), 200, 2);
         when(repositorio.comparados()).thenReturn(List.of());
-        when(repositorio.confianzaDe(EMPRESA)).thenReturn(conAnalisis);
+        when(confianzas.confianzaDe(EMPRESA, null, null)).thenReturn(conAnalisis);
 
-        MetricasDelModeloRespuesta respuesta = servicio.consultar(EMPRESA);
+        MetricasDelModeloRespuesta respuesta = servicio.consultar(EMPRESA, null, null);
 
         verify(repositorio).confianzaDe(EMPRESA);
         assertThat(respuesta.confianza()).isEqualTo(new ConfianzaPromedioRespuesta(new BigDecimal("88.60"), 200, 2));
@@ -93,9 +104,52 @@ class MetricasDelModeloServicioTest {
     void sinAnalisisLaConfianzaVaVacia() {
         ConfianzaDeLaEmpresa sinAnalisis = confianza(null, 0, 0);
         when(repositorio.comparados()).thenReturn(List.of());
-        when(repositorio.confianzaDe(EMPRESA)).thenReturn(sinAnalisis);
+        when(confianzas.confianzaDe(EMPRESA, null, null)).thenReturn(sinAnalisis);
 
-        assertThat(servicio.consultar(EMPRESA).confianza()).isEqualTo(new ConfianzaPromedioRespuesta(null, 0, 0));
+        assertThat(servicio.consultar(EMPRESA, null, null).confianza()).isEqualTo(new ConfianzaPromedioRespuesta(null, 0, 0));
+    }
+
+    @Test
+    @DisplayName("RF-17 · la confianza promedio de un periodo se pide desde las 00:00 del primer día en Colombia hasta las 00:00 del día siguiente al último, como el historial")
+    void laConfianzaDeUnPeriodo() {
+        ConfianzaDeLaEmpresa conAnalisis = confianza(new BigDecimal("88.60"), 100, 1);
+        Instant inicio = Instant.parse("2026-11-01T05:00:00Z");
+        Instant fin = Instant.parse("2026-12-01T05:00:00Z");
+        when(repositorio.comparados()).thenReturn(List.of());
+        when(confianzas.confianzaDe(EMPRESA, inicio, fin)).thenReturn(conAnalisis);
+
+        MetricasDelModeloRespuesta respuesta = servicio.consultar(EMPRESA, LocalDate.of(2026, 11, 1),
+                LocalDate.of(2026, 11, 30));
+
+        assertThat(respuesta.confianza()).isEqualTo(new ConfianzaPromedioRespuesta(new BigDecimal("88.60"), 100, 1));
+    }
+
+    @Test
+    @DisplayName("RF-17 · el periodo de la confianza es opcional: solo «Desde» cuenta desde ese día, y solo «Hasta», hasta ese día incluido")
+    void periodoConUnaSolaFecha() {
+        ConfianzaDeLaEmpresa sinAnalisis = confianza(null, 0, 0);
+        when(repositorio.comparados()).thenReturn(List.of());
+        when(confianzas.confianzaDe(EMPRESA, Instant.parse("2026-11-20T05:00:00Z"), null)).thenReturn(sinAnalisis);
+        when(confianzas.confianzaDe(EMPRESA, null, Instant.parse("2026-11-21T05:00:00Z"))).thenReturn(sinAnalisis);
+
+        servicio.consultar(EMPRESA, LocalDate.of(2026, 11, 20), null);
+        servicio.consultar(EMPRESA, null, LocalDate.of(2026, 11, 20));
+
+        verify(confianzas).confianzaDe(EMPRESA, Instant.parse("2026-11-20T05:00:00Z"), null);
+        verify(confianzas).confianzaDe(EMPRESA, null, Instant.parse("2026-11-21T05:00:00Z"));
+    }
+
+    @Test
+    @DisplayName("RF-17 · si «Hasta» es anterior a «Desde», o una fecha se sale de los años 0001 a 9999, se rechaza en su campo sin consultar (prueba de límite)")
+    void periodoQueNoSirve() {
+        assertThatThrownBy(() -> servicio.consultar(EMPRESA, LocalDate.of(2026, 11, 20), LocalDate.of(2026, 11, 19)))
+                .isInstanceOfSatisfying(ReglaIncumplidaExcepcion.class, error -> assertThat(error.getCampos())
+                        .containsExactly(new CampoInvalido("hasta", "estadistica.hasta_antes_de_desde")));
+        assertThatThrownBy(() -> servicio.consultar(EMPRESA, LocalDate.of(0, 12, 31), LocalDate.of(10000, 1, 1)))
+                .isInstanceOfSatisfying(ReglaIncumplidaExcepcion.class, error -> assertThat(error.getCampos())
+                        .containsExactly(new CampoInvalido("desde", "error.valor_invalido"),
+                                new CampoInvalido("hasta", "error.valor_invalido")));
+        verify(confianzas, never()).confianzaDe(any(), any(), any());
     }
 
     /** EfficientNet-B0, en uso, con las métricas de D-18 y D-48. */

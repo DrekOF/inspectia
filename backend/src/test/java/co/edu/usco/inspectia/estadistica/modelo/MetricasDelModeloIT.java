@@ -3,14 +3,17 @@
  * Descripción: Pruebas de integración de la API del modelo de IA (RF-17): las métricas de cada modelo, que coinciden
  *              con la tabla comparativa de D-18 y D-48, cuál está en uso, la confianza promedio de los granos de los
  *              análisis de la empresa, sin los de otra (RNF-03), y los permisos: solo el administrador de empresa
- *              (RNF-04).
+ *              (RNF-04). El periodo opcional de la confianza, por la fecha en que terminó cada muestra, en días de
+ *              Colombia como el historial, y sus fechas que no sirven.
  * Fecha de creación: 24/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.estadistica.modelo;
 
+import static co.edu.usco.inspectia.usuario.sesion.ApiSesion.error;
+import static co.edu.usco.inspectia.usuario.sesion.ApiSesion.errores;
 import static co.edu.usco.inspectia.usuario.sesion.ApiSesion.json;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -19,6 +22,7 @@ import co.edu.usco.inspectia.PruebaIntegracion;
 import co.edu.usco.inspectia.usuario.sesion.ApiSesion;
 import com.jayway.jsonpath.JsonPath;
 import java.nio.charset.StandardCharsets;
+import java.time.OffsetDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,6 +54,8 @@ class MetricasDelModeloIT {
     private static final String SOFIA = "admin@andino.test";
     private static final String PEDRO = "pedro@andino.test";
     private static final String PLATAFORMA = "plataforma@inspectia.test";
+    private static final String VALOR_INVALIDO = "El valor no es válido.";
+    private static final String HASTA_ANTES_DE_DESDE = "La fecha «Hasta» no puede ser anterior a «Desde».";
 
     @Autowired
     private MockMvcTester mvc;
@@ -160,6 +166,57 @@ class MetricasDelModeloIT {
     }
 
     @Test
+    @DisplayName("RF-17 · con un periodo, la confianza promedio usa solo las muestras que terminaron en esos días de Colombia, con los dos incluidos (prueba de límite)")
+    void laConfianzaDeUnPeriodo() {
+        insertarAnalisis(cacaos, luis, "L-001", "2026-11-19T23:59:59.999999-05:00", "10.00");
+        insertarAnalisis(cacaos, luis, "L-002", "2026-11-20T00:00:00-05:00", "80.00");
+        insertarAnalisis(cacaos, luis, "L-003", "2026-11-20T23:59:59.999999-05:00", "90.00", "70.00");
+        insertarAnalisis(cacaos, luis, "L-004", "2026-11-21T00:00:00-05:00", "20.00");
+        insertarAnalisis(andino, pedro, "A-001", "2026-11-20T10:00:00-05:00", "5.00");
+
+        Map<String, Object> delDia = confianza(consultarOk(api.token(ANA), "desde=2026-11-20&hasta=2026-11-20"));
+        Map<String, Object> desde = confianza(consultarOk(api.token(ANA), "desde=2026-11-20"));
+        Map<String, Object> hasta = confianza(consultarOk(api.token(ANA), "hasta=2026-11-20"));
+        Map<String, Object> todo = confianza(consultarOk(api.token(ANA)));
+
+        assertThat(delDia).containsEntry("promedio", 80.0).containsEntry("granos", 3).containsEntry("muestras", 2);
+        assertThat(desde).containsEntry("promedio", 65.0).containsEntry("granos", 4).containsEntry("muestras", 3);
+        assertThat(hasta).containsEntry("promedio", 62.5).containsEntry("granos", 4).containsEntry("muestras", 3);
+        assertThat(todo).containsEntry("promedio", 54.0).containsEntry("granos", 5).containsEntry("muestras", 4);
+    }
+
+    @Test
+    @DisplayName("RF-17 · un periodo sin análisis deja la confianza vacía y las métricas del modelo siguen iguales")
+    void periodoSinAnalisis() {
+        insertarAnalisis(cacaos, luis, "L-001", "2026-11-20T10:00:00-05:00", "90.00");
+
+        Map<String, Object> respuesta = consultarOk(api.token(ANA), "desde=2026-10-01&hasta=2026-10-31");
+
+        assertThat(confianza(respuesta)).containsEntry("promedio", null).containsEntry("granos", 0)
+                .containsEntry("muestras", 0);
+        assertThat(modelos(respuesta)).hasSize(4);
+    }
+
+    @Test
+    @DisplayName("RF-17 · si «Hasta» es anterior a «Desde», responde 400 en «hasta»; una fecha que no es un día, o fuera de los años 0001 a 9999, 400 en su campo (prueba de límite)")
+    void periodoQueNoSirve() {
+        MvcTestResult alReves = api.enviar(HttpMethod.GET, RUTA + "?desde=2026-11-20&hasta=2026-11-19", null,
+                api.token(ANA));
+
+        assertThat(alReves).hasStatus(HttpStatus.BAD_REQUEST);
+        assertThat(errores(alReves)).containsExactly(error("hasta", HASTA_ANTES_DE_DESDE));
+        Map.of("desde=2026-13-01", "desde", "hasta=20/11/2026", "hasta", "desde=0000-12-31", "desde",
+                "hasta=+10000-01-01", "hasta").forEach((consulta, campo) -> {
+                    MvcTestResult resultado = api.enviar(HttpMethod.GET, RUTA + "?" + consulta, null,
+                            api.token(ANA));
+                    assertThat(resultado).as(consulta).hasStatus(HttpStatus.BAD_REQUEST);
+                    assertThat(errores(resultado)).as(consulta).containsExactly(error(campo, VALOR_INVALIDO));
+                });
+        consultarOk(api.token(ANA), "desde=0001-01-01&hasta=9999-12-31");
+        consultarOk(api.token(ANA), "desde=2026-11-20&hasta=2026-11-20");
+    }
+
+    @Test
     @DisplayName("RNF-04 · C1 · sin sesión, la API del modelo responde 401 en JSON")
     void sinSesionResponde401() {
         MvcTestResult resultado = api.enviar(HttpMethod.GET, RUTA, null, null);
@@ -202,7 +259,13 @@ class MetricasDelModeloIT {
 
     /** Consulta la API del modelo con el token y espera el 200. */
     private Map<String, Object> consultarOk(String token) {
-        MvcTestResult resultado = api.enviar(HttpMethod.GET, RUTA, null, token);
+        return consultarOk(token, "");
+    }
+
+    /** Consulta la API del modelo con el token y la consulta del periodo, como {@code desde=…&hasta=…}, y espera el 200. */
+    private Map<String, Object> consultarOk(String token, String consulta) {
+        MvcTestResult resultado = api.enviar(HttpMethod.GET, RUTA + (consulta.isEmpty() ? "" : "?" + consulta), null,
+                token);
         assertThat(resultado).hasStatus(HttpStatus.OK).hasContentTypeCompatibleWith(MediaType.APPLICATION_JSON);
         return json(resultado);
     }
@@ -240,6 +303,20 @@ class MetricasDelModeloIT {
      * @param confianzas la confianza de cada grano, en porcentaje
      */
     private void insertarAnalisis(UUID empresa, UUID usuario, String codigo, String... confianzas) {
+        insertarAnalisis(empresa, usuario, codigo, OffsetDateTime.now().toString(), confianzas);
+    }
+
+    /**
+     * Como {@link #insertarAnalisis(UUID, UUID, String, String...)}, con la muestra terminada en un instante.
+     *
+     * @param empresa la empresa
+     * @param usuario el usuario final que registró el lote
+     * @param codigo el código del lote
+     * @param terminada cuándo terminó la muestra, como {@code 2026-11-20T10:00:00-05:00}
+     * @param confianzas la confianza de cada grano, en porcentaje
+     */
+    private void insertarAnalisis(UUID empresa, UUID usuario, String codigo, String terminada,
+            String... confianzas) {
         UUID lote = jdbc.queryForObject("""
                 INSERT INTO lote (empresa_id, codigo, fecha_recepcion, origen, usuario_id)
                 VALUES (?, ?, current_date, 'Finca La Esperanza', ?) RETURNING id""", UUID.class, empresa, codigo,
@@ -248,8 +325,9 @@ class MetricasDelModeloIT {
                 INSERT INTO muestra (empresa_id, lote_id, numero, usuario_id, estado, modelo_id, total_granos,
                     granos_sanos, aviso_confianza_baja, umbral_confianza_baja, porcentaje_max_dudosos, fecha_envio,
                     fecha_inicio, fecha_fin)
-                VALUES (?, ?, 1, ?, 'TERMINADA', ?, 100, 90, false, 60, 10, now(), now(), now()) RETURNING id""",
-                UUID.class, empresa, lote, usuario, efficientNet);
+                VALUES (?, ?, 1, ?, 'TERMINADA', ?, 100, 90, false, 60, 10, ?::timestamptz, ?::timestamptz,
+                    ?::timestamptz) RETURNING id""",
+                UUID.class, empresa, lote, usuario, efficientNet, terminada, terminada, terminada);
         UUID foto = jdbc.queryForObject("""
                 INSERT INTO foto (empresa_id, muestra_id, numero, ruta, formato, tamano_bytes, estado,
                     granos_encontrados)
