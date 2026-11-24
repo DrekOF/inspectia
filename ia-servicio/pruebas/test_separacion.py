@@ -15,7 +15,7 @@ import numpy as np
 import pytest
 from PIL import Image
 
-from conftest import ALTO, ANCHO, EJES, centros_en_cuadricula, foto_con_granos, jpg
+from conftest import ALTO, ANCHO, EJES, centros_en_cuadricula, dibujar_grano, foto_con_granos, jpg, papel
 from inspectia_ia.configuracion import Umbrales
 from inspectia_ia.imagen import MAX_MEGAPIXELES, ImagenInvalida, abrir_foto, leer_foto
 from inspectia_ia.separacion import (APROBADA, BORROSA, GRANOS_PEGADOS, POCA_LUZ, POR_REPETIR, recortar,
@@ -201,3 +201,27 @@ def test_abre_una_foto_de_100_megapixeles():
 def test_rechaza_una_foto_de_mas_de_120_megapixeles(lado):
     with pytest.raises(ImagenInvalida, match='120 megapíxeles'):
         leer_foto(_png_en_blanco(lado, lado))
+
+
+@pytest.mark.caso('RF-07 · límite de D-09: dos granos pegados de 0,88 veces la mediana suman menos del doble y cuentan '
+                  'como un solo grano')
+def test_limite_de_d09_con_granos_pequenos_pegados():
+    """Documenta el límite de la regla de D-09 («el doble de la mediana») con granos de tamaños variados (P-12).
+
+    Dos granos pequeños que se tocan forman una región de 1,77 veces la mediana (medido): no llega al doble, así que la
+    foto se aprueba y la pareja se cuenta (y se clasificaría) como un solo grano. Si la regla cambia, esta prueba
+    debe cambiar con ella.
+    """
+    lienzo = papel()
+    for i, c in enumerate(centros_en_cuadricula(20)):
+        dibujar_grano(lienzo, c, 30.0, semilla=i)
+    pequenos = (52, 28)  # 52 x 28 / (55 x 30) = 0,88 del área de un grano normal
+    pegado = (1000, 760)
+    for i, dx in enumerate((-51, 51)):  # punta con punta, como en la prueba de RF-07 C2
+        dibujar_grano(lienzo, (pegado[0] + dx, pegado[1]), 0.0, ejes=pequenos, semilla=100 + i)
+    revision = _revisar(np.clip(lienzo, 0, 255).astype(np.uint8))
+    assert revision.estado == APROBADA
+    assert revision.regiones_pegadas == []
+    assert len(revision.granos) == 21  # los 20 sueltos y la pareja como uno
+    pareja = max(revision.granos, key=lambda g: g.rectangulo.ancho)
+    assert pareja.rectangulo.ancho == pytest.approx(2 * 51 + 2 * pequenos[0], abs=8)
