@@ -5,15 +5,14 @@
  * Fecha de creación: 24/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.estadistica.lotes;
 
 import co.edu.usco.inspectia.analisis.aplicacion.FiltrosDelHistorial;
-import co.edu.usco.inspectia.comun.errores.CampoInvalido;
 import co.edu.usco.inspectia.comun.errores.ReglaIncumplidaExcepcion;
+import co.edu.usco.inspectia.estadistica.PeriodoDeConsulta;
 import java.time.LocalDate;
-import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -50,18 +49,7 @@ public class EstadisticasServicio {
      *     anterior a «Desde» (400 en {@code hasta})
      */
     public Estadisticas calcular(UUID empresaId, LocalDate desde, LocalDate hasta) {
-        FiltrosDelHistorial periodo = new FiltrosDelHistorial(desde, hasta, null, null, null, null);
-        // El rango va primero: con un año fuera de él, «Hasta antes de desde» no sería el motivo.
-        List<CampoInvalido> fueraDeRango = periodo.fechasFueraDeRango().stream()
-                .map(campo -> new CampoInvalido(campo, "error.valor_invalido"))
-                .toList();
-        if (!fueraDeRango.isEmpty()) {
-            throw new ReglaIncumplidaExcepcion(fueraDeRango);
-        }
-        if (periodo.fechasAlReves()) {
-            throw new ReglaIncumplidaExcepcion(
-                    List.of(new CampoInvalido("hasta", "estadistica.hasta_antes_de_desde")));
-        }
+        FiltrosDelHistorial periodo = PeriodoDeConsulta.validado(desde, hasta);
         return CalculoDeEstadisticas.calcular(desde, hasta,
                 repositorio.analizados(empresaId, periodo.inicio(), periodo.fin()));
     }

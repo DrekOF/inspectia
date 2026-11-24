@@ -5,13 +5,13 @@
  * Fecha de creación: 24/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.estadistica.modelo;
 
 import java.math.BigDecimal;
 
-/** Una fila de {@link MetricasDelModeloRepositorio#confianzaDe}: los nombres de sus métodos son los de sus columnas. */
+/** Una fila de {@link ConfianzaDeLosAnalisisRepositorio#confianzaDe}: la confianza promedio y de qué granos sale. */
 public interface ConfianzaDeLaEmpresa {
 
     /**
