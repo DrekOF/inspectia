@@ -105,8 +105,9 @@ describe('Modelo de IA', () => {
     expect(within(enUso).getByText('Versión 1.0 · Red convolucional (CNN)')).toBeInTheDocument();
     const metricas = within(enUso).getAllByRole('term').map((termino) => [termino.textContent,
       termino.nextElementSibling.textContent]);
-    expect(metricas).toEqual([['F1-score macro', '73,50 %'], ['Precisión macro', '75,20 %'],
-      ['Recall macro', '72,31 %']]);
+    // Entre la cifra y el signo va un espacio que no se parte.
+    expect(metricas).toEqual([['F1-score macro', '73,50\u00a0%'], ['Precisión macro', '75,20\u00a0%'],
+      ['Recall macro', '72,31\u00a0%']]);
     expect(within(enUso).getByText('Medidas con los 334 granos del conjunto de prueba.')).toBeInTheDocument();
   });
 

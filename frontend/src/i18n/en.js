@@ -6,7 +6,7 @@
  * Fecha de creación: 20/10/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.8
+ * Versión: 1.9
  */
 
 /** Textos en inglés, por clave. Tiene las mismas claves que es.js (i18n.test.js lo revisa). */
@@ -291,4 +291,39 @@ export default {
   'resultado.ayudaPc': 'Hover over a bean or tap it to see its class.',
   'resultado.ayudaCelular': 'Tap a bean to see its class.',
   'resultado.ayudaTeclado': 'With the keyboard, enter the photo with Tab and move from bean to bean with the arrow keys.',
+  // Modelo de IA (RF-17, D-14, D-18, D-48): el modelo en uso, la confianza promedio, la matriz y la comparación
+  'modeloIa.descripcion': 'How well the model in use classifies the beans, measured on the test set, and the confidence of the analyses of {empresa}.',
+  'modeloIa.enUso': 'Model in use',
+  'modeloIa.version': 'Version {version}',
+  'modeloIa.versionYTipo': 'Version {version} · {tipo}',
+  'modeloIa.f1Macro': 'Macro F1-score',
+  'modeloIa.precisionMacro': 'Macro precision',
+  'modeloIa.recallMacro': 'Macro recall',
+  'modeloIa.medidas': 'Measured on the {total} beans of the test set.',
+  'modeloIa.sinModeloEnUso': 'No model is in use.',
+  'modeloIa.sinModeloEnUsoDetalle': 'When the team puts a model from the comparison in use, you will see its metrics here.',
+  'modeloIa.confianza': 'Average confidence of your analyses',
+  'modeloIa.confianzaDe': 'From {granos} in {muestras} of {empresa}.',
+  'modeloIa.granos_one': '{count} bean',
+  'modeloIa.granos_many': '{count} beans',
+  'modeloIa.granos_other': '{count} beans',
+  'modeloIa.muestras_one': '{count} analyzed sample',
+  'modeloIa.muestras_many': '{count} analyzed samples',
+  'modeloIa.muestras_other': '{count} analyzed samples',
+  'modeloIa.confianzaQueEs': 'How sure the model was, on average, of the class it gave each bean.',
+  'modeloIa.sinAnalisis': 'Your company has no finished analyses yet.',
+  'modeloIa.matriz': 'Confusion matrix',
+  'modeloIa.matrizDescripcion': 'How many healthy and unhealthy beans of the test set the model in use classified right and wrong.',
+  'modeloIa.matrizTabla': 'Confusion matrix of {nombre}',
+  'modeloIa.claseReal': 'Actual class',
+  'modeloIa.comoSanos': 'Classified as healthy',
+  'modeloIa.comoNoSanos': 'Classified as unhealthy',
+  'modeloIa.sanos': 'Healthy',
+  'modeloIa.noSanos': 'Unhealthy',
+  'modeloIa.acierto': 'Correct',
+  'modeloIa.error': 'Error',
+  'modeloIa.comparacion': 'Model comparison',
+  'modeloIa.comparacionDescripcion': 'The models the team compared, measured on the same test set, from the highest macro F1-score to the lowest.',
+  'modeloIa.tabla': 'Model metrics',
+  'modeloIa.columnaModelo': 'Model',
 };

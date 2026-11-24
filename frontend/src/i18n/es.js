@@ -6,7 +6,7 @@
  * Fecha de creación: 20/10/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.8
+ * Versión: 1.9
  */
 
 /** Textos en español, por clave. en.js tiene las mismas claves (i18n.test.js lo revisa). */
@@ -291,4 +291,39 @@ export default {
   'resultado.ayudaPc': 'Pasa el cursor sobre un grano o tócalo para ver su clase.',
   'resultado.ayudaCelular': 'Toca un grano para ver su clase.',
   'resultado.ayudaTeclado': 'Con el teclado, entra a la foto con Tab y pasa de un grano a otro con las flechas.',
+  // Modelo de IA (RF-17, D-14, D-18, D-48): el modelo en uso, la confianza promedio, la matriz y la comparación
+  'modeloIa.descripcion': 'Qué tan bien clasifica los granos el modelo en uso, medido en el conjunto de prueba, y la confianza de los análisis de {empresa}.',
+  'modeloIa.enUso': 'Modelo en uso',
+  'modeloIa.version': 'Versión {version}',
+  'modeloIa.versionYTipo': 'Versión {version} · {tipo}',
+  'modeloIa.f1Macro': 'F1-score macro',
+  'modeloIa.precisionMacro': 'Precisión macro',
+  'modeloIa.recallMacro': 'Recall macro',
+  'modeloIa.medidas': 'Medidas con los {total} granos del conjunto de prueba.',
+  'modeloIa.sinModeloEnUso': 'Ningún modelo está en uso.',
+  'modeloIa.sinModeloEnUsoDetalle': 'Cuando el equipo ponga en uso un modelo de la comparación, aquí verás sus métricas.',
+  'modeloIa.confianza': 'Confianza promedio de tus análisis',
+  'modeloIa.confianzaDe': 'De {granos} en {muestras} de {empresa}.',
+  'modeloIa.granos_one': '{count} grano',
+  'modeloIa.granos_many': '{count} granos',
+  'modeloIa.granos_other': '{count} granos',
+  'modeloIa.muestras_one': '{count} muestra analizada',
+  'modeloIa.muestras_many': '{count} muestras analizadas',
+  'modeloIa.muestras_other': '{count} muestras analizadas',
+  'modeloIa.confianzaQueEs': 'Es qué tan seguro estuvo el modelo, en promedio, de la clase que dio a cada grano.',
+  'modeloIa.sinAnalisis': 'Tu empresa todavía no tiene análisis terminados.',
+  'modeloIa.matriz': 'Matriz de confusión',
+  'modeloIa.matrizDescripcion': 'Cuántos granos sanos y no sanos del conjunto de prueba clasificó bien y mal el modelo en uso.',
+  'modeloIa.matrizTabla': 'Matriz de confusión de {nombre}',
+  'modeloIa.claseReal': 'Clase real',
+  'modeloIa.comoSanos': 'Clasificados como sanos',
+  'modeloIa.comoNoSanos': 'Clasificados como no sanos',
+  'modeloIa.sanos': 'Sanos',
+  'modeloIa.noSanos': 'No sanos',
+  'modeloIa.acierto': 'Acierto',
+  'modeloIa.error': 'Error',
+  'modeloIa.comparacion': 'Comparación de los modelos',
+  'modeloIa.comparacionDescripcion': 'Los modelos que comparó el equipo, medidos con el mismo conjunto de prueba, del mayor F1-score macro al menor.',
+  'modeloIa.tabla': 'Métricas de los modelos',
+  'modeloIa.columnaModelo': 'Modelo',
 };

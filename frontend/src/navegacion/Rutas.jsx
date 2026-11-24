@@ -5,11 +5,12 @@
  *              pantallas generadas reciben aquí sus extensiones (RP-23), y las del análisis, escritas a mano, salen de
  *              PANTALLAS_DEL_ANALISIS (RF-04, RF-14); la de las fotos de la muestra solo la abre el usuario final
  *              (RF-05), y la del resultado de un lote, el usuario final y la administradora (RF-10 a RF-12, RF-14 C3).
- *              Las secciones que todavía no existen muestran «Esta sección estará disponible pronto.».
+ *              «Modelo de IA», escrita a mano, solo la abre la administradora (RF-17). Las secciones que todavía no
+ *              existen muestran «Esta sección estará disponible pronto.».
  * Fecha de creación: 20/10/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.3
+ * Versión: 1.4
  */
 import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -21,6 +22,7 @@ import FotosDeLaMuestra from '../lote/FotosDeLaMuestra.jsx';
 import Historial from '../lote/Historial.jsx';
 import NuevoLote from '../lote/NuevoLote.jsx';
 import ResultadoDelLote from '../lote/ResultadoDelLote.jsx';
+import ModeloDeIa from '../modelo/ModeloDeIa.jsx';
 import AcercaDe from '../paginas/AcercaDe.jsx';
 import CambiarContrasena from '../paginas/CambiarContrasena.jsx';
 import IniciarSesion from '../paginas/IniciarSesion.jsx';
@@ -33,10 +35,10 @@ import { Marco } from './Marco.jsx';
 import { ROLES, SECCIONES } from './menu.js';
 
 /**
- * Las pantallas del análisis, escritas a mano (D-21), según la ruta de su sección del menú. Se cargan con la app,
- * como Cambiar contraseña, y no aparte, como las generadas.
+ * Las pantallas escritas a mano (D-21), según la ruta de su sección del menú: las del análisis y la del modelo de IA
+ * (RF-17). Se cargan con la app, como Cambiar contraseña, y no aparte, como las generadas.
  */
-const PANTALLAS_DEL_ANALISIS = { '/lotes/nuevo': NuevoLote, '/historial': Historial };
+const PANTALLAS_DEL_ANALISIS = { '/lotes/nuevo': NuevoLote, '/historial': Historial, '/modelo': ModeloDeIa };
 
 /**
  * Las pantallas que piden una sesión: sin ella llevan a Iniciar sesión; con ella van dentro del marco.
