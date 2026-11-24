@@ -6,7 +6,7 @@
  * Fecha de creación: 23/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 package co.edu.usco.inspectia.analisis.adaptadores.rest;
 
@@ -73,7 +73,8 @@ public class AnalisisControlador {
     @ResponseStatus(HttpStatus.ACCEPTED)
     @Operation(summary = "Analizar la muestra", description = "Envía la muestra en curso del lote a la cola de "
             + "análisis: queda EN_ESPERA, con la fecha de envío y con quien la envía. Necesita al menos 2 fotos "
-            + "confirmadas: sin muestra o con 1 foto responde 400 en «fotos», sin cambiar nada (RF-05 C2). Si la "
+            + "confirmadas: sin muestra o con 1 foto responde 400 en «fotos», sin cambiar nada (RF-05 C2); con alguna "
+            + "foto POR_REPETIR, también 400 en «fotos»: primero hay que repetirla (RF-06, RF-07, RF-09). Si la "
             + "muestra ya está EN_ESPERA o EN_PROCESO, responde lo mismo, así un reintento es seguro. Un lote "
             + "analizado que sugiere otra muestra envía su muestra 2, con las mismas reglas: sin la 2, o con 1 foto en "
             + "ella, 400 en «fotos»; el lote sigue analizado con el resultado de la 1 hasta que la 2 termina, y "
@@ -97,7 +98,9 @@ public class AnalisisControlador {
     @Operation(summary = "Ver el avance del análisis", description = "El estado y las fechas de la muestra en curso "
             + "del lote, la de número más alto, para el indicador de avance (RNF-01 C4): EN_ESPERA mientras espera su "
             + "turno (RNF-02 C3), EN_PROCESO mientras se analiza y TERMINADA con el resultado. «fallo» es verdadero "
-            + "si el último envío volvió sin resultado. Sin muestra, todo va vacío. No firma enlaces ni lee granos. Un "
+            + "si el último envío volvió sin resultado; «motivoDevolucion» dice por qué (POCOS_GRANOS o "
+            + "SIN_RESPUESTA_DE_LA_IA, D-44) y «fotosPorRepetir», qué fotos hay que repetir (RF-06, RF-07, RF-09), con "
+            + "«repeticiones» las que ya pidió RF-09. Sin muestra, todo va vacío. No firma enlaces ni lee granos. Un "
             + "lote de otra empresa responde 404. Roles: USUARIO_FINAL y ADMIN_EMPRESA.")
     public AnalisisRespuesta avance(@PathVariable("id") UUID id,
             @Parameter(hidden = true) @AuthenticationPrincipal UsuarioEnSesion sesion) {

@@ -2,11 +2,12 @@
  * Nombre: ConsultarFotos.java
  * Descripción: Caso de uso de consultar las fotos de la muestra en curso de un lote, cada una con un enlace nuevo para
  *              verla, para retomar el lote; con otra muestra sugerida y sin la muestra 2, la lista va vacía (RF-05,
- *              RF-14 C5 y C6, D-25).
+ *              RF-14 C5 y C6, D-25); cada foto trae lo que dijo su revisión y la muestra, lo que dejó la cola si la
+ *              devolvió (RF-06, RF-07, RF-09, D-44, D-46).
  * Fecha de creación: 23/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 package co.edu.usco.inspectia.analisis.aplicacion;
 
@@ -32,16 +33,16 @@ public class ConsultarFotos {
 
     private final RepositorioDeLotes lotes;
     private final RepositorioDeMuestras muestras;
-    private final VistasDeFotos vistas;
+    private final VistasDeFotosRevisadas vistas;
 
     /**
      * Crea el caso de uso; Spring le pasa sus dependencias.
      *
      * @param lotes los lotes guardados
      * @param muestras las muestras y sus fotos
-     * @param vistas las vistas de las fotos, con su enlace para verlas
+     * @param vistas las vistas de las fotos, con su enlace para verlas y su revisión
      */
-    public ConsultarFotos(RepositorioDeLotes lotes, RepositorioDeMuestras muestras, VistasDeFotos vistas) {
+    public ConsultarFotos(RepositorioDeLotes lotes, RepositorioDeMuestras muestras, VistasDeFotosRevisadas vistas) {
         this.lotes = lotes;
         this.muestras = muestras;
         this.vistas = vistas;
@@ -67,7 +68,8 @@ public class ConsultarFotos {
         }
         return enCurso
                 .map(muestra -> new FotosDeLaMuestra(muestra.numero(), muestra.estado(),
-                        muestras.fotos(empresaId, muestra.id()).stream().map(vistas::de).toList()))
+                        vistas.de(empresaId, muestra, muestras.fotos(empresaId, muestra.id())),
+                        muestra.motivoDevolucion(), muestra.repeticiones(), muestra.porcentajeMaxDudosos()))
                 .orElseGet(() -> new FotosDeLaMuestra(null, null, List.of()));
     }
 }

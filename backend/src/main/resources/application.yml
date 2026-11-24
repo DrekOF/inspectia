@@ -2,9 +2,9 @@
 # Descripción: Configuración del servidor de InspectIA. La conexión a la base sale de variables
 #              de entorno; en local se leen de infra/.env, que no se sube al repositorio.
 # Fecha de creación: 13/10/2026
-# Actualización: 23/11/2026
+# Actualización: 24/11/2026
 # Autor: Equipo InspectIA
-# Versión: 1.4
+# Versión: 1.5
 
 spring:
   application:
@@ -76,3 +76,11 @@ inspectia:
       # Cuánto espera el clasificador falso antes de responder, para ver el indicador de avance en desarrollo
       # (RNF-01 C4). Sale de INSPECTIA_IA_FALSO_DEMORA (en local, de infra/.env), por ejemplo 3s; sin ella, 0s.
       demora: ${INSPECTIA_IA_FALSO_DEMORA:0s}
+    # Con «servicio»: la dirección del servicio de IA (en producción, http://ia-servicio:8000). Sale de INSPECTIA_IA_URL;
+    # con «servicio» y sin ella, el servidor no arranca. Con «falso» no se usa.
+    url: ${INSPECTIA_IA_URL:}
+    tiempos:
+      conexion: 5s               # cuánto espera para conectarse
+      revisar: 10s               # D-46: la revisión rápida al confirmar una foto; sin respuesta, la foto queda «Cargada»
+      analizar: 60s              # RF-08 C6: sin respuesta, la muestra vuelve con SIN_RESPUESTA_DE_LA_IA
+      reintento-de-modelos: 15s  # si el servicio no respondía al arrancar, cada cuánto vuelve a pedir sus modelos
