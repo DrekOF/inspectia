@@ -3,12 +3,13 @@
  * Descripción: Ayudas de las pruebas con Selenium (RP-14): abrir Chrome o Edge en tamaño de PC o de celular,
  *              buscar campos por su etiqueta, también dentro de un grupo, y botones por su texto, escribir en
  *              un campo en lugar de lo que tenía, crear usuarios, empresas y lotes propios por la API, encontrar el
- *              selector oculto de una foto y, si una prueba falla, guardar una captura de la pantalla y la consola
- *              del navegador en reports/selenium, que no se sube al repositorio.
+ *              selector oculto de una foto, esperar a que el menú del celular termine de entrar, dejar el navegador
+ *              sin sesión antes de cada prueba y, si una prueba falla, guardar una captura de la pantalla y la
+ *              consola del navegador en reports/selenium, que no se sube al repositorio.
  * Fecha de creación: 20/10/2026
  * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.4
+ * Versión: 1.5
  */
 import { randomUUID } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -254,6 +255,28 @@ export function archivoDeLaFoto(driver, numero) {
  * porque Playwright vacía esa carpeta al empezar cada corrida.
  */
 export const CARPETA_DE_FALLAS = fileURLToPath(new URL('../reports/selenium/', import.meta.url));
+
+/**
+ * Espera a que un elemento quede entero en la pantalla por la izquierda. El menú del celular entra deslizándose
+ * desde la izquierda, y mientras se mueve Selenium da vacío el texto de sus enlaces: en la CI, «Inicio» llegó como «».
+ *
+ * @param {import('selenium-webdriver').WebDriver} driver el navegador
+ * @param {import('selenium-webdriver').WebElement} elemento el elemento, como el menú
+ */
+export async function esperarQueEntre(driver, elemento) {
+  await driver.wait(() => driver.executeScript('return arguments[0].getBoundingClientRect().left >= 0', elemento),
+    ESPERA);
+}
+
+/**
+ * Deja el navegador sin sesión: borra lo que la app guardó, si la página abierta es de la app. Así una prueba que
+ * falla antes de cerrar su sesión no deja la siguiente con la sesión abierta, donde «Iniciar sesión» lleva al inicio.
+ *
+ * @param {import('selenium-webdriver').WebDriver|undefined} driver el navegador, si alcanzó a abrirse
+ */
+export async function sinSesion(driver) {
+  await driver?.executeScript('try { localStorage.clear(); } catch { /* una página que no es de la app */ }');
+}
 
 /**
  * Descarta lo que ya tiene la consola del navegador, para que lo que se guarde de una prueba que falla sea solo

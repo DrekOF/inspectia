@@ -4,9 +4,9 @@
  *              errados, cambiar la contraseña, registrar una empresa, crear un usuario que entra, guardar unos
  *              rangos propios y restaurar los de D-10, registrar un lote que pasa a las fotos y queda pendiente
  *              en el historial, subir dos fotos y volver a ellas con «Continuar», y analizar la muestra y ver su
- *              resultado, en Chrome y en Edge, en tamaño de
- *              PC y de celular (RNF-05). Con INSPECTIA_E2E_SIN_EDGE=1 salta Edge, como en la CI. Si una falla,
- *              guarda su captura y la consola del navegador en reports/selenium.
+ *              resultado, en Chrome y en Edge, en tamaño de PC y de celular (RNF-05). Con INSPECTIA_E2E_SIN_EDGE=1
+ *              salta Edge, como en la CI. Cada prueba empieza sin sesión. Si una falla, guarda su captura y la
+ *              consola del navegador en reports/selenium.
  * Fecha de creación: 20/10/2026
  * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
@@ -20,8 +20,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { Key } from 'selenium-webdriver';
 import {
   abrirNavegador, APP, archivoDeLaFoto, boton, Browser, By, campo, campoDelGrupo, CELULAR, CONTRASENA, crearEmpresa,
-  crearUsuario, datos, descartarConsola, desactivarUsuario, empresaNueva, entrar, escribirEn, esperar, esperarTexto,
-  guardarFalla, registrarLote,
+  crearUsuario, datos, descartarConsola, desactivarUsuario, empresaNueva, entrar, escribirEn, esperar, esperarQueEntre,
+  esperarTexto, guardarFalla, registrarLote, sinSesion,
 } from './ayudas.js';
 import { diaEnColombia } from '../e2e/fechas.js';
 import { png } from '../e2e/imagenes.js';
@@ -67,6 +67,7 @@ describe.each(COMBINACIONES)('%s en %s', (_, navegador, __, celular) => {
   // Si la prueba falla, su captura y la consola del navegador quedan en reports/selenium, para explicar las
   // fallas intermitentes.
   beforeEach(async ({ onTestFailed }) => {
+    await sinSesion(driver);
     await descartarConsola(driver);
     onTestFailed(async ({ task }) => {
       const guardados = await guardarFalla(driver, task);
@@ -75,7 +76,7 @@ describe.each(COMBINACIONES)('%s en %s', (_, navegador, __, celular) => {
   });
 
   /**
-   * El menú principal; en el celular, después de pulsar «Abrir el menú».
+   * El menú principal; en el celular, después de pulsar «Abrir el menú» y de que termine de entrar.
    *
    * @returns {Promise<import('selenium-webdriver').WebElement>} el menú
    */
@@ -83,7 +84,9 @@ describe.each(COMBINACIONES)('%s en %s', (_, navegador, __, celular) => {
     if (celular) {
       await (await boton(driver, 'Abrir el menú')).click();
     }
-    return esperar(driver, By.css('nav[aria-label="Menú principal"]'));
+    const nav = await esperar(driver, By.css('nav[aria-label="Menú principal"]'));
+    await esperarQueEntre(driver, nav);
+    return nav;
   }
 
   it('RF-01 · C1 · el administrador de empresa entra y ve el menú de su rol (Selenium)', async () => {

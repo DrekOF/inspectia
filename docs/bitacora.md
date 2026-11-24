@@ -1361,7 +1361,8 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
     5. `2c202ac` «Analizar la muestra», la espera y la página del resultado.
     6. `9590784` las pruebas de punta a punta, con Playwright y Selenium.
     7. `b593298` las correcciones de la revisión antes del PR.
-    8. Esta entrada de la bitácora, los README, los casos de prueba y las fichas que pasan a «Implementado».
+    8. `3f34ba5` esta entrada de la bitácora, los README, los casos de prueba y las fichas que pasan a «Implementado».
+    9. La prueba de Selenium del menú del celular, que falló en la CI del PR, y lo que se agregó aquí.
   - **El PR 3 se partió en dos:** este, 3a, trae el resultado de una muestra; el 3b, los filtros del historial
     (RF-14 C2), la segunda muestra (D-25, RF-14 C6 y RF-12 C8) y el detalle con dos muestras. Juntos eran demasiado
     para revisarlos de una vez.
@@ -1466,6 +1467,21 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
       corrida pasó entera.
     - **El verificador del frontend de la revisión falló por un corte de red** (`ENOTFOUND`): se volvió a lanzar el
       flujo, que reutilizó lo que ya habían hecho los demás agentes.
+    - **En la CI del PR falló el job «De punta a punta»** por 3 pruebas de Selenium en tamaño de celular, anteriores a
+      este PR; las 9 de PC pasaron, incluida la del resultado:
+      - RF-01 C1 leyó «» en lugar de «Inicio»: leía los enlaces mientras el menú del celular entraba deslizándose, y
+        mientras se mueve Selenium da vacío su texto;
+      - como falló antes de limpiar la sesión, RF-01 C2 y RF-18 C1 abrieron «Iniciar sesión» con la sesión abierta,
+        que lleva al inicio, y no encontraron el campo «Correo».
+
+      Como pidió Cristhian, primero se reprodujo a propósito, con el menú 3 s más lento (`transitionDuration` del
+      `Drawer`, solo en la copia de trabajo): fallaron las mismas 3. El arreglo:
+      - `menu()` espera a que el menú quede entero en la pantalla antes de devolverlo (`esperarQueEntre`);
+      - cada prueba empieza sin sesión (`sinSesion`, en el `beforeEach`), así una falla no arrastra a las siguientes.
+
+      Con el menú lento y solo la limpieza de la sesión, falló RF-01 C1 y las otras dos pasaron; con las dos
+      correcciones, pasaron las 6, en PC y en celular. Con el menú normal, Selenium pasó entero 3 veces seguidas: 36 de
+      36. Es la falla intermitente de Selenium que la bitácora anotó en el PR #6, sin su detalle.
   - **Resultado,** sobre `b593298`, el último commit con código:
     - Backend: 261 pruebas unitarias y 519 de integración (`./mvnw verify`). PIT mata 195 de los 198 mutantes del
       dominio del análisis (98 %, `./mvnw -Pmutacion test`); los 3 que quedan son equivalentes.
@@ -1492,6 +1508,10 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
     - el filtro por usuario del historial: «Servicio nuevo», que llega en el PR 3b.
     - al final, qué fichas pasan a «Implementado» (D-29) con el clasificador falso: «RF-05, RF-10 y RF-11», la
       opción recomendada.
+  - **Al revisar el PR #17,** Cristhian lo aprobó para fusionarlo con los 4 jobs en verde. Cuando falló el de punta a
+    punta, se le preguntó qué hacer y respondió: «Corrige la prueba, como recomiendas. Antes, reprodúcela a propósito
+    (por ejemplo, con la animación del menú más lenta), para comprobar que el arreglo la resuelve. Después haz push y,
+    cuando los 4 jobs estén en verde, fusiona.»
   - **La forma de trabajo** es la del 22/11/2026: una sola parada por PR, las decisiones pequeñas anotadas aquí y en
     el PR, y preguntar solo en los 4 casos.
   - **La revisión antes del PR** la decidió Claude Code, como en los PR 1 y 2: la sesión tenía activado ultracode.
