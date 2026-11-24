@@ -3,7 +3,8 @@
 # Descripción: Copia diaria de la base de InspectIA a S3 (D-16, RP-15): saca un pg_dump comprimido (formato custom
 #              de PostgreSQL) del contenedor de la base, comprueba que pg_restore lo puede leer y lo sube a
 #              s3://inspectia-archivos-<cuenta>/respaldos/inspectia-<fecha en UTC>.dump. En la instancia queda solo
-#              la última copia. Si algo falla, avisa al tema de SNS inspectia-alertas (el correo del equipo).
+#              la última copia. Si algo falla, avisa al tema de SNS inspectia-alertas (el correo del equipo) y, aunque no
+#              pueda avisar, deja la falla en su registro.
 # Fecha de creación: 24/11/2026
 # Actualización: 24/11/2026
 # Autor: Equipo InspectIA
@@ -28,21 +29,29 @@ install -d -m 700 /run/inspectia
 exec 8> /run/inspectia/respaldo.lock
 flock -n 8 || { echo 'Ya hay una copia en curso: esta no se saca.'; exit 0; }
 
-paso 'Copia de la base a S3'
-cuenta=$(cuenta_aws)
-destino="s3://inspectia-archivos-$cuenta/respaldos"
-
-# Si la copia falla, el equipo se entera por correo (SNS inspectia-alertas).
+# Si la copia falla, el equipo se entera por correo (SNS inspectia-alertas). El aviso se arma antes de leer la cuenta:
+# si falla ahí (IMDS no responde), no hay a qué tema de SNS avisar, pero la falla queda en respaldo.log, que el agente
+# de CloudWatch envía a /inspectia/servidor.
+cuenta=''
+destino='s3://inspectia-archivos-<cuenta>/respaldos'
 avisar_si_falla() {
     local codigo=$?
-    if [ "$codigo" -ne 0 ]; then
-        aws sns publish --topic-arn "arn:aws:sns:$AWS_REGION:$cuenta:inspectia-alertas" \
-            --subject 'InspectIA: falló la copia diaria de la base' \
-            --message "La copia de la base a $destino falló (código $codigo) en $(hostname) el $(date -u '+%Y-%m-%d %H:%M UTC'). Su registro está en CloudWatch Logs, /inspectia/servidor, flujo <instancia>/respaldo." \
-            > /dev/null || echo 'Tampoco se pudo avisar por SNS.' >&2
+    [ "$codigo" -ne 0 ] || return 0
+    echo "ERROR: falló la copia de la base a $destino (código $codigo) el $(date -u '+%Y-%m-%d %H:%M UTC')." >&2
+    if [ -z "$cuenta" ]; then
+        echo 'No se avisó por SNS: no se pudo leer la cuenta de AWS de la instancia. La falla queda en este registro.' >&2
+        return 0
     fi
+    aws sns publish --topic-arn "arn:aws:sns:$AWS_REGION:$cuenta:inspectia-alertas" \
+        --subject 'InspectIA: falló la copia diaria de la base' \
+        --message "La copia de la base a $destino falló (código $codigo) en $(hostname) el $(date -u '+%Y-%m-%d %H:%M UTC'). Su registro está en CloudWatch Logs, /inspectia/servidor, flujo <instancia>/respaldo." \
+        > /dev/null || echo 'Tampoco se pudo avisar por SNS.' >&2
 }
 trap avisar_si_falla EXIT
+
+paso 'Copia de la base a S3'
+cuenta=$(cuenta_aws) || fallar 'No se pudo leer la cuenta de AWS de la instancia (IMDSv2).'
+destino="s3://inspectia-archivos-$cuenta/respaldos"
 
 install -d -m 700 "$CARPETA"
 nombre="inspectia-$(date -u '+%Y-%m-%dT%H-%M-%SZ').dump"
