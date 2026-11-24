@@ -2,11 +2,11 @@
  * Nombre: modelo.js (pruebas)
  * Descripción: Datos que comparten las pruebas de la pantalla «Modelo de IA» (RF-17): los modelos de la comparación
  *              de Julián (D-18, D-48) y el del clasificador falso, como los responde la API, y responder las métricas
- *              con la API simulada, anotando cuántas veces se pidieron.
+ *              con la API simulada, anotando cuántas veces se pidieron y con qué periodo.
  * Fecha de creación: 24/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 import { http, HttpResponse } from 'msw';
 import { problema, servidor } from './servidor.js';
@@ -55,18 +55,23 @@ export const SIN_ANALISIS = { promedio: null, granos: 0, muestras: 0 };
 export const ERROR_DE_LA_API = 'Ocurrió un error inesperado. Intenta de nuevo.';
 
 /**
- * Responde las métricas del modelo con la API simulada, o un error, y anota cuántas veces se pidieron.
+ * Responde las métricas del modelo con la API simulada, o un error, y anota cuántas veces se pidieron y los
+ * parámetros de cada petición, como el periodo de la confianza.
  *
- * @param {{ modelos?: object[], confianza?: object, estado?: number }} [respuesta] los modelos, la confianza y, para
- *   un error, su código HTTP; por defecto, los de la comparación con EfficientNet-B0 en uso y una empresa con análisis
- * @returns {{ veces: number }} cuántas veces se pidieron
+ * @param {{ modelos?: object[], confianza?: object, estado?: number, cuerpo?: object }} [respuesta] los modelos, la
+ *   confianza y, para un error, su código HTTP y, si hace falta, el cuerpo del problema; por defecto, los de la
+ *   comparación con EfficientNet-B0 en uso y una empresa con análisis
+ * @returns {{ veces: number, consultas: Record<string, string>[] }} cuántas veces se pidieron y con qué parámetros
  */
-export function conMetricas({ modelos = [EFFICIENTNET, RESNET, SWIN, FALSO], confianza = CON_ANALISIS, estado } = {}) {
-  const pedidas = { veces: 0 };
-  servidor.use(http.get(API_MODELO, () => {
+export function conMetricas({
+  modelos = [EFFICIENTNET, RESNET, SWIN, FALSO], confianza = CON_ANALISIS, estado, cuerpo = {},
+} = {}) {
+  const pedidas = { veces: 0, consultas: [] };
+  servidor.use(http.get(API_MODELO, ({ request }) => {
     pedidas.veces += 1;
+    pedidas.consultas.push(Object.fromEntries(new URL(request.url).searchParams));
     if (estado) {
-      return problema(estado, ERROR_DE_LA_API);
+      return problema(estado, ERROR_DE_LA_API, cuerpo);
     }
     return HttpResponse.json({ modelos, confianza });
   }));

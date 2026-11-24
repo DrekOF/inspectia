@@ -4,13 +4,16 @@
  *              como las responde la API y el modelo en uso marcado (C1), sus métricas macro y su matriz de confusión en
  *              una tabla accesible (D-48), la confianza promedio de los análisis de la empresa (C2), el usuario final que
  *              no la ve en su menú ni la abre por su dirección (C3), sin modelo en uso, sin análisis, el error con
- *              «Reintentar», el celular, con una tarjeta por modelo (RNF-05), y el inglés (RP-11).
+ *              «Reintentar», el celular, con una tarjeta por modelo (RNF-05), y el inglés (RP-11). El periodo
+ *              opcional de la confianza promedio: sin fechas, de todos los análisis; con ellas, pedido a la API, en la
+ *              dirección y dicho junto a la cifra; «Todos los análisis», «Hasta» antes de «Desde» y los errores del
+ *              backend en su campo.
  * Fecha de creación: 24/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
-import { act, screen, within } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import i18n from '../i18n/i18n.js';
 import { abrirApp, conSesion, USUARIOS } from '../pruebas/ayudas.jsx';
@@ -60,6 +63,26 @@ function filasDeLaComparacion() {
  */
 function tarjeta(titulo) {
   return screen.getByRole('region', { name: titulo });
+}
+
+/**
+ * El formulario del periodo de la confianza promedio.
+ *
+ * @returns {HTMLElement} el formulario
+ */
+function periodo() {
+  return screen.getByRole('form', { name: 'Periodo de la confianza promedio' });
+}
+
+/**
+ * Escribe las fechas del periodo, como las deja el selector de fecha del navegador.
+ *
+ * @param {string} desde «Desde» (aaaa-mm-dd), o vacío
+ * @param {string} hasta «Hasta» (aaaa-mm-dd), o vacío
+ */
+function escribirPeriodo(desde, hasta) {
+  fireEvent.change(within(periodo()).getByLabelText('Desde'), { target: { value: desde } });
+  fireEvent.change(within(periodo()).getByLabelText('Hasta'), { target: { value: hasta } });
 }
 
 describe('Modelo de IA', () => {
@@ -199,6 +222,94 @@ describe('Modelo de IA', () => {
       ['Precisión de no sano (%)', '53,52'], ['Recall de no sano (%)', '52,10'], ['Tiempo por grano (ms)', '50,80'],
     ]);
     expect(screen.queryByRole('table', { name: 'Métricas de los modelos' })).not.toBeInTheDocument();
+  });
+
+  it('RF-17 · sin periodo, la confianza es de todos los análisis: se pide sin fechas y «Desde» y «Hasta» van vacíos, porque son opcionales', async () => {
+    const pedidas = conMetricas();
+    await abrirModelo();
+
+    await screen.findByRole('region', { name: 'Confianza promedio de tus análisis' });
+    expect(pedidas.consultas).toEqual([{}]);
+    expect(within(periodo()).getByLabelText('Desde')).toHaveValue('');
+    expect(within(periodo()).getByLabelText('Hasta')).toHaveValue('');
+    expect(within(periodo()).getByLabelText('Desde')).not.toBeRequired();
+    expect(within(periodo()).queryByRole('button', { name: 'Todos los análisis' })).not.toBeInTheDocument();
+  });
+
+  it('RF-17 · con «Desde» y «Hasta», «Ver confianza» pide la confianza de ese periodo, lo deja en la dirección y lo dice junto a la cifra; las métricas del modelo no cambian', async () => {
+    const pedidas = conMetricas();
+    const { usuario } = await abrirModelo();
+    await screen.findByRole('region', { name: 'Confianza promedio de tus análisis' });
+
+    const delPeriodo = conMetricas({ confianza: { promedio: 91.25, granos: 100, muestras: 1 } });
+    escribirPeriodo('2026-11-01', '2026-11-30');
+    await usuario.click(within(periodo()).getByRole('button', { name: 'Ver confianza' }));
+
+    const confianza = tarjeta('Confianza promedio de tus análisis');
+    expect(await within(confianza).findByText('91,25 %')).toBeInTheDocument();
+    expect(within(confianza).getByText('De los análisis terminados del 01/11/2026 al 30/11/2026.')).toBeInTheDocument();
+    expect(new URLSearchParams(window.location.search).toString()).toBe('desde=2026-11-01&hasta=2026-11-30');
+    expect(pedidas.consultas).toEqual([{}]);
+    expect(delPeriodo.consultas).toEqual([{ desde: '2026-11-01', hasta: '2026-11-30' }]);
+    expect(screen.getByRole('table', { name: 'Métricas de los modelos' })).toBeInTheDocument();
+  });
+
+  it('RF-17 · el periodo de la dirección se usa al abrir la pantalla, con una sola fecha si solo hay una, y «Todos los análisis» lo quita', async () => {
+    const pedidas = conMetricas();
+    conSesion(USUARIOS.ADMIN_EMPRESA);
+    const { usuario } = abrirApp(`${RUTA}?desde=2026-11-20`);
+
+    const confianza = await screen.findByRole('region', { name: 'Confianza promedio de tus análisis' });
+    expect(pedidas.consultas).toEqual([{ desde: '2026-11-20' }]);
+    expect(within(confianza).getByText('De los análisis terminados desde el 20/11/2026.')).toBeInTheDocument();
+    expect(within(periodo()).getByLabelText('Desde')).toHaveValue('2026-11-20');
+    await usuario.click(within(periodo()).getByRole('button', { name: 'Todos los análisis' }));
+
+    await waitFor(() => expect(pedidas.consultas).toEqual([{ desde: '2026-11-20' }, {}]));
+    expect(window.location.search).toBe('');
+    expect(within(periodo()).getByLabelText('Desde')).toHaveValue('');
+  });
+
+  it('RF-17 · un periodo de la dirección que no sirve, como un día que no existe o «Hasta» antes de «Desde», se ignora y la confianza es de todos los análisis', async () => {
+    const pedidas = conMetricas();
+    conSesion(USUARIOS.ADMIN_EMPRESA);
+    abrirApp(`${RUTA}?desde=2026-11-20&hasta=2026-11-19`);
+
+    await screen.findByRole('region', { name: 'Confianza promedio de tus análisis' });
+    expect(pedidas.consultas).toEqual([{}]);
+  });
+
+  it('RF-17 · si «Hasta» es anterior a «Desde», se marca en «Hasta» con el mensaje del backend y no se pide; el mismo día en las dos sí (prueba de límite)', async () => {
+    const pedidas = conMetricas();
+    const { usuario } = await abrirModelo();
+    await screen.findByRole('region', { name: 'Confianza promedio de tus análisis' });
+
+    escribirPeriodo('2026-11-20', '2026-11-19');
+    await usuario.click(within(periodo()).getByRole('button', { name: 'Ver confianza' }));
+
+    const hasta = within(periodo()).getByLabelText('Hasta');
+    await waitFor(() => expect(hasta).toHaveAccessibleDescription(
+      expect.stringContaining('La fecha «Hasta» no puede ser anterior a «Desde».')));
+    expect(hasta).toHaveAttribute('aria-invalid', 'true');
+    expect(pedidas.consultas).toHaveLength(1);
+    escribirPeriodo('2026-11-20', '2026-11-20');
+    await usuario.click(within(periodo()).getByRole('button', { name: 'Ver confianza' }));
+    await waitFor(() => expect(pedidas.consultas.at(-1)).toEqual({ desde: '2026-11-20', hasta: '2026-11-20' }));
+  });
+
+  it('RF-17 · si el backend rechaza una fecha, su mensaje queda en ese campo', async () => {
+    conMetricas();
+    const { usuario } = await abrirModelo();
+    await screen.findByRole('region', { name: 'Confianza promedio de tus análisis' });
+    conMetricas({ estado: 400, cuerpo: { errores: [{ campo: 'desde', mensaje: 'El valor no es válido.' }] } });
+
+    escribirPeriodo('2026-11-01', '');
+    await usuario.click(within(periodo()).getByRole('button', { name: 'Ver confianza' }));
+
+    const desde = within(periodo()).getByLabelText('Desde');
+    await waitFor(() => expect(desde).toHaveAttribute('aria-invalid', 'true'));
+    expect(desde).toHaveAccessibleDescription(expect.stringContaining('El valor no es válido.'));
+    expect(screen.queryByRole('button', { name: 'Reintentar' })).not.toBeInTheDocument();
   });
 
   it('RP-11 · en inglés, los textos y los números van en inglés', async () => {
