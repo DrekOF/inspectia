@@ -49,9 +49,10 @@ function estiloDeLasPestanas(esPc) {
  * @param {import('../api/analisis.js').MuestraDelLote} props.muestra la muestra terminada
  * @param {boolean} props.conTitulo si va con su título, «Muestra 1», porque el lote tiene más de una
  * @param {() => void} props.alFallarLaVista se llama si una imagen no carga
+ * @param {() => void} [props.alCargarLaVista] se llama cuando una imagen carga
  * @returns {import('react').ReactElement} las fotos
  */
-function FotosDeUnaMuestra({ muestra, conTitulo, alFallarLaVista }) {
+function FotosDeUnaMuestra({ muestra, conTitulo, alFallarLaVista, alCargarLaVista }) {
   const { t } = useTranslation();
   const esPc = useEsPc();
   const id = useId();
@@ -89,7 +90,8 @@ function FotosDeUnaMuestra({ muestra, conTitulo, alFallarLaVista }) {
       </Tabs>
       {foto && (
         <Box role="tabpanel" id={`${id}-panel`} aria-labelledby={`${id}-pestana-${elegida}`}>
-          <FotoMarcada key={foto.numero} foto={foto} alFallarLaVista={alFallarLaVista} />
+          <FotoMarcada key={foto.numero} foto={foto} alFallarLaVista={alFallarLaVista}
+            alCargarLaVista={alCargarLaVista} />
         </Box>
       )}
     </Box>
@@ -102,9 +104,10 @@ function FotosDeUnaMuestra({ muestra, conTitulo, alFallarLaVista }) {
  * @param {object} props las propiedades
  * @param {import('../api/analisis.js').MuestraDelLote[]} props.muestras las muestras del lote
  * @param {() => void} props.alFallarLaVista se llama si una imagen no carga, como cuando su enlace venció
+ * @param {() => void} [props.alCargarLaVista] se llama cuando una imagen carga
  * @returns {import('react').ReactElement} la sección
  */
-export function FotosMarcadas({ muestras, alFallarLaVista }) {
+export function FotosMarcadas({ muestras, alFallarLaVista, alCargarLaVista }) {
   const { t } = useTranslation();
   const esPc = useEsPc();
   const idDelTitulo = useId();
@@ -120,7 +123,7 @@ export function FotosMarcadas({ muestras, alFallarLaVista }) {
       </Typography>
       {terminadas.map((muestra) => (
         <FotosDeUnaMuestra key={muestra.numero} muestra={muestra} conTitulo={terminadas.length > 1}
-          alFallarLaVista={alFallarLaVista} />
+          alFallarLaVista={alFallarLaVista} alCargarLaVista={alCargarLaVista} />
       ))}
     </Box>
   );

@@ -97,9 +97,10 @@ function estiloDelGlobo(esPc) {
  * @param {object} props las propiedades
  * @param {import('../api/analisis.js').FotoMarcada} props.foto la foto, con su enlace de vista y sus granos
  * @param {() => void} props.alFallarLaVista se llama si la imagen no carga, como cuando su enlace venció
+ * @param {() => void} [props.alCargarLaVista] se llama cuando la imagen carga
  * @returns {import('react').ReactElement} la foto
  */
-export function FotoMarcada({ foto, alFallarLaVista }) {
+export function FotoMarcada({ foto, alFallarLaVista, alCargarLaVista }) {
   const { t } = useTranslation();
   const esPc = useEsPc();
   const idDeLaAyuda = useId();
@@ -121,6 +122,7 @@ export function FotoMarcada({ foto, alFallarLaVista }) {
     const { naturalWidth: ancho, naturalHeight: alto } = evento.currentTarget;
     if (ancho > 0 && alto > 0) {
       setTamano({ ancho, alto });
+      alCargarLaVista?.();
     }
   }
 
@@ -171,7 +173,9 @@ export function FotoMarcada({ foto, alFallarLaVista }) {
                 return (
                   // Los granos no cambian de lugar en la lista: su número en el orden de lectura es su identidad.
                   <Tooltip key={indice} title={grano.dudoso ? t('resultado.claseDudosa', { clase }) : clase}
-                    open={abierto === indice} onOpen={() => mostrar(indice)}
+                    /* El cursor solo abre el globo: el grano de la parada de Tab lo eligen el foco, el toque y
+                       las flechas, así un cursor que pasa no cambia desde dónde se mueven las flechas. */
+                    open={abierto === indice} onOpen={() => setAbierto(indice)}
                     onClose={() => setAbierto((antes) => (antes === indice ? null : antes))}
                     disableTouchListener arrow placement="top" slotProps={estiloDelGlobo(esPc)}>
                     <Box component="button" type="button" ref={(boton) => { botones.current[indice] = boton; }}

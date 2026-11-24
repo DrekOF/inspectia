@@ -25,14 +25,14 @@ function grano(nombre, x, y, lado = 40) {
 }
 
 describe('Granos de una foto marcada', () => {
-  it('RF-11 · C4 · los granos van en orden de lectura: de arriba abajo por filas y en cada fila de izquierda a derecha, aunque lleguen en otro orden', () => {
+  it('RNF-06 · C4 · los granos se recorren con el teclado en orden de lectura: de arriba abajo por filas y en cada fila de izquierda a derecha, aunque lleguen en otro orden', () => {
     const granos = [grano('c', 200, 10), grano('d', 10, 100), grano('a', 10, 12), grano('e', 110, 105), grano('b', 110, 8)];
 
     expect(enOrdenDeLectura(granos).map(({ nombre }) => nombre)).toEqual(['a', 'b', 'c', 'd', 'e']);
     expect(granos.map(({ nombre }) => nombre)).toEqual(['c', 'd', 'a', 'e', 'b']);
   });
 
-  it('RF-11 · C4 · un grano un poco más abajo que los de su fila sigue en ella, y uno con el centro bajo el borde del primero empieza otra (prueba de límite)', () => {
+  it('RNF-06 · C4 · un grano un poco más abajo que los de su fila sigue en ella, y uno con el centro bajo el borde del primero empieza otra (prueba de límite)', () => {
     // El primero de la fila va de y = 0 a y = 40: un centro en 40 sigue en la fila y uno en 41 empieza otra.
     const enLaFila = grano('enLaFila', 10, 20);
     const primero = grano('primero', 100, 0);
@@ -42,7 +42,7 @@ describe('Granos de una foto marcada', () => {
     expect(enOrdenDeLectura([primero, otraFila]).map(({ nombre }) => nombre)).toEqual(['primero', 'otraFila']);
   });
 
-  it('RF-11 · C4 · dentro de una fila, los granos van por su centro y no por su borde izquierdo, aunque midan distinto', () => {
+  it('RNF-06 · C4 · dentro de una fila, los granos van por su centro y no por su borde izquierdo, aunque midan distinto', () => {
     // Los centros: ancho en x = 20 y angosto en x = 32; pequeño en x = 20 y grande en x = 50.
     const ancho = grano('ancho', 0, 0, 40);
     const angosto = grano('angosto', 30, 18, 4);
@@ -53,7 +53,7 @@ describe('Granos de una foto marcada', () => {
       .toEqual(['ancho', 'angosto', 'pequeno', 'grande']);
   });
 
-  it('RF-11 · C4 · sin granos, el orden de lectura es una lista vacía', () => {
+  it('RNF-06 · C4 · sin granos, el orden de lectura es una lista vacía', () => {
     expect(enOrdenDeLectura([])).toEqual([]);
   });
 

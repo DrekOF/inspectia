@@ -5,7 +5,8 @@
  *              resultado guardado: la cifra con su rango probable (RF-10, D-43), los granos que contó el modelo, la
  *              categoría probable con su recomendación (RF-12), la sugerencia de otra muestra, si la hay (D-24), y las
  *              fotos marcadas (RF-11). Con la muestra en la cola o en proceso muestra la espera, consulta su avance y,
- *              al terminar, el resultado, con el foco en el título (RNF-01 C4, RNF-02 C3). Si el análisis no terminó,
+ *              al terminar, el resultado, con el foco en el título (RNF-01 C4, RNF-02 C3); también si el resultado
+ *              llegó con la muestra ya terminada y el lote todavía pendiente. Si el análisis no terminó,
  *              lo dice y lleva a las fotos; si el lote no tiene resultado, lo dice. Los pasos del análisis solo se ven
  *              al llegar desde «Analizar la muestra» o mientras espera. Si el lote no existe o es de otra empresa, lo
  *              dice sin «Reintentar» (RNF-03); si no llegó por otra causa, ofrece «Reintentar».
@@ -42,6 +43,9 @@ import { useAnalisisEnCurso } from './useAnalisisEnCurso.js';
 
 /** Los errores que dicen que el lote no está: no existe, es de otra empresa o su id no es válido (RNF-03). */
 const SIN_EL_LOTE = [400, 404];
+
+/** Los estados de la muestra en curso de un lote pendiente con los que se consulta el avance. */
+const POR_CONSULTAR = [...EN_CURSO, 'TERMINADA'];
 
 /**
  * La descripción debajo del título: la finca o el proveedor, la fecha de recepción y, si ya se analizó, la fecha y la
@@ -111,7 +115,9 @@ function ResultadoDe({ loteId, desdeElAnalisis }) {
   // Mientras llega otra vez el resultado, sigue a la vista el anterior.
   const cargando = respuesta.recarga !== recargas;
   const { datos, error } = respuesta;
-  const enCurso = datos?.lote.estado === 'PENDIENTE' && EN_CURSO.includes(muestraEnCurso(datos.muestras)?.estado);
+  // Con la muestra terminada y el lote pendiente, el resultado se leyó mientras se guardaba: el avance dirá TERMINADA y
+  // el resultado se pide otra vez, en lugar de quedarse cargando.
+  const enCurso = datos?.lote.estado === 'PENDIENTE' && POR_CONSULTAR.includes(muestraEnCurso(datos.muestras)?.estado);
   const analisis = useAnalisisEnCurso(pedir, loteId, {
     activo: Boolean(enCurso),
     alTerminar: () => {
@@ -130,13 +136,17 @@ function ResultadoDe({ loteId, desdeElAnalisis }) {
     }
   }, [vista, termino, desdeElAnalisis]);
 
-  // Si una imagen no carga, lo normal es que su enlace venció: el resultado trae enlaces nuevos. Una sola vez, para
-  // no pedirlo sin fin si la foto no está.
+  // Si una imagen no carga, lo normal es que su enlace venció: el resultado trae enlaces nuevos. Una vez por cada
+  // imagen que falla después de que otra cargó, para no pedirlo sin fin si la foto no está.
   const vistaFallida = useCallback(() => {
     if (!recargoPorLaVista.current) {
       recargoPorLaVista.current = true;
       setRecargas((veces) => veces + 1);
     }
+  }, []);
+  // Una imagen que carga dice que los enlaces sirven: si otro vence más tarde, se vuelve a pedir el resultado.
+  const vistaCargada = useCallback(() => {
+    recargoPorLaVista.current = false;
   }, []);
 
   /** Pide otra vez el resultado. Antes lleva el foco al título: «Reintentar» desaparece mientras carga (RNF-06 C4). */
@@ -213,7 +223,7 @@ function ResultadoDe({ loteId, desdeElAnalisis }) {
           {lote.sugerirOtraMuestra && (
             <Aviso tipo="info" urgente={false} titulo={t('resultado.sugerencia')}>{t('resultado.sugerenciaDetalle')}</Aviso>
           )}
-          <FotosMarcadas muestras={datos.muestras} alFallarLaVista={vistaFallida} />
+          <FotosMarcadas muestras={datos.muestras} alFallarLaVista={vistaFallida} alCargarLaVista={vistaCargada} />
           {conAcciones && !esPc && <NuevoLote esPc={false} />}
         </Box>
       )}

@@ -219,7 +219,7 @@ class GuardarAnalisisTest {
     }
 
     @Test
-    @DisplayName("P-15 · la confianza se guarda con 2 decimales y el grano se compara con el umbral con ese valor: 59,995 queda en 60,00 y no es dudoso")
+    @DisplayName("P-15 · la confianza se guarda con 2 decimales y el grano se compara con el umbral con ese valor: 59,995 queda en 60,00 y no es dudoso; 59,994 queda en 59,99 y sí")
     void confianzaComoLaGuardaLaBase() {
         when(muestras.conteosTerminados(EMPRESA, LOTE)).thenReturn(List.of(new ConteoDeMuestra(100, 100, EFFICIENTNET)));
         List<GranoClasificado> granos = new ArrayList<>(granos(100, 0, 0));
@@ -231,6 +231,34 @@ class GuardarAnalisisTest {
         ArgumentCaptor<List<GranoDeFoto>> guardados = ArgumentCaptor.forClass(List.class);
         verify(muestras).guardarGranos(eq(EMPRESA), guardados.capture());
         assertThat(guardados.getValue().get(0).confianza()).isEqualTo(new BigDecimal("60.00"));
+
+        // Que sea dudoso solo cambia el aviso, que pide 2 repeticiones y más del 10 % de dudosos (RF-09): con 11 granos
+        // de 59,995 no hay aviso, porque se guardan en 60,00; con 11 de 59,994, que se guardan en 59,99, sí.
+        MuestraTomada repetida = new MuestraTomada(MUESTRA, EMPRESA, LOTE, 1, 2, INICIO);
+        guardar.guardar(repetida, new Clasificacion(FALSO, conConfianza(11, "59.995")));
+        verify(muestras).terminar(repetida, new TerminoDeMuestra(MODELO, 100, 100, false, new BigDecimal("60"),
+                new BigDecimal("10"), FIN));
+        MuestraTomada otraRepetida = new MuestraTomada(MUESTRA, EMPRESA, LOTE, 1, 2, INICIO.plusSeconds(1));
+        guardar.guardar(otraRepetida, new Clasificacion(FALSO, conConfianza(11, "59.994")));
+        verify(muestras).terminar(otraRepetida, new TerminoDeMuestra(MODELO, 100, 100, true, new BigDecimal("60"),
+                new BigDecimal("10"), FIN));
+    }
+
+    /**
+     * 100 granos sanos, con los primeros con una confianza dada y los demás con 90,5.
+     *
+     * @param cuantos cuántos granos llevan esa confianza
+     * @param confianza la confianza, como 59.995
+     * @return los granos
+     */
+    private static List<GranoClasificado> conConfianza(int cuantos, String confianza) {
+        List<GranoClasificado> granos = new ArrayList<>(granos(100, 0, 0));
+        for (int i = 0; i < cuantos; i++) {
+            GranoClasificado grano = granos.get(i);
+            granos.set(i, new GranoClasificado(grano.numeroDeFoto(), grano.x(), grano.y(), grano.ancho(), grano.alto(),
+                    grano.clase(), new BigDecimal(confianza)));
+        }
+        return granos;
     }
 
     @Test

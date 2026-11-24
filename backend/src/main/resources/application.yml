@@ -74,5 +74,5 @@ inspectia:
     clasificador: falso
     falso:
       # Cuánto espera el clasificador falso antes de responder, para ver el indicador de avance en desarrollo
-      # (RNF-01 C4). Se puede cambiar con INSPECTIA_IA_FALSO_DEMORA, por ejemplo 2s.
-      demora: 0s
+      # (RNF-01 C4). Sale de INSPECTIA_IA_FALSO_DEMORA (en local, de infra/.env), por ejemplo 3s; sin ella, 0s.
+      demora: ${INSPECTIA_IA_FALSO_DEMORA:0s}

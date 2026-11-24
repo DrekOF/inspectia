@@ -18,8 +18,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * El clasificador falso ({@link ClasificadorFalso}). Solo se carga con {@code inspectia.ia.clasificador=falso}, sin
- * valor por defecto: así no llega a un despliegue sin que alguien lo pida.
+ * El clasificador falso ({@link ClasificadorFalso}). Se carga con {@code inspectia.ia.clasificador=falso}: la
+ * condición no tiene valor por defecto, pero application.yml trae «falso» mientras no esté el servicio de IA (PR 4).
+ * El PR del despliegue exigirá en AWS un valor explícito, para que el falso no llegue a producción sin que alguien lo
+ * pida.
  *
  * <p>Al arrancar, registra la fila de su modelo en {@code modelo} si no existe ({@code INSERT … ON CONFLICT (nombre,
  * version) DO NOTHING}), con los recall de EfficientNet-B0, sin las demás métricas y sin ponerlo en uso. No va en una

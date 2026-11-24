@@ -300,6 +300,25 @@ describe('Resultado del lote', () => {
       expect(granos[1]).toHaveFocus();
     });
 
+    it('RNF-06 · C4 · pasar el cursor por otro grano solo abre su globo: las flechas siguen desde el grano que tiene el foco', async () => {
+      conResultado(LOTE, resultadoAnalizado());
+      const { usuario } = abrirApp(RUTA);
+
+      await imagenCargada(1);
+      const granos = within(await granosDeLaFoto(1)).getAllByRole('button');
+      screen.getByRole('tab', { name: 'Foto 1 · 50 granos' }).focus();
+      await usuario.tab();
+      await usuario.keyboard('{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}');
+      expect(granos[4]).toHaveFocus();
+      await usuario.hover(granos[19]);
+      await waitFor(() => expect(screen.getByRole('tooltip')).toHaveTextContent(/^Sano$/));
+
+      await usuario.keyboard('{ArrowRight}');
+
+      expect(granos[5]).toHaveFocus();
+      expect(granos.filter((grano) => grano.tabIndex === 0)).toEqual([granos[5]]);
+    });
+
     it('RF-11 · C4 · en el celular, al tocar un grano se ve su clase, y al tocar fuera de la foto el globo se cierra', async () => {
       anchoDePantalla(390);
       conResultado(LOTE, resultadoAnalizado());
@@ -344,6 +363,20 @@ describe('Resultado del lote', () => {
       await new Promise((resolver) => { setTimeout(resolver, 50); });
       expect(pedidas.veces).toBe(2);
       expect(screen.getByRole('region', { name: 'Resumen del resultado' })).toBeInTheDocument();
+    });
+
+    it('RF-11 · después de que una foto carga, un enlace que vence otra vez más tarde también se recupera: la página vuelve a pedir el resultado', async () => {
+      const pedidas = conResultado(LOTE, (vez) => resultadoAnalizado({}, { vence: vez }));
+      abrirApp(RUTA);
+      const nombre = 'Foto 1 de la muestra, con sus granos marcados';
+
+      fireEvent.error(await screen.findByRole('img', { name: nombre }));
+      await waitFor(() => expect(screen.getByRole('img', { name: nombre })).toHaveAttribute('src', expect.stringContaining('vence=2')));
+      cargarImagen(screen.getByRole('img', { name: nombre }));
+      fireEvent.error(screen.getByRole('img', { name: nombre }));
+
+      await waitFor(() => expect(screen.getByRole('img', { name: nombre })).toHaveAttribute('src', expect.stringContaining('vence=3')));
+      expect(pedidas.veces).toBe(3);
     });
 
     it('RF-11 · C5 · en el celular, la cifra mide 52 px, las pestañas ocupan todo el ancho y «Nuevo lote» va al final, a todo el ancho (RNF-05)', async () => {
@@ -510,7 +543,7 @@ describe('Resultado del lote', () => {
       expect(within(espera).getByRole('progressbar', { name: 'Avance del análisis' })).toBeInTheDocument();
     });
 
-    it('RNF-01 · C4 · si el análisis no terminó y la muestra volvió a quedar pendiente, la página lo dice y lleva a las fotos', async () => {
+    it('RNF-06 · C3 · si el análisis no terminó y la muestra volvió a quedar pendiente, la página lo dice y lleva a las fotos', async () => {
       vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'], shouldAdvanceTime: true });
       conResultado(LOTE, resultadoPendiente('EN_PROCESO'));
       const consultas = conAvance(LOTE, [avance('PENDIENTE', { fallo: true })]);
@@ -528,7 +561,7 @@ describe('Resultado del lote', () => {
       expect(consultas.veces).toBe(1);
     });
 
-    it('RNF-01 · C4 · a la administradora, un análisis que no terminó se lo dice sin llevarla a las fotos', async () => {
+    it('RNF-06 · C3 · a la administradora, un análisis que no terminó se lo dice sin llevarla a las fotos', async () => {
       conSesion(USUARIOS.ADMIN_EMPRESA);
       conResultado(LOTE, resultadoPendiente('PENDIENTE', { fechaEnvio: '2026-11-23T16:42:00Z' }));
       abrirApp(RUTA);
@@ -536,6 +569,21 @@ describe('Resultado del lote', () => {
       expect(await screen.findByRole('alert'))
         .toHaveTextContent('Un usuario final de tu empresa puede revisar las fotos y enviarla de nuevo.');
       expect(screen.queryByRole('link', { name: 'Volver a las fotos' })).not.toBeInTheDocument();
+    });
+
+    it('RNF-02 · si el resultado llega con la muestra ya terminada y el lote todavía pendiente, porque se leyó mientras se guardaba, la página consulta el avance y vuelve a pedir el resultado', async () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'], shouldAdvanceTime: true });
+      const resultado = conResultado(LOTE, (vez) => (vez === 1 ? resultadoPendiente('TERMINADA') : resultadoAnalizado()));
+      const consultas = conAvance(LOTE, [avance('TERMINADA')]);
+      abrirApp(RUTA);
+      await waitFor(() => expect(resultado.veces).toBe(1));
+
+      await siguienteConsulta(consultas, 1);
+
+      expect(await screen.findByRole('region', { name: 'Resumen del resultado' })).toBeInTheDocument();
+      expect(resultado.veces).toBe(2);
+      await avanzar(3000);
+      expect(consultas.veces).toBe(1);
     });
 
     it('RNF-02 · la consulta del avance se pausa con la pestaña oculta y, al volver a verse, consulta enseguida', async () => {

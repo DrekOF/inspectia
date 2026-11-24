@@ -38,6 +38,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Transactional;
 
 /** Las consultas del análisis: el avance y el resultado (RF-14 C3, RNF-01 C4), sin Spring ni la base. */
 class ConsultarResultadoTest {
@@ -180,5 +182,16 @@ class ConsultarResultadoTest {
         assertThat(AvanceDelAnalisis.de(1, EstadoDeMuestra.PENDIENTE, null, null, null).fallo()).isFalse();
         assertThat(AvanceDelAnalisis.de(1, EstadoDeMuestra.EN_ESPERA, ENVIO, null, null).fallo()).isFalse();
         assertThat(AvanceDelAnalisis.de(1, EstadoDeMuestra.TERMINADA, ENVIO, FIN, FIN).fallo()).isFalse();
+    }
+
+    @Test
+    @DisplayName("RNF-02 · el detalle lee el lote y sus muestras en una misma foto de la base (REPEATABLE READ): un análisis que se guarda entre las dos lecturas no lo deja con el lote pendiente y su muestra terminada")
+    void unaMismaFotoDeLaBase() {
+        // Con READ COMMITTED, cada SELECT ve lo confirmado hasta ese momento: si GuardarAnalisis confirma entre la
+        // lectura del lote y la de sus muestras, la página recibiría el lote PENDIENTE con su muestra TERMINADA.
+        Transactional transaccion = ConsultarResultado.class.getAnnotation(Transactional.class);
+
+        assertThat(transaccion.readOnly()).isTrue();
+        assertThat(transaccion.isolation()).isEqualTo(Isolation.REPEATABLE_READ);
     }
 }

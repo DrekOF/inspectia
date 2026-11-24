@@ -297,7 +297,10 @@ describe.each(COMBINACIONES)('%s en %s', (_, navegador, __, celular) => {
 
       await (await boton(driver, 'Analizar la muestra')).click();
 
-      await esperarTexto(driver, `Resultado del lote ${lote.codigo}`);
+      // El título de la página, no el de la pestaña del navegador, que dice lo mismo y no se ve.
+      await esperar(driver, By.xpath(`//h1[normalize-space()='Resultado del lote ${lote.codigo}']`));
+      // La cifra grande lleva un espacio sin corte antes de «%», que normalize-space de XPath no cambia: se busca sin él.
+      await esperarTexto(driver, '90,6');
       await esperarTexto(driver, '87 de 100 marcados como sanos');
       await esperarTexto(driver, 'Rango probable: entre 83,1 y 98,1 %');
       expect(await driver.getCurrentUrl()).toBe(`${APP}/lotes/${lote.id}`);

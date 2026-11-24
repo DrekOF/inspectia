@@ -1,10 +1,11 @@
 /*
  * Nombre: resultado.spec.js
- * Descripción: Pruebas de punta a punta del análisis y del resultado de un lote (RF-05 C2, RF-10, RF-11, RF-12, RF-14 C3,
- *              RNF-03): «Analizar la muestra» con el mínimo de 2 fotos, el resultado con el clasificador falso, el rango
- *              recortado en 100, las fotos marcadas con el cursor y el teclado, la categoría probable, «Ver» de la
- *              administradora y un lote de otra empresa. Las fotos se hacen en la prueba (RNF-08): el clasificador falso
- *              da 50 granos por foto y tantos no sanos como su ancho módulo 50.
+ * Descripción: Pruebas de punta a punta del análisis y del resultado de un lote (RF-05 C2, RF-10 C9, RF-11 C1 a C4 y
+ *              C6, RF-12 C10, RF-14 C3, RNF-03 C1): «Analizar la muestra» con el mínimo de 2 fotos, las cifras del
+ *              resultado con el clasificador falso, el rango recortado en 100, los granos marcados con su color y su
+ *              símbolo, el globo con el cursor y el teclado, la categoría probable, «Ver» de la administradora y un lote
+ *              de otra empresa. Las fotos se hacen en la prueba (RNF-08): el clasificador falso da 50 granos por foto y
+ *              tantos no sanos como su ancho módulo 50.
  * Fecha de creación: 23/11/2026
  * Actualización: 23/11/2026
  * Autor: Equipo InspectIA
@@ -54,7 +55,7 @@ test('RF-05 · C2 · con una foto la página no deja analizar y la API responde 
   await expect(cifra(page, '90,6')).toBeVisible({ timeout: 30_000 });
 });
 
-test('RF-10 · RF-11 · C3 y C6 · RF-12 · C10 · el resultado de 87 de 100 sanos: 90,6 %, su rango probable, lo que contó el modelo y la categoría probable con la sugerencia (de punta a punta)', async ({ page, request }) => {
+test('RF-11 · C3 · las cifras de la pantalla coinciden con el cálculo de RF-10: 87 de 100 sanos dan 90,6 %, con su rango probable, como los guarda la API (de punta a punta)', async ({ page, request }) => {
   const { usuarioFinal } = await crearEmpresaConUsuarioFinal(request);
   const lote = await loteAnalizado(request, usuarioFinal, [106, 107]);
   await iniciarSesion(page, usuarioFinal);
@@ -64,17 +65,40 @@ test('RF-10 · RF-11 · C3 y C6 · RF-12 · C10 · el resultado de 87 de 100 san
   const resumen = page.getByRole('region', { name: 'Resumen del resultado' });
   await expect(cifra(page, '90,6')).toBeVisible();
   await expect(resumen.getByText('Rango probable: entre 83,1 y 98,1 %')).toBeVisible();
+  const api = await request.get(`/api/v1/lotes/${lote.id}/resultado`,
+    { headers: { Authorization: `Bearer ${await tokenDe(request, usuarioFinal)}` } });
+  expect((await api.json()).lote).toEqual(expect.objectContaining({
+    porcentajeSanos: 90.6, margen: 7.5, totalGranos: 100, granosSanos: 87 }));
+});
+
+test('RF-11 · C6 · se ve lo que contó el modelo, «87 de 100 marcados como sanos», y la frase de la corrección (de punta a punta)', async ({ page, request }) => {
+  const { usuarioFinal } = await crearEmpresaConUsuarioFinal(request);
+  const lote = await loteAnalizado(request, usuarioFinal, [106, 107]);
+  await iniciarSesion(page, usuarioFinal);
+
+  await page.goto(`/lotes/${lote.id}`);
+
+  const resumen = page.getByRole('region', { name: 'Resumen del resultado' });
   await expect(resumen.getByText('87 de 100 marcados como sanos')).toBeVisible();
   await expect(resumen.getByText('El porcentaje corrige los errores conocidos del modelo.')).toBeVisible();
+});
+
+test('RF-12 · C10 · la categoría se muestra como probable: con 90,6 %, Estándar, con la nota de la prueba de corte y la sugerencia de otra muestra (de punta a punta)', async ({ page, request }) => {
+  const { usuarioFinal } = await crearEmpresaConUsuarioFinal(request);
+  const lote = await loteAnalizado(request, usuarioFinal, [106, 107]);
+  await iniciarSesion(page, usuarioFinal);
+
+  await page.goto(`/lotes/${lote.id}`);
+
+  const resumen = page.getByRole('region', { name: 'Resumen del resultado' });
+  await expect(resumen.getByText('Categoría probable', { exact: true })).toBeVisible();
   await expect(resumen.getByText('Estándar', { exact: true })).toBeVisible();
   await expect(resumen.getByText('Es una categoría probable: la oficial se confirma con la prueba de corte.'))
     .toBeVisible();
   await expect(page.getByText('El resultado quedó a menos de 1 punto del límite de una categoría.')).toBeVisible();
   const api = await request.get(`/api/v1/lotes/${lote.id}/resultado`,
     { headers: { Authorization: `Bearer ${await tokenDe(request, usuarioFinal)}` } });
-  expect((await api.json()).lote).toEqual(expect.objectContaining({
-    porcentajeSanos: 90.6, margen: 7.5, categoria: 'ESTANDAR', sugerirOtraMuestra: true, totalGranos: 100,
-    granosSanos: 87 }));
+  expect((await api.json()).lote).toEqual(expect.objectContaining({ categoria: 'ESTANDAR', sugerirOtraMuestra: true }));
 });
 
 test('RF-10 · C9 · 93 de 100 sanos dan 100,0 %, y el rango probable se recorta en 100 (D-43, prueba de límite, de punta a punta)', async ({ page, request }) => {
@@ -89,7 +113,7 @@ test('RF-10 · C9 · 93 de 100 sanos dan 100,0 %, y el rango probable se recorta
   await expect(page.getByRole('region', { name: 'Resumen del resultado' }).getByText('Premium o Especial')).toBeVisible();
 });
 
-test('RF-11 · C1, C2 y C4 · cada grano se marca en su foto con su clase, se ve con el cursor o con el teclado, y la confianza no se muestra (de punta a punta)', async ({ page, request, isMobile }) => {
+test('RF-11 · C1 · cada grano aparece marcado en su foto, dentro de la imagen: con el borde verde si es sano y rojo si no (de punta a punta)', async ({ page, request }) => {
   const { usuarioFinal } = await crearEmpresaConUsuarioFinal(request);
   const lote = await loteAnalizado(request, usuarioFinal, [106, 107]);
   await iniciarSesion(page, usuarioFinal);
@@ -105,8 +129,49 @@ test('RF-11 · C1, C2 y C4 · cada grano se marca en su foto con su clase, se ve
     const caja = await marca.boundingBox();
     expect(caja.x).toBeGreaterThanOrEqual(imagen.x - 1);
     expect(caja.x + caja.width).toBeLessThanOrEqual(imagen.x + imagen.width + 1);
+    expect(caja.y).toBeGreaterThanOrEqual(imagen.y - 1);
+    expect(caja.y + caja.height).toBeLessThanOrEqual(imagen.y + imagen.height + 1);
   }
+  // Los colores de tokens.js (marcasDeFoto): sano #2E6B34 y no sano #B3261E.
+  await expect(granos.getByRole('button', { name: 'Grano 1: no sano' })).toHaveCSS('border-top-color', 'rgb(179, 38, 30)');
+  await expect(granos.getByRole('button', { name: 'Grano 7: sano' })).toHaveCSS('border-top-color', 'rgb(46, 107, 52)');
 
+  await pestanas.getByRole('tab').nth(1).click();
+  await expect(page.getByRole('group', { name: 'Granos de la foto 2' }).getByRole('button', { name: /^Grano \d+: no sano/ }))
+    .toHaveCount(7);
+});
+
+test('RF-11 · C2 · además del color, cada grano lleva el símbolo de su clase: uno los 44 sanos de la foto 1 y otro los 6 no sanos (de punta a punta)', async ({ page, request }) => {
+  const { usuarioFinal } = await crearEmpresaConUsuarioFinal(request);
+  const lote = await loteAnalizado(request, usuarioFinal, [106, 107]);
+  await iniciarSesion(page, usuarioFinal);
+  await page.goto(`/lotes/${lote.id}`);
+
+  const granos = page.getByRole('group', { name: 'Granos de la foto 1' });
+  await expect(granos.getByRole('button')).toHaveCount(50);
+  // La página compilada no lleva el data-testid de los íconos: el símbolo se reconoce por su dibujo.
+  const simbolos = await granos.getByRole('button').evaluateAll((marcas) => marcas.map((marca) => ({
+    clase: marca.getAttribute('aria-label').replace(/^Grano \d+: /, ''),
+    dibujo: marca.querySelector('svg path')?.getAttribute('d') ?? null,
+  })));
+  const dibujoDe = (clase) => [...new Set(simbolos.filter((s) => s.clase === clase).map((s) => s.dibujo))];
+  expect(dibujoDe('sano')).toHaveLength(1);
+  expect(dibujoDe('no sano')).toHaveLength(1);
+  expect(dibujoDe('sano')[0]).toBeTruthy();
+  expect(dibujoDe('no sano')[0]).toBeTruthy();
+  expect(dibujoDe('sano')[0]).not.toBe(dibujoDe('no sano')[0]);
+  expect(simbolos.filter((s) => s.clase === 'sano')).toHaveLength(44);
+  expect(simbolos.filter((s) => s.clase === 'no sano')).toHaveLength(6);
+});
+
+test('RF-11 · C4 · al pasar el cursor por un grano, o al tocarlo, se ve su clase sin la confianza, y con el teclado se pasa de un grano a otro (de punta a punta)', async ({ page, request, isMobile }) => {
+  const { usuarioFinal } = await crearEmpresaConUsuarioFinal(request);
+  const lote = await loteAnalizado(request, usuarioFinal, [106, 107]);
+  await iniciarSesion(page, usuarioFinal);
+  await page.goto(`/lotes/${lote.id}`);
+
+  const pestanas = page.getByRole('tablist');
+  const granos = page.getByRole('group', { name: 'Granos de la foto 1' });
   const primero = granos.getByRole('button', { name: 'Grano 1: no sano' });
   if (isMobile) {
     await primero.tap();

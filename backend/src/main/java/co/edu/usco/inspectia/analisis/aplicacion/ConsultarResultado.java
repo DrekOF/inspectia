@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
@@ -32,7 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
  * la sesión (RNF-03).
  */
 @Service
-@Transactional(readOnly = true)
+@Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
 public class ConsultarResultado {
 
     private final RepositorioDeLotes lotes;

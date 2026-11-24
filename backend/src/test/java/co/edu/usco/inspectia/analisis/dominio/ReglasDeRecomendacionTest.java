@@ -105,7 +105,7 @@ class ReglasDeRecomendacionTest {
     }
 
     @Test
-    @DisplayName("D-24 · a cuántos puntos se sugiere otra muestra es un parámetro: con 2 puntos, 92,0 % la sugiere")
+    @DisplayName("D-24 · a cuántos puntos se sugiere otra muestra es un parámetro: con 2 puntos, 91,9 % la sugiere y 92,0 % no, porque queda justo a 2 de 90")
     void puntosParaOtraMuestra() {
         Recomendacion dosPuntos = ReglasDeRecomendacion.recomendar(new BigDecimal("92.0"), POR_DEFECTO, 1,
                 new BigDecimal("2"));

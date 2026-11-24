@@ -62,7 +62,7 @@ describe('Qué muestra la página de un lote', () => {
     expect(vistaDelLote(resultadoPendiente('EN_PROCESO'), avance('TERMINADA'))).toBe('cargando');
   });
 
-  it('RNF-01 · C4 · una muestra que volvió a quedar pendiente después de enviarse es un análisis que no terminó', () => {
+  it('RNF-01 · una muestra que volvió a quedar pendiente después de enviarse es un análisis que no terminó', () => {
     expect(vistaDelLote(resultadoPendiente('PENDIENTE', { fechaEnvio: '2026-11-23T16:42:00Z' }), null)).toBe('fallo');
     expect(vistaDelLote(resultadoPendiente('EN_PROCESO'), avance('PENDIENTE', { fallo: true }))).toBe('fallo');
   });

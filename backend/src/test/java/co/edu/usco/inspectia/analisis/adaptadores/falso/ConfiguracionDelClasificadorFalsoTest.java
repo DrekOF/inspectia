@@ -23,8 +23,9 @@ import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 /**
- * Cuándo se carga el clasificador falso. Como el almacén en carpeta, no debe llegar a un despliegue sin que alguien lo
- * pida: no tiene valor por defecto.
+ * Cuándo se carga el clasificador falso. La condición no tiene valor por defecto: sin la propiedad no se carga. Hoy
+ * application.yml la pone en «falso», mientras no esté el servicio de IA (PR 4); el PR del despliegue exigirá en AWS un
+ * valor explícito.
  */
 class ConfiguracionDelClasificadorFalsoTest {
 

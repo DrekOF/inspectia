@@ -128,7 +128,7 @@ describe('Analizar la muestra', () => {
     await waitFor(() => expect(boton).not.toHaveAttribute('aria-disabled'));
   });
 
-  it('RF-05 · C2 · un doble clic envía la muestra una sola vez', async () => {
+  it('RF-05 · un doble clic envía la muestra una sola vez', async () => {
     conFotos(LOTE, [fotoCargada(1), fotoCargada(2)]);
     let soltar;
     const envio = conEnvio(LOTE, { espera: new Promise((resolver) => { soltar = resolver; }) });
