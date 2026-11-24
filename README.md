@@ -4,7 +4,7 @@ Descripción: Presentación del monorepo de InspectIA: estructura, versiones, re
 Fecha de creación: 12/10/2026
 Actualización: 23/11/2026
 Autor: Equipo InspectIA
-Versión: 1.13
+Versión: 1.14
 -->
 
 # InspectIA
@@ -44,6 +44,7 @@ Fijadas el 12/10/2026; las del frontend, el 20/10/2026. La versión exacta de ca
 | Vitest | 4.1.12 | No la 5: Stryker 10.0.0, que hace las pruebas de mutación, no activa los mutantes con Vitest 5 (stryker-js #6210). Se vuelve a la 5 cuando Stryker publique el arreglo. Con Testing Library y MSW 3.0.3, que simula la API. |
 | Pruebas de punta a punta | Playwright 1.64.1 y Selenium WebDriver 4.51.0 | Playwright con los motores de Chrome, Firefox y Safari, en PC y celular; Selenium con Chrome y Edge. |
 | Calidad del frontend | ESLint 10.13.0 y Stryker 10.0.0 | |
+| Calidad del backend | PIT 1.30.2 (`pitest-maven`), con `pitest-junit5-plugin` 1.2.3 | Pruebas de mutación del dominio del análisis, en el perfil `mutacion` de Maven: `./mvnw -Pmutacion test` desde `backend/`. |
 | Python | 3.13 | Para `ia-servicio/` y `generador/`. El generador usa Jinja2 3.1.6 y pytest 9.1.1 (`generador/requirements*.txt`). |
 | PostgreSQL | 18 | Corre en Docker; no hace falta instalarlo. |
 | GitHub Actions | `checkout` v7, `setup-java` v6, `setup-python` v7, `setup-node` v7 y `upload-artifact` v7, en Ubuntu 24.04 | Las acciones oficiales de GitHub, en su versión mayor; fijadas el 04/11/2026. |
@@ -149,6 +150,7 @@ Los comandos están en la sección Comandos de `CLAUDE.md`. En resumen:
 - **Rangos de recomendación:** el administrador de empresa lista, edita en bloque y restaura los 4 rangos de su empresa en la pantalla «Rangos de recomendación» o en `/api/v1/rangos-recomendacion` (RF-13); los pasos para probar la API están en `infra/README.md`.
 - **Lotes:** el usuario final registra un lote en «Nuevo lote» o con `POST /api/v1/lotes` (RF-04), y él y el administrador de empresa ven los lotes de su empresa en «Historial» o en `GET /api/v1/lotes` (RF-14); los pasos para probar la API están en `infra/README.md`.
 - **Fotos de la muestra:** después de registrar un lote, o con «Continuar» en el historial, el usuario final sube 2 o 3 fotos en «Fotos de la muestra»: en el celular, «Tomar foto» abre la cámara, y en el PC, «Elegir archivo» abre el selector (RF-05, RF-14 C5). Mientras no haya despliegue en AWS, las fotos se guardan en una carpeta de tu PC, fuera del repositorio, con enlaces que firma el backend (D-41). No hace falta tocar `infra/.env` ni reiniciar la base; ver «Fotos en tu PC» en `infra/README.md`.
+- **Resultado del lote:** con 2 o 3 fotos, el usuario final pulsa «Analizar la muestra». El análisis espera su turno en una cola guardada en la base (RNF-02) y la página muestra el avance; al terminar, «Resultado del lote» trae el porcentaje de granos sanos corregido (D-39) con su rango probable (D-43), la categoría probable con su recomendación (RF-12) y las fotos con cada grano marcado (RF-11). «Ver» en el historial abre el mismo detalle, también a la administradora. Mientras no esté el servicio de IA (PR 4), los granos los da un clasificador falso; los pasos para probar la API están en `infra/README.md`.
 - **Generador:** los CRUD (tablas, backend y pantallas) salen de `specs/entidades/*.json` y no se editan a mano (RP-23). Hoy tienen pantalla las empresas, los usuarios y los rangos. Ver `generador/README.md`.
 - **Casos de prueba:** `docs/casos-de-prueba.md` lista cada criterio de aceptación con sus pruebas y los que aún no tienen ninguna (RP-13). Lo arma `generador/casos_de_prueba.py` desde las marcas de las pruebas.
 
@@ -182,7 +184,7 @@ GitHub Actions corre `.github/workflows/ci.yml` en cada PR hacia `main`, en cada
   - cuando el job vuelve a pasar en `main`, comenta y cierra el issue.
 - **Edge no corre en la CI:** ver «Edge en la CI», en «Frontend».
 - **Si algo falla:** el reporte de Playwright, las capturas de Selenium y los reportes de Maven quedan como artefactos de la corrida, por 7 días.
-- **Stryker no corre en la CI,** porque tarda mucho: se sigue corriendo a mano, con `npm run test:mutacion`.
+- **Stryker y PIT no corren en la CI,** porque tardan mucho: se corren a mano, con `npm run test:mutacion` en `frontend/` y `./mvnw -Pmutacion test` en `backend/`.
 - **Minutos:** el repositorio es privado, y el plan gratis trae unos 2.000 minutos de Linux al mes. GitHub cobra cada job redondeado hacia arriba al minuto entero. Las dos corridas medidas en el PR #13 cobraron 17 y 21 minutos; en `main` se suma 1, por el aviso. Con 21, caben unas 95 corridas al mes. La página de cada corrida muestra lo cobrado en «Usage».
 
 ### Lo que se configura en GitHub

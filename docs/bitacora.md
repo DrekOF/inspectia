@@ -4,7 +4,7 @@ Descripción: Registro paso a paso de cómo se construyó InspectIA, para la sus
 Fecha de creación: 12/10/2026
 Actualización: 23/11/2026
 Autor: Equipo InspectIA
-Versión: 1.24
+Versión: 1.25
 -->
 
 # Bitácora de construcción (RP-24)
@@ -1348,6 +1348,180 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
       no está pendiente, «Reintentar» del lote, el reintento que solo confirma, y las pruebas de la vigencia de los
       enlaces (10 y 15 minutos) y de la revisión del archivo al confirmarlo.
 - Archivos o PR: la rama `feature/RF-05-fotos` y su PR hacia `main`.
+
+## 23/11/2026 · RF-10, RF-11 y RF-12: «Analizar la muestra» y el resultado del lote
+
+- Quién: Cristhian Sánchez (`DrekOF`), con Claude Code.
+- Qué se hizo:
+  - **El PR 3a del módulo de análisis, en la rama `feature/RF-10-resultado`:**
+    1. `fa38b4c` los recall de cada clase del modelo, el margen del lote y el índice de la cola en `V1`; D-42 y D-43.
+    2. `a5b5f1f` las pruebas del backend en rojo, que fijan el dominio de D-39, la cola y la API.
+    3. `36663f7` el backend: el dominio, la cola, el clasificador falso y la API.
+    4. `fecac5d` las pruebas del frontend en rojo, con MSW.
+    5. `2c202ac` «Analizar la muestra», la espera y la página del resultado.
+    6. `9590784` las pruebas de punta a punta, con Playwright y Selenium.
+    7. `b593298` las correcciones de la revisión antes del PR.
+    8. Esta entrada de la bitácora, los README, los casos de prueba y las fichas que pasan a «Implementado».
+  - **El PR 3 se partió en dos:** este, 3a, trae el resultado de una muestra; el 3b, los filtros del historial
+    (RF-14 C2), la segunda muestra (D-25, RF-14 C6 y RF-12 C8) y el detalle con dos muestras. Juntos eran demasiado
+    para revisarlos de una vez.
+  - **El dominio, sin Spring** (`analisis/dominio`): el porcentaje contado y el corregido de D-39 con `BigDecimal` y un
+    solo redondeo al final, a un decimal y hacia arriba en el empate; el margen provisional de P-19 (k = 1); la
+    categoría; la sugerencia de otra muestra (D-24), en la que el 0 de Fuera de norma no cuenta; los dudosos de P-15
+    (confianza menor que 60,00) y el resultado de una o dos muestras, ya listo para el PR 3b. Todos los ejemplos de
+    RF-10 y RF-12 son pruebas. PIT, en el perfil `mutacion` de Maven, mata el 98 % de sus mutantes; los 3 que quedan
+    son equivalentes.
+  - **La cola en la base** (RNF-02 C3): «Analizar la muestra» deja la muestra EN_ESPERA con su fecha de envío. Un hilo
+    del servidor toma la siguiente con `SELECT … FOR UPDATE SKIP LOCKED`, en el orden de envío y sin mirar la empresa,
+    la clasifica fuera de la transacción y guarda todo junto: los granos, las fotos aprobadas, los conteos, el modelo
+    y el resultado con los rangos vigentes de la empresa (RF-13 C2). Se despierta apenas se confirma un envío y, sin
+    aviso, revisa la tabla cada 5 s. Al arrancar, devuelve a la espera las que quedaron a medias: ninguna se pierde.
+  - **El clasificador falso,** mientras el servicio de IA llega en el PR 4: es predecible, para que cada prueba arme
+    su caso con la foto que sube. Da 50 granos por foto; son no sanos tantos como el ancho de la foto módulo 50, y
+    dudosos tantos como el alto módulo 50. Al arrancar registra su modelo, `clasificador-falso` 1.0, con los recall de
+    EfficientNet-B0 (91,20 y 53,40) y sin marcarlo «en uso».
+  - **La API:** `POST /api/v1/lotes/{id}/analisis`, solo del usuario final, envía la muestra (202), y responde 400 en
+    «fotos» con menos de 2 (RF-05 C2) y 409 si el lote ya tiene resultado; `GET …/analisis` dice en qué va, y
+    `GET …/resultado` trae el resultado guardado, sin la confianza de los granos, a los dos roles de la empresa.
+  - **La página del resultado** (`/lotes/:id`), del usuario final y de la administradora:
+    - la espera (RNF-01 C4): «en espera» o «analizando», un aviso si tarda más de 15 s y otro si falló;
+    - la cifra grande con el rango probable recortado a 0–100 % (D-43), «87 de 100 marcados como sanos» (RF-11 C6) y
+      la frase de la corrección (RF-11 C3);
+    - la categoría probable, la recomendación guardada y la nota de la prueba de corte (RF-12 C10), y el aviso de la
+      sugerencia de otra muestra;
+    - las fotos marcadas (RF-11): una pestaña por foto y un botón por grano, con el color y el símbolo de su clase y
+      la «?» de los dudosos (D-42); el globo dice la clase, sin números.
+  - **«Ver» en el historial,** en los lotes analizados, para los dos roles (RF-14 C3).
+  - **Las fichas y las especificaciones,** en `fa38b4c`, con lo que Cristhian aprobó:
+    - D-42 (los dudosos) y D-43 (el rango probable) nuevas, y los valores provisionales de P-15 (60) y P-19 (k = 1);
+    - `modelo.json`, `lote.json` y `muestra.json` en la 1.1, y `V1` regenerada: la base local se reinicia (P-16);
+    - las restricciones nuevas de RF-10, RF-11 y RF-12;
+    - `modelo-datos.md` y `arquitectura.md`.
+
+    En el último commit, RF-05 1.3, RF-10 y RF-11 pasan a «Implementado» (D-29): tienen prueba en todos sus
+    criterios. RF-10 y RF-11 lo anotan en sus observaciones: funcionan con el clasificador falso, porque el cálculo
+    y la pantalla no dependen de quién clasifica los granos, y el servicio de IA real llega con RF-08. RF-12 y
+    RF-14 siguen en «Aprobado»: les faltan RF-12 C8 y RF-14 C2 y C6, que llegan en el PR 3b.
+  - **Los README:** el principal dice qué hace «Resultado del lote» y trae PIT en la tabla de versiones; el del
+    frontend, qué hay en `src/lote/` y cómo analizan un lote las pruebas de punta a punta; el de `infra/`, la `V1`
+    nueva en la lista de P-16, cómo probar la API del análisis en tres pasos y la regla del clasificador falso.
+  - **Decisiones pequeñas,** tomadas con el prototipo y las fichas:
+    - **La muestra queda a nombre de quien la envía,** no de quien subió la primera foto: es quien pidió el análisis,
+      y la página dice «Analizada por» con su nombre.
+    - **Enviar dos veces es seguro:** con la muestra ya en espera o en proceso, responde 202 con su estado, sin
+      cambiar nada.
+    - **Si el análisis falla, o el modelo encuentra menos de 100 granos** (RF-10), la muestra vuelve a PENDIENTE, sin
+      resultado y sin su fecha de inicio. `GET …/analisis` lo dice con `fallo`, y la página pide revisar las fotos y
+      volver a enviarla. El aviso de pocos granos con su motivo llega con el servicio de IA (RF-09, PR 4).
+    - **La posición en la cola no se muestra:** la cola es de todas las empresas (RNF-03).
+    - **El margen no pasa de 100,** para una muestra tan pequeña que la fórmula de P-19 daría más.
+    - **Los granos de cada foto salen en el orden en que se guardaron,** por su `id` (UUIDv7), y se numeran en ese
+      orden.
+    - **La espera:**
+      - consulta el avance cada segundo, nunca dos veces a la vez, y se detiene con la pestaña oculta;
+      - los 15 s del aviso cuentan desde que se ve el panel; el aviso ofrece «Ir al Historial», porque el resultado
+        queda guardado;
+      - al terminar, el foco va al título de la página y se anuncia «Listo: este es el resultado del lote…».
+    - **Si «Analizar la muestra» recibe 409,** porque otro compañero ya lo analizó, la página lleva al resultado.
+    - **La marca «?» de los dudosos va en ámbar oscuro,** en la esquina superior derecha de la marca, para que no se
+      confunda con el rojo de los no sanos; el color de su clase no cambia (D-42).
+    - **La demora del clasificador falso** se puede poner en `infra/.env` con `INSPECTIA_IA_FALSO_DEMORA`, para ver la
+      espera en la página; sin ella responde de una vez.
+    - **Las fotos marcadas son una sola parada de Tab:** dentro, las flechas, Inicio y Fin pasan de un grano a otro, y
+      Escape cierra el globo (RNF-06). Pasar el cursor solo abre el globo: no cambia desde dónde se mueven las
+      flechas.
+    - **Si una foto no carga,** lo normal es que su enlace venció: la página vuelve a pedir el resultado. Lo vuelve
+      a pedir cada vez que un enlace vence, pero no sin fin si la foto no está: espera a que otra imagen cargue.
+    - **La página no recalcula nada:** muestra lo que guardó el backend, también la recomendación.
+    - **Un lote analizado, en la página de las fotos,** enlaza a su resultado en lugar de ofrecer subir fotos.
+    - **Las pruebas de punta a punta hacen sus fotos** del ancho que necesitan: 106 y 107 px dan 87 de 100 sanos, y
+      103 y 104, 93 de 100, que llega a 100,0 %.
+    - **PIT no corre en la CI,** como Stryker: tarda mucho y se corre a mano.
+  - **Queda fuera:**
+    - **PR 3b:** los filtros del historial (RF-14 C2), con un servicio nuevo de usuarios para los dos roles; la
+      segunda muestra (D-25, RF-14 C6, RF-12 C8), «Analizar otra muestra» y el detalle con dos muestras; el chip
+      «Sugiere otra muestra» del historial.
+    - **PR 4, el servicio de IA:** el clasificador real, RF-06 a RF-09, la orientación EXIF de las fotos y el aviso de
+      confianza baja (hoy siempre falso).
+    - **PR del despliegue:** que `inspectia.ia.clasificador` e `inspectia.archivos.almacen` tengan en AWS un valor
+      explícito, y que el backend no arranque si falta; el módulo de ImageIO en la imagen de Docker.
+    - **PR del PDF:** el reporte con el mismo rango probable (D-43, RF-15).
+  - **Problemas encontrados:**
+    - **El espacio sin corte antes de «%»:** la herramienta de escritura puso el carácter en lugar de su escape
+      `\u00a0`, y ESLint lo rechazó; `sed` tampoco servía, porque en GNU `\u` cambia la letra siguiente a mayúscula. Se
+      corrigió con un script de Python.
+    - **La prueba nueva de Selenium falló en las 4 combinaciones:** `esperarTexto` encontraba primero el `<title>` de
+      la pestaña, que también dice «Resultado del lote…» y no se ve. Ahora espera el título `h1` de la página.
+    - **«Maximum update depth exceeded» en la consola del navegador:** al investigar lo anterior apareció este error
+      de React al escribir el correo en «Iniciar sesión» con Selenium. Se comprobó sobre una copia de `main`
+      (`6fddc39`) que ya ocurría ahí: no lo trae este PR, la sesión se inicia igual y ninguna prueba falla por él.
+      Quedó como una tarea aparte.
+    - **Los íconos de MUI no llevan `data-testid` en la compilación de producción:** la prueba de punta a punta de
+      RF-11 C2 reconoce el símbolo de cada clase por su dibujo, el `d` de su `path`.
+    - **`getByText('Categoría probable')` encontraba también «Es una categoría probable…»:** sin `exact`, Playwright
+      busca el texto dentro de otros. Con `exact: true`, pasa.
+    - **La primera corrida completa de Playwright tuvo 3 fallas ajenas al PR:** dos de Cambiar contraseña en Safari de
+      PC, con la página sin cargar, y un 502 de la API en una de responsive. Corrían a la vez el build del frontend,
+      que vacía `dist/` mientras el entorno lo sirve, y las pruebas del backend en la copia en espejo. Sola, la
+      corrida pasó entera.
+    - **El verificador del frontend de la revisión falló por un corte de red** (`ENOTFOUND`): se volvió a lanzar el
+      flujo, que reutilizó lo que ya habían hecho los demás agentes.
+  - **Resultado,** sobre `b593298`, el último commit con código:
+    - Backend: 261 pruebas unitarias y 519 de integración (`./mvnw verify`). PIT mata 195 de los 198 mutantes del
+      dominio del análisis (98 %, `./mvnw -Pmutacion test`); los 3 que quedan son equivalentes.
+    - Frontend: 715 pruebas de Vitest en 51 archivos, ESLint y el build.
+    - Playwright: 354 pruebas en verde y 6 omitidas, sin Firefox, que no abre en este Windows. Se omiten, en el PC, la
+      de la cámara, y en el celular, la del teclado y una de una ventana de PC.
+    - Selenium: 36 en verde, con Chrome y Edge, en el PC y en el celular.
+    - Casos de prueba: 1135 pruebas y 48 criterios sin prueba (eran 83). Pasan `casos_de_prueba.py comprobar` y
+      `generar.py comprobar`, con RF-05, RF-10 y RF-11 en «Implementado».
+- Por qué: el resultado es lo que la cooperativa necesita del análisis (D-08): el porcentaje de granos sanos, la
+  categoría probable y qué hacer con el lote. Con él, el flujo de una muestra queda completo, de las fotos al
+  resultado.
+- Cómo se pidió:
+  - **Al revisar el PR #16 (23/11/2026),** Cristhian escribió: «Cuando los 4 jobs estén en verde, fusiona y sigue con
+    el PR del resultado.» La prueba en celulares de RNF-05 C2 la hace él después de la fusión. También pidió guardar,
+    para el PR del despliegue, que en AWS el almacén de las fotos quede en S3 de forma explícita y que el backend no
+    arranque si falta.
+  - **Las preguntas, antes de escribir el código:**
+    - regenerar `V1` con los recall, el margen y el índice de la cola, que reinicia su base (P-16): «Recalls + margen»;
+    - los granos dudosos: «Su clase + marca «?»» (D-42);
+    - el margen, con sus palabras: «Debajo de la cifra grande («90,6 %»), el rango recortado a 0–100 %: «Rango
+      probable: entre 83,1 y 98,1 %», en lugar del ±. Con 100,0 % queda «entre 94,3 y 100 %», que no pasa de 100. Se
+      mantiene «87 de 100 marcados como sanos» (RF-11 C6). El PDF muestra lo mismo.» (D-43);
+    - el filtro por usuario del historial: «Servicio nuevo», que llega en el PR 3b.
+    - al final, qué fichas pasan a «Implementado» (D-29) con el clasificador falso: «RF-05, RF-10 y RF-11», la
+      opción recomendada.
+  - **La forma de trabajo** es la del 22/11/2026: una sola parada por PR, las decisiones pequeñas anotadas aquí y en
+    el PR, y preguntar solo en los 4 casos.
+  - **La revisión antes del PR** la decidió Claude Code, como en los PR 1 y 2: la sesión tenía activado ultracode.
+    Un flujo de 8 agentes revisó todo el PR, sin cambiar nada: cuatro revisores (backend, frontend, pruebas y reglas
+    del proyecto) y un verificador por cada uno, que trató de descartar cada hallazgo.
+    Confirmaron 11 problemas distintos, que se corrigieron en `b593298` y en el commit de la documentación:
+    - la página del resultado podía quedarse cargando para siempre si el análisis se guardaba entre la lectura del
+      lote y la de sus muestras. La consulta lee ahora en REPEATABLE READ, y la página, si aun así recibe el lote
+      pendiente con su muestra terminada, consulta el avance y vuelve a pedir el resultado;
+    - pasar el cursor por un grano cambiaba el grano desde el que se mueven las flechas;
+    - el enlace vencido de una foto se recuperaba una sola vez por visita;
+    - el JavaDoc del clasificador falso y el de su prueba decían que no tiene valor por defecto, y `application.yml`
+      lo trae;
+    - tres pruebas del backend no comprobaban lo que dice su nombre: la de D-24, la de P-15 y un `verify` con
+      `anyString()`, que no podía fallar;
+    - marcas de pruebas con varios criterios, que el generador de RP-13 no lee, o con un criterio que no cubrían;
+    - faltaban los casos de prueba y esta entrada, y una frase del README del frontend quedó partida.
+
+    Descartó 7:
+    - una muestra que queda en proceso si la base se cae: el pool espera 30 s a que vuelva;
+    - un `Error` que detiene el hilo de la cola: ningún camino lo lanza hoy;
+    - el foco al fallar la espera: el aviso es `role="alert"` y Tab sigue desde ahí;
+    - que axe no revise la espera;
+    - el nombre `AnalizarLote` en `arquitectura.md`: viene de `main`;
+    - el tope de 100 del margen: ya está en `lote.json` y en el CHECK de `V1`;
+    - que Selenium no revisara la cifra 90,6: se agregó igual.
+
+    Encontró además dos cosas que ya estaban corregidas sin commit: la espera del título en Selenium y el código de
+    depuración de esa investigación. Las pruebas nuevas fallan sin su corrección.
+- Archivos o PR: la rama `feature/RF-10-resultado` y su PR hacia `main`.
 
 ## Plantilla para nuevas entradas
 

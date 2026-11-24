@@ -221,7 +221,7 @@
       "encabezado": "Tomar o subir las fotos de la muestra",
       "titulo": "Tomar o subir las fotos de la muestra del lote, con guía de captura",
       "codigo": "RF-05",
-      "version": "1.2",
+      "version": "1.3",
       "fuente": "D-08 (captura del lote), D-23 y D-26 (tamaño de la muestra) y D-25 (segunda muestra).",
       "descripcion": "El usuario toma con la cámara del celular, o sube desde el PC, 2 o 3 fotos de cada muestra del lote, siguiendo una guía de captura. Un lote tiene una muestra, o dos si la app sugiere otra (D-25).",
       "justificacion": "La calidad de las fotos define la calidad del resultado; la guía evita fotos que no sirven.",
@@ -260,8 +260,8 @@
         ]
       },
       "rnf": "RNF-05 (PC y celular) y RNF-06 (facilidad de uso).",
-      "estado": "Aprobado",
-      "observaciones": "La guía se ajusta con la prueba de fotos reales (P-12)."
+      "estado": "Implementado",
+      "observaciones": "La guía se ajusta con la prueba de fotos reales (P-12). Pasó a «Implementado» con el PR del resultado (23/11/2026), que trajo el «al menos 2» de C2 con «Analizar la muestra»."
     },
     {
       "encabezado": "Validar la nitidez y la luz de cada foto",
@@ -508,8 +508,8 @@
         ]
       },
       "rnf": "RNF-01 (tiempo de respuesta).",
-      "estado": "Aprobado",
-      "observaciones": "Es una regla del núcleo hexagonal del módulo de análisis (D-21). El margen del porcentaje corregido y cuándo sugerir otra muestra se definen en P-19."
+      "estado": "Implementado",
+      "observaciones": "Es una regla del núcleo hexagonal del módulo de análisis (D-21). El margen del porcentaje corregido y cuándo sugerir otra muestra se definen en P-19. Pasó a «Implementado» con el PR del resultado (23/11/2026), con el clasificador falso: el cálculo no depende de quién clasifica los granos, y el servicio de IA real llega con RF-08."
     },
     {
       "encabezado": "Mostrar la foto con cada grano marcado",
@@ -552,8 +552,8 @@
         ]
       },
       "rnf": "RNF-05 (PC y celular) y RNF-06 (facilidad de uso).",
-      "estado": "Aprobado",
-      "observaciones": "La confianza promedio la ve el administrador de empresa en RF-17."
+      "estado": "Implementado",
+      "observaciones": "La confianza promedio la ve el administrador de empresa en RF-17. Pasó a «Implementado» con el PR del resultado (23/11/2026), con el clasificador falso: la pantalla marca los granos que guardó el backend, sin depender de quién los clasificó; el servicio de IA real llega con RF-08."
     },
     {
       "encabezado": "Generar la recomendación",

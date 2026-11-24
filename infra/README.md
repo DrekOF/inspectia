@@ -4,7 +4,7 @@ Descripción: Qué va en la carpeta infra/ de InspectIA, cómo reiniciar la base
 Fecha de creación: 12/10/2026
 Actualización: 23/11/2026
 Autor: Equipo InspectIA
-Versión: 1.12
+Versión: 1.13
 -->
 
 # infra
@@ -32,7 +32,7 @@ La EC2 t4g es ARM (Graviton), así que toda imagen debe funcionar en amd64 y en 
 
 Desde la raíz del repositorio, la base se enciende con `docker compose -f infra/docker-compose.yml up -d` y se apaga con `docker compose -f infra/docker-compose.yml down`. Los demás comandos están en la sección Comandos de `CLAUDE.md`.
 
-Si cambia `V1__esquema_inicial.sql`, quien ya tenga la base local debe reiniciarla: Flyway no arranca si una migración ya aplicada cambió (P-16), aunque sea solo su header. Pasó cuando RF-03 agregó la columna `usuario.sesiones_desde`, cuando RF-13 subió el generador a la 1.6, cuando P-18 la cambió por `usuario.version_sesion` (D-35), cuando la pantalla de usuarios (RF-03) lo subió a la 1.9 y cuando la de rangos (RF-13) lo subió a la 1.10; con la 1.6, la 1.9 y la 1.10 solo cambió el header. Esto borra los datos locales:
+Si cambia `V1__esquema_inicial.sql`, quien ya tenga la base local debe reiniciarla: Flyway no arranca si una migración ya aplicada cambió (P-16), aunque sea solo su header. Pasó cuando RF-03 agregó la columna `usuario.sesiones_desde`, cuando RF-13 subió el generador a la 1.6, cuando P-18 la cambió por `usuario.version_sesion` (D-35), cuando la pantalla de usuarios (RF-03) lo subió a la 1.9, cuando la de rangos (RF-13) lo subió a la 1.10 y cuando el resultado del lote (RF-10) agregó los recall de cada clase del modelo, el margen del lote y el índice de la cola de análisis; con la 1.6, la 1.9 y la 1.10 solo cambió el header. Esto borra los datos locales:
 
 1. `docker compose -f infra/docker-compose.yml down -v`
 2. `docker compose -f infra/docker-compose.yml up -d`
@@ -137,5 +137,13 @@ Para las fotos de un lote pendiente (RF-05), con el mismo usuario final y el `id
 3. `PUT /api/v1/lotes/{id}/fotos/1` con la `llave`: confirma la foto, que queda «Cargada», y responde con su enlace de vista (`vista.url`). Ese enlace es relativo: se abre en el navegador con `http://localhost:8080` delante.
 
 `GET /api/v1/lotes/{id}/fotos` trae las fotos de la muestra en curso, cada una con un enlace de vista nuevo. Las fotos van de la 1 a la 3; subir otra con el mismo número la reemplaza y borra la anterior. Un archivo que no es JPG ni PNG, o de más de 10 MB, responde 400 con el mensaje de qué hacer. El administrador de empresa recibe 403 en estas rutas, y un lote de otra empresa, 404.
+
+Para analizar la muestra (RF-10 a RF-12), con 2 o 3 fotos confirmadas:
+
+1. `POST /api/v1/lotes/{id}/analisis` la envía: responde 202 con la muestra EN_ESPERA. Con menos de 2 fotos responde 400 en `fotos`, y con el lote ya analizado, 409. Solo lo usa el usuario final.
+2. `GET /api/v1/lotes/{id}/analisis` dice en qué va: EN_ESPERA, EN_PROCESO o TERMINADA. `fallo` es verdadero si el análisis no terminó y la muestra volvió a quedar pendiente.
+3. `GET /api/v1/lotes/{id}/resultado` trae el resultado guardado: el porcentaje corregido, su margen, la categoría, la recomendación y si sugiere otra muestra, y cada muestra con sus fotos y sus granos (sin la confianza). Lo ven el usuario final y el administrador de empresa.
+
+Mientras no esté el servicio de IA (PR 4), los granos los da un clasificador falso, que registra su modelo (`clasificador-falso` 1.0) al arrancar el backend. Es predecible, para poder probar cada caso con la foto que se sube: da 50 granos por foto, son no sanos tantos como el ancho de la foto módulo 50, y dudosos tantos como el alto módulo 50. Dos fotos de 106 × 100 y 107 × 100 px dan 87 de 100 sanos: 90,6 %, Estándar, con sugerencia de otra muestra. Con `INSPECTIA_IA_FALSO_DEMORA` (por ejemplo `INSPECTIA_IA_FALSO_DEMORA=3s` en `infra/.env`) tarda más, para ver la espera en la página.
 
 Para cambiar tu propia contraseña (RF-18), abre `PUT /api/v1/sesion/contrasena` con `contrasenaActual` y `contrasenaNueva`. La respuesta 200 trae un token nuevo, que vence a la misma hora que el anterior: pégalo en «Authorize», porque el anterior y los de tus demás sesiones responden 401 «Tu contraseña cambió». Una contraseña actual errada responde 400 y cuenta para el bloqueo; desde el quinto fallo seguido responde 429 hasta que termine.
