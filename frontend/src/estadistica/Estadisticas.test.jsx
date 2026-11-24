@@ -11,7 +11,7 @@
  * Autor: Equipo InspectIA
  * Versión: 1.0
  */
-import { fireEvent, screen, within } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import i18n from '../i18n/i18n.js';
 import { hoyEnColombia } from '../lote/fechas.js';
@@ -211,8 +211,8 @@ describe('Estadísticas', () => {
 
     await verPeriodo(usuario, '2026-01-01', '2026-06-30');
 
-    await screen.findByText('Lotes analizados');
-    expect(pedidos.at(-1)).toEqual({ desde: '2026-01-01', hasta: '2026-06-30' });
+    await waitFor(() => expect(pedidos.at(-1)).toEqual({ desde: '2026-01-01', hasta: '2026-06-30' }));
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('10 lotes analizados en el periodo'));
     expect(window.location.search).toBe('?desde=2026-01-01&hasta=2026-06-30');
   });
 

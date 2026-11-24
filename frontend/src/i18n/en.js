@@ -6,7 +6,7 @@
  * Fecha de creación: 20/10/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.8
+ * Versión: 1.9
  */
 
 /** Textos en inglés, por clave. Tiene las mismas claves que es.js (i18n.test.js lo revisa). */
@@ -291,4 +291,27 @@ export default {
   'resultado.ayudaPc': 'Hover over a bean or tap it to see its class.',
   'resultado.ayudaCelular': 'Tap a bean to see its class.',
   'resultado.ayudaTeclado': 'With the keyboard, enter the photo with Tab and move from bean to bean with the arrow keys.',
+
+  // Company statistics (RF-16)
+  'estadisticas.titulo': 'Statistics',
+  'estadisticas.subtitulo': 'The analyzed lots of {empresa}, by the date of their result.',
+  'estadisticas.periodo': 'Statistics period',
+  'estadisticas.desde': 'From',
+  'estadisticas.hasta': 'To',
+  'estadisticas.ayudaPeriodo': 'Counts the lots analyzed between both dates, inclusive.',
+  'estadisticas.ver': 'View statistics',
+  'estadisticas.encontrados_one': '{count} lot analyzed in the period',
+  'estadisticas.encontrados_many': '{count} lots analyzed in the period',
+  'estadisticas.encontrados_other': '{count} lots analyzed in the period',
+  'estadisticas.sinLotes': 'There are no analyzed lots in this period. Choose another period to see its statistics.',
+  'estadisticas.lotesAnalizados': 'Analyzed lots',
+  'estadisticas.promedio': 'Average healthy beans',
+  'estadisticas.porCategoria': 'Lots by category',
+  'estadisticas.porMes': 'Average by month',
+  'estadisticas.porOrigen': 'Average by farm or supplier',
+  'estadisticas.lotes': 'Lots',
+  'estadisticas.parteDelTotal': '% of lots',
+  'estadisticas.mes': 'Month',
+  'estadisticas.sinLotesEnElMes': 'No lots',
+  'estadisticas.notaCategoria': 'The category is probable: the official one is confirmed with the cut test.',
 };

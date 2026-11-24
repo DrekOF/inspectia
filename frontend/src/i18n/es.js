@@ -6,7 +6,7 @@
  * Fecha de creación: 20/10/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.8
+ * Versión: 1.9
  */
 
 /** Textos en español, por clave. en.js tiene las mismas claves (i18n.test.js lo revisa). */
@@ -291,4 +291,27 @@ export default {
   'resultado.ayudaPc': 'Pasa el cursor sobre un grano o tócalo para ver su clase.',
   'resultado.ayudaCelular': 'Toca un grano para ver su clase.',
   'resultado.ayudaTeclado': 'Con el teclado, entra a la foto con Tab y pasa de un grano a otro con las flechas.',
+
+  // Estadísticas de la empresa (RF-16)
+  'estadisticas.titulo': 'Estadísticas',
+  'estadisticas.subtitulo': 'Los lotes analizados de {empresa}, según la fecha de su resultado.',
+  'estadisticas.periodo': 'Periodo de las estadísticas',
+  'estadisticas.desde': 'Desde',
+  'estadisticas.hasta': 'Hasta',
+  'estadisticas.ayudaPeriodo': 'Cuenta los lotes analizados entre las dos fechas, incluidas.',
+  'estadisticas.ver': 'Ver estadísticas',
+  'estadisticas.encontrados_one': '{count} lote analizado en el periodo',
+  'estadisticas.encontrados_many': '{count} lotes analizados en el periodo',
+  'estadisticas.encontrados_other': '{count} lotes analizados en el periodo',
+  'estadisticas.sinLotes': 'No hay lotes analizados en este periodo. Elige otro periodo para ver sus estadísticas.',
+  'estadisticas.lotesAnalizados': 'Lotes analizados',
+  'estadisticas.promedio': 'Promedio de granos sanos',
+  'estadisticas.porCategoria': 'Lotes por categoría',
+  'estadisticas.porMes': 'Evolución del promedio por mes',
+  'estadisticas.porOrigen': 'Promedio por finca o proveedor',
+  'estadisticas.lotes': 'Lotes',
+  'estadisticas.parteDelTotal': '% de los lotes',
+  'estadisticas.mes': 'Mes',
+  'estadisticas.sinLotesEnElMes': 'Sin lotes',
+  'estadisticas.notaCategoria': 'La categoría es probable: la oficial se confirma con la prueba de corte.',
 };
