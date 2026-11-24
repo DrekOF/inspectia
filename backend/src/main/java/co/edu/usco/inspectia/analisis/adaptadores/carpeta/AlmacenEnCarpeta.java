@@ -2,17 +2,19 @@
  * Nombre: AlmacenEnCarpeta.java
  * Descripción: El puerto AlmacenDeArchivos en una carpeta del servidor (D-41): enlaces firmados relativos a la página,
  *              llaves que no salen de la carpeta y que llevan la muestra para la que se pidieron (D-25), archivos que
- *              no se pisan y la lectura de una foto para clasificarla.
+ *              no se pisan, la lectura de una foto para clasificarla y los archivos que arma el servidor, como el
+ *              reporte PDF (RF-15).
  * Fecha de creación: 23/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.2
+ * Versión: 1.3
  */
 package co.edu.usco.inspectia.analisis.adaptadores.carpeta;
 
 import co.edu.usco.inspectia.analisis.aplicacion.AlmacenDeArchivos;
 import co.edu.usco.inspectia.analisis.aplicacion.ArchivoGuardado;
 import co.edu.usco.inspectia.analisis.aplicacion.EnlaceTemporal;
+import co.edu.usco.inspectia.analisis.aplicacion.LlavesDeArchivos;
 import co.edu.usco.inspectia.analisis.dominio.FormatoDeFoto;
 import co.edu.usco.inspectia.comun.errores.ConflictoExcepcion;
 import java.io.IOException;
@@ -33,7 +35,9 @@ import java.util.regex.Pattern;
  * en AWS. Los enlaces son relativos a la página ({@value #RUTA}), así pasan por el mismo origen (D-31). Las llaves las
  * arma el caso de uso: {@code <empresa>/<lote>/m<muestra>-<uuid>.<jpg|png>}, con la muestra 1 o 2 para la que se
  * pidió el enlace (D-25); una llave con otra forma, como la de antes sin la muestra, o que saldría de la carpeta, no
- * se acepta. Un archivo ya subido no se pisa.
+ * se acepta. Un archivo ya subido no se pisa. Los reportes PDF (RF-15) van en la misma carpeta, con su llave
+ * {@code reportes/<empresa>/<lote>/<uuid>-<es|en>.pdf} ({@link LlavesDeArchivos}); no tienen enlaces firmados, porque
+ * se descargan por el backend con la sesión.
  */
 public class AlmacenEnCarpeta implements AlmacenDeArchivos {
 
@@ -82,14 +86,14 @@ public class AlmacenEnCarpeta implements AlmacenDeArchivos {
     @Override
     public EnlaceTemporal enlaceDeSubida(String llave, String tipo, long bytes, Duration vigencia) {
         long vence = venceEn(vigencia);
-        String url = enlace(llave, vence, firma.firmarSubida(revisada(llave), vence, tipo, bytes));
+        String url = enlace(llave, vence, firma.firmarSubida(deFoto(llave), vence, tipo, bytes));
         return new EnlaceTemporal(url, "PUT", Map.of("Content-Type", tipo), Instant.ofEpochSecond(vence));
     }
 
     @Override
     public EnlaceTemporal enlaceDeVista(String llave, Duration vigencia) {
         long vence = venceEn(vigencia);
-        String url = enlace(llave, vence, firma.firmarVista(revisada(llave), vence));
+        String url = enlace(llave, vence, firma.firmarVista(deFoto(llave), vence));
         return new EnlaceTemporal(url, "GET", Map.of(), Instant.ofEpochSecond(vence));
     }
 
@@ -113,6 +117,25 @@ public class AlmacenEnCarpeta implements AlmacenDeArchivos {
             return Files.readAllBytes(ruta(llave));
         } catch (IOException excepcion) {
             throw new UncheckedIOException(excepcion);
+        }
+    }
+
+    /**
+     * Guarda un archivo que arma el propio servidor, como el reporte PDF (RF-15). La carpeta no guarda el tipo: el de
+     * cada archivo sale de su extensión. Como una foto subida, no pisa un archivo que ya está; con la llave al azar que
+     * arma el servidor, eso solo pasaría por un error del servidor.
+     *
+     * @param llave la llave del archivo
+     * @param contenido sus bytes
+     * @param tipo su tipo, como {@code application/pdf}
+     * @throws IllegalStateException si ya hay un archivo con esa llave
+     */
+    @Override
+    public void guardar(String llave, byte[] contenido, String tipo) {
+        try {
+            guardar(llave, contenido);
+        } catch (ConflictoExcepcion excepcion) {
+            throw new IllegalStateException("Ya hay un archivo con la llave " + llave, excepcion);
         }
     }
 
@@ -165,7 +188,8 @@ public class AlmacenEnCarpeta implements AlmacenDeArchivos {
      *
      * @param llave la llave
      * @return su ruta
-     * @throws IllegalArgumentException si la llave no tiene la forma que arma el backend o saldría de la carpeta
+     * @throws IllegalArgumentException si la llave no es de una foto ni de un reporte ({@link LlavesDeArchivos}) o
+     *         saldría de la carpeta
      */
     public Path ruta(String llave) {
         Path ruta = raiz.resolve(revisada(llave)).normalize();
@@ -175,7 +199,14 @@ public class AlmacenEnCarpeta implements AlmacenDeArchivos {
         return ruta;
     }
 
+    /** Una llave de una foto o de un reporte; cualquier otra no se acepta. */
     private static String revisada(String llave) {
+        LlavesDeArchivos.clase(llave);
+        return llave;
+    }
+
+    /** Una llave de una foto: solo las fotos tienen enlaces firmados. */
+    private static String deFoto(String llave) {
         if (llave == null || !LLAVE.matcher(llave).matches()) {
             throw new IllegalArgumentException("La llave no tiene la forma <empresa>/<lote>/m<muestra>-<archivo>");
         }

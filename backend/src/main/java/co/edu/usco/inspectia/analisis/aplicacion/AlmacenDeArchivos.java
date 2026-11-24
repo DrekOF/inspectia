@@ -1,12 +1,12 @@
 /*
  * Nombre: AlmacenDeArchivos.java
- * Descripción: Puerto del almacén de los archivos de las muestras (D-21, D-41): los enlaces temporales para subir y
- *              ver una foto, y revisar, leer o borrar un archivo. Lo implementan la carpeta local y, con el
- *              despliegue, S3.
+ * Descripción: Puerto del almacén de los archivos (D-21, D-41): los enlaces temporales para subir y ver una foto, y
+ *              revisar, leer, guardar o borrar un archivo, como una foto o un reporte PDF. Lo implementan la carpeta
+ *              local y S3 (D-16).
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 package co.edu.usco.inspectia.analisis.aplicacion;
 
@@ -14,9 +14,11 @@ import java.time.Duration;
 import java.util.Optional;
 
 /**
- * Puerto del almacén de los archivos (D-21). En AWS es S3 (D-16); mientras tanto, y en las pruebas, una carpeta del
- * servidor que firma sus propios enlaces (D-41). La página sube y ve las fotos directo con los enlaces temporales,
- * sin pasar el archivo por los casos de uso. Las llaves las arma siempre el backend.
+ * Puerto del almacén de los archivos (D-21). En AWS es S3 (D-16); en el PC de desarrollo y en las pruebas, una carpeta
+ * del servidor que firma sus propios enlaces (D-41). La página sube y ve las fotos directo con los enlaces temporales,
+ * sin pasar el archivo por los casos de uso. Las llaves las arma siempre el backend y tienen una de las formas de
+ * {@link LlavesDeArchivos}: los dos almacenes rechazan cualquier otra. Los enlaces temporales son solo de fotos: un
+ * reporte se descarga por el backend, con la sesión.
  */
 public interface AlmacenDeArchivos {
 
@@ -57,6 +59,15 @@ public interface AlmacenDeArchivos {
      * @throws java.io.UncheckedIOException si el archivo no está o no se puede leer
      */
     byte[] leer(String llave);
+
+    /**
+     * Guarda un archivo que arma el propio servidor, como el reporte PDF de un lote (RF-15).
+     *
+     * @param llave la llave del archivo
+     * @param contenido sus bytes
+     * @param tipo su tipo, como {@code application/pdf}
+     */
+    void guardar(String llave, byte[] contenido, String tipo);
 
     /**
      * Borra un archivo. Si ya no está, no hace nada.
