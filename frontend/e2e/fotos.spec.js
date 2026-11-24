@@ -4,16 +4,17 @@
  *              de cada casilla abre el selector, en el celular con la cámara trasera; la foto sube por el enlace
  *              firmado, pasa por la app hasta el backend y se ve; los rechazos y el límite de 10 MB; el reemplazo;
  *              retomar el lote desde el historial; y nadie de otra empresa ni sin firma abre las fotos. Las fotos se
- *              hacen en la prueba (RNF-08).
+ *              hacen en la prueba (RNF-08). El estado del lote se busca en su fila: la lista «Estado» de los filtros
+ *              del historial también dice «Pendiente de análisis».
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 import { randomUUID } from 'node:crypto';
 import {
-  casillaDeFoto, crearEmpresaConUsuarioFinal, elegirFoto, expect, iniciarSesion, registrarLotes, seVeLaImagen,
-  subirFotosPorLaApi, test, tokenDe,
+  casillaDeFoto, crearEmpresaConUsuarioFinal, elegirFoto, expect, iniciarSesion, loteDelHistorial, registrarLotes,
+  seVeLaImagen, subirFotosPorLaApi, test, tokenDe,
 } from './ayudas.js';
 import { jpegDelNavegador, PDF, png } from './imagenes.js';
 
@@ -163,7 +164,7 @@ test('RF-14 · la administradora de la empresa ve el lote pendiente en el histor
   await page.goto('/historial');
 
   await expect(page.getByText(lote.codigo, { exact: true })).toBeVisible();
-  await expect(page.getByText('Pendiente de análisis')).toBeVisible();
+  await expect(loteDelHistorial(page, lote.codigo).getByText('Pendiente de análisis')).toBeVisible();
   await expect(page.getByRole('link', { name: /^Continuar/ })).toHaveCount(0);
   await page.goto(`/lotes/${lote.id}/fotos`);
   await expect(page.getByRole('heading', { name: 'Sin permiso' })).toBeVisible();

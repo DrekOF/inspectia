@@ -3,17 +3,21 @@
  * Descripción: Pruebas de punta a punta del diseño para PC y celular (RNF-05): ninguna pantalla se desplaza a
  *              los lados desde 360 px de ancho, también las de los lotes (RF-04, RF-14), con el historial en 7
  *              páginas, las fotos de la muestra con una foto subida y un error a la vista (RF-05) y el resultado de un
- *              lote (RF-10, RF-11), y las pruebas corren en tamaño de PC y de celular.
+ *              lote (RF-10, RF-11), el historial con los filtros abiertos, un error y el chip «Sugiere otra muestra»
+ *              (RF-14 C2) y el resultado con la sugerencia, con la espera de la muestra 2 y con dos muestras (RF-14
+ *              C6), y las pruebas corren en tamaño de PC y de celular.
  * Fecha de creación: 20/10/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.4
+ * Versión: 1.5
  */
 import { randomUUID } from 'node:crypto';
 import {
-  casillaDeFoto, crearEmpresaConUsuarioFinal, datos, expect, iniciarSesion, loteAnalizado, registrarLotes,
-  seVeLaImagen, subirFotosPorLaApi, test,
+  abrirFiltros, casillaDeFoto, crearEmpresaConUsuarioFinal, datos, expect, filtrarElHistorial, iniciarSesion,
+  loteAnalizado, loteConDosMuestras, loteDelHistorial, registrarLotes, retenerLaEspera, seVeLaImagen,
+  subirFotosPorLaApi, test,
 } from './ayudas.js';
+import { diaEnColombia } from './fechas.js';
 import { png } from './imagenes.js';
 
 /**
@@ -80,6 +84,49 @@ test('RNF-05 · C1 · las pantallas de los lotes no se desplazan a los lados des
   await page.goto(`/lotes/${analizado.id}`);
   await expect(page.getByRole('group', { name: 'Granos de la foto 1' }).getByRole('button')).toHaveCount(50);
   await sinDesplazamientoLateral(page, 'Resultado del lote');
+});
+
+test('RNF-05 · C1 · a 360 px no se desplazan a los lados el historial con los filtros abiertos, un error y el chip «Sugiere otra muestra», ni el resultado con la sugerencia, con la espera de la muestra 2 y con dos muestras', async ({ page, request }) => {
+  // Cuatro análisis.
+  test.slow();
+  const { usuarioFinal } = await crearEmpresaConUsuarioFinal(request);
+  const conSugerencia = await loteAnalizado(request, usuarioFinal, [106, 107]);
+  // La muestra 2 con sus fotos subidas, sin enviar: la prueba la retiene en la cola para mirar su espera.
+  const enEspera = await loteAnalizado(request, usuarioFinal, [106, 107]);
+  await subirFotosPorLaApi(request, usuarioFinal, enEspera.id, [
+    { numero: 1, archivo: png({ ancho: 108, alto: 100 }) }, { numero: 2, archivo: png({ ancho: 107, alto: 100 }) }]);
+  const dosMuestras = await loteConDosMuestras(request, usuarioFinal);
+  await page.setViewportSize({ width: 360, height: 740 });
+  await iniciarSesion(page, usuarioFinal);
+
+  await page.goto('/historial');
+  await expect(loteDelHistorial(page, conSugerencia.codigo).getByText('Sugiere otra muestra', { exact: true }))
+    .toBeVisible();
+  // A 360 px, los filtros van detrás del botón «Filtros», también en el proyecto de PC.
+  const formulario = await abrirFiltros(page, true);
+  await sinDesplazamientoLateral(page, 'Historial con los filtros abiertos y el chip');
+  // Con todos los campos llenos y el error más largo, bajo «Hasta».
+  await filtrarElHistorial(formulario, {
+    desde: diaEnColombia(0), hasta: diaEnColombia(-1), estado: 'Pendiente de análisis', categoria: 'Premium o Especial',
+    codigo: 'L-0142', usuario: 'Marta Ruiz',
+  });
+  await expect(formulario.getByText('La fecha «Hasta» no puede ser anterior a «Resultado desde».')).toBeVisible();
+  await sinDesplazamientoLateral(page, 'Historial con un error en los filtros');
+  await page.goto(`/lotes/${conSugerencia.id}`);
+  await expect(page.getByRole('region', { name: 'Sugerencia' }).getByRole('link', { name: 'Analizar otra muestra' }))
+    .toBeVisible();
+  await sinDesplazamientoLateral(page, 'Resultado con la sugerencia de otra muestra');
+  const espera = await retenerLaEspera(page, request, usuarioFinal, enEspera.id);
+  await page.goto(`/lotes/${enEspera.id}`);
+  await expect(page.getByRole('note')).toBeVisible();
+  await expect(page.getByRole('group', { name: 'Granos de la foto 1 de la muestra 1' }).getByRole('button'))
+    .toHaveCount(50);
+  await sinDesplazamientoLateral(page, 'Resultado con la espera de la muestra 2');
+  await espera.soltar();
+  await page.goto(`/lotes/${dosMuestras.id}`);
+  await expect(page.getByRole('group', { name: 'Granos de la foto 1 de la muestra 2' }).getByRole('button'))
+    .toHaveCount(50);
+  await sinDesplazamientoLateral(page, 'Resultado con dos muestras');
 });
 
 test('RNF-05 · C3 · las pruebas corren en tamaño de PC y de celular: en PC el menú está a la vista y en el celular, detrás del botón', async ({ page, isMobile }) => {

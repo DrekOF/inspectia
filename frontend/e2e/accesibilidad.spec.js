@@ -3,18 +3,22 @@
  * Descripción: Pruebas de accesibilidad de punta a punta (RNF-06 C4, RP-08): axe revisa las pautas WCAG 2.2 AA
  *              en cada pantalla de esta versión y en los dos temas, también en las de los lotes (RF-04, RF-14) y en
  *              las fotos de la muestra con una foto subida y un error a la vista (RF-05) y en el resultado de un lote,
- *              con el globo de un grano abierto (RF-10, RF-11), y se inicia sesión solo con el teclado.
+ *              con el globo de un grano abierto (RF-10, RF-11), en el historial con los filtros, un error y el chip
+ *              «Sugiere otra muestra» (RF-14 C2) y en el resultado con la sugerencia, con la espera de la muestra 2 y
+ *              con dos muestras (RF-14 C6), y se inicia sesión solo con el teclado.
  * Fecha de creación: 20/10/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.3
+ * Versión: 1.4
  */
 import { randomUUID } from 'node:crypto';
 import AxeBuilder from '@axe-core/playwright';
 import {
-  casillaDeFoto, crearEmpresaConUsuarioFinal, datos, escribirYEntrar, expect, iniciarSesion, loteAnalizado,
-  registrarLotes, seVeLaImagen, subirFotosPorLaApi, test,
+  abrirFiltros, casillaDeFoto, crearEmpresaConUsuarioFinal, datos, escribirYEntrar, expect, filtrarElHistorial,
+  iniciarSesion, loteAnalizado, loteConDosMuestras, loteDelHistorial, registrarLotes, retenerLaEspera, seVeLaImagen,
+  subirFotosPorLaApi, test,
 } from './ayudas.js';
+import { diaEnColombia } from './fechas.js';
 import { PDF, png } from './imagenes.js';
 
 const PAUTAS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
@@ -98,6 +102,41 @@ test('RNF-06 · C4 · las pantallas de los lotes no tienen fallas de accesibilid
     }
     await expect(page.getByRole('tooltip')).toBeVisible();
     await sinFallas(page, `Resultado del lote con el globo de un grano abierto, tema ${esquema}`);
+  }
+});
+
+test('RNF-06 · C4 · el historial con los filtros, un error y el chip «Sugiere otra muestra», y el resultado con la sugerencia, con la espera de la muestra 2 y con dos muestras, no tienen fallas de accesibilidad WCAG AA en los dos temas', async ({ page, request, isMobile }) => {
+  // Cuatro análisis y diez revisiones.
+  test.slow();
+  const { usuarioFinal } = await crearEmpresaConUsuarioFinal(request);
+  const conSugerencia = await loteAnalizado(request, usuarioFinal, [106, 107]);
+  // La muestra 2 con sus fotos subidas, sin enviar: la prueba la retiene en la cola para mirar su espera.
+  const enEspera = await loteAnalizado(request, usuarioFinal, [106, 107]);
+  await subirFotosPorLaApi(request, usuarioFinal, enEspera.id, [
+    { numero: 1, archivo: png({ ancho: 108, alto: 100 }) }, { numero: 2, archivo: png({ ancho: 107, alto: 100 }) }]);
+  const dosMuestras = await loteConDosMuestras(request, usuarioFinal);
+  await iniciarSesion(page, usuarioFinal);
+  for (const esquema of ['light', 'dark']) {
+    await page.emulateMedia({ colorScheme: esquema });
+    await page.goto('/historial?estado=ANALIZADO');
+    await expect(loteDelHistorial(page, conSugerencia.codigo).getByText('Sugiere otra muestra', { exact: true }))
+      .toBeVisible();
+    const formulario = await abrirFiltros(page, isMobile);
+    await sinFallas(page, `Historial con un filtro y el chip, tema ${esquema}`);
+    await filtrarElHistorial(formulario, { desde: diaEnColombia(0), hasta: diaEnColombia(-1), estado: 'Analizado' });
+    await expect(formulario.getByText('La fecha «Hasta» no puede ser anterior a «Resultado desde».')).toBeVisible();
+    await sinFallas(page, `Historial con un error en los filtros, tema ${esquema}`);
+    await page.goto(`/lotes/${conSugerencia.id}`);
+    await expect(page.getByRole('region', { name: 'Sugerencia' })).toBeVisible();
+    await sinFallas(page, `Resultado con la sugerencia de otra muestra, tema ${esquema}`);
+    const espera = await retenerLaEspera(page, request, usuarioFinal, enEspera.id);
+    await page.goto(`/lotes/${enEspera.id}`);
+    await expect(page.getByRole('note')).toBeVisible();
+    await sinFallas(page, `Resultado con la espera de la muestra 2, tema ${esquema}`);
+    await espera.soltar();
+    await page.goto(`/lotes/${dosMuestras.id}`);
+    await expect(page.getByRole('heading', { level: 3, name: 'Muestra 2' })).toBeVisible();
+    await sinFallas(page, `Resultado con dos muestras, tema ${esquema}`);
   }
 });
 
