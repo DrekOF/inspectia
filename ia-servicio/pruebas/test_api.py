@@ -1,10 +1,11 @@
 # Nombre: test_api.py
 # Descripción: Pruebas de la API del servicio de IA con un clasificador falso: salud, catálogo de modelos, revisión
-#              rápida y análisis de las fotos de una muestra (RF-06, RF-07, RF-08, D-18, D-46, D-48).
+#              rápida, análisis de las fotos de una muestra y el límite de 2 trabajos a la vez (RF-06, RF-07, RF-08,
+#              RNF-01, D-18, D-46, D-48).
 # Fecha de creación: 24/11/2026
 # Actualización: 24/11/2026
 # Autor: Equipo InspectIA
-# Versión: 1.0
+# Versión: 1.1
 """Pruebas de ``inspectia_ia.api`` sin TensorFlow: el modelo es un clasificador falso."""
 
 import threading
@@ -17,6 +18,7 @@ from fastapi.testclient import TestClient
 
 from conftest import ALTO, ANCHO, CATALOGO, centros_en_cuadricula, foto_con_granos, jpg, leer_json
 from inspectia_ia.api import crear_app
+from inspectia_ia.clasificador import a_clasificacion
 from inspectia_ia.modelos import ModeloInvalido
 
 SHA_EFFICIENTNET = 'eb9a64394c51fdff8fc16e01fff71e3b3693bc36e43cafb0ddbb34ca5b765bfb'
@@ -226,3 +228,59 @@ def test_analizar_400_si_una_foto_no_es_imagen(cliente):
 @pytest.mark.caso('D-18 · modelos.json del repositorio es el que lee el servicio')
 def test_el_catalogo_es_el_del_repositorio():
     assert leer_json(CATALOGO)['release']['etiqueta'] == 'modelos-v1.0'
+
+
+class ClasificadorQueEspera:
+    """Clasificador falso que se queda dentro de ``clasificar`` hasta que la prueba lo suelta y cuenta cuántos
+    análisis están dentro a la vez."""
+
+    def __init__(self):
+        self.dentro = 0
+        self.maximo = 0
+        self.candado = threading.Lock()
+        self.entraron = threading.Semaphore(0)
+        self.soltar = threading.Event()
+
+    def clasificar(self, recortes_rgb):
+        with self.candado:
+            self.dentro += 1
+            self.maximo = max(self.maximo, self.dentro)
+        self.entraron.release()
+        assert self.soltar.wait(10)
+        with self.candado:
+            self.dentro -= 1
+        return [a_clasificacion(0.9, 0.1) for _ in recortes_rgb]
+
+
+@pytest.mark.caso('RNF-01 · el servicio lee, revisa y clasifica a lo sumo 2 fotos o análisis a la vez, para no pasar '
+                  'de su memoria')
+def test_a_lo_sumo_dos_trabajos_a_la_vez(configuracion):
+    lento = ClasificadorQueEspera()
+    app = crear_app(configuracion, obtener=lambda _e: Path('m'), cargar=lambda _c: lento)
+    foto = _foto(5)
+    respuestas = {}
+
+    def pedir(nombre, ruta, campo):
+        respuestas[nombre] = cliente.post(ruta, files={campo: ('1.jpg', foto, 'image/jpeg')})
+
+    with TestClient(app, raise_server_exceptions=False) as cliente:
+        for _ in range(100):
+            if app.state.estado.clasificador is not None:
+                break
+            threading.Event().wait(0.01)
+        hilos = [threading.Thread(target=pedir, args=(f'analisis{i}', '/analizar', 'foto1')) for i in range(3)]
+        hilos.append(threading.Thread(target=pedir, args=('revision', '/revisar', 'foto')))
+        for h in hilos:
+            h.start()
+        try:
+            # Dos análisis entran a clasificar; el tercero y la revisión esperan su turno.
+            assert lento.entraron.acquire(timeout=10)
+            assert lento.entraron.acquire(timeout=10)
+            assert not lento.entraron.acquire(timeout=0.5)
+            assert 'revision' not in respuestas
+        finally:
+            lento.soltar.set()
+            for h in hilos:
+                h.join(10)
+    assert lento.maximo == 2
+    assert [respuestas[n].status_code for n in ('analisis0', 'analisis1', 'analisis2', 'revision')] == [200] * 4
