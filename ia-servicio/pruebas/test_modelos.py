@@ -4,7 +4,7 @@
 # Fecha de creación: 24/11/2026
 # Actualización: 24/11/2026
 # Autor: Equipo InspectIA
-# Versión: 1.0
+# Versión: 1.1
 """Pruebas de ``inspectia_ia.modelos`` y ``inspectia_ia.catalogo``, sin red: S3 es un doble de botocore."""
 
 import hashlib
@@ -191,8 +191,11 @@ def test_catalogo_del_repositorio():
     assert len(c.archivos()) == 11
 
 
-@pytest.mark.caso('RF-08 · C4 · el modelo en uso cumple el F1 macro mínimo de RNF-07 (65 %) en el conjunto de prueba')
+@pytest.mark.caso('D-48 · modelos.json trae para el modelo en uso el F1 publicado por Julián en su release, de 65 % o más '
+                  '(RNF-07)')
 def test_el_modelo_en_uso_cumple_el_f1_minimo():
+    """Lee el F1 macro copiado en ``modelos.json`` del README de Julián (D-48); no vuelve a medir el modelo con los
+    334 granos del conjunto de prueba."""
     c = catalogo_mod.cargar(CATALOGO)
     assert c.modelo('EfficientNet-B0').metricas['f1Macro'] >= 65
 
