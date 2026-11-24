@@ -1,11 +1,12 @@
 /*
  * Nombre: fotos.js (pruebas)
- * Descripción: Fotos de prueba y respuestas simuladas de la API de las fotos de un lote y de sus enlaces firmados,
- *              para las pruebas de la página de las fotos (RF-05, RF-14 C5, D-41).
+ * Descripción: Fotos de prueba y respuestas simuladas de la API de las fotos de un lote, también las de la segunda
+ *              muestra, y de sus enlaces firmados, para las pruebas de la página de las fotos (RF-05, RF-14 C5 y C6,
+ *              D-25, D-41).
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 import { File as FileDeNode } from 'node:buffer';
 import { http, HttpResponse } from 'msw';
@@ -74,19 +75,22 @@ export function fotoCargada(numero, { formato = 'JPG', url = `/api/v1/archivos/e
 }
 
 /**
- * Responde las fotos de la muestra en curso de un lote y anota cuántas veces se pidieron.
+ * Responde las fotos de la muestra en curso de un lote y anota cuántas veces se pidieron. Sin fotos responde que el
+ * lote no tiene muestra en curso, como el de la segunda muestra que todavía no se crea (D-25).
  *
  * @param {string} loteId el lote
  * @param {object[]|((vez: number) => object[])} fotos las fotos, como las de {@link fotoCargada}, o las de cada vez
  *   que se piden, desde 1
+ * @param {{ muestra?: number, estado?: string }} [opciones] el número y el estado de la muestra en curso, como la 2
+ *   pendiente de la segunda muestra
  * @returns {{ veces: number }} cuántas veces se pidieron
  */
-export function conFotos(loteId, fotos) {
+export function conFotos(loteId, fotos, { muestra = 1, estado = 'PENDIENTE' } = {}) {
   const pedidas = { veces: 0 };
   servidor.use(http.get(`/api/v1/lotes/${loteId}/fotos`, () => {
     pedidas.veces += 1;
     const deEstaVez = typeof fotos === 'function' ? fotos(pedidas.veces) : fotos;
-    return HttpResponse.json(deEstaVez.length === 0 ? SIN_FOTOS : { muestra: 1, estado: 'PENDIENTE', fotos: deEstaVez });
+    return HttpResponse.json(deEstaVez.length === 0 ? SIN_FOTOS : { muestra, estado, fotos: deEstaVez });
   }));
   return pedidas;
 }

@@ -1,14 +1,15 @@
 /*
  * Nombre: resultados.js (pruebas)
  * Descripción: Resultados de ejemplo de un lote como los responde el backend, con sus muestras, sus fotos y sus granos
- *              marcados como los da el clasificador falso, y respuestas simuladas del envío de la muestra, de su
+ *              marcados como los da el clasificador falso, el límite cercano de la sugerencia (D-47) y la segunda
+ *              muestra en curso, devuelta o terminada (D-25), y respuestas simuladas del envío de la muestra, de su
  *              avance en la cola (la secuencia EN_ESPERA, EN_PROCESO y TERMINADA) y del resultado, para las pruebas
- *              de «Analizar la muestra» y de la página del resultado (RF-05 C2, RF-10, RF-11, RF-12, RNF-01 C4,
- *              RNF-02 C3).
+ *              de «Analizar la muestra» y de la página del resultado (RF-05 C2, RF-10, RF-11, RF-12, RF-14 C3 y C6,
+ *              RNF-01 C4, RNF-02 C3).
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 import { fireEvent } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
@@ -22,6 +23,10 @@ export const FOTO = { ancho: 1000, alto: 500 };
 /** La recomendación por defecto de Estándar (specs/entidades/rango_recomendacion.json). */
 export const RECOMENDACION_ESTANDAR =
   'Apto para venta estándar. Retirar a mano los granos defectuosos podría subirlo de categoría.';
+
+/** La recomendación por defecto de Corriente (specs/entidades/rango_recomendacion.json). */
+export const RECOMENDACION_CORRIENTE =
+  'Retirar los granos defectuosos antes de vender, y revisar la fermentación y el secado.';
 
 /**
  * Los 50 granos de una foto, como los da el clasificador falso: en una cuadrícula de 10 × 5, cada uno en el centro de
@@ -41,13 +46,15 @@ export function granosDeFoto({ noSanos = 0, dudosos = 0 } = {}) {
  * Una foto de una muestra terminada, con su enlace de vista y sus granos.
  *
  * @param {number} numero su número, de 1 a 3
- * @param {{ granos?: object[], vence?: number }} [opciones] sus granos y el número del enlace, que cambia cada vez
- *   que el backend lo firma
+ * @param {{ granos?: object[], vence?: number, muestra?: number }} [opciones] sus granos, el número del enlace, que
+ *   cambia cada vez que el backend lo firma, y el de su muestra: las fotos de la segunda tienen otro enlace
  * @returns {import('../api/analisis.js').FotoMarcada} la foto
  */
-export function fotoMarcada(numero, { granos = granosDeFoto(), vence = 1 } = {}) {
+export function fotoMarcada(numero, { granos = granosDeFoto(), vence = 1, muestra = 1 } = {}) {
+  const carpeta = muestra === 1 ? '' : `muestra-${muestra}/`;
   return {
-    numero, vista: { url: `/api/v1/archivos/e/l/foto-${numero}.jpg?vence=${vence}&firma=v`, vence: '2026-11-23T17:00:00Z' },
+    numero,
+    vista: { url: `/api/v1/archivos/e/l/${carpeta}foto-${numero}.jpg?vence=${vence}&firma=v`, vence: '2026-11-23T17:00:00Z' },
     granos,
   };
 }
@@ -62,31 +69,105 @@ const DATOS_DEL_LOTE = {
 const ANALIZADA_POR = { id: USUARIOS.USUARIO_FINAL.id, nombre: USUARIOS.USUARIO_FINAL.nombre };
 
 /**
+ * Una muestra terminada, con sus cifras y sus fotos marcadas.
+ *
+ * @param {number} numero su número, 1 o 2 (D-25)
+ * @param {{ totalGranos: number, granosSanos: number, porcentajeContado: number, fotos: object[], fechaEnvio: string,
+ *   fechaFin: string }} datos sus cifras, sus fotos y cuándo se envió y terminó
+ * @returns {import('../api/analisis.js').MuestraDelLote} la muestra
+ */
+export function muestraTerminada(numero, { totalGranos, granosSanos, porcentajeContado, fotos, fechaEnvio, fechaFin }) {
+  return {
+    numero, estado: 'TERMINADA', analizadaPor: ANALIZADA_POR, modelo: { nombre: 'clasificador-falso', version: '1.0' },
+    totalGranos, granosSanos, porcentajeContado, fechaEnvio, fechaFin, fotos,
+  };
+}
+
+/**
  * El resultado de un lote analizado con una muestra, como lo responde GET /api/v1/lotes/{id}/resultado. Por defecto,
  * el ejemplo de RF-10 C8: 87 de 100 marcados como sanos dan 90,6 % corregido, con margen de 7,5, Estándar y la
- * sugerencia de otra muestra; la foto 1 tiene 6 no sanos y 6 dudosos, y la foto 2, 7 no sanos.
+ * sugerencia de otra muestra, a 0,6 puntos del límite de Estándar (90 %), que se guarda con el lote (D-47); la foto 1
+ * tiene 6 no sanos y 6 dudosos, y la foto 2, 7 no sanos. Si el cambio quita la sugerencia, el lote queda sin límite,
+ * como lo exige el CHECK de V1.
  *
- * @param {object} [cambios] lo que cambia del lote, como porcentajeSanos o margen
+ * @param {object} [cambios] lo que cambia del lote, como porcentajeSanos, margen o limiteSugerencia
  * @param {{ fotos?: object[], vence?: number }} [opciones] las fotos de la muestra y el número de sus enlaces
  * @returns {import('../api/analisis.js').ResultadoDelLote} el resultado
  */
 export function resultadoAnalizado(cambios = {}, { fotos, vence = 1 } = {}) {
+  const sinSugerencia = cambios.sugerirOtraMuestra === false ? { limiteSugerencia: null, categoriaDelLimite: null } : {};
   const lote = {
     ...DATOS_DEL_LOTE, estado: 'ANALIZADO', fechaResultado: '2026-11-23T16:42:03Z', porcentajeSanos: 90.6, margen: 7.5,
-    categoria: 'ESTANDAR', recomendacion: RECOMENDACION_ESTANDAR, sugerirOtraMuestra: true, avisoConfianzaBaja: false,
-    totalGranos: 100, granosSanos: 87, porcentajeContado: 87.0, ...cambios,
+    categoria: 'ESTANDAR', recomendacion: RECOMENDACION_ESTANDAR, sugerirOtraMuestra: true, limiteSugerencia: 90.0,
+    categoriaDelLimite: 'ESTANDAR', avisoConfianzaBaja: false, totalGranos: 100, granosSanos: 87, porcentajeContado: 87.0,
+    ...sinSugerencia, ...cambios,
   };
   return {
     lote,
-    muestras: [{
-      numero: 1, estado: 'TERMINADA', analizadaPor: ANALIZADA_POR, modelo: { nombre: 'clasificador-falso', version: '1.0' },
+    muestras: [muestraTerminada(1, {
       totalGranos: lote.totalGranos, granosSanos: lote.granosSanos, porcentajeContado: lote.porcentajeContado,
       fechaEnvio: '2026-11-23T16:42:00Z', fechaFin: lote.fechaResultado,
       fotos: fotos ?? [
         fotoMarcada(1, { granos: granosDeFoto({ noSanos: 6, dudosos: 6 }), vence }),
         fotoMarcada(2, { granos: granosDeFoto({ noSanos: 7 }), vence }),
       ],
+    })],
+  };
+}
+
+/**
+ * El resultado de un lote analizado que sugirió otra muestra y ya tiene la segunda, todavía sin terminar (D-25): el lote
+ * sigue con el resultado de la muestra 1, 90,6 % y la sugerencia, y la muestra 2 tiene sus fotos sin granos.
+ *
+ * @param {'PENDIENTE'|'EN_ESPERA'|'EN_PROCESO'} estado el estado de la muestra 2
+ * @param {{ fechaEnvio?: string|null }} [opciones] cuándo se envió la muestra 2; una pendiente con fecha de envío
+ *   volvió de la cola sin resultado, y una sin fecha todavía se está tomando
+ * @returns {import('../api/analisis.js').ResultadoDelLote} el resultado
+ */
+export function resultadoConSegundaMuestra(estado,
+  { fechaEnvio = estado === 'PENDIENTE' ? null : '2026-11-23T17:10:00Z' } = {}) {
+  const { lote, muestras } = resultadoAnalizado();
+  return {
+    lote,
+    muestras: [...muestras, {
+      numero: 2, estado, analizadaPor: ANALIZADA_POR, modelo: null, totalGranos: null, granosSanos: null,
+      porcentajeContado: null, fechaEnvio, fechaFin: null,
+      fotos: [fotoMarcada(1, { granos: [], muestra: 2 }), fotoMarcada(2, { granos: [], muestra: 2 })],
     }],
+  };
+}
+
+/**
+ * El resultado de un lote con dos muestras terminadas (D-25), recalculado con la suma de sus granos: la muestra 1 con
+ * 87 de 100 sanos y la 2 con 86 de 100 (7 no sanos en cada foto) dan 173 de 200, 89,5 % corregido, con margen de 5,4,
+ * Corriente y sin la sugerencia ni el límite, aunque quede a 0,5 puntos de 90.
+ *
+ * @returns {import('../api/analisis.js').ResultadoDelLote} el resultado
+ */
+export function resultadoConDosMuestras() {
+  const lote = {
+    ...DATOS_DEL_LOTE, estado: 'ANALIZADO', fechaResultado: '2026-11-23T17:10:03Z', porcentajeSanos: 89.5, margen: 5.4,
+    categoria: 'CORRIENTE', recomendacion: RECOMENDACION_CORRIENTE, sugerirOtraMuestra: false, limiteSugerencia: null,
+    categoriaDelLimite: null, avisoConfianzaBaja: false, totalGranos: 200, granosSanos: 173, porcentajeContado: 86.5,
+  };
+  return {
+    lote,
+    muestras: [
+      muestraTerminada(1, {
+        totalGranos: 100, granosSanos: 87, porcentajeContado: 87.0, fechaEnvio: '2026-11-23T16:42:00Z',
+        fechaFin: '2026-11-23T16:42:03Z', fotos: [
+          fotoMarcada(1, { granos: granosDeFoto({ noSanos: 6, dudosos: 6 }) }),
+          fotoMarcada(2, { granos: granosDeFoto({ noSanos: 7 }) }),
+        ],
+      }),
+      muestraTerminada(2, {
+        totalGranos: 100, granosSanos: 86, porcentajeContado: 86.0, fechaEnvio: '2026-11-23T17:10:00Z',
+        fechaFin: lote.fechaResultado, fotos: [
+          fotoMarcada(1, { granos: granosDeFoto({ noSanos: 7 }), muestra: 2 }),
+          fotoMarcada(2, { granos: granosDeFoto({ noSanos: 7 }), muestra: 2 }),
+        ],
+      }),
+    ],
   };
 }
 
@@ -101,8 +182,8 @@ export function resultadoAnalizado(cambios = {}, { fotos, vence = 1 } = {}) {
 export function resultadoPendiente(estado, { fechaEnvio = estado === 'PENDIENTE' ? null : '2026-11-23T16:42:00Z' } = {}) {
   const lote = {
     ...DATOS_DEL_LOTE, estado: 'PENDIENTE', fechaResultado: null, porcentajeSanos: null, margen: null, categoria: null,
-    recomendacion: null, sugerirOtraMuestra: null, avisoConfianzaBaja: null, totalGranos: null, granosSanos: null,
-    porcentajeContado: null,
+    recomendacion: null, sugerirOtraMuestra: null, limiteSugerencia: null, categoriaDelLimite: null,
+    avisoConfianzaBaja: null, totalGranos: null, granosSanos: null, porcentajeContado: null,
   };
   const muestras = estado ? [{
     numero: 1, estado, analizadaPor: ANALIZADA_POR, modelo: null, totalGranos: null, granosSanos: null,
@@ -116,12 +197,13 @@ export function resultadoPendiente(estado, { fechaEnvio = estado === 'PENDIENTE'
  * El avance del análisis como lo responde GET /api/v1/lotes/{id}/analisis.
  *
  * @param {'PENDIENTE'|'EN_ESPERA'|'EN_PROCESO'|'TERMINADA'} estado el estado de la muestra
- * @param {{ fallo?: boolean }} [opciones] si volvió de la cola sin resultado
+ * @param {{ fallo?: boolean, muestra?: number }} [opciones] si volvió de la cola sin resultado y el número de la
+ *   muestra en curso, como la 2 (D-25)
  * @returns {import('../api/analisis.js').AvanceDelAnalisis} el avance
  */
-export function avance(estado, { fallo = false } = {}) {
+export function avance(estado, { fallo = false, muestra = 1 } = {}) {
   return {
-    muestra: 1, estado, fechaEnvio: '2026-11-23T16:42:00Z',
+    muestra, estado, fechaEnvio: '2026-11-23T16:42:00Z',
     fechaInicio: ['EN_PROCESO', 'TERMINADA'].includes(estado) ? '2026-11-23T16:42:01Z' : null,
     fechaFin: estado === 'TERMINADA' ? '2026-11-23T16:42:03Z' : null, fallo,
   };
