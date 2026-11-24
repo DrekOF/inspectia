@@ -3,11 +3,11 @@
  * Descripción: El puerto AlmacenDeArchivos en una carpeta del servidor (D-41): enlaces firmados relativos a la página,
  *              llaves que no salen de la carpeta y que llevan la muestra para la que se pidieron (D-25), archivos que
  *              no se pisan, la lectura de una foto para clasificarla y los archivos del reporte PDF de un lote, uno
- *              por idioma (RF-15, D-50).
+ *              por idioma (RF-15, D-50), que solo se guardan, leen y borran: los enlaces firmados son solo de fotos.
  * Fecha de creación: 23/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.3
+ * Versión: 1.4
  */
 package co.edu.usco.inspectia.analisis.adaptadores.carpeta;
 
@@ -35,7 +35,8 @@ import java.util.regex.Pattern;
  * arma el caso de uso: {@code <empresa>/<lote>/m<muestra>-<uuid>.<jpg|png>}, con la muestra 1 o 2 para la que se
  * pidió el enlace (D-25), y {@code reportes/<empresa>/<lote>/<uuid>-<es|en>.pdf} para el reporte PDF de un lote
  * (RF-15, D-50). Una llave con otra forma, como la de antes sin la muestra, o que saldría de la carpeta, no se acepta.
- * Un archivo ya subido o guardado no se pisa.
+ * Un archivo ya subido o guardado no se pisa. Los enlaces firmados de subida y de vista, y la subida por ellos, son solo
+ * de fotos: un reporte solo lo guarda, lo lee y lo borra el servidor, y se descarga por el backend con la sesión.
  */
 public class AlmacenEnCarpeta implements AlmacenDeArchivos {
 
@@ -91,14 +92,14 @@ public class AlmacenEnCarpeta implements AlmacenDeArchivos {
     @Override
     public EnlaceTemporal enlaceDeSubida(String llave, String tipo, long bytes, Duration vigencia) {
         long vence = venceEn(vigencia);
-        String url = enlace(llave, vence, firma.firmarSubida(revisada(llave), vence, tipo, bytes));
+        String url = enlace(llave, vence, firma.firmarSubida(deFoto(llave), vence, tipo, bytes));
         return new EnlaceTemporal(url, "PUT", Map.of("Content-Type", tipo), Instant.ofEpochSecond(vence));
     }
 
     @Override
     public EnlaceTemporal enlaceDeVista(String llave, Duration vigencia) {
         long vence = venceEn(vigencia);
-        String url = enlace(llave, vence, firma.firmarVista(revisada(llave), vence));
+        String url = enlace(llave, vence, firma.firmarVista(deFoto(llave), vence));
         return new EnlaceTemporal(url, "GET", Map.of(), Instant.ofEpochSecond(vence));
     }
 
@@ -166,10 +167,11 @@ public class AlmacenEnCarpeta implements AlmacenDeArchivos {
      * @param llave la llave
      * @param contenido los bytes del archivo
      * @throws ConflictoExcepcion si ya se subió un archivo con esa llave (409)
+     * @throws IllegalArgumentException si la llave no es la de una foto
      */
     public void guardar(String llave, byte[] contenido) {
         try {
-            escribir(llave, contenido);
+            escribir(deFoto(llave), contenido);
         } catch (FileAlreadyExistsException excepcion) {
             throw new ConflictoExcepcion("foto.ya_subida");
         }
@@ -210,6 +212,21 @@ public class AlmacenEnCarpeta implements AlmacenDeArchivos {
             throw new IllegalArgumentException("La llave sale de la carpeta de las fotos");
         }
         return ruta;
+    }
+
+    /**
+     * La llave, si es la de una foto: solo las fotos tienen enlaces firmados y se suben por ellos.
+     *
+     * @param llave la llave
+     * @return la misma llave
+     * @throws IllegalArgumentException si no tiene la forma {@code <empresa>/<lote>/m<muestra>-<archivo>}
+     */
+    private static String deFoto(String llave) {
+        if (llave == null || !LLAVE.matcher(llave).matches()) {
+            throw new IllegalArgumentException("Solo una foto tiene enlaces firmados: la llave no tiene la forma "
+                    + "<empresa>/<lote>/m<muestra>-<archivo>");
+        }
+        return llave;
     }
 
     private static String revisada(String llave) {
