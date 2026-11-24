@@ -124,6 +124,14 @@ docker run --rm -p 8000:8000 -v /ruta/modelos:/modelos:ro -e INSPECTIA_MODELOS_U
 
 La imagen usa `python:3.12.16-slim-trixie` (Debian; TensorFlow y OpenCV no publican ruedas para Alpine), corre con un usuario sin privilegios y su HEALTHCHECK pide `/salud`.
 
+Para comprobar una imagen ya construida (que arranca y carga TensorFlow, OpenCV, Pillow y la API y, con el zip del modelo, que clasifica igual que `inferencia.py`):
+
+```bash
+bash ia-servicio/scripts/comprobar_imagen.sh inspectia-ia-servicio [ruta/inspectia_EfficientNet-B0_v1.0_savedmodel.zip]
+```
+
+Con el zip monta `pruebas/`, `pytest.ini` y el zip en modo de solo lectura, instala pytest y httpx (las versiones de `requirements-dev.txt`) en `/tmp` del contenedor, sin cambiar la imagen, y corre `test_paridad.py`; falla si una prueba falla o se salta. La CI lo corre en el runner arm64 justo después de construir la imagen, así una rueda que no carga en Graviton se ve antes de llegar a AWS. En el PC de desarrollo (imagen amd64) las 4 pruebas pasan en unos 4 s y el script completo tarda unos 13 s.
+
 ## Pruebas
 
 ```bash
