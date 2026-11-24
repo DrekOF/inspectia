@@ -174,7 +174,7 @@ Nada de esto se crea con código (ni Terraform ni CloudFormation): se crea una v
    - compila la página y la sube al bucket web (`assets/` con caché de un año, `index.html` sin caché), invalida CloudFront y comprueba por CloudFront la página, una ruta de React y la API.
 4. Si algo falla en `main`, el job **Aviso de fallas** abre el issue, como siempre.
 
-GitHub entra a AWS con el rol `inspectia-github` por OIDC: no hay claves de AWS en GitHub. Mientras falte alguna de las variables del repositorio (paso 14), el despliegue se salta y la CI sigue en verde.
+GitHub entra a AWS con el rol `inspectia-github` por OIDC: no hay claves de AWS en GitHub. Mientras falte alguna de las variables del repositorio (paso 15), el despliegue se salta y la CI sigue en verde.
 
 ### Guía de la consola, paso a paso
 
@@ -278,7 +278,14 @@ Las métricas de CWAgent aparecen unos minutos después de que el agente arranca
 
 En Permissions deja *Create new role for this schedule*. Ajusta las horas a las del equipo. **El jueves de la sustentación y durante la prueba de estrés, desactiva `inspectia-apagar`** (Disable) y vuelve a activarlo después. Si la CI despliega con la instancia apagada, la enciende; el horario la vuelve a apagar a su hora.
 
-**14. Las variables del repositorio en GitHub.** En GitHub: Settings → Secrets and variables → Actions → pestaña **Variables** → New repository variable. Son variables, no secretos: no dan acceso a nada sin el rol, que solo se asume desde `main`.
+**14. Los modelos de IA en S3.** El servicio de IA baja de `s3://inspectia-archivos-<cuenta>/modelos/` el modelo elegido (EfficientNet-B0) y comprueba su SHA-256: sin él, no arranca. Súbelos una vez, antes de poner las variables del paso 15 (con ellas, el siguiente push a `main` ya despliega), con el script de `ia-servicio/scripts/` desde **CloudShell** (ya tiene las credenciales de tu sesión, así no hacen falta claves en tu PC): `git clone https://github.com/DrekOF/inspectia.git` y sigue `ia-servicio/README.md`. Ese script llega con el PR del servicio de IA: haz este paso cuando ese PR esté en `main`. El script baja los 5 modelos del release `modelos-v1.0` de Julián, comprueba su SHA-256 y los sube con sus JSON y su `manifest.json`. Revisa en S3 que estén en `modelos/`.
+
+**15. Las variables del repositorio en GitHub.** En GitHub: Settings → Secrets and variables → Actions → pestaña **Variables** → New repository variable. Son variables, no secretos: no dan acceso a nada sin el rol, que solo se asume desde `main`.
+
+**Ponlas solo cuando estén listos los dos requisitos del primer despliegue:**
+
+- Los modelos ya están en S3 (paso 14). Sin ellos, el servicio de IA no queda sano y el despliegue falla.
+- El PR del servicio de IA ya está fusionado en `main`. Trae `ia-servicio/Dockerfile` (sin él no hay imagen de `inspectia/ia-servicio` en ECR y el despliegue falla) y el clasificador `servicio` del backend, que el compose de producción pide con `INSPECTIA_IA_CLASIFICADOR: servicio` (sin él, el backend no arranca). Ese PR y el del despliegue van los dos en `main` antes del primer despliegue, en cualquier orden: mientras falten las variables, la CI no despliega.
 
 | Variable | Valor | Ejemplo |
 |---|---|---|
@@ -290,9 +297,7 @@ En Permissions deja *Create new role for this schedule*. Ajusta las horas a las 
 
 Con las cinco, el siguiente push a `main` despliega. Para desplegar sin un commit nuevo: Actions → CI → Run workflow → `main`.
 
-**15. Los modelos de IA en S3.** El servicio de IA baja de `s3://inspectia-archivos-<cuenta>/modelos/` el modelo elegido (EfficientNet-B0) y comprueba su SHA-256: sin él, no arranca. Súbelos una vez, antes del primer despliegue, con el script de `ia-servicio/scripts/` desde **CloudShell** (ya tiene las credenciales de tu sesión, así no hacen falta claves en tu PC): `git clone https://github.com/DrekOF/inspectia.git` y sigue `ia-servicio/README.md`. El script baja los 5 modelos del release `modelos-v1.0` de Julián, comprueba su SHA-256 y los sube con sus JSON y su `manifest.json`. Revisa en S3 que estén en `modelos/`.
-
-**16. El primer despliegue.** Con los pasos anteriores listos, fusiona el PR (o corre la CI a mano en `main`) y mira el job **Despliegue en AWS**. La primera vez tarda más: la instancia baja las imágenes y el servicio de IA baja el modelo de S3.
+**16. El primer despliegue.** Con los pasos anteriores listos (los modelos en S3, el PR del servicio de IA y el del despliegue en `main`, y las variables puestas), haz un push a `main` o corre la CI a mano en `main` y mira el job **Despliegue en AWS**. La primera vez tarda más: la instancia baja las imágenes y el servicio de IA baja el modelo de S3.
 
 ### Primer administrador en producción
 
@@ -344,10 +349,10 @@ sudo /opt/inspectia/restaurar-respaldo.sh --prueba ultimo    # la restaura apart
 - **Volver atrás:** `sudo /opt/inspectia/actualizar.sh <etiqueta>` con el SHA de un commit anterior que esté en ECR (el anterior queda en `/opt/inspectia/.env`, como `ETIQUETA_ANTERIOR`). Si la versión nueva aplicó una migración de Flyway, la anterior no arranca con esa base: en ese caso se corrige con un commit nuevo, o se restaura la copia de antes del despliegue.
 - **Volver a levantar todo:** `sudo systemctl restart inspectia`.
 - **Si algo falla:**
-  - El job de despliegue dice que falta la imagen de `inspectia/ia-servicio`: el Dockerfile del servicio de IA todavía no está en `main`.
+  - El job de despliegue dice que falta la imagen de `inspectia/ia-servicio`: el PR del servicio de IA (con `ia-servicio/Dockerfile`) todavía no está en `main`: ver el paso 15.
   - El job de despliegue falla con «no quedó sano. Sigue la versión anterior, …, sana»: el sitio sigue con la versión anterior. Mira el registro del job (o `/var/log/inspectia/actualizar.log`), corrige y haz un commit nuevo. Si dice que la anterior tampoco arrancó, ve a «Volver atrás».
   - `actualizar.sh` dice que un parámetro no es válido: revisa el paso 5.
-  - El servicio de IA no queda sano: mira su registro; si no encuentra el modelo o su SHA-256 no coincide, revisa el paso 15.
+  - El servicio de IA no queda sano: mira su registro; si no encuentra el modelo o su SHA-256 no coincide, revisa el paso 14.
   - Con la sesión iniciada, todo responde 401: CloudFront no está pasando el encabezado `Authorization`. Revisa que `/api/*` tenga **CachingDisabled** y **AllViewerExceptHostHeader**. Si aun así no pasa, crea una cache policy `inspectia-api` con TTL mínimo 0, por defecto 0 y máximo 1, y el encabezado `Authorization` en la clave de caché, y úsala en `/api/*` en lugar de CachingDisabled.
   - Las fotos no suben (error de CORS en la consola del navegador): revisa el paso 9.7 y la política de seguridad de contenido.
 - **P-17 (límite de intentos de inicio de sesión por IP):** no está en este despliegue. Se puede con una regla *rate-based* de AWS WAF en la distribución (unos US$6 al mes o más) o en el backend, con la IP que CloudFront manda en `CloudFront-Viewer-Address`. Lo decide el equipo.
