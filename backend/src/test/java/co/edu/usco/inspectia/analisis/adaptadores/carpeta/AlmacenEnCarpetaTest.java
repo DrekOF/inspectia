@@ -3,11 +3,11 @@
  * Descripción: Pruebas unitarias del almacén de las fotos en una carpeta (D-41): los enlaces relativos, las llaves que
  *              no salen de la carpeta, los archivos que no se pisan, la lectura para el clasificador y el borrado que
  *              no falla; las llaves llevan la muestra para la que se pidieron (D-25); los archivos del reporte PDF, uno
- *              por idioma (RF-15, D-50).
+ *              por idioma (RF-15, D-50), que solo se guardan, leen y borran, sin enlaces firmados.
  * Fecha de creación: 23/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.3
+ * Versión: 1.4
  */
 package co.edu.usco.inspectia.analisis.adaptadores.carpeta;
 
@@ -152,5 +152,18 @@ class AlmacenEnCarpetaTest {
             assertThatThrownBy(() -> almacen.guardar(llave, JPG, "application/pdf")).as(llave)
                     .isInstanceOf(IllegalArgumentException.class);
         }
+    }
+
+    @Test
+    @DisplayName("RF-15 · un reporte PDF no tiene enlaces firmados ni se sube por el enlace de las fotos: solo lo guarda, lo lee y lo borra el servidor (D-50, RNF-03)")
+    void reporteSinEnlaces() {
+        String llave = "reportes/" + EMPRESA + "/" + LOTE + "/0199f0a0-0000-7000-8000-000000000009-es.pdf";
+
+        assertThatThrownBy(() -> almacen.enlaceDeVista(llave, Duration.ofMinutes(15)))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> almacen.enlaceDeSubida(llave, "application/pdf", 10, Duration.ofMinutes(10)))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> almacen.guardar(llave, JPG)).isInstanceOf(IllegalArgumentException.class);
+        assertThat(carpeta.resolve(llave)).doesNotExist();
     }
 }
