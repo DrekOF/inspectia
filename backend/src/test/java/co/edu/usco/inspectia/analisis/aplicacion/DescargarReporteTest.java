@@ -2,12 +2,13 @@
  * Nombre: DescargarReporteTest.java
  * Descripción: Pruebas unitarias del caso de uso que descarga el reporte PDF de un lote, con Mockito: el lote de otra
  *              empresa o pendiente, la primera descarga que lo arma en los dos idiomas y lo guarda, las siguientes que
- *              entregan el guardado, un archivo que falta, el contenido con las muestras terminadas y sus fotos, y el
+ *              entregan el guardado, los dos archivos que faltan, uno solo que falta (se rehace solo ese y se
+ *              conserva el otro), el contenido con las muestras terminadas y sus fotos, y el
  *              nombre del archivo (RF-15 C1, C4 y C5, RNF-03, D-50).
  * Fecha de creación: 24/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis.aplicacion;
 
@@ -160,11 +161,12 @@ class DescargarReporteTest {
     }
 
     @Test
-    @DisplayName("RF-15 · si falta el archivo guardado, el reporte se arma de nuevo con otra base y el incompleto se descarta")
+    @DisplayName("RF-15 · si faltan los archivos de los dos idiomas, el reporte se arma de nuevo con otra base y el incompleto se descarta")
     void faltaElArchivo() {
         when(lotes.datosDelReporte(EMPRESA, LOTE))
                 .thenReturn(Optional.of(new DatosDelReporte("Cacaos del Huila", "900123456-8", BASE)));
         when(almacen.describir(BASE + "-es.pdf")).thenReturn(Optional.empty());
+        when(almacen.describir(BASE + "-en.pdf")).thenReturn(Optional.empty());
 
         ReporteDelLote reporte = descargar.descargar(EMPRESA, LOTE, IdiomaDelReporte.ES);
 
@@ -173,6 +175,27 @@ class DescargarReporteTest {
         ArgumentCaptor<String> base = ArgumentCaptor.forClass(String.class);
         verify(lotes).guardarRutaDelReporte(eq(EMPRESA), eq(LOTE), base.capture());
         assertThat(base.getValue()).isNotEqualTo(BASE);
+    }
+
+    @Test
+    @DisplayName("RF-15 · si falta solo el archivo del idioma pedido, se rehace solo ese en la misma base y el del otro idioma se conserva tal cual, así sigue siendo el mismo reporte al descargarlo de nuevo (C4)")
+    void faltaUnSoloIdioma() {
+        when(lotes.datosDelReporte(EMPRESA, LOTE))
+                .thenReturn(Optional.of(new DatosDelReporte("Cacaos del Huila", "900123456-8", BASE)));
+        when(almacen.describir(BASE + "-en.pdf")).thenReturn(Optional.empty());
+        when(almacen.describir(BASE + "-es.pdf")).thenReturn(Optional.of(new ArchivoGuardado(6, PDF_ES)));
+
+        ReporteDelLote reporte = descargar.descargar(EMPRESA, LOTE, IdiomaDelReporte.EN);
+
+        assertThat(reporte.contenido()).isEqualTo(PDF_EN);
+        assertThat(reporte.nombre()).isEqualTo("InspectIA-L-0143-en.pdf");
+        verify(generador).generar(any(), eq(IdiomaDelReporte.EN));
+        verify(generador, never()).generar(any(), eq(IdiomaDelReporte.ES));
+        verify(almacen).guardar(BASE + "-en.pdf", PDF_EN, "application/pdf");
+        verify(almacen, never()).guardar(eq(BASE + "-es.pdf"), any(), anyString());
+        verify(almacen, never()).borrar(anyString());
+        verify(eventos, never()).publishEvent(any());
+        verify(lotes, never()).guardarRutaDelReporte(any(), any(), any());
     }
 
     @Test
