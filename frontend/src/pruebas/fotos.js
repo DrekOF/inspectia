@@ -3,11 +3,14 @@
  * Descripción: Fotos de prueba y respuestas simuladas de la API de las fotos de un lote, también las de la segunda
  *              muestra, y de sus enlaces firmados, para las pruebas de la página de las fotos (RF-05, RF-14 C5 y C6,
  *              D-25, D-41). Como el backend, el enlace se pide para una muestra, su llave la lleva, y el enlace y la
- *              confirmación responden 409 si esa muestra ya no es la que recibe las fotos.
+ *              confirmación responden 409 si esa muestra ya no es la que recibe las fotos. Las fotos revisadas por el
+ *              servicio de IA, «Aprobada» o «Por repetir» con su motivo, su conteo, sus regiones de granos pegados y
+ *              sus granos dudosos, y la muestra devuelta con su motivo y sus repeticiones (RF-06, RF-07, RF-09, D-44,
+ *              D-45, D-46).
  * Fecha de creación: 23/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 import { File as FileDeNode } from 'node:buffer';
 import { http, HttpResponse } from 'msw';
@@ -83,22 +86,40 @@ export function fotoCargada(numero, { formato = 'JPG', url = `/api/v1/archivos/e
 }
 
 /**
+ * Una foto revisada por el servicio de IA, como la responde la API (D-46): «Aprobada» con cuántos granos encontró, o
+ * «Por repetir» con su motivo, sus regiones de granos pegados (D-45) o sus granos dudosos (RF-09 C1).
+ *
+ * @param {number} numero su número, de 1 a 3
+ * @param {{ estado?: 'APROBADA'|'POR_REPETIR', motivo?: string|null, granosEncontrados?: number|null,
+ *   regionesPegadas?: object[], granosDudosos?: object[] }} [revision] lo que dijo la revisión; por defecto,
+ *   aprobada con 52 granos
+ * @returns {object} la foto
+ */
+export function fotoRevisada(numero, {
+  estado = 'APROBADA', motivo = null, granosEncontrados = 52, regionesPegadas = [], granosDudosos = [],
+} = {}) {
+  return { ...fotoCargada(numero), estado, motivo, granosEncontrados, regionesPegadas, granosDudosos };
+}
+
+/**
  * Responde las fotos de la muestra en curso de un lote y anota cuántas veces se pidieron. Sin fotos responde que el
  * lote no tiene muestra en curso, como el de la segunda muestra que todavía no se crea (D-25).
  *
  * @param {string} loteId el lote
  * @param {object[]|((vez: number) => object[])} fotos las fotos, como las de {@link fotoCargada}, o las de cada vez
  *   que se piden, desde 1
- * @param {{ muestra?: number, estado?: string }} [opciones] el número y el estado de la muestra en curso, como la 2
- *   pendiente de la segunda muestra
+ * @param {{ muestra?: number, estado?: string, motivoDevolucion?: string|null, repeticiones?: number,
+ *   porcentajeMaxDudosos?: number|null }} [opciones] el número y el estado de la muestra en curso, como la 2 pendiente
+ *   de la segunda muestra, y lo que el servicio de IA dejó en ella: por qué volvió sin resultado (D-44), cuántas fotos
+ *   pidió repetir por granos dudosos y el máximo de dudosos que usó (RF-09); sin ellos, la respuesta no los trae
  * @returns {{ veces: number }} cuántas veces se pidieron
  */
-export function conFotos(loteId, fotos, { muestra = 1, estado = 'PENDIENTE' } = {}) {
+export function conFotos(loteId, fotos, { muestra = 1, estado = 'PENDIENTE', ...deLaMuestra } = {}) {
   const pedidas = { veces: 0 };
   servidor.use(http.get(`/api/v1/lotes/${loteId}/fotos`, () => {
     pedidas.veces += 1;
     const deEstaVez = typeof fotos === 'function' ? fotos(pedidas.veces) : fotos;
-    return HttpResponse.json(deEstaVez.length === 0 ? SIN_FOTOS : { muestra, estado, fotos: deEstaVez });
+    return HttpResponse.json(deEstaVez.length === 0 ? SIN_FOTOS : { muestra, estado, ...deLaMuestra, fotos: deEstaVez });
   }));
   return pedidas;
 }
@@ -135,17 +156,19 @@ function errorDeLaMuestra(muestra) {
  * enlace y la confirmación. Como el backend, el enlace exige la muestra que espera la página, 1 o 2 (si falta o es
  * otra cosa, 400 en «muestra»), y su llave la lleva; si no es la muestra que recibe las fotos, el enlace y la
  * confirmación responden 409 (foto.muestra_cambio, D-25). El PUT responde 403 si su Content-Type no es el que se
- * firmó. Anota lo que llegó a cada uno.
+ * firmó. Anota lo que llegó a cada uno. Con una revisión, la confirmación responde la foto revisada por el servicio de
+ * IA (D-46); sin ella, la foto queda «Cargada», como con el clasificador falso.
  *
  * @param {string} loteId el lote
- * @param {{ base?: string, espera?: Promise<unknown>, muestra?: number }} [opciones] dónde están los enlaces:
- *   /api/v1/archivos, o el dominio de S3; lo que espera el PUT antes de responder, para ver la página mientras sube; y
- *   la muestra que recibe las fotos, 1 si no se dice
+ * @param {{ base?: string, espera?: Promise<unknown>, muestra?: number,
+ *   revision?: (numero: number) => object|null }} [opciones] dónde están los enlaces: /api/v1/archivos, o el dominio
+ *   de S3; lo que espera el PUT antes de responder, para ver la página mientras sube; la muestra que recibe las fotos,
+ *   1 si no se dice, y lo que dice la revisión de cada foto, como en {@link fotoRevisada}, o null si no hubo
  * @returns {{ pedidas: object[], subidas: object[], confirmadas: object[], muestra: number }} lo que llegó: lo que se
  *   pidió, cada PUT, con su Authorization, su Content-Type, su Accept-Language, sus bytes y su dirección, y cada
  *   confirmación; y la muestra que recibe las fotos, que la prueba puede cambiar, como si otro usuario cambiara el lote
  */
-export function conSubidas(loteId, { base = '/api/v1/archivos', espera, muestra = 1 } = {}) {
+export function conSubidas(loteId, { base = '/api/v1/archivos', espera, muestra = 1, revision } = {}) {
   const anotado = { pedidas: [], subidas: [], confirmadas: [], muestra };
   const firmados = new Map();
   servidor.use(
@@ -187,9 +210,12 @@ export function conSubidas(loteId, { base = '/api/v1/archivos', espera, muestra 
       if (muestraDeLaLlave(llave) !== anotado.muestra) {
         return problema(409, MUESTRA_CAMBIO);
       }
-      return HttpResponse.json(fotoCargada(numero, {
+      const cargada = fotoCargada(numero, {
         formato: llave.endsWith('.png') ? 'PNG' : 'JPG', url: `${base}/${llave}?vence=2&firma=v`,
-      }));
+      });
+      const revisada = revision?.(numero);
+      return HttpResponse.json(revisada ? { ...fotoRevisada(numero, revisada), formato: cargada.formato, vista: cargada.vista }
+        : cargada);
     }),
   );
   return anotado;

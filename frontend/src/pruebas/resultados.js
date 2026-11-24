@@ -5,11 +5,12 @@
  *              muestra en curso, devuelta o terminada (D-25), y respuestas simuladas del envío de la muestra, de su
  *              avance en la cola (la secuencia EN_ESPERA, EN_PROCESO y TERMINADA) y del resultado, para las pruebas
  *              de «Analizar la muestra» y de la página del resultado (RF-05 C2, RF-10, RF-11, RF-12, RF-14 C3 y C6,
- *              RNF-01 C4, RNF-02 C3).
+ *              RNF-01 C4, RNF-02 C3). La muestra devuelta por el servicio de IA lleva su motivo, sus fotos por repetir
+ *              y sus repeticiones (RF-07 C3, RF-08 C6, RF-09, D-44).
  * Fecha de creación: 23/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 import { fireEvent } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
@@ -120,19 +121,20 @@ export function resultadoAnalizado(cambios = {}, { fotos, vence = 1 } = {}) {
  * sigue con el resultado de la muestra 1, 90,6 % y la sugerencia, y la muestra 2 tiene sus fotos sin granos.
  *
  * @param {'PENDIENTE'|'EN_ESPERA'|'EN_PROCESO'} estado el estado de la muestra 2
- * @param {{ fechaEnvio?: string|null }} [opciones] cuándo se envió la muestra 2; una pendiente con fecha de envío
- *   volvió de la cola sin resultado, y una sin fecha todavía se está tomando
+ * @param {{ fechaEnvio?: string|null, devolucion?: object }} [opciones] cuándo se envió la muestra 2; una pendiente
+ *   con fecha de envío volvió de la cola sin resultado, y una sin fecha todavía se está tomando; y, si volvió, lo que
+ *   dijo el servicio de IA, como { motivoDevolucion: 'POCOS_GRANOS' } (D-44)
  * @returns {import('../api/analisis.js').ResultadoDelLote} el resultado
  */
 export function resultadoConSegundaMuestra(estado,
-  { fechaEnvio = estado === 'PENDIENTE' ? null : '2026-11-23T17:10:00Z' } = {}) {
+  { fechaEnvio = estado === 'PENDIENTE' ? null : '2026-11-23T17:10:00Z', devolucion = {} } = {}) {
   const { lote, muestras } = resultadoAnalizado();
   return {
     lote,
     muestras: [...muestras, {
       numero: 2, estado, analizadaPor: ANALIZADA_POR, modelo: null, totalGranos: null, granosSanos: null,
       porcentajeContado: null, fechaEnvio, fechaFin: null,
-      fotos: [fotoMarcada(1, { granos: [], muestra: 2 }), fotoMarcada(2, { granos: [], muestra: 2 })],
+      fotos: [fotoMarcada(1, { granos: [], muestra: 2 }), fotoMarcada(2, { granos: [], muestra: 2 })], ...devolucion,
     }],
   };
 }
@@ -175,11 +177,13 @@ export function resultadoConDosMuestras() {
  * El resultado de un lote pendiente, con su muestra en el estado que se pida y sus fotos sin granos.
  *
  * @param {'PENDIENTE'|'EN_ESPERA'|'EN_PROCESO'|null} estado el estado de la muestra, o null si el lote no tiene
- * @param {{ fechaEnvio?: string|null }} [opciones] cuándo se envió la muestra; una pendiente con fecha de envío volvió
- *   de la cola sin resultado
+ * @param {{ fechaEnvio?: string|null, devolucion?: object }} [opciones] cuándo se envió la muestra; una pendiente con
+ *   fecha de envío volvió de la cola sin resultado; y, si volvió, lo que dijo el servicio de IA, como
+ *   { motivoDevolucion: 'POCOS_GRANOS' } (D-44)
  * @returns {import('../api/analisis.js').ResultadoDelLote} el resultado
  */
-export function resultadoPendiente(estado, { fechaEnvio = estado === 'PENDIENTE' ? null : '2026-11-23T16:42:00Z' } = {}) {
+export function resultadoPendiente(estado,
+  { fechaEnvio = estado === 'PENDIENTE' ? null : '2026-11-23T16:42:00Z', devolucion = {} } = {}) {
   const lote = {
     ...DATOS_DEL_LOTE, estado: 'PENDIENTE', fechaResultado: null, porcentajeSanos: null, margen: null, categoria: null,
     recomendacion: null, sugerirOtraMuestra: null, limiteSugerencia: null, categoriaDelLimite: null,
@@ -188,7 +192,7 @@ export function resultadoPendiente(estado, { fechaEnvio = estado === 'PENDIENTE'
   const muestras = estado ? [{
     numero: 1, estado, analizadaPor: ANALIZADA_POR, modelo: null, totalGranos: null, granosSanos: null,
     porcentajeContado: null, fechaEnvio, fechaFin: null,
-    fotos: [fotoMarcada(1, { granos: [] }), fotoMarcada(2, { granos: [] })],
+    fotos: [fotoMarcada(1, { granos: [] }), fotoMarcada(2, { granos: [] })], ...devolucion,
   }] : [];
   return { lote, muestras };
 }
@@ -197,15 +201,17 @@ export function resultadoPendiente(estado, { fechaEnvio = estado === 'PENDIENTE'
  * El avance del análisis como lo responde GET /api/v1/lotes/{id}/analisis.
  *
  * @param {'PENDIENTE'|'EN_ESPERA'|'EN_PROCESO'|'TERMINADA'} estado el estado de la muestra
- * @param {{ fallo?: boolean, muestra?: number }} [opciones] si volvió de la cola sin resultado y el número de la
- *   muestra en curso, como la 2 (D-25)
+ * @param {{ fallo?: boolean, muestra?: number, motivoDevolucion?: string|null, repeticiones?: number,
+ *   fotosPorRepetir?: { numero: number, motivo: string }[] }} [opciones] si volvió de la cola sin resultado, el número
+ *   de la muestra en curso, como la 2 (D-25), y lo que dijo el servicio de IA al devolverla (D-44, RF-09); sin ello,
+ *   el avance no lo trae, como hoy
  * @returns {import('../api/analisis.js').AvanceDelAnalisis} el avance
  */
-export function avance(estado, { fallo = false, muestra = 1 } = {}) {
+export function avance(estado, { fallo = false, muestra = 1, ...devolucion } = {}) {
   return {
     muestra, estado, fechaEnvio: '2026-11-23T16:42:00Z',
     fechaInicio: ['EN_PROCESO', 'TERMINADA'].includes(estado) ? '2026-11-23T16:42:01Z' : null,
-    fechaFin: estado === 'TERMINADA' ? '2026-11-23T16:42:03Z' : null, fallo,
+    fechaFin: estado === 'TERMINADA' ? '2026-11-23T16:42:03Z' : null, fallo, ...devolucion,
   };
 }
 

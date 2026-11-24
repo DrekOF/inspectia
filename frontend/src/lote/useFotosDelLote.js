@@ -3,11 +3,13 @@
  * Descripción: Las fotos de la muestra en curso de un lote, para la página de las fotos (RF-05, RF-14 C5): las pide
  *              al entrar, otra vez con «Reintentar» y una sola vez más si una imagen no carga porque su enlace
  *              venció, y suma las que se confirman. Una lista pedida antes de una confirmación no la deshace.
- *              También dice el número y el estado de la muestra, para saber si ya se envió al análisis (RNF-02 C3).
+ *              También dice el número y el estado de la muestra, para saber si ya se envió al análisis (RNF-02 C3), y
+ *              lo que dejó en ella el servicio de IA: por qué volvió sin resultado (D-44), cuántas fotos pidió repetir
+ *              por granos dudosos y el máximo de dudosos que usó (RF-09); sin esos datos, van vacíos.
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { fotosDelLote } from '../api/fotos.js';
@@ -26,10 +28,16 @@ import { fotosDelLote } from '../api/fotos.js';
  * @property {Record<number, Entrada>} porNumero las fotos, por su número
  * @property {number|null} muestra el número de la muestra en curso, según la última lista
  * @property {string|null} estado el estado de la muestra en curso, según la última lista, como EN_ESPERA
+ * @property {string|null} motivoDevolucion por qué volvió la muestra sin resultado (D-44), según la última lista
+ * @property {number} repeticiones cuántas fotos pidió repetir RF-09 por granos dudosos, según la última lista
+ * @property {number|null} porcentajeMaxDudosos el máximo de dudosos que usó la muestra (P-15), según la última lista
  */
 
 /** @type {Estado} */
-const INICIAL = { respondida: -1, cargada: false, error: null, porNumero: {}, muestra: null, estado: null };
+const INICIAL = {
+  respondida: -1, cargada: false, error: null, porNumero: {}, muestra: null, estado: null, motivoDevolucion: null,
+  repeticiones: 0, porcentajeMaxDudosos: null,
+};
 
 /**
  * Suma lo que pasó a lo que se sabe de las fotos.
@@ -50,7 +58,8 @@ function reducir(estado, accion) {
     }
     return {
       respondida: accion.recarga, cargada: true, error: null, porNumero, muestra: accion.datos.muestra,
-      estado: accion.datos.estado,
+      estado: accion.datos.estado, motivoDevolucion: accion.datos.motivoDevolucion ?? null,
+      repeticiones: accion.datos.repeticiones ?? 0, porcentajeMaxDudosos: accion.datos.porcentajeMaxDudosos ?? null,
     };
   }
   if (accion.tipo === 'error') {
@@ -66,8 +75,10 @@ function reducir(estado, accion) {
  * @param {string} loteId el lote
  * @returns {{ cargada: boolean, cargando: boolean, error: Error|null,
  *   fotos: Record<number, import('../api/fotos.js').Foto>, muestra: number|null, estado: string|null,
+ *   motivoDevolucion: string|null, repeticiones: number, porcentajeMaxDudosos: number|null,
  *   recargar: () => void, confirmada: (foto: import('../api/fotos.js').Foto) => void, vistaFallida: () => void }} las
- *   fotos, si ya llegaron o se están pidiendo, el error de la lista, el número y el estado de la muestra, y qué hacer
+ *   fotos, si ya llegaron o se están pidiendo, el error de la lista, el número y el estado de la muestra, lo que dejó
+ *   en ella el servicio de IA, y qué hacer
  *   para pedirlas otra vez, al confirmar una foto y cuando una imagen no carga
  */
 export function useFotosDelLote(pedir, loteId) {
@@ -105,6 +116,8 @@ export function useFotosDelLote(pedir, loteId) {
   const fotos = Object.fromEntries(Object.entries(estado.porNumero).map(([numero, { foto }]) => [numero, foto]));
   return {
     cargada: estado.cargada, cargando: estado.respondida !== recargas, error: estado.error, fotos,
-    muestra: estado.muestra, estado: estado.estado, recargar, confirmada, vistaFallida,
+    muestra: estado.muestra, estado: estado.estado, motivoDevolucion: estado.motivoDevolucion,
+    repeticiones: estado.repeticiones, porcentajeMaxDudosos: estado.porcentajeMaxDudosos, recargar, confirmada,
+    vistaFallida,
   };
 }
