@@ -145,7 +145,7 @@ def test_pruebas_de_python_del_generador_y_del_servicio_de_ia(tmp_path):
                        'ia-servicio/pruebas/test_ejemplo.py:15: test_sin_marca no tiene @pytest.mark.caso con su marca']
 
 
-@pytest.mark.caso('RP-13 · las marcas de las pruebas del servicio de IA citan códigos que existen, como D-18, D-40 y D-48')
+@pytest.mark.caso('RP-13 · las marcas del servicio de IA citan códigos que existen, como D-18, D-40 y D-48')
 def test_marcas_del_servicio_de_ia():
     pruebas, errores = buscar_pruebas(RAIZ)
     del_servicio = [p for p in pruebas if p.archivo.startswith('ia-servicio/pruebas/')]

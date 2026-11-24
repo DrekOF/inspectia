@@ -252,8 +252,7 @@ class ClasificadorQueEspera:
         return [a_clasificacion(0.9, 0.1) for _ in recortes_rgb]
 
 
-@pytest.mark.caso('RNF-01 · el servicio lee, revisa y clasifica a lo sumo 2 fotos o análisis a la vez, para no pasar '
-                  'de su memoria')
+@pytest.mark.caso('RNF-01 · el servicio lee, revisa y clasifica a lo sumo 2 fotos o análisis a la vez')
 def test_a_lo_sumo_dos_trabajos_a_la_vez(configuracion):
     lento = ClasificadorQueEspera()
     app = crear_app(configuracion, obtener=lambda _e: Path('m'), cargar=lambda _c: lento)

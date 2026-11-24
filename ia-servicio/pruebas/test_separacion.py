@@ -203,13 +203,12 @@ def test_rechaza_una_foto_de_mas_de_120_megapixeles(lado):
         leer_foto(_png_en_blanco(lado, lado))
 
 
-@pytest.mark.caso('RF-07 · límite de D-09: dos granos pegados de 0,88 veces la mediana suman menos del doble y cuentan '
-                  'como un solo grano')
+@pytest.mark.caso('RF-07 · límite de D-09: dos granos chicos pegados (1,77 veces la mediana) cuentan como uno')
 def test_limite_de_d09_con_granos_pequenos_pegados():
     """Documenta el límite de la regla de D-09 («el doble de la mediana») con granos de tamaños variados (P-12).
 
-    Dos granos pequeños que se tocan forman una región de 1,77 veces la mediana (medido): no llega al doble, así que la
-    foto se aprueba y la pareja se cuenta (y se clasificaría) como un solo grano. Si la regla cambia, esta prueba
+    Dos granos pequeños que se tocan forman una región de 1,77 veces la mediana (medido): no llega al doble, así que
+    la foto se aprueba y la pareja se cuenta (y se clasificaría) como un solo grano. Si la regla cambia, esta prueba
     debe cambiar con ella.
     """
     lienzo = papel()

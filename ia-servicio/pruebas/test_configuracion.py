@@ -12,8 +12,7 @@ import pytest
 from inspectia_ia.configuracion import Configuracion, desde_entorno
 
 
-@pytest.mark.caso('RNF-01 · el lote de clasificación por defecto es 16, para que 150 granos quepan en la memoria '
-                  'del contenedor')
+@pytest.mark.caso('RNF-01 · el lote de clasificación por defecto es 16, para que 150 granos quepan en memoria')
 def test_lote_de_clasificacion_por_defecto():
     assert Configuracion().lote_clasificacion == 16
     assert desde_entorno({}).lote_clasificacion == 16

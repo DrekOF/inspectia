@@ -191,8 +191,7 @@ def test_catalogo_del_repositorio():
     assert len(c.archivos()) == 11
 
 
-@pytest.mark.caso('D-48 · modelos.json trae para el modelo en uso el F1 publicado por Julián en su release, '
-                  'de 65 % o más (RNF-07)')
+@pytest.mark.caso('D-48 · modelos.json trae el F1 publicado por Julián para el modelo en uso, de 65 % o más')
 def test_el_modelo_en_uso_cumple_el_f1_minimo():
     """Lee el F1 macro copiado en ``modelos.json`` del README de Julián (D-48); no vuelve a medir el modelo con los
     334 granos del conjunto de prueba."""
