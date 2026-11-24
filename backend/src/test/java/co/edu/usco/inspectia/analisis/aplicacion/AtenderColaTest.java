@@ -4,9 +4,9 @@
  *              clasificador que recibe el contenido de las fotos, y los fallos que devuelven la muestra a pendiente
  *              (RNF-02 C3, RF-08).
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis.aplicacion;
 
@@ -23,6 +23,7 @@ import static org.mockito.Mockito.when;
 
 import co.edu.usco.inspectia.analisis.dominio.EstadoDeFoto;
 import co.edu.usco.inspectia.analisis.dominio.FormatoDeFoto;
+import co.edu.usco.inspectia.analisis.dominio.MotivoDeDevolucion;
 import java.io.UncheckedIOException;
 import java.nio.file.NoSuchFileException;
 import java.time.Clock;
@@ -112,6 +113,19 @@ class AtenderColaTest {
 
         verify(guardar, never()).guardar(any(), any());
         verify(guardar).devolver(TOMADA);
+    }
+
+    @Test
+    @DisplayName("RF-08 · C6 · si el servicio de IA no responde, la muestra vuelve a pendiente con el motivo «Sin respuesta del servicio de IA» y sin resultado")
+    void servicioSinRespuesta() {
+        when(cola.tomarLaSiguiente(any())).thenReturn(Optional.of(TOMADA));
+        when(clasificador.clasificar(any())).thenThrow(new SinRespuestaDeLaIaExcepcion("tiempo agotado", null));
+
+        assertThat(atender.atenderUna()).isTrue();
+
+        verify(guardar, never()).guardar(any(), any());
+        verify(guardar).devolver(TOMADA, MotivoDeDevolucion.SIN_RESPUESTA_DE_LA_IA);
+        verify(guardar, never()).devolver(TOMADA);
     }
 
     @Test

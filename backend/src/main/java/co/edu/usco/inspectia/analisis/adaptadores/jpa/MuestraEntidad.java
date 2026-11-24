@@ -3,13 +3,14 @@
  * Descripción: Entidad JPA de la tabla muestra (specs/entidades/muestra.json), del módulo de análisis (RF-05, RF-10,
  *              RNF-02, D-25).
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 package co.edu.usco.inspectia.analisis.adaptadores.jpa;
 
 import co.edu.usco.inspectia.analisis.dominio.EstadoDeMuestra;
+import co.edu.usco.inspectia.analisis.dominio.MotivoDeDevolucion;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -66,6 +67,11 @@ public class MuestraEntidad {
     @Enumerated(EnumType.STRING)
     @Column(name = "estado", nullable = false, length = 30)
     private EstadoDeMuestra estado;
+
+    /** Por qué la cola la devolvió a pendiente, sin resultado (RF-07, RF-08, D-44). */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "motivo_devolucion", length = 30)
+    private MotivoDeDevolucion motivoDevolucion;
 
     /** El modelo de IA que la analizó (RF-08). */
     @Column(name = "modelo_id")

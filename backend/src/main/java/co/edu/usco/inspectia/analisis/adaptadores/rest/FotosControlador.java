@@ -6,10 +6,11 @@
  * Fecha de creación: 23/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 package co.edu.usco.inspectia.analisis.adaptadores.rest;
 
+import co.edu.usco.inspectia.analisis.aplicacion.ConfirmarFoto;
 import co.edu.usco.inspectia.analisis.aplicacion.ConsultarFotos;
 import co.edu.usco.inspectia.analisis.aplicacion.SubirFotos;
 import co.edu.usco.inspectia.analisis.dominio.ReglasDeFotos;
@@ -54,16 +55,19 @@ public class FotosControlador {
     public static final String RUTA = LotesControlador.RUTA + "/{id}/fotos";
 
     private final SubirFotos subir;
+    private final ConfirmarFoto confirmar;
     private final ConsultarFotos consultar;
 
     /**
      * Crea el controlador; Spring le pasa los casos de uso.
      *
      * @param subir subir las fotos
+     * @param confirmar confirmar una foto subida y revisarla
      * @param consultar consultar las fotos
      */
-    public FotosControlador(SubirFotos subir, ConsultarFotos consultar) {
+    public FotosControlador(SubirFotos subir, ConfirmarFoto confirmar, ConsultarFotos consultar) {
         this.subir = subir;
+        this.confirmar = confirmar;
         this.consultar = consultar;
     }
 
@@ -131,7 +135,12 @@ public class FotosControlador {
             + "como al pedir el enlace), que la llave sea de este lote (400) y que su muestra siga siendo la que "
             + "recibe las fotos: si el lote cambió desde que se pidió el enlace, como una foto pedida para la muestra "
             + "1 que ya se analizó, responde 409 «el lote cambió» y no guarda nada ni crea la muestra 2. Después "
-            + "revisa que el archivo haya llegado completo y que sea JPG o PNG por dentro, y guarda la foto, cargada. "
+            + "revisa que el archivo haya llegado completo y que sea JPG o PNG por dentro, y guarda la foto. Con el "
+            + "servicio de IA, la revisa en seguida (nitidez, luz, granos pegados y cuántos granos tiene, D-46) y "
+            + "responde 200 con su estado nuevo: APROBADA con sus granos encontrados, o POR_REPETIR con su motivo "
+            + "(BORROSA, POCA_LUZ o GRANOS_PEGADOS, con las regiones de los granos pegados); no es un error HTTP, la "
+            + "foto queda guardada y se ve (RF-06, RF-07). Si el servicio no responde en 10 s o falla, o con el "
+            + "clasificador falso, responde CARGADA y la revisa la cola antes de clasificarla. "
             + "La primera foto crea la muestra: la 1, o la 2 en un lote analizado que sugiere otra muestra, sin tocar "
             + "las fotos ni los granos de la 1 (D-25). Una foto con el número de otra de la misma muestra la "
             + "reemplaza, y la anterior se borra. Confirmar dos veces la misma llave responde la misma foto. Rol: "
@@ -141,6 +150,7 @@ public class FotosControlador {
             @Max(value = ReglasDeFotos.MAXIMO_DE_FOTOS, message = "{validacion.maximo}") int numero,
             @Valid @RequestBody ConfirmacionDeFoto confirmacion,
             @Parameter(hidden = true) @AuthenticationPrincipal UsuarioEnSesion sesion) {
-        return FotoRespuesta.de(subir.confirmar(sesion.empresaId(), sesion.id(), id, numero, confirmacion.llave()));
+        return FotoRespuesta.de(confirmar.confirmar(sesion.empresaId(), sesion.id(), id, numero,
+                confirmacion.llave()));
     }
 }

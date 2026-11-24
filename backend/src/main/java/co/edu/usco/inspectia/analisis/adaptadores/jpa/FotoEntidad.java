@@ -1,10 +1,10 @@
 /*
  * Nombre: FotoEntidad.java
- * Descripción: Entidad JPA de la tabla foto (specs/entidades/foto.json), del módulo de análisis (RF-05).
+ * Descripción: Entidad JPA de la tabla foto (specs/entidades/foto.json), del módulo de análisis (RF-05, RF-06, D-46).
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis.adaptadores.jpa;
 
@@ -75,6 +75,10 @@ public class FotoEntidad {
     /** Motivo para repetirla; solo si está por repetir (RF-06, RF-07, RF-09). */
     @Column(name = "motivo", length = 30)
     private String motivo;
+
+    /** Los granos válidos que encontró su revisión; vacío mientras está cargada (RF-06, RF-07, D-46). */
+    @Column(name = "granos_encontrados")
+    private Integer granosEncontrados;
 
     /** Fecha de creación: la pone la base al insertar. */
     @Generated

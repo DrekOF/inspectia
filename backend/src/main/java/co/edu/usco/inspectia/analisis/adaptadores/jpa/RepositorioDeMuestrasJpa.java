@@ -1,39 +1,47 @@
 /*
  * Nombre: RepositorioDeMuestrasJpa.java
- * Descripción: El puerto RepositorioDeMuestras con JPA, sobre las tablas muestra, foto y grano (RF-05, RF-10, RNF-02,
- *              RNF-03).
+ * Descripción: El puerto RepositorioDeMuestras con JPA, sobre las tablas muestra, foto, grano y region_pegada (RF-05,
+ *              RF-06, RF-07, RF-09, RF-10, RNF-02, RNF-03, D-44, D-46).
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 package co.edu.usco.inspectia.analisis.adaptadores.jpa;
 
 import co.edu.usco.inspectia.analisis.aplicacion.AvanceDelAnalisis;
 import co.edu.usco.inspectia.analisis.aplicacion.FotoGuardada;
+import co.edu.usco.inspectia.analisis.aplicacion.FotoPorRepetir;
 import co.edu.usco.inspectia.analisis.aplicacion.GranoDeFoto;
 import co.edu.usco.inspectia.analisis.aplicacion.MuestraEnCurso;
 import co.edu.usco.inspectia.analisis.aplicacion.MuestraGuardada;
 import co.edu.usco.inspectia.analisis.aplicacion.MuestraTomada;
+import co.edu.usco.inspectia.analisis.aplicacion.Rectangulo;
 import co.edu.usco.inspectia.analisis.aplicacion.RepositorioDeMuestras;
+import co.edu.usco.inspectia.analisis.aplicacion.RevisionDeFoto;
 import co.edu.usco.inspectia.analisis.aplicacion.TerminoDeMuestra;
 import co.edu.usco.inspectia.analisis.dominio.ConteoDeMuestra;
 import co.edu.usco.inspectia.analisis.dominio.EstadoDeFoto;
 import co.edu.usco.inspectia.analisis.dominio.EstadoDeMuestra;
 import co.edu.usco.inspectia.analisis.dominio.FormatoDeFoto;
+import co.edu.usco.inspectia.analisis.dominio.MotivoDeDevolucion;
+import co.edu.usco.inspectia.analisis.dominio.MotivoDeFoto;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 
 /**
- * El puerto {@link RepositorioDeMuestras} con JPA, sobre las tablas {@code muestra}, {@code foto} y {@code grano}.
- * Terminar y devolver una muestra son {@code UPDATE} con una condición sobre su estado y su hora de inicio: así nunca
- * se guarda el resultado de una muestra que otra ejecución ya tomó.
+ * El puerto {@link RepositorioDeMuestras} con JPA, sobre las tablas {@code muestra}, {@code foto} y {@code grano}, y
+ * con SQL sobre {@code region_pegada} ({@link RegionesPegadasJdbc}). Terminar, devolver una muestra y pedir que repita
+ * una foto son {@code UPDATE} con una condición sobre su estado y su hora de inicio: así nunca se guarda el resultado
+ * de una muestra que otra ejecución ya tomó.
  */
 @Component
 public class RepositorioDeMuestrasJpa implements RepositorioDeMuestras {
@@ -41,18 +49,22 @@ public class RepositorioDeMuestrasJpa implements RepositorioDeMuestras {
     private final MuestrasJpa muestras;
     private final FotosJpa fotos;
     private final GranosJpa granos;
+    private final RegionesPegadasJdbc regiones;
 
     /**
-     * Crea el adaptador; Spring le pasa los repositorios de Spring Data.
+     * Crea el adaptador; Spring le pasa los repositorios de Spring Data y el de las regiones.
      *
      * @param muestras la tabla {@code muestra}
      * @param fotos la tabla {@code foto}
      * @param granos la tabla {@code grano}
+     * @param regiones la tabla {@code region_pegada}
      */
-    public RepositorioDeMuestrasJpa(MuestrasJpa muestras, FotosJpa fotos, GranosJpa granos) {
+    public RepositorioDeMuestrasJpa(MuestrasJpa muestras, FotosJpa fotos, GranosJpa granos,
+            RegionesPegadasJdbc regiones) {
         this.muestras = muestras;
         this.fotos = fotos;
         this.granos = granos;
+        this.regiones = regiones;
     }
 
     @Override
@@ -112,7 +124,8 @@ public class RepositorioDeMuestrasJpa implements RepositorioDeMuestras {
         return muestras.delLote(empresaId, loteId).stream().findFirst()
                 .map(muestra -> AvanceDelAnalisis.de(muestra.getNumero(), muestra.getEstado(),
                         instante(muestra.getFechaEnvio()), instante(muestra.getFechaInicio()),
-                        instante(muestra.getFechaFin())));
+                        instante(muestra.getFechaFin()), muestra.getMotivoDevolucion(), muestra.getRepeticiones(),
+                        porRepetir(empresaId, muestra)));
     }
 
     @Override
@@ -123,6 +136,7 @@ public class RepositorioDeMuestrasJpa implements RepositorioDeMuestras {
         muestra.setEstado(EstadoDeMuestra.EN_ESPERA);
         muestra.setUsuarioId(usuarioId);
         muestra.setFechaEnvio(fecha(fechaEnvio));
+        muestra.setMotivoDevolucion(null);
         muestra.setFechaInicio(null);
         muestra.setFechaFin(null);
         muestras.saveAndFlush(muestra);
@@ -138,8 +152,41 @@ public class RepositorioDeMuestrasJpa implements RepositorioDeMuestras {
 
     @Override
     public boolean devolver(MuestraTomada muestra) {
-        return muestras.cambiarEstado(muestra.empresaId(), muestra.id(), EstadoDeMuestra.EN_PROCESO,
-                fecha(muestra.fechaInicio()), EstadoDeMuestra.PENDIENTE) == 1;
+        return devolver(muestra, null);
+    }
+
+    @Override
+    public boolean devolver(MuestraTomada muestra, MotivoDeDevolucion motivo) {
+        return muestras.devolver(muestra.empresaId(), muestra.id(), EstadoDeMuestra.EN_PROCESO,
+                fecha(muestra.fechaInicio()), EstadoDeMuestra.PENDIENTE, motivo) == 1;
+    }
+
+    @Override
+    public boolean pedirRepeticion(MuestraTomada muestra, BigDecimal umbralConfianzaBaja,
+            BigDecimal porcentajeMaxDudosos) {
+        return muestras.pedirRepeticion(muestra.empresaId(), muestra.id(), EstadoDeMuestra.EN_PROCESO,
+                fecha(muestra.fechaInicio()), EstadoDeMuestra.PENDIENTE, umbralConfianzaBaja,
+                porcentajeMaxDudosos) == 1;
+    }
+
+    /** Actualiza la foto con una sentencia y después reemplaza sus regiones con SQL, en la misma transacción. */
+    @Override
+    public void guardarRevision(UUID empresaId, UUID fotoId, RevisionDeFoto revision) {
+        fotos.guardarRevision(empresaId, fotoId, revision.estado(),
+                revision.motivo() == null ? null : revision.motivo().name(), revision.granosEncontrados());
+        regiones.reemplazar(empresaId, fotoId, revision.regionesPegadas());
+    }
+
+    @Override
+    public Map<UUID, List<Rectangulo>> regionesPegadas(UUID empresaId, Collection<UUID> fotoIds) {
+        return regiones.deLasFotos(empresaId, fotoIds);
+    }
+
+    @Override
+    public void borrarGranos(UUID empresaId, Collection<UUID> fotoIds) {
+        if (!fotoIds.isEmpty()) {
+            granos.borrarDeLasFotos(empresaId, fotoIds);
+        }
     }
 
     /**
@@ -190,13 +237,24 @@ public class RepositorioDeMuestrasJpa implements RepositorioDeMuestras {
                 .toList();
     }
 
+    /** Las fotos por repetir de la muestra, por número: a lo sumo 3 filas de la misma muestra. */
+    private List<FotoPorRepetir> porRepetir(UUID empresaId, MuestraEntidad muestra) {
+        return fotos.deLaMuestra(empresaId, muestra.getId()).stream()
+                .filter(foto -> foto.getEstado() == EstadoDeFoto.POR_REPETIR && foto.getMotivo() != null)
+                .map(foto -> new FotoPorRepetir(foto.getNumero(), MotivoDeFoto.valueOf(foto.getMotivo())))
+                .toList();
+    }
+
     private static MuestraEnCurso enCurso(MuestraEntidad muestra) {
-        return new MuestraEnCurso(muestra.getId(), muestra.getNumero(), muestra.getEstado());
+        return new MuestraEnCurso(muestra.getId(), muestra.getNumero(), muestra.getEstado(),
+                muestra.getMotivoDevolucion(), muestra.getRepeticiones() == null ? 0 : muestra.getRepeticiones(),
+                muestra.getUmbralConfianzaBaja(), muestra.getPorcentajeMaxDudosos());
     }
 
     private static FotoGuardada guardada(FotoEntidad foto) {
         return new FotoGuardada(foto.getId(), foto.getNumero(), foto.getRuta(), foto.getFormato(),
-                foto.getTamanoBytes(), foto.getEstado());
+                foto.getTamanoBytes(), foto.getEstado(),
+                foto.getMotivo() == null ? null : MotivoDeFoto.valueOf(foto.getMotivo()), foto.getGranosEncontrados());
     }
 
     private static OffsetDateTime fecha(Instant instante) {
