@@ -1,11 +1,11 @@
 # Nombre: test_separacion.py
 # Descripción: Pruebas de la separación de los granos y de la revisión rápida con fotos sintéticas: 50 granos
-#              separados, granos pegados, cortados por el borde, borrosa, oscura, posiciones y orientación EXIF
-#              (RF-06, RF-07, D-09, D-45, D-46).
+#              separados, granos pegados, cortados por el borde, borrosa, oscura, posiciones, orientación EXIF y
+#              el tope de 120 megapíxeles (RF-06, RF-07, D-09, D-45, D-46).
 # Fecha de creación: 24/11/2026
 # Actualización: 24/11/2026
 # Autor: Equipo InspectIA
-# Versión: 1.0
+# Versión: 1.1
 """Pruebas de ``inspectia_ia.separacion`` y de ``inspectia_ia.imagen``."""
 
 import io
@@ -17,7 +17,7 @@ from PIL import Image
 
 from conftest import ALTO, ANCHO, EJES, centros_en_cuadricula, foto_con_granos, jpg
 from inspectia_ia.configuracion import Umbrales
-from inspectia_ia.imagen import ImagenInvalida, leer_foto
+from inspectia_ia.imagen import MAX_MEGAPIXELES, ImagenInvalida, abrir_foto, leer_foto
 from inspectia_ia.separacion import (APROBADA, BORROSA, GRANOS_PEGADOS, POCA_LUZ, POR_REPETIR, recortar,
                                      revisar)
 
@@ -180,3 +180,24 @@ def test_acepta_png():
     ok, datos = cv2.imencode('.png', foto)
     assert ok
     assert len(revisar(leer_foto(datos.tobytes()), U).granos) == 10
+
+
+def _png_en_blanco(ancho, alto):
+    """Un PNG de 1 bit, todo en negro: ocupa poco en disco aunque tenga muchos megapíxeles."""
+    datos = io.BytesIO()
+    Image.new('1', (ancho, alto)).save(datos, 'PNG')
+    return datos.getvalue()
+
+
+@pytest.mark.caso('RF-06 · una foto de hasta 120 megapíxeles se puede abrir (el tope de Pillow era de 89)')
+def test_abre_una_foto_de_100_megapixeles():
+    with abrir_foto(_png_en_blanco(10_000, 10_000)) as abierta:
+        assert abierta.size == (10_000, 10_000)
+    assert MAX_MEGAPIXELES == 120
+
+
+@pytest.mark.caso('RF-06 · una foto de más de 120 megapíxeles no se puede revisar y dice el máximo')
+@pytest.mark.parametrize('lado', [11_000, 16_000])
+def test_rechaza_una_foto_de_mas_de_120_megapixeles(lado):
+    with pytest.raises(ImagenInvalida, match='120 megapíxeles'):
+        leer_foto(_png_en_blanco(lado, lado))
