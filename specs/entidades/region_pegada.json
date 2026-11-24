@@ -1,0 +1,62 @@
+{
+  "_header": {
+    "nombre": "region_pegada.json",
+    "descripcion": "Entidad region_pegada: dónde están los granos pegados de una foto. Entrada del generador (RP-23); formato en specs/entidades/README.md.",
+    "fecha_creacion": "24/11/2026",
+    "actualizacion": "24/11/2026",
+    "autor": "Equipo InspectIA",
+    "version": "1.0"
+  },
+  "entidad": "region_pegada",
+  "clase": "RegionPegada",
+  "descripcion": "Región de una foto con granos pegados: un área de al menos el doble de la mediana de los granos de esa foto (RF-07, D-09). Es un rectángulo sin rotación, en píxeles de la foto ya girada según su orientación EXIF, que es como la muestra el navegador (D-45). La guarda la revisión rápida de la foto (D-46), sirve para mostrar dónde están mientras la foto está por repetir y se borra con la foto (RF-05, D-45). La maneja el módulo analisis del backend, escrito a mano (D-21).",
+  "etiquetas": {
+    "es": { "singular": "Región de granos pegados", "plural": "Regiones de granos pegados" },
+    "en": { "singular": "Touching-beans region", "plural": "Touching-beans regions" }
+  },
+  "fichas": ["RF-07", "RF-06", "D-09", "D-45", "D-46"],
+  "crud": false,
+  "por_empresa": "si",
+  "atributos": [
+    {
+      "nombre": "foto_id",
+      "tipo": "referencia",
+      "referencia": { "entidad": "foto", "al_borrar": "cascada" },
+      "obligatorio": true,
+      "etiquetas": { "es": "Foto", "en": "Photo" },
+      "fichas": ["RF-07", "RF-05"]
+    },
+    {
+      "nombre": "x",
+      "tipo": "entero",
+      "obligatorio": true,
+      "validaciones": { "min": 0 },
+      "etiquetas": { "es": "Posición x (px)", "en": "X position (px)" },
+      "fichas": ["RF-07"]
+    },
+    {
+      "nombre": "y",
+      "tipo": "entero",
+      "obligatorio": true,
+      "validaciones": { "min": 0 },
+      "etiquetas": { "es": "Posición y (px)", "en": "Y position (px)" },
+      "fichas": ["RF-07"]
+    },
+    {
+      "nombre": "ancho",
+      "tipo": "entero",
+      "obligatorio": true,
+      "validaciones": { "min": 1 },
+      "etiquetas": { "es": "Ancho (px)", "en": "Width (px)" },
+      "fichas": ["RF-07"]
+    },
+    {
+      "nombre": "alto",
+      "tipo": "entero",
+      "obligatorio": true,
+      "validaciones": { "min": 1 },
+      "etiquetas": { "es": "Alto (px)", "en": "Height (px)" },
+      "fichas": ["RF-07"]
+    }
+  ]
+}

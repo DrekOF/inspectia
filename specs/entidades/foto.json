@@ -3,18 +3,18 @@
     "nombre": "foto.json",
     "descripcion": "Entidad foto: las fotos de cada muestra, guardadas en S3. Entrada del generador (RP-23); formato en specs/entidades/README.md.",
     "fecha_creacion": "13/10/2026",
-    "actualizacion": "13/10/2026",
+    "actualizacion": "24/11/2026",
     "autor": "Equipo InspectIA",
-    "version": "1.0"
+    "version": "1.1"
   },
   "entidad": "foto",
   "clase": "Foto",
-  "descripcion": "Foto de una muestra, guardada en S3. Una foto rechazada o reemplazada se borra de la base de datos y de S3, con sus granos (RF-05). La maneja el módulo analisis del backend, escrito a mano (D-21).",
+  "descripcion": "Foto de una muestra, guardada en S3. Al confirmarla, la revisión rápida del servicio de IA la deja «Aprobada» o «Por repetir», con su motivo y cuántos granos encontró; si el servicio no responde, queda «Cargada» y se revisa en la cola (D-46). Una foto rechazada o reemplazada se borra de la base de datos y de S3, con sus granos y sus regiones de granos pegados (RF-05, D-45). La maneja el módulo analisis del backend, escrito a mano (D-21).",
   "etiquetas": {
     "es": { "singular": "Foto", "plural": "Fotos" },
     "en": { "singular": "Photo", "plural": "Photos" }
   },
-  "fichas": ["RF-05", "RF-06", "RF-07", "RF-09", "RF-11"],
+  "fichas": ["RF-05", "RF-06", "RF-07", "RF-09", "RF-11", "D-45", "D-46"],
   "crud": false,
   "por_empresa": "si",
   "atributos": [
@@ -99,6 +99,14 @@
       ],
       "etiquetas": { "es": "Motivo para repetir", "en": "Reason to retake" },
       "fichas": ["RF-06", "RF-07", "RF-09"]
+    },
+    {
+      "nombre": "granos_encontrados",
+      "tipo": "entero",
+      "obligatorio": false,
+      "validaciones": { "min": 0 },
+      "etiquetas": { "es": "Granos encontrados", "en": "Beans found" },
+      "fichas": ["RF-06", "RF-07", "D-46"]
     }
   ],
   "unicos": [
@@ -113,6 +121,12 @@
       "sql": "(estado = 'POR_REPETIR') = (motivo IS NOT NULL)",
       "descripcion": "Solo una foto por repetir tiene motivo.",
       "fichas": ["RF-06", "RF-07", "RF-09"]
+    },
+    {
+      "nombre": "foto_granos_solo_si_revisada",
+      "sql": "estado <> 'CARGADA' OR granos_encontrados IS NULL",
+      "descripcion": "Una foto que el servicio de IA todavía no revisó no tiene conteo de granos (D-46).",
+      "fichas": ["RF-06", "RF-07", "D-46"]
     }
   ]
 }

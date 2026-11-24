@@ -3,11 +3,11 @@
  * Descripción: Pruebas de integración del resultado del análisis: el corregido y su margen guardados con el lote, la
  *              muestra con sus conteos y su modelo, los recall del modelo de la muestra, los rangos de la empresa, el
  *              detalle sin recalcular para los dos roles y los granos sin la confianza (RF-10 C6 y C13, RF-11 C4,
- *              RF-12 C9, RF-13 C2, RF-14 C3).
+ *              RF-12 C9, RF-13 C2, RF-14 C3). Los modelos en uso llevan sus 11 métricas (P-02, D-48).
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis;
 
@@ -18,6 +18,7 @@ import static co.edu.usco.inspectia.analisis.ApiAnalisis.muestras;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import co.edu.usco.inspectia.ConfiguracionContenedores;
+import co.edu.usco.inspectia.ModeloDeLaComparacion;
 import co.edu.usco.inspectia.PruebaIntegracion;
 import co.edu.usco.inspectia.analisis.aplicacion.AtenderCola;
 import co.edu.usco.inspectia.analisis.aplicacion.ModeloUsado;
@@ -198,14 +199,12 @@ class ResultadoDelAnalisisIT {
     @Test
     @DisplayName("RF-10 · C13 · la corrección usa los recall del modelo que analizó la muestra: con ResNet-50, 87 de 100 dan 99,0 %, y si cambia el modelo en uso el lote conserva su porcentaje")
     void recallDelModeloDeLaMuestra() {
-        UUID resnet = jdbc.queryForObject("INSERT INTO modelo (nombre, version, recall_sano, recall_no_sano, en_uso) "
-                + "VALUES ('ResNet-50', '1.0', 87.40, 52.10, true) RETURNING id", UUID.class);
-        clasificador.conModelo(new ModeloUsado("ResNet-50", "1.0"));
+        UUID resnet = ModeloDeLaComparacion.RESNET_50.insertar(jdbc, true);
+        clasificador.conModelo(new ModeloUsado(ModeloDeLaComparacion.RESNET_50.nombre(), "1.0"));
         analizar(lote, SEIS_NO_SANOS, SIETE_NO_SANOS);
 
         jdbc.update("UPDATE modelo SET en_uso = false WHERE id = ?", resnet);
-        jdbc.update("INSERT INTO modelo (nombre, version, recall_sano, recall_no_sano, en_uso) "
-                + "VALUES ('EfficientNet-B0', '1.0', 91.20, 53.40, true)");
+        ModeloDeLaComparacion.EFFICIENTNET_B0.insertar(jdbc, true);
         Map<String, Object> resultado = analisis.resultadoOk(tokenDeLuis, lote);
 
         assertThat(jdbc.queryForObject("SELECT modelo_id FROM muestra WHERE lote_id = ?", UUID.class, lote))

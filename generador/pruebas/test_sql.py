@@ -1,17 +1,21 @@
 # Nombre: test_sql.py
 # Descripción: Pruebas del esquema SQL que genera el generador desde specs/entidades.
 # Fecha de creación: 13/10/2026
-# Actualización: 26/10/2026
+# Actualización: 24/11/2026
 # Autor: Equipo InspectIA
-# Versión: 1.1
+# Versión: 1.2
 """Pruebas del script de creación de las tablas (migración V1 de Flyway)."""
 
 import re
+import sys
 
 import pytest
 
-from conftest import RUTA_MIGRACION
+from conftest import GENERADOR, RUTA_MIGRACION
+from inspectia_generador import VERSION
 from inspectia_generador.generacion import generar_archivos
+
+RUTA_TEXTOS = 'backend/src/generated/resources/i18n/generado.properties'
 
 
 @pytest.fixture
@@ -20,20 +24,20 @@ def sql(entidades):
     return archivos[RUTA_MIGRACION]
 
 
-@pytest.mark.caso('RP-15 · el esquema crea las 8 tablas en orden de dependencias')
+@pytest.mark.caso('RP-15 · el esquema crea las 9 tablas en orden de dependencias')
 def test_crea_las_tablas_en_orden(sql):
     tablas = re.findall(r'^CREATE TABLE (\w+) \($', sql, re.M)
 
     assert tablas == ['empresa', 'modelo', 'rango_recomendacion', 'usuario',
-                      'lote', 'muestra', 'foto', 'grano']
+                      'lote', 'muestra', 'foto', 'grano', 'region_pegada']
 
 
 @pytest.mark.caso('RP-15 · cada tabla tiene id UUID v7, fechas y el trigger de fecha_actualizacion')
 def test_columnas_comunes_y_triggers(sql):
-    assert sql.count('    id uuid NOT NULL DEFAULT uuidv7(),') == 8
-    assert sql.count('    fecha_creacion timestamptz NOT NULL DEFAULT now(),') == 8
-    assert sql.count('    fecha_actualizacion timestamptz NOT NULL DEFAULT now(),') == 8
-    assert len(re.findall(r'^CREATE TRIGGER \w+_fecha_actualizacion BEFORE UPDATE', sql, re.M)) == 8
+    assert sql.count('    id uuid NOT NULL DEFAULT uuidv7(),') == 9
+    assert sql.count('    fecha_creacion timestamptz NOT NULL DEFAULT now(),') == 9
+    assert sql.count('    fecha_actualizacion timestamptz NOT NULL DEFAULT now(),') == 9
+    assert len(re.findall(r'^CREATE TRIGGER \w+_fecha_actualizacion BEFORE UPDATE', sql, re.M)) == 9
 
 
 @pytest.mark.caso('RP-15 · las listas, patrones y CHECK de los JSON salen como restricciones')
@@ -88,3 +92,37 @@ def test_nombres_caben_en_postgresql(sql):
 
     assert nombres
     assert max(len(n) for n in nombres) <= 63
+
+
+def _header(contenido):
+    """Las líneas del header de un archivo generado: hasta la primera línea en blanco."""
+    return contenido.split('\n\n', 1)[0].split('\n')
+
+
+@pytest.mark.caso('RP-10 · el header de V1 lleva la versión de su plantilla sql/esquema.sql.j2, leída de su header, '
+                  'y no la del generador (D-49)')
+def test_header_con_la_version_de_la_plantilla(sql):
+    plantilla = (GENERADOR / 'plantillas' / 'sql' / 'esquema.sql.j2').read_text(encoding='utf-8')
+    version = re.search(r'^[ \t]*Versión:[ \t]*(\S+)', plantilla.split('#}', 1)[0], re.M)[1]
+
+    header = _header(sql)
+
+    assert f'-- Versión: {version}' in header
+    assert ('-- Autor: Equipo InspectIA (generado por generador/ con la plantilla sql/esquema.sql.j2 '
+            f'v{version})') in header
+
+
+@pytest.mark.caso('RP-10 · cambiar la versión del generador no cambia V1, y sí el header de los demás archivos '
+                  'generados (D-49)')
+def test_la_version_del_generador_no_cambia_v1(entidades, monkeypatch):
+    antes = {a.ruta: a.contenido for a in generar_archivos(entidades)}
+    # Cada módulo del generador que importó VERSION tiene su propia copia: se cambian todas.
+    for nombre, modulo in list(sys.modules.items()):
+        if nombre.split('.')[0] == 'inspectia_generador' and getattr(modulo, 'VERSION', None) == VERSION:
+            monkeypatch.setattr(modulo, 'VERSION', '99.0')
+
+    despues = {a.ruta: a.contenido for a in generar_archivos(entidades)}
+
+    assert despues[RUTA_MIGRACION] == antes[RUTA_MIGRACION]
+    assert '# Versión: 99.0' in _header(despues[RUTA_TEXTOS])
+    assert despues[RUTA_TEXTOS] != antes[RUTA_TEXTOS]

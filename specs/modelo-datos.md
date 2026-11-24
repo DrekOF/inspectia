@@ -2,14 +2,14 @@
 Nombre: modelo-datos.md
 Descripción: Modelo de datos de InspectIA: diagrama entidad-relación, tablas con su trazabilidad a las fichas y decisiones de diseño.
 Fecha de creación: 13/10/2026
-Actualización: 23/11/2026
+Actualización: 24/11/2026
 Autor: Equipo InspectIA
-Versión: 1.10
+Versión: 1.11
 -->
 
 # Modelo de datos de InspectIA
 
-Este documento explica las 8 tablas de InspectIA y de qué ficha sale cada atributo. La definición que usa el generador está en `specs/entidades/*.json` (formato en su README): si cambia un JSON, este documento se actualiza en el mismo PR.
+Este documento explica las 9 tablas de InspectIA y de qué ficha sale cada atributo. La definición que usa el generador está en `specs/entidades/*.json` (formato en su README): si cambia un JSON, este documento se actualiza en el mismo PR.
 
 ## 1. Diagrama entidad-relación
 
@@ -26,6 +26,7 @@ erDiagram
     modelo |o--o{ muestra : "clasifica"
     muestra ||--o{ foto : "tiene 2 o 3"
     foto ||--o{ grano : "contiene"
+    foto ||--o{ region_pegada : "tiene"
 
     empresa {
         uuid id PK
@@ -67,6 +68,8 @@ erDiagram
         varchar categoria
         varchar recomendacion
         boolean sugerir_otra_muestra
+        numeric limite_sugerencia
+        varchar categoria_del_limite
         boolean aviso_confianza_baja
         timestamptz fecha_resultado
         varchar reporte_ruta
@@ -78,6 +81,7 @@ erDiagram
         integer numero "1 o 2"
         uuid usuario_id FK
         varchar estado
+        varchar motivo_devolucion
         uuid modelo_id FK
         integer total_granos
         integer granos_sanos
@@ -99,6 +103,7 @@ erDiagram
         integer tamano_bytes
         varchar estado
         varchar motivo
+        integer granos_encontrados
     }
     grano {
         uuid id PK
@@ -111,6 +116,15 @@ erDiagram
         varchar clase
         numeric confianza
     }
+    region_pegada {
+        uuid id PK
+        uuid empresa_id FK
+        uuid foto_id FK
+        integer x
+        integer y
+        integer ancho
+        integer alto
+    }
     modelo {
         uuid id PK
         varchar nombre "único con version"
@@ -121,6 +135,12 @@ erDiagram
         numeric recall_macro
         numeric recall_sano
         numeric recall_no_sano
+        numeric precision_sano
+        numeric precision_no_sano
+        integer sanos_como_sanos
+        integer sanos_como_no_sanos
+        integer no_sanos_como_sanos
+        integer no_sanos_como_no_sanos
         numeric tiempo_por_grano_ms
         boolean en_uso
     }
@@ -214,6 +234,8 @@ En las tablas, «Oblig.» dice si el campo es obligatorio y «Único» si no se 
 | categoria | lista de rango_recomendacion | Con resultado | — | RF-12, RF-13 |
 | recomendacion | varchar(300), copia del texto del rango | Con resultado | — | RF-12, RF-13 |
 | sugerir_otra_muestra | boolean | Con resultado | — | RF-12, D-24, D-25 |
+| limite_sugerencia | numeric(4,1), el límite de la empresa a menos de 1 punto, copiado del rango | Solo si sugiere otra muestra | — | RF-12, D-24, D-47 |
+| categoria_del_limite | lista de rango_recomendacion, la categoría de ese límite; nunca Fuera de norma | Solo si sugiere otra muestra | — | RF-12, RF-13, D-47 |
 | aviso_confianza_baja | boolean | Con resultado | — | RF-09, D-25 |
 | fecha_resultado | timestamptz | Con resultado | — | RF-14 a RF-16 |
 | reporte_ruta | varchar(255), llave del PDF en S3 | No | — | RF-15, D-25 |
@@ -222,6 +244,7 @@ En las tablas, «Oblig.» dice si el campo es obligatorio y «Único» si no se 
 - El resultado es del lote. Con 2 muestras sale de la suma de sus granos (D-25).
 - Cuando termina la segunda muestra, el resultado se recalcula con los rangos vigentes y el PDF anterior se borra, para rehacerlo (RF-15).
 - `porcentaje_sanos` es el porcentaje corregido (D-39) y `margen`, su margen (P-19), los dos redondeados a un decimal. La página muestra el rango probable con los dos (D-43). El porcentaje contado no se guarda: sale de los conteos de las muestras.
+- El aviso de la sugerencia sale del porcentaje y del límite guardados: «El resultado quedó a 0,9 puntos del límite de Estándar (90 %).». Si dos límites quedan a menos de 1 punto, cuenta el más cercano y, en empate, el más alto. Un CHECK exige el límite y su categoría si y solo si `sugerir_otra_muestra` es verdadero; con 2 muestras no hay sugerencia, así que quedan vacíos (D-47).
 
 ### 3.5 muestra
 
@@ -232,11 +255,12 @@ En las tablas, «Oblig.» dice si el campo es obligatorio y «Único» si no se 
 | numero | integer, 1 o 2 | Sí | (con lote_id) | D-25 |
 | usuario_id | uuid, FK a usuario (quién la hizo) | Sí | — | RF-14, RF-15 |
 | estado | lista: PENDIENTE, EN_ESPERA, EN_PROCESO, TERMINADA | Sí | — | RF-12, RF-14, RNF-02 |
+| motivo_devolucion | lista: POCOS_GRANOS, SIN_RESPUESTA_DE_LA_IA | Solo si volvió a pendiente después de enviarse | — | RF-07, RF-08, D-44 |
 | modelo_id | uuid, FK a modelo | Al terminar | — | RF-08, RF-15 |
 | total_granos | integer, mínimo 100 y sin máximo | Al terminar | — | RF-07, RF-10, D-26 |
 | granos_sanos | integer, no más que el total | Al terminar | — | RF-10 |
 | aviso_confianza_baja | boolean | Al terminar | — | RF-09, D-25 |
-| repeticiones | integer, de 0 a 2, por defecto 0 | Sí | — | RF-09 |
+| repeticiones | integer, de 0 a 2, por defecto 0; cuenta solo las repeticiones que pide RF-09 por granos dudosos: las fotos rechazadas al subirlas (RF-06, RF-07) y las reemplazadas a mano no cuentan | Sí | — | RF-09 |
 | umbral_confianza_baja | numeric(5,2), copia del parámetro | Al terminar | — | RF-09, P-15 |
 | porcentaje_max_dudosos | numeric(4,1), copia del parámetro | Al terminar | — | RF-09, P-15 |
 | fecha_envio | timestamptz | Desde EN_ESPERA | — | RNF-01, RNF-02 |
@@ -244,7 +268,7 @@ En las tablas, «Oblig.» dice si el campo es obligatorio y «Único» si no se 
 | fecha_fin | timestamptz | Al terminar | — | RNF-01 |
 
 - «Al terminar»: obligatorio cuando el estado es TERMINADA (CHECK).
-- Una muestra pasa de PENDIENTE (captura de fotos) a EN_ESPERA cuando el usuario envía las fotos, a EN_PROCESO cuando el servidor la atiende y a TERMINADA con el resultado. Si hay que repetir una foto (RF-06, RF-07, RF-09) o el servicio de IA no responde (RF-08), vuelve a PENDIENTE sin guardar un resultado incompleto.
+- Una muestra pasa de PENDIENTE (captura de fotos) a EN_ESPERA cuando el usuario envía las fotos, a EN_PROCESO cuando el servidor la atiende y a TERMINADA con el resultado. Si hay que repetir una foto (RF-06, RF-07, RF-09) o el servicio de IA no responde (RF-08), vuelve a PENDIENTE sin guardar un resultado incompleto. Si volvió por tener menos de 100 granos (RF-07 C3) o porque el servicio de IA no respondió (RF-08 C6), `motivo_devolucion` dice por qué; si fue por una foto, el motivo va en la foto. Al enviarla de nuevo se borra (CHECK, D-44).
 - La segunda muestra solo se crea si el lote tiene `sugerir_otra_muestra` y una sola muestra (D-25).
 - Las muestras EN_ESPERA forman la cola de análisis: se atienden por `fecha_envio` (RNF-02 C3), con el índice `(estado, fecha_envio)`.
 
@@ -260,8 +284,10 @@ En las tablas, «Oblig.» dice si el campo es obligatorio y «Único» si no se 
 | tamano_bytes | integer, hasta 10 MB (10.485.760 bytes) | Sí | — | RF-05 |
 | estado | lista: CARGADA, APROBADA, POR_REPETIR | Sí | — | RF-06, RF-07, RF-09 |
 | motivo | lista: BORROSA, POCA_LUZ, GRANOS_PEGADOS, GRANOS_DUDOSOS | Solo si POR_REPETIR | — | RF-06, RF-07, RF-09 |
+| granos_encontrados | integer, desde 0: los granos que encontró la revisión rápida | Vacío mientras está CARGADA | — | RF-06, RF-07, D-46 |
 
-- Cuando llega la foto nueva, la rechazada o reemplazada se borra de la base y de S3, con sus granos. La nueva toma su mismo número (RF-05, RF-09).
+- La revisión va en dos tiempos (D-46): al confirmar la foto, la revisión rápida del servicio de IA (nitidez, luz, granos pegados y cuántos granos tiene) la deja APROBADA o POR_REPETIR, con su motivo, cuántos granos encontró y sus regiones de granos pegados (D-45); si el servicio no responde, queda CARGADA y la cola la revisa antes de clasificar. Una foto CARGADA no tiene conteo (CHECK).
+- Cuando llega la foto nueva, la rechazada o reemplazada se borra de la base y de S3, con sus granos y sus regiones de granos pegados. La nueva toma su mismo número (RF-05, RF-09).
 
 ### 3.7 grano
 
@@ -269,7 +295,7 @@ En las tablas, «Oblig.» dice si el campo es obligatorio y «Único» si no se 
 |---|---|---|---|---|
 | empresa_id | uuid, FK a empresa | Sí | — | RNF-03 |
 | foto_id | uuid, FK a foto; se borra con la foto | Sí | — | RF-07, RF-05 |
-| x, y | integer, desde 0 | Sí | — | RF-07, RF-11 |
+| x, y | integer, desde 0, en la foto ya girada según su EXIF (D-45) | Sí | — | RF-07, RF-11, D-45 |
 | ancho, alto | integer, desde 1 | Sí | — | RF-07, RF-11 |
 | clase | lista: SANO, NO_SANO | Sí | — | RF-08, RF-11 |
 | confianza | numeric(5,2), de 0 a 100 | Sí | — | RF-08, RF-09, RF-17 |
@@ -277,7 +303,18 @@ En las tablas, «Oblig.» dice si el campo es obligatorio y «Único» si no se 
 - «Dudoso» no se guarda: un grano es dudoso si su confianza es menor que el `umbral_confianza_baja` copiado en su muestra (RF-09, RF-11).
 - La confianza promedio de RF-17 se calcula con estos granos.
 
-### 3.8 modelo (común a todas las empresas)
+### 3.8 region_pegada
+
+| Atributo | Tipo | Oblig. | Único | Ficha |
+|---|---|---|---|---|
+| empresa_id | uuid, FK a empresa | Sí | — | RNF-03 |
+| foto_id | uuid, FK a foto; se borra con la foto | Sí | — | RF-07, RF-05, D-45 |
+| x, y | integer, desde 0, en la foto ya girada según su EXIF | Sí | — | RF-07, D-45 |
+| ancho, alto | integer, desde 1 | Sí | — | RF-07 |
+
+- Cada fila es una región con granos pegados (RF-07 C2, D-09): un rectángulo sin rotación con un área de al menos el doble de la mediana de los granos de su foto. La guarda la revisión rápida (D-46), para mostrar dónde están mientras la foto está POR_REPETIR, también al volver a abrir la página (D-45).
+
+### 3.9 modelo (común a todas las empresas)
 
 | Atributo | Tipo | Oblig. | Único | Ficha |
 |---|---|---|---|---|
@@ -289,13 +326,19 @@ En las tablas, «Oblig.» dice si el campo es obligatorio y «Único» si no se 
 | recall_macro | numeric(5,2), de 0 a 100 | No¹ | — | RF-17, RNF-07 |
 | recall_sano | numeric(5,2), de 0 a 100 | Sí | — | RF-10, D-39 |
 | recall_no_sano | numeric(5,2), de 0 a 100 | Sí | — | RF-10, D-39 |
+| precision_sano | numeric(5,2), de 0 a 100 | No¹ | — | RF-17, RNF-07, D-48 |
+| precision_no_sano | numeric(5,2), de 0 a 100 | No¹ | — | RF-17, RNF-07, D-48 |
+| sanos_como_sanos, sanos_como_no_sanos | integer, desde 0: matriz de confusión, los sanos según lo que predijo el modelo | No¹ | — | RF-17, RNF-07, D-48 |
+| no_sanos_como_sanos, no_sanos_como_no_sanos | integer, desde 0: matriz de confusión, los no sanos según lo que predijo el modelo | No¹ | — | RF-17, RNF-07, D-48 |
 | tiempo_por_grano_ms | numeric(8,2) | No¹ | — | D-18 |
 | en_uso | boolean, por defecto false | Sí | Solo uno en true | RF-17, D-18 |
 
-¹ Vacíos solo en el clasificador falso de desarrollo. Un CHECK exige que estén todos o ninguno.
+¹ Vacíos solo en el clasificador falso de desarrollo. Un CHECK exige que estén los 11 o ninguno.
 
 - La tabla guarda la comparación de D-18 (RP-25). El script de base de datos (RP-15) carga los 5 modelos de Julián y marca en uso el elegido, que es el mismo que carga el servicio de IA.
 - `recall_sano` y `recall_no_sano` corrigen el porcentaje del lote (D-39), así que todo modelo los tiene, también el clasificador falso. Un CHECK exige que sumen más de 100: si no, el modelo no es mejor que el azar y la corrección dividiría por cero o invertiría el resultado. EfficientNet-B0 tiene 91,20 y 53,40, los valores de D-39.
+- La precisión de cada clase y la matriz de confusión del conjunto de prueba completan las métricas de RNF-07 C2 (D-48). Con EfficientNet-B0, la matriz es 238, 23, 34 y 39, y la precisión, 87,50 en sano y 62,90 en no sano. Los recall no se recalculan con la matriz: siguen siendo los de D-39.
+- Solo puede estar en uso un modelo con todas sus métricas y un F1 macro de 65 % o más (CHECK, RNF-07, P-02); el clasificador falso nunca está en uso.
 - Mientras no esté el servicio de IA, el backend usa un clasificador falso. Al arrancar, registra su fila si no existe (`clasificador-falso`, versión `1.0`), con los recall de EfficientNet-B0 y sin las demás métricas, y no la marca en uso: no es una migración, para que en producción no quede cargada.
 - Las filas no se editan: una versión nueva de un modelo es una fila nueva. Así, los lotes ya analizados conservan su porcentaje (RF-10 C13).
 
@@ -312,8 +355,9 @@ En las tablas, «Oblig.» dice si el campo es obligatorio y «Único» si no se 
 | modelo → muestra | 1 a muchos (vacío hasta terminar) | Restringir | RF-08 |
 | muestra → foto | 1 a 2 o 3 | Restringir | RF-05 |
 | foto → grano | 1 a muchos | Cascada | RF-07, RF-05 |
+| foto → region_pegada | 1 a muchos | Cascada | RF-07, D-45 |
 
-- En InspectIA no se borran empresas, usuarios, lotes ni muestras (RF-03, D-27). Solo se borran las fotos rechazadas o reemplazadas, y sus granos con ellas.
+- En InspectIA no se borran empresas, usuarios, lotes ni muestras (RF-03, D-27). Solo se borran las fotos rechazadas o reemplazadas, y sus granos y sus regiones de granos pegados con ellas.
 - Si las dos tablas de una relación tienen `empresa_id`, la FK es compuesta (`hijo.padre_id, hijo.empresa_id` → `padre.id, padre.empresa_id`). Así un registro no puede apuntar a otro de una empresa distinta (RNF-03).
 
 ## 5. Decisiones de diseño
@@ -352,13 +396,13 @@ Ejemplos verificados: 890903938-8 y 899999068-1.
 | Fechas | `timestamptz` para fecha y hora. «Hoy» (RF-04) se calcula con la hora de Colombia (America/Bogota). `fecha_actualizacion` la mantiene un trigger, así también cambia si un script modifica la tabla. |
 | Enteros | `integer` en lugar de `smallint`, para que el generador use `Integer` en Java sin conversiones. |
 | Porcentajes | De 0 a 100. El % de sanos y los límites llevan 1 decimal (RF-10, RF-13); la confianza y las métricas, 2. |
-| Posición del grano | Rectángulo sin rotación (x, y, ancho, alto), en píxeles de la foto original. |
-| Granos pegados | Sus regiones (RF-07) no se guardan: se muestran en el momento para repetir la foto. |
-| Copias en el resultado | El lote guarda la categoría y el texto de la recomendación, y cada muestra su modelo y los parámetros. Si cambian los rangos (RF-13) o los parámetros, los resultados anteriores no cambian (RF-15). |
+| Posición del grano | Rectángulo sin rotación (x, y, ancho, alto), en píxeles de la foto original, ya girada según su orientación EXIF (D-45). Igual las regiones de granos pegados. |
+| Granos pegados | Sus regiones (RF-07 C2) se guardan en `region_pegada`, con su foto, para mostrar dónde están mientras se repite; se borran con la foto (D-45). |
+| Copias en el resultado | El lote guarda la categoría y el texto de la recomendación y, si sugiere otra muestra, el límite y su categoría (D-47); cada muestra guarda su modelo y los parámetros. Si cambian los rangos (RF-13) o los parámetros, los resultados anteriores no cambian (RF-15). |
 | Aviso de confianza baja | Va en cada muestra y en el lote; el del lote es verdadero si alguna muestra lo tiene (D-25). |
 | Fechas de la muestra | `fecha_envio`, `fecha_inicio` y `fecha_fin` miden el tiempo de respuesta (RNF-01) y la espera en cola (RNF-02) con datos reales. Si la muestra se reenvía, guardan el último envío. |
 | PDF del lote | Se crea en la primera descarga y después se reutiliza; se borra y se rehace cuando termina la segunda muestra (RF-15, D-25). |
-| Consistencia por estado | Varios CHECK usan `num_nonnulls()` para exigir los campos de cada estado: lote ANALIZADO, muestra TERMINADA y modelo completo. |
+| Consistencia por estado | Varios CHECK usan `num_nonnulls()` para exigir los campos de cada estado: lote ANALIZADO, muestra TERMINADA y modelo completo. Otros cuidan el motivo de una muestra devuelta, el conteo de una foto revisada, el límite de la sugerencia y el modelo en uso. |
 | Empresa en cada tabla | FK compuestas con `empresa_id`, para que la base impida mezclar empresas (RNF-03). |
 | Cambios a la vez | Las entidades de los CRUD generados llevan `@DynamicUpdate`: cada UPDATE escribe solo las columnas que cambiaron, así dos cambios a columnas distintas de la misma fila no se pisan; si dos cambian la misma columna a la vez, queda el último (D-36). Una columna que solo cambian las reglas, como `usuario.version_sesion`, JPA la lee pero no la escribe (`solo_lo_cambian_las_reglas`). |
 | Datos iniciales | El script de base de datos (RP-15) crea el primer administrador de la plataforma, con la contraseña tomada de una variable de entorno y nunca del repositorio (RF-01), y carga los modelos. Los rangos por defecto están en `rango_recomendacion.json`. |
@@ -372,4 +416,3 @@ Ejemplos verificados: 890903938-8 y 899999068-1.
 | Estadísticas y confianza promedio | Consultas sobre lote, muestra y grano (RF-16, RF-17) |
 | Sesión | JWT de 8 horas (RF-01, RNF-04) |
 | Cita del dataset («Acerca de») | Texto fijo de la página web (RNF-08) |
-| Regiones de granos pegados | Respuesta del servicio de IA en el momento (RF-07) |

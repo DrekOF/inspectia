@@ -3,18 +3,18 @@
     "nombre": "modelo.json",
     "descripcion": "Entidad modelo: los modelos de IA de la comparación de D-18, con el elegido marcado en uso. Entrada del generador (RP-23); formato en specs/entidades/README.md.",
     "fecha_creacion": "13/10/2026",
-    "actualizacion": "23/11/2026",
+    "actualizacion": "24/11/2026",
     "autor": "Equipo InspectIA",
-    "version": "1.1"
+    "version": "1.2"
   },
   "entidad": "modelo",
   "clase": "Modelo",
-  "descripcion": "Modelo de IA. La tabla guarda la comparación de D-18: los 5 modelos de Julián (2 transformers y 3 CNN, RP-25), con el elegido marcado en uso. Es común a todas las empresas (RNF-03). Las filas las carga el script de base de datos (RP-15); en desarrollo, también el clasificador falso, con los recall de EfficientNet-B0 y sin las demás métricas. Los recall de cada clase corrigen el porcentaje del lote (D-39): todo modelo los tiene.",
+  "descripcion": "Modelo de IA. La tabla guarda la comparación de D-18: los 5 modelos de Julián (2 transformers y 3 CNN, RP-25), con su precisión y su recall por clase y la matriz de confusión del conjunto de prueba (RNF-07 C2, D-48), y el elegido marcado en uso. Solo puede estar en uso un modelo con todas sus métricas y un F1 macro de 65 % o más (P-02). Es común a todas las empresas (RNF-03). Las filas las carga el script de base de datos (RP-15); en desarrollo, también el clasificador falso, con los recall de EfficientNet-B0 y sin las demás métricas. Los recall de cada clase corrigen el porcentaje del lote (D-39): todo modelo los tiene.",
   "etiquetas": {
     "es": { "singular": "Modelo de IA", "plural": "Modelos de IA" },
     "en": { "singular": "AI model", "plural": "AI models" }
   },
-  "fichas": ["RF-08", "RF-17", "RNF-07", "D-18", "RP-25"],
+  "fichas": ["RF-08", "RF-17", "RNF-07", "D-18", "RP-25", "P-02", "D-48"],
   "crud": false,
   "por_empresa": "no",
   "atributos": [
@@ -96,6 +96,58 @@
       "fichas": ["RF-10", "D-39"]
     },
     {
+      "nombre": "precision_sano",
+      "tipo": "decimal",
+      "precision": 5,
+      "escala": 2,
+      "obligatorio": false,
+      "validaciones": { "min": 0, "max": 100 },
+      "etiquetas": { "es": "Precisión de sano (%)", "en": "Healthy precision (%)" },
+      "fichas": ["RF-17", "RNF-07", "D-48"]
+    },
+    {
+      "nombre": "precision_no_sano",
+      "tipo": "decimal",
+      "precision": 5,
+      "escala": 2,
+      "obligatorio": false,
+      "validaciones": { "min": 0, "max": 100 },
+      "etiquetas": { "es": "Precisión de no sano (%)", "en": "Unhealthy precision (%)" },
+      "fichas": ["RF-17", "RNF-07", "D-48"]
+    },
+    {
+      "nombre": "sanos_como_sanos",
+      "tipo": "entero",
+      "obligatorio": false,
+      "validaciones": { "min": 0 },
+      "etiquetas": { "es": "Sanos clasificados como sanos", "en": "Healthy classified as healthy" },
+      "fichas": ["RF-17", "RNF-07", "D-48"]
+    },
+    {
+      "nombre": "sanos_como_no_sanos",
+      "tipo": "entero",
+      "obligatorio": false,
+      "validaciones": { "min": 0 },
+      "etiquetas": { "es": "Sanos clasificados como no sanos", "en": "Healthy classified as unhealthy" },
+      "fichas": ["RF-17", "RNF-07", "D-48"]
+    },
+    {
+      "nombre": "no_sanos_como_sanos",
+      "tipo": "entero",
+      "obligatorio": false,
+      "validaciones": { "min": 0 },
+      "etiquetas": { "es": "No sanos clasificados como sanos", "en": "Unhealthy classified as healthy" },
+      "fichas": ["RF-17", "RNF-07", "D-48"]
+    },
+    {
+      "nombre": "no_sanos_como_no_sanos",
+      "tipo": "entero",
+      "obligatorio": false,
+      "validaciones": { "min": 0 },
+      "etiquetas": { "es": "No sanos clasificados como no sanos", "en": "Unhealthy classified as unhealthy" },
+      "fichas": ["RF-17", "RNF-07", "D-48"]
+    },
+    {
       "nombre": "tiempo_por_grano_ms",
       "tipo": "decimal",
       "precision": 8,
@@ -128,15 +180,21 @@
   "checks": [
     {
       "nombre": "modelo_datos_completos",
-      "sql": "num_nonnulls(tipo, f1_macro, precision_macro, recall_macro, tiempo_por_grano_ms) IN (0, 5)",
-      "descripcion": "Los modelos de la comparación traen tipo, métricas y tiempo por grano; solo el clasificador falso de desarrollo los deja vacíos.",
-      "fichas": ["D-18"]
+      "sql": "num_nonnulls(tipo, f1_macro, precision_macro, recall_macro, precision_sano, precision_no_sano, sanos_como_sanos, sanos_como_no_sanos, no_sanos_como_sanos, no_sanos_como_no_sanos, tiempo_por_grano_ms) IN (0, 11)",
+      "descripcion": "Los modelos de la comparación traen tipo, métricas, matriz de confusión y tiempo por grano; solo el clasificador falso de desarrollo los deja vacíos.",
+      "fichas": ["D-18", "RNF-07", "D-48"]
     },
     {
       "nombre": "modelo_mejor_que_el_azar",
       "sql": "recall_sano + recall_no_sano > 100",
       "descripcion": "La corrección del porcentaje divide por recall_sano + recall_no_sano - 100: un modelo que no es mejor que el azar no corrige nada (D-39).",
       "fichas": ["RF-10", "D-39"]
+    },
+    {
+      "nombre": "modelo_en_uso_con_f1_minimo",
+      "sql": "NOT en_uso OR (num_nonnulls(tipo, f1_macro, precision_macro, recall_macro, precision_sano, precision_no_sano, sanos_como_sanos, sanos_como_no_sanos, no_sanos_como_sanos, no_sanos_como_no_sanos, tiempo_por_grano_ms) = 11 AND f1_macro >= 65)",
+      "descripcion": "Solo puede estar en uso un modelo con todas sus métricas y un F1 macro de 65 % o más (RNF-07, P-02). Las métricas se exigen primero, así un F1 vacío no deja pasar el CHECK (D-48).",
+      "fichas": ["RF-08", "RNF-07", "P-02", "D-48"]
     }
   ]
 }

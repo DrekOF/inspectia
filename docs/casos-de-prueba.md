@@ -4,7 +4,7 @@ Descripción: Casos de prueba de InspectIA por ficha y criterio de aceptación, 
              tienen prueba (RP-13). Archivo generado por generador/casos_de_prueba.py: no se edita a mano;
              sale de specs/fichas.json y de las marcas de las pruebas.
 Fecha de creación: 12/10/2026
-Actualización: 23/11/2026
+Actualización: 24/11/2026
 Autor: Equipo InspectIA (generado por generador/casos_de_prueba.py v1.2)
 Versión: 1.2
 -->
@@ -22,7 +22,7 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 ## Resumen
 
 - **154 criterios de aceptación** en 26 fichas: 104 con prueba y 48 pendientes (2 eliminados).
-- **1135 pruebas:** 475 de Java (33 generadas), 539 de JavaScript (73 generadas) y 121 de Python. Una prueba parametrizada cuenta una vez.
+- **1147 pruebas:** 485 de Java (33 generadas), 539 de JavaScript (73 generadas) y 123 de Python. Una prueba parametrizada cuenta una vez.
 
 | Ficha | Criterios | Con prueba | Pendientes |
 |---|---:|---:|---:|
@@ -834,6 +834,8 @@ Pruebas que no cubren un criterio de una ficha, sino una pauta del docente (RP) 
 ### RP-10 · Header en cada artefacto con nombre, descripción, fecha de creación, fecha de actualización, autor y versión
 
 - [`test_salida.py`](../generador/pruebas/test_salida.py) · cada archivo generado lleva su header y la marca de no editar a mano, también los del frontend
+- [`test_sql.py`](../generador/pruebas/test_sql.py) · cambiar la versión del generador no cambia V1, y sí el header de los demás archivos generados (D-49)
+- [`test_sql.py`](../generador/pruebas/test_sql.py) · el header de V1 lleva la versión de su plantilla sql/esquema.sql.j2, leída de su header, y no la del generador (D-49)
 
 ### RP-11 · Internacionalización
 
@@ -889,11 +891,11 @@ Pruebas que no cubren un criterio de una ficha, sino una pauta del docente (RP) 
 
 ### RP-15 · Scripts de creación e inicialización de la base de datos
 
-- [`EsquemaIT`](../backend/src/test/java/co/edu/usco/inspectia/EsquemaIT.java) · Flyway crea las 8 tablas del modelo de datos
+- [`EsquemaIT`](../backend/src/test/java/co/edu/usco/inspectia/EsquemaIT.java) · Flyway crea las 9 tablas del modelo de datos
 - [`EsquemaIT`](../backend/src/test/java/co/edu/usco/inspectia/EsquemaIT.java) · el trigger mantiene fecha_actualizacion aunque un script intente cambiarla
 - [`test_sql.py`](../generador/pruebas/test_sql.py) · cada referencia tiene índice, salvo si otro índice ya empieza por ella
 - [`test_sql.py`](../generador/pruebas/test_sql.py) · cada tabla tiene id UUID v7, fechas y el trigger de fecha_actualizacion
-- [`test_sql.py`](../generador/pruebas/test_sql.py) · el esquema crea las 8 tablas en orden de dependencias
+- [`test_sql.py`](../generador/pruebas/test_sql.py) · el esquema crea las 9 tablas en orden de dependencias
 - [`test_sql.py`](../generador/pruebas/test_sql.py) · la tabla usuario guarda la versión de sesión, un entero que empieza en 0 y no baja de 0, y ya no la hora sesiones_desde
 - [`test_sql.py`](../generador/pruebas/test_sql.py) · las listas, patrones y CHECK de los JSON salen como restricciones
 - [`test_sql.py`](../generador/pruebas/test_sql.py) · las tablas de cada empresa se referencian con FK compuestas (registro, empresa)
@@ -1125,6 +1127,34 @@ Pruebas que no cubren un criterio de una ficha, sino una pauta del docente (RP) 
 - [`resultado.test.js`](../frontend/src/lote/resultado.test.js) · el rango es el porcentaje guardado más y menos el margen guardado: 90,6 con 7,5 da de 83,1 a 98,1, sin errores de coma flotante
 - [`resultado.test.js`](../frontend/src/lote/resultado.test.js) · un extremo recortado se escribe sin decimales y los demás con uno, con coma en español y punto en inglés
 - [`resultado.test.js`](../frontend/src/lote/resultado.test.js) · un rango que llega justo a 0 o a 100 no se recorta: conserva su decimal (prueba de límite)
+
+### D-44 · Por qué vuelve a pendiente una muestra (RF-07 C3, RF-08 C6)
+
+- [`EsquemaIT`](../backend/src/test/java/co/edu/usco/inspectia/EsquemaIT.java) · solo una muestra que volvió a pendiente después de enviarse tiene motivo de devolución: al enviarla de nuevo sin borrarlo, la base lo rechaza
+
+### D-45 · Se guardan las regiones de granos pegados (RF-07 C2, D-09)
+
+- [`EsquemaIT`](../backend/src/test/java/co/edu/usco/inspectia/EsquemaIT.java) · borrar una foto borra sus regiones de granos pegados
+
+### D-46 · La revisión de las fotos va en dos tiempos (RF-06, RF-07; diseño de Cristhian)
+
+- [`EsquemaIT`](../backend/src/test/java/co/edu/usco/inspectia/EsquemaIT.java) · una foto que el servicio de IA todavía no revisó, «Cargada», no tiene conteo de granos
+
+### D-47 · El aviso de la sugerencia dice de qué límite (RF-12, D-24, RF-13 C3)
+
+- [`EsquemaIT`](../backend/src/test/java/co/edu/usco/inspectia/EsquemaIT.java) · el límite de Fuera de norma nunca cuenta para la sugerencia: la base rechaza la categoría Fuera de norma, aunque traiga un límite mayor que 0
+- [`EsquemaIT`](../backend/src/test/java/co/edu/usco/inspectia/EsquemaIT.java) · el límite de Fuera de norma nunca cuenta para la sugerencia: la base rechaza un límite de 0, aunque traiga otra categoría
+- [`EsquemaIT`](../backend/src/test/java/co/edu/usco/inspectia/EsquemaIT.java) · un lote que sugiere otra muestra guarda el límite cercano y su categoría: sin ellos, la base lo rechaza
+- [`EsquemaIT`](../backend/src/test/java/co/edu/usco/inspectia/EsquemaIT.java) · un lote sin sugerencia no guarda límite: si deja de sugerir otra muestra y conserva el límite, la base lo rechaza
+
+### D-48 · Métricas por clase y matriz de confusión del modelo (RF-17, RNF-07 C2, P-02)
+
+- [`EsquemaIT`](../backend/src/test/java/co/edu/usco/inspectia/EsquemaIT.java) · la base no deja en uso un modelo sin sus métricas, como el clasificador falso
+- [`EsquemaIT`](../backend/src/test/java/co/edu/usco/inspectia/EsquemaIT.java) · la base rechaza un modelo con las métricas macro y sin la precisión de cada clase ni la matriz de confusión: van las 11 o ninguna
+
+### P-02 · Definir la precisión mínima aceptable del modelo, medida con F1-score
+
+- [`EsquemaIT`](../backend/src/test/java/co/edu/usco/inspectia/EsquemaIT.java) · la base no deja poner en uso un modelo con F1 macro menor que 65, como MobileNetV3-L (63,80)
 
 ### P-15 · Fijar con los resultados del `val` de Julián el umbral de confianza baja y el porcentaje de granos dudosos que pide repetir una foto (10 % inicial, RF-09)
 
