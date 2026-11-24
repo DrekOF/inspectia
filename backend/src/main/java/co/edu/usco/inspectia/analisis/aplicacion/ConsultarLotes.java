@@ -1,16 +1,20 @@
 /*
  * Nombre: ConsultarLotes.java
- * Descripción: Caso de uso de consultar los lotes de la empresa: el historial por páginas, el detalle de un
- *              lote y las sugerencias de finca o proveedor (RF-04, RF-14, RNF-03).
+ * Descripción: Caso de uso de consultar los lotes de la empresa: el historial por páginas y con sus filtros, el
+ *              detalle de un lote, quienes registraron lotes y las sugerencias de finca o proveedor (RF-04, RF-14,
+ *              RNF-03).
  * Fecha de creación: 10/11/2026
- * Actualización: 10/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis.aplicacion;
 
+import co.edu.usco.inspectia.comun.errores.CampoInvalido;
 import co.edu.usco.inspectia.comun.errores.NoEncontradoExcepcion;
+import co.edu.usco.inspectia.comun.errores.ReglaIncumplidaExcepcion;
 import co.edu.usco.inspectia.comun.texto.Textos;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,16 +48,39 @@ public class ConsultarLotes {
     }
 
     /**
-     * Una página del historial, del último movimiento al más antiguo (ver
+     * Una página del historial con los lotes que cumplen los filtros, del último movimiento al más antiguo (ver
      * {@link RepositorioDeLotes#historial}).
      *
      * @param empresaId la empresa de la sesión
+     * @param filtros los filtros (RF-14 C2); los que van en {@code null} no filtran
      * @param pagina número de la página, desde 0
      * @param tamano lotes por página
      * @return la página
+     * @throws ReglaIncumplidaExcepcion si «Hasta» es anterior a «Resultado desde» (400 en {@code hasta}, RF-14
+     *     restricción 5)
      */
-    public Page<VistaDeLote> historial(UUID empresaId, int pagina, int tamano) {
-        return repositorio.historial(empresaId, PageRequest.of(pagina, tamano));
+    public Page<VistaDeLote> historial(UUID empresaId, FiltrosDelHistorial filtros, int pagina, int tamano) {
+        if (filtros.fechasAlReves()) {
+            throw new ReglaIncumplidaExcepcion(
+                    List.of(new CampoInvalido("hasta", "lote.filtro.hasta_antes_de_desde")));
+        }
+        return repositorio.historial(empresaId, filtros, PageRequest.of(pagina, tamano));
+    }
+
+    /**
+     * Quienes registraron lotes de la empresa, para el filtro «Usuario» del historial (RF-14 restricción 6): también
+     * los desactivados, sin correos, ordenados por nombre sin distinguir tildes, mayúsculas ni los espacios del inicio
+     * y del final, como las sugerencias de finca o proveedor.
+     *
+     * @param empresaId la empresa de la sesión
+     * @return su identificador y su nombre
+     */
+    public List<Registrador> registradores(UUID empresaId) {
+        return repositorio.registradores(empresaId).stream()
+                .sorted(Comparator.comparing((Registrador registrador) -> Textos.claveDeBusqueda(registrador.nombre()))
+                        .thenComparing(Registrador::nombre)
+                        .thenComparing(Registrador::id))
+                .toList();
     }
 
     /**

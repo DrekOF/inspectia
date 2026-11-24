@@ -1,11 +1,12 @@
 /*
  * Nombre: FotosControlador.java
  * Descripción: API REST de las fotos de la muestra de un lote (RF-05, RF-14 C5): listarlas, pedir el enlace para subir
- *              una y confirmarla. Solo el usuario final, con lotes de su empresa (RNF-03, RNF-04).
+ *              una y confirmarla, también en la muestra 2 de un lote que sugiere otra muestra (RF-12 C8, RF-14 C6,
+ *              D-25). Solo el usuario final, con lotes de su empresa (RNF-03, RNF-04).
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis.adaptadores.rest;
 
@@ -38,10 +39,14 @@ import org.springframework.web.bind.annotation.RestController;
  * token, y confirma la foto. Solo el usuario final usa estas rutas (RF-05; RF-14, restricción 4); la empresa sale de
  * la sesión, y un lote de otra empresa responde 404 (RNF-03). Los permisos los revisan la regla por ruta
  * ({@link LotesAcceso}) y {@code @PreAuthorize} (RNF-04).
+ *
+ * <p>Reciben fotos un lote pendiente y un lote analizado que sugiere otra muestra, en su muestra 2 (D-25). Un lote
+ * analizado sin sugerencia, o con sus 2 muestras, responde 409 (RF-12 C8).
  */
 @RestController
 @RequestMapping(FotosControlador.RUTA)
-@Tag(name = "Fotos", description = "Las fotos de la muestra de un lote (RF-05, RF-14 C5).")
+@Tag(name = "Fotos", description = "Las fotos de la muestra de un lote, también de la segunda (RF-05, RF-14 C5 y "
+        + "C6, D-25).")
 public class FotosControlador {
 
     /** Ruta de las fotos de un lote. */
@@ -72,7 +77,8 @@ public class FotosControlador {
     @PreAuthorize("hasRole('USUARIO_FINAL')")
     @Operation(summary = "Listar las fotos de la muestra", description = "Las fotos de la muestra en curso del lote, "
             + "por número, cada una con un enlace para verla que vence en 15 minutos. Sin fotos, la muestra va vacía. "
-            + "Un lote de otra empresa responde 404. Rol: USUARIO_FINAL.")
+            + "Un lote analizado que sugiere otra muestra y todavía no tiene la 2 responde la lista vacía y sin "
+            + "número; con la 2, la 2 (D-25). Un lote de otra empresa responde 404. Rol: USUARIO_FINAL.")
     public FotosDeLaMuestraRespuesta fotos(@PathVariable UUID id,
             @Parameter(hidden = true) @AuthenticationPrincipal UsuarioEnSesion sesion) {
         return FotosDeLaMuestraRespuesta.de(consultar.fotos(sesion.empresaId(), id));
@@ -90,10 +96,12 @@ public class FotosControlador {
     @PostMapping("/{numero}/subida")
     @PreAuthorize("hasRole('USUARIO_FINAL')")
     @ResponseStatus(HttpStatus.CREATED)
-    @Operation(summary = "Pedir el enlace para subir una foto", description = "Revisa que el lote esté pendiente "
-            + "(409 si no) y que el archivo sea JPG o PNG, de hasta 10 MB (400). Responde la llave del archivo y el "
-            + "enlace: se sube con PUT, sin el token y con el Content-Type que indica, y vence en 10 minutos. Después "
-            + "se confirma la foto. Rol: USUARIO_FINAL.")
+    @Operation(summary = "Pedir el enlace para subir una foto", description = "Revisa que el lote reciba fotos y "
+            + "que el archivo sea JPG o PNG, de hasta 10 MB (400). Reciben fotos un lote pendiente y un lote analizado "
+            + "que sugiere otra muestra, para su muestra 2 (D-25). Una muestra ya enviada responde 409 «ya no está "
+            + "pendiente»; un lote analizado sin sugerencia, o con sus 2 muestras, responde 409 «no admite otra "
+            + "muestra» (RF-12 C8). Responde la llave del archivo y el enlace: se sube con PUT, sin el token y con el "
+            + "Content-Type que indica, y vence en 10 minutos. Después se confirma la foto. Rol: USUARIO_FINAL.")
     public SubidaRespuesta pedirSubida(@PathVariable UUID id,
             @PathVariable @Min(value = 1, message = "{validacion.minimo}")
             @Max(value = ReglasDeFotos.MAXIMO_DE_FOTOS, message = "{validacion.maximo}") int numero,
@@ -114,10 +122,12 @@ public class FotosControlador {
      */
     @PutMapping("/{numero}")
     @PreAuthorize("hasRole('USUARIO_FINAL')")
-    @Operation(summary = "Confirmar una foto subida", description = "Revisa que el archivo haya llegado completo y que "
-            + "sea JPG o PNG por dentro, y guarda la foto, cargada. La primera foto crea la muestra; una foto con el "
-            + "número de otra la reemplaza, y la anterior se borra. Confirmar dos veces la misma llave responde la "
-            + "misma foto. Rol: USUARIO_FINAL.")
+    @Operation(summary = "Confirmar una foto subida", description = "Revisa que el lote siga recibiendo fotos (409, "
+            + "como al pedir el enlace), que el archivo haya llegado completo y que sea JPG o PNG por dentro, y guarda "
+            + "la foto, cargada. La primera foto crea la muestra: la 1, o la 2 en un lote analizado que sugiere otra "
+            + "muestra, sin tocar las fotos ni los granos de la 1 (D-25). Una foto con el número de otra de la misma "
+            + "muestra la reemplaza, y la anterior se borra. Confirmar dos veces la misma llave responde la misma "
+            + "foto. Rol: USUARIO_FINAL.")
     public FotoRespuesta confirmar(@PathVariable UUID id,
             @PathVariable @Min(value = 1, message = "{validacion.minimo}")
             @Max(value = ReglasDeFotos.MAXIMO_DE_FOTOS, message = "{validacion.maximo}") int numero,

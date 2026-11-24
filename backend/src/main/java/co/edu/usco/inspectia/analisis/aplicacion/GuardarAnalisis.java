@@ -2,11 +2,12 @@
  * Nombre: GuardarAnalisis.java
  * Descripción: Caso de uso que guarda, en una sola transacción, el análisis de una muestra tomada de la cola: sus
  *              granos, sus conteos, su modelo y el resultado del lote con los rangos vigentes de la empresa; o la
- *              devuelve a pendiente sin resultado (RF-10, RF-12, RF-13 C2, RNF-02 C3).
+ *              devuelve a pendiente sin resultado; con la muestra 2, recalcula el lote con la suma de las dos (RF-10,
+ *              RF-12, RF-13 C2, RNF-02 C3, D-25).
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis.aplicacion;
 
@@ -38,6 +39,10 @@ import org.springframework.transaction.annotation.Transactional;
  * guarda sus granos en lotes de inserción, aprueba sus fotos y calcula el resultado del lote con sus muestras
  * terminadas, los recall del modelo de cada una (D-39) y los rangos vigentes de la empresa (RF-13 C2). El lote queda
  * analizado. Todo se confirma junto o nada.
+ *
+ * <p>La muestra 2 (D-25) llega con el lote ya analizado con la 1: se guarda igual, aprueba solo sus fotos, y el
+ * resultado se recalcula con la suma de las dos y los rangos de ese momento, sin sugerencia ni límite (D-47). El lote
+ * olvida la ruta de su reporte, que se rehace con el resultado nuevo (RF-15).
  *
  * <p>Con menos de 100 granos no calcula el resultado: devuelve la muestra a pendiente (RF-07 C3, D-26).
  */
