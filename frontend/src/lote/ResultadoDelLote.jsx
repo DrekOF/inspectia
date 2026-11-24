@@ -13,11 +13,12 @@
  *              segunda muestra, junto al resultado de la primera; si el lote no tiene resultado, lo dice. Los pasos
  *              del análisis solo se ven al llegar desde «Analizar la muestra» o mientras espera. Si el lote no existe
  *              o es de otra empresa, lo dice sin «Reintentar» (RNF-03); si no llegó por otra causa, ofrece
- *              «Reintentar».
+ *              «Reintentar». Con el lote analizado, los dos roles descargan su reporte con «Descargar PDF», junto al
+ *              título en el PC y al final en el celular, como en el prototipo (RF-15).
  * Fecha de creación: 23/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 import Add from '@mui/icons-material/Add';
 import InfoOutlined from '@mui/icons-material/InfoOutlined';
@@ -39,6 +40,7 @@ import { ROLES } from '../navegacion/menu.js';
 import { useSesion } from '../sesion/contexto.js';
 import { medidas } from '../tema/tokens.js';
 import { EsperaDelAnalisis } from './EsperaDelAnalisis.jsx';
+import { DescargarReporte } from './DescargarReporte.jsx';
 import { diaDelCalendario, diaEnColombia, horaEnColombia } from './fechas.js';
 import { FotosMarcadas } from './FotosMarcadas.jsx';
 import { PasosDelAnalisis } from './PasosDelAnalisis.jsx';
@@ -221,6 +223,11 @@ function ResultadoDe({ loteId, desdeElAnalisis }) {
   }
   const conPasos = desdeElAnalisis || termino || ESPERAS.includes(vista);
   const conAcciones = esUsuarioFinal && vista === 'resultado';
+  // El reporte se descarga con el lote analizado, también mientras la segunda muestra espera (RF-15, D-25).
+  const conReporte = lote?.estado === 'ANALIZADO';
+  const reporteEnCelular = conReporte && !esPc && (
+    <DescargarReporte loteId={loteId} codigo={lote.codigo} aLoAncho />
+  );
   // La segunda muestra empezada y sin enviar se retoma desde el aviso de la sugerencia (RF-14 C6).
   const muestraEmpezada = muestra?.numero > 1 && muestra.estado === 'PENDIENTE' ? muestra.numero : null;
   const espera = (
@@ -233,6 +240,8 @@ function ResultadoDe({ loteId, desdeElAnalisis }) {
 
   return (
     <>
+      {/* El anuncio de la página va antes que el de «Descargar PDF», que está junto al título. */}
+      <Box role="status" sx={OCULTO_A_LA_VISTA}>{anuncio}</Box>
       {conPasos && <PasosDelAnalisis actual={3} />}
       <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', columnGap: 2 }}>
         <Box sx={{ flex: '1 1 320px', minWidth: 0 }}>
@@ -240,9 +249,13 @@ function ResultadoDe({ loteId, desdeElAnalisis }) {
             titulo={lote ? t('resultado.titulo', { codigo: lote.codigo }) : t('resultado.tituloSinLote')}
             descripcion={lote ? descripcionDel(lote, t, region) : undefined} />
         </Box>
-        {conAcciones && esPc && <Box sx={{ mb: 3 }}><NuevoLote esPc /></Box>}
+        {esPc && (conReporte || conAcciones) && (
+          <Box sx={{ mb: 3, display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'flex-end', gap: 1.5 }}>
+            {conReporte && <DescargarReporte loteId={loteId} codigo={lote.codigo} />}
+            {conAcciones && <NuevoLote esPc />}
+          </Box>
+        )}
       </Box>
-      <Box role="status" sx={OCULTO_A_LA_VISTA}>{anuncio}</Box>
       {((cargando && !datos) || vista === 'cargando') && (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
           <CircularProgress aria-label={t('crud.cargando')} />
@@ -279,6 +292,7 @@ function ResultadoDe({ loteId, desdeElAnalisis }) {
               muestraEmpezada={muestraEmpezada} />
           )}
           {fotosMarcadas}
+          {reporteEnCelular}
           {conAcciones && !esPc && <NuevoLote esPc={false} />}
         </Box>
       )}
@@ -289,6 +303,7 @@ function ResultadoDe({ loteId, desdeElAnalisis }) {
           <ResultadoQueCambiara numero={muestra.numero} />
           <ResumenDelResultado lote={lote} region={region} />
           {fotosMarcadas}
+          {reporteEnCelular}
         </Box>
       )}
       {/* La segunda muestra volvió sin resultado: el aviso arriba y el resultado de la primera debajo. */}
@@ -298,6 +313,7 @@ function ResultadoDe({ loteId, desdeElAnalisis }) {
             esUsuarioFinal={esUsuarioFinal} />
           <ResumenDelResultado lote={lote} region={region} />
           {fotosMarcadas}
+          {reporteEnCelular}
         </Box>
       )}
     </>

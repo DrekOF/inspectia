@@ -6,7 +6,7 @@
  * Fecha de creación: 20/10/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.8
+ * Versión: 1.9
  */
 
 /** Textos en inglés, por clave. Tiene las mismas claves que es.js (i18n.test.js lo revisa). */
@@ -291,4 +291,10 @@ export default {
   'resultado.ayudaPc': 'Hover over a bean or tap it to see its class.',
   'resultado.ayudaCelular': 'Tap a bean to see its class.',
   'resultado.ayudaTeclado': 'With the keyboard, enter the photo with Tab and move from bean to bean with the arrow keys.',
+
+  // The lot PDF report (RF-15)
+  'reporte.descargar': 'Download PDF',
+  'reporte.descargando': 'Downloading the PDF…',
+  'reporte.descargado': 'The PDF of lot {codigo} was downloaded.',
+  'reporte.error': 'The PDF could not be downloaded.',
 };

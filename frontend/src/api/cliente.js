@@ -2,11 +2,12 @@
  * Nombre: cliente.js
  * Descripción: Cliente de la API del backend (D-28, D-31): pide en JSON a /api/v1 en el mismo origen, con el
  *              token de la sesión y el idioma de la app, y convierte los errores application/problem+json en
- *              un ErrorDeApi con sus campos. Un 401 de una petición con sesión la cierra (RNF-04).
+ *              un ErrorDeApi con sus campos. Un 401 de una petición con sesión la cierra (RNF-04). También baja un
+ *              archivo con la sesión, como el reporte PDF del lote, con su nombre de Content-Disposition (RF-15).
  * Fecha de creación: 20/10/2026
- * Actualización: 20/10/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 
 /** Ruta base de la API: el proxy de Vite en desarrollo y CloudFront en AWS la llevan al backend (D-31). */
@@ -65,9 +66,41 @@ function segundos(valor) {
 }
 
 /**
- * @typedef {(metodo: string, ruta: string, datos?: object) => Promise<object|null>} Pedir la función para pedir
- *   a la API: el método HTTP, la ruta después de /api/v1 y los datos que van en el cuerpo; lanza ErrorDeApi
- *   si falla
+ * El nombre de archivo de un encabezado Content-Disposition: el de filename* (RFC 5987, en UTF-8) si viene, y si no,
+ * el de filename.
+ *
+ * @param {string|null} encabezado el encabezado
+ * @returns {string|null} el nombre, o null si no trae
+ */
+export function nombreDelArchivo(encabezado) {
+  if (!encabezado) {
+    return null;
+  }
+  const extendido = /filename\*\s*=\s*([^']*)'[^']*'([^;]+)/i.exec(encabezado);
+  if (extendido) {
+    try {
+      return decodeURIComponent(extendido[2].trim());
+    } catch {
+      // Un nombre mal codificado: se usa el de filename.
+    }
+  }
+  const simple = /filename\s*=\s*("((?:[^"\\]|\\.)*)"|[^;]+)/i.exec(encabezado);
+  if (!simple) {
+    return null;
+  }
+  return simple[2] === undefined ? simple[1].trim() : simple[2].replace(/\\(.)/g, '$1');
+}
+
+/**
+ * @typedef {object} OpcionesDePeticion opciones de una petición
+ * @property {boolean} [comoArchivo] si la respuesta es un archivo, como un PDF: la petición devuelve
+ *   { archivo: Blob, nombre: string|null } en lugar del JSON
+ */
+
+/**
+ * @typedef {(metodo: string, ruta: string, datos?: object, opciones?: OpcionesDePeticion) => Promise<object|null>}
+ *   Pedir la función para pedir a la API: el método HTTP, la ruta después de /api/v1, los datos que van en el cuerpo
+ *   y sus opciones; lanza ErrorDeApi si falla
  */
 
 /**
@@ -81,9 +114,13 @@ function segundos(valor) {
  * @returns {Pedir} la función para pedir
  */
 export function crearCliente({ token, idioma, alCerrarSesion }) {
-  return async function pedir(metodo, ruta, datos) {
+  return async function pedir(metodo, ruta, datos, { comoArchivo = false } = {}) {
     const tokenUsado = token();
-    const encabezados = { Accept: 'application/json', 'Accept-Language': idioma() };
+    // Un archivo se pide en su tipo o, si falla, en el JSON de los errores (application/problem+json).
+    const encabezados = {
+      Accept: comoArchivo ? '*/*' : 'application/json',
+      'Accept-Language': idioma(),
+    };
     if (tokenUsado) {
       encabezados.Authorization = `Bearer ${tokenUsado}`;
     }
@@ -102,6 +139,12 @@ export function crearCliente({ token, idioma, alCerrarSesion }) {
       throw new ErrorDeApi({ estado: 0 });
     }
 
+    if (respuesta.ok && comoArchivo) {
+      return {
+        archivo: await respuesta.blob(),
+        nombre: nombreDelArchivo(respuesta.headers.get('Content-Disposition')),
+      };
+    }
     const cuerpo = await cuerpoDe(respuesta);
     if (respuesta.ok) {
       return cuerpo;

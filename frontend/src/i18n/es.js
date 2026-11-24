@@ -6,7 +6,7 @@
  * Fecha de creación: 20/10/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.8
+ * Versión: 1.9
  */
 
 /** Textos en español, por clave. en.js tiene las mismas claves (i18n.test.js lo revisa). */
@@ -291,4 +291,10 @@ export default {
   'resultado.ayudaPc': 'Pasa el cursor sobre un grano o tócalo para ver su clase.',
   'resultado.ayudaCelular': 'Toca un grano para ver su clase.',
   'resultado.ayudaTeclado': 'Con el teclado, entra a la foto con Tab y pasa de un grano a otro con las flechas.',
+
+  // El reporte PDF del lote (RF-15)
+  'reporte.descargar': 'Descargar PDF',
+  'reporte.descargando': 'Descargando el PDF…',
+  'reporte.descargado': 'Se descargó el PDF del lote {codigo}.',
+  'reporte.error': 'No se pudo descargar el PDF.',
 };
