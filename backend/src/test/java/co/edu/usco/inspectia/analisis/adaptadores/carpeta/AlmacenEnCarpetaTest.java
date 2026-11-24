@@ -2,11 +2,12 @@
  * Nombre: AlmacenEnCarpetaTest.java
  * Descripción: Pruebas unitarias del almacén de las fotos en una carpeta (D-41): los enlaces relativos, las llaves que
  *              no salen de la carpeta, los archivos que no se pisan, la lectura para el clasificador y el borrado que
- *              no falla; las llaves llevan la muestra para la que se pidieron (D-25).
+ *              no falla; las llaves llevan la muestra para la que se pidieron (D-25); los archivos del reporte PDF, uno
+ *              por idioma (RF-15, D-50).
  * Fecha de creación: 23/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.2
+ * Versión: 1.3
  */
 package co.edu.usco.inspectia.analisis.adaptadores.carpeta;
 
@@ -122,5 +123,34 @@ class AlmacenEnCarpetaTest {
         almacen.borrar(LLAVE);
         assertThatThrownBy(() -> almacen.leer(LLAVE)).isInstanceOf(UncheckedIOException.class);
         assertThatThrownBy(() -> almacen.leer("../" + LLAVE)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("RF-15 · el reporte PDF se guarda con la llave reportes/<empresa>/<lote>/<uuid>-<es|en>.pdf, se lee, se describe y se borra, sin pisar uno que ya está (D-50)")
+    void guardarUnReporte() {
+        String llave = "reportes/" + EMPRESA + "/" + LOTE + "/0199f0a0-0000-7000-8000-000000000009-es.pdf";
+        byte[] pdf = "%PDF-1.7 reporte".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
+
+        almacen.guardar(llave, pdf, "application/pdf");
+
+        assertThat(carpeta.resolve(llave)).exists();
+        assertThat(almacen.leer(llave)).isEqualTo(pdf);
+        assertThat(almacen.describir(llave)).get().extracting(ArchivoGuardado::bytes).isEqualTo((long) pdf.length);
+        assertThatThrownBy(() -> almacen.guardar(llave, pdf, "application/pdf"))
+                .isInstanceOf(IllegalStateException.class);
+        almacen.borrar(llave);
+        assertThat(almacen.describir(llave)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("RF-15 · una llave de reporte con otra forma se rechaza: otro idioma, otra extensión, sin la carpeta reportes o que sale de la carpeta (D-50)")
+    void llavesDeReporteRechazadas() {
+        String base = "reportes/" + EMPRESA + "/" + LOTE + "/0199f0a0-0000-7000-8000-000000000009";
+        for (String llave : new String[] {base + "-fr.pdf", base + "-es.jpg", base + ".pdf",
+            EMPRESA + "/" + LOTE + "/0199f0a0-0000-7000-8000-000000000009-es.pdf", "reportes/../" + LLAVE,
+            "otros/" + EMPRESA + "/" + LOTE + "/0199f0a0-0000-7000-8000-000000000009-es.pdf"}) {
+            assertThatThrownBy(() -> almacen.guardar(llave, JPG, "application/pdf")).as(llave)
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
     }
 }

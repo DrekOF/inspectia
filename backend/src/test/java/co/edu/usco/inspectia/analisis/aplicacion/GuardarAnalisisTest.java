@@ -3,11 +3,12 @@
  * Descripción: Pruebas unitarias del caso de uso que guarda el análisis de una muestra, con Mockito: el lote bloqueado
  *              primero, la muestra terminada con sus conteos y su modelo, los granos, las fotos aprobadas y el
  *              resultado con los rangos vigentes y el límite de la sugerencia; la muestra 2, que recalcula el lote
- *              con la suma de las dos; y los casos que no guardan nada (RF-10, RF-12, RF-13 C2, D-25, D-47, RNF-02).
+ *              con la suma de las dos y descarta el reporte PDF de la 1; y los casos que no guardan nada (RF-10,
+ *              RF-12, RF-13 C2, RF-15 C5, D-25, D-47, RNF-02).
  * Fecha de creación: 23/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 package co.edu.usco.inspectia.analisis.aplicacion;
 
@@ -44,6 +45,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
+import org.springframework.context.ApplicationEventPublisher;
 
 /** Guardar el análisis de una muestra (RF-10, RF-12), sin Spring ni la base. */
 class GuardarAnalisisTest {
@@ -74,6 +76,7 @@ class GuardarAnalisisTest {
     private RepositorioDeMuestras muestras;
     private RepositorioDeModelos modelos;
     private RangosDeLaEmpresa rangos;
+    private ApplicationEventPublisher eventos;
     private GuardarAnalisis guardar;
 
     @BeforeEach
@@ -82,7 +85,9 @@ class GuardarAnalisisTest {
         muestras = mock(RepositorioDeMuestras.class);
         modelos = mock(RepositorioDeModelos.class);
         rangos = mock(RangosDeLaEmpresa.class);
-        guardar = new GuardarAnalisis(lotes, muestras, modelos, rangos, PARAMETROS, Clock.fixed(AHORA, ZoneOffset.UTC));
+        eventos = mock(ApplicationEventPublisher.class);
+        guardar = new GuardarAnalisis(lotes, muestras, modelos, rangos, PARAMETROS, eventos,
+                Clock.fixed(AHORA, ZoneOffset.UTC));
         when(lotes.estadoParaActualizar(EMPRESA, LOTE)).thenReturn(Optional.of(EstadoDeLote.PENDIENTE));
         when(modelos.buscar("clasificador-falso", "1.0"))
                 .thenReturn(Optional.of(new ModeloRegistrado(MODELO, "clasificador-falso", "1.0", EFFICIENTNET)));
@@ -182,6 +187,37 @@ class GuardarAnalisisTest {
                 new BigDecimal("5.3"), new BigDecimal("87.0"), 200, 174, "ESTANDAR", "Venta estándar", false, null,
                 null, false), FIN);
         verify(muestras, never()).aprobarFotos(EMPRESA, MUESTRA);
+    }
+
+    @Test
+    @DisplayName("RF-15 · C5 · al terminar la muestra 2, el reporte PDF de la 1 se descarta: sus archivos se borran después de confirmar, y el siguiente trae la suma (D-25)")
+    void laMuestraDosDescartaElReporte() {
+        String base = "reportes/" + EMPRESA + "/" + LOTE + "/0199f0a0-0000-7000-8000-000000000099";
+        MuestraTomada segunda = new MuestraTomada(MUESTRA_2, EMPRESA, LOTE, 2, 0, INICIO);
+        when(lotes.estadoParaActualizar(EMPRESA, LOTE)).thenReturn(Optional.of(EstadoDeLote.ANALIZADO));
+        when(lotes.datosDelReporte(EMPRESA, LOTE)).thenReturn(Optional.of(new DatosDelReporte("Cacaos", "9", base)));
+        when(muestras.fotos(EMPRESA, MUESTRA_2)).thenReturn(List.of(
+                new FotoGuardada(FOTO_1, 1, "llave-1", FormatoDeFoto.JPG, 3, EstadoDeFoto.CARGADA),
+                new FotoGuardada(FOTO_2, 2, "llave-2", FormatoDeFoto.JPG, 3, EstadoDeFoto.CARGADA)));
+        when(muestras.conteosTerminados(EMPRESA, LOTE)).thenReturn(List.of(new ConteoDeMuestra(87, 100, EFFICIENTNET),
+                new ConteoDeMuestra(87, 100, EFFICIENTNET)));
+
+        guardar.guardar(segunda, new Clasificacion(FALSO, granos(100, 13, 0)));
+
+        InOrder orden = inOrder(lotes, eventos);
+        orden.verify(lotes).guardarResultado(eq(EMPRESA), eq(LOTE), any(), eq(FIN));
+        orden.verify(eventos).publishEvent(new ReporteDescartado(base));
+    }
+
+    @Test
+    @DisplayName("RF-15 · un lote sin reporte no descarta nada al guardar su resultado")
+    void sinReporteNoDescartaNada() {
+        when(muestras.conteosTerminados(EMPRESA, LOTE)).thenReturn(List.of(new ConteoDeMuestra(87, 100, EFFICIENTNET)));
+        when(lotes.datosDelReporte(EMPRESA, LOTE)).thenReturn(Optional.of(new DatosDelReporte("Cacaos", "9", null)));
+
+        guardar.guardar(TOMADA, new Clasificacion(FALSO, granos(100, 13, 0)));
+
+        verify(eventos, never()).publishEvent(any(Object.class));
     }
 
     @Test
