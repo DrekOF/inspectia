@@ -2,9 +2,9 @@
 Nombre: bitacora.md
 Descripción: Registro paso a paso de cómo se construyó InspectIA, para la sustentación (RP-24).
 Fecha de creación: 12/10/2026
-Actualización: 23/11/2026
+Actualización: 24/11/2026
 Autor: Equipo InspectIA
-Versión: 1.25
+Versión: 1.26
 -->
 
 # Bitácora de construcción (RP-24)
@@ -1542,6 +1542,213 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
     Encontró además dos cosas que ya estaban corregidas sin commit: la espera del título en Selenium y el código de
     depuración de esa investigación. Las pruebas nuevas fallan sin su corrección.
 - Archivos o PR: la rama `feature/RF-10-resultado` y su PR hacia `main`.
+
+## 24/11/2026 · RF-12, RF-14 y RF-03: la segunda muestra, los filtros del historial y la última V1 del módulo
+
+- Quién: Cristhian Sánchez (`DrekOF`), con Claude Code.
+- Qué se hizo:
+  - **El PR 3b del módulo de análisis, en la rama `feature/RF-14-segunda-muestra`:**
+    1. `df5b02c` D-44 a D-49 y la última regeneración de `V1` del módulo.
+    2. `ff53318` las pruebas del backend en rojo.
+    3. `27be504` el backend: la segunda muestra, los filtros del historial y el límite de la sugerencia.
+    4. `6595302` las pruebas del frontend en rojo, con MSW.
+    5. `a55dfd6` el frontend: los filtros, la segunda muestra y el aviso de D-47.
+    6. `91de870` las pruebas de punta a punta, con Playwright y Selenium.
+    7. `16f26f6` las correcciones de la revisión antes del PR.
+    8. Esta entrada de la bitácora, los README, los casos de prueba y las fichas que pasan a «Implementado».
+  - **Antes de empezar, la revisión de `V1`:** Cristhian pidió revisar si este PR, el del servicio de IA o el del PDF
+    necesitaban cambiar `V1`, para meter todo en este y reiniciar su base una sola vez más. Cinco agentes leyeron las
+    fichas, el prototipo y el modelo de Julián sin cambiar nada. Ninguna ficha lo exigía; lo que entró lo decidió
+    Cristhian, con las preguntas de abajo:
+    - por qué volvió una muestra a pendiente, para el aviso de pocos granos de RF-07 C3 y el de RF-08 C6
+      (`muestra.motivo_devolucion`, D-44);
+    - dónde están los granos pegados de una foto, para mostrarlos (RF-07 C2): la tabla nueva `region_pegada` (D-45);
+    - cuántos granos encontró la revisión rápida de cada foto, para la revisión en dos tiempos de RF-06
+      (`foto.granos_encontrados`, D-46);
+    - el límite de la sugerencia y su categoría, para el texto del prototipo, que no puede cambiar si la empresa
+      cambia sus rangos (RF-13 C3): `lote.limite_sugerencia` y `lote.categoria_del_limite` (D-47);
+    - la precisión de cada clase y la matriz de confusión del modelo, para RF-17, y que el modelo en uso tenga sus
+      métricas y un F1 macro de 65 o más (D-48);
+    - que el header de `V1` lleve la versión de su plantilla y no la del generador, para que subir el generador ya
+      no obligue a reiniciar la base (D-49);
+    - dos aclaraciones de texto: las posiciones van en la foto ya girada según su EXIF, y `muestra.repeticiones`
+      cuenta solo las repeticiones de RF-09.
+
+    No entraron: el PDF por idioma, que no necesita `V1` (un archivo por idioma, D-50 en el PR 5); copiar los nombres
+    de la empresa y del analista para el PDF, que los toma al armarlo; guardar la nitidez y la luz medidas, y lo del
+    despliegue (P-17 y el tiempo por grano medido en AWS). Lo del PR 4 solo se crea: nadie lo escribe todavía.
+  - **La segunda muestra** (D-25, RF-14 C6, RF-12 C8): si el resultado sugiere otra muestra, el usuario final pulsa
+    «Analizar otra muestra» y llega a «Fotos de la muestra 2». La primera foto confirmada crea la muestra 2 sin tocar
+    la 1. El lote sigue analizado con el resultado de la 1 mientras se toma y se analiza la 2; la página muestra
+    arriba la espera de la muestra 2 y debajo el resultado actual, con «Este resultado cambiará cuando termine la
+    muestra 2: sumará los granos de las dos.». Al terminar, el resultado se recalcula con los granos de las dos y los
+    rangos vigentes (RF-13 C2), ya no sugiere otra muestra y el detalle trae «Muestra 1» y «Muestra 2» con sus cifras
+    (RF-14 C3). Un lote sin sugerencia, o con sus 2 muestras, responde 409 a las fotos y al envío, con la clave nueva
+    `analisis.sin_otra_muestra`.
+  - **El aviso de la sugerencia** (D-47), con el texto del prototipo: «El resultado quedó a 0,6 puntos del límite de
+    Estándar (90 %).». Cuenta el límite más cercano y, en empate, el más alto; justo en el límite dice «quedó justo en
+    el límite»; el límite va sin decimal si es entero. La categoría del límite puede ser otra que la del lote: 95,1 %
+    es Estándar y queda a 0,9 puntos del límite de Premium o Especial (96 %). La administradora ve el aviso sin el
+    botón, con quién puede analizar la otra muestra. En el historial, el chip «Sugiere otra muestra».
+  - **Los filtros del historial** (RF-14 C2): «Resultado desde», «Hasta», «Estado», «Categoría», «Código del lote» y
+    «Usuario», solos o combinados, en la dirección de la página. La lista «Usuario» sale de
+    `GET /api/v1/lotes/registradores`, con quienes registraron lotes, también los desactivados, sin sus correos.
+  - **RF-03 C6:** la prueba que faltaba. Los lotes de un usuario desactivado siguen en el historial, y él sigue en el
+    filtro «Usuario».
+  - **Cada foto dice a qué muestra va** (D-25), por la revisión antes del PR: la página manda la muestra de su título
+    al pedir el enlace, y la llave del archivo la guarda. Si el lote cambió mientras la página estaba abierta, el
+    backend responde «El lote cambió mientras tenías abierta esta página: recárgala para ver qué muestra recibe las
+    fotos.» y no guarda nada. Así, una foto tomada para una muestra nunca termina en la otra.
+  - **Las fichas:** RF-03, RF-12, RF-13 y RF-14 pasan a «Implementado» (D-29): tienen prueba en todos sus criterios.
+    RF-14 suma una restricción, la 8 (los filtros y la página van en la dirección), y su restricción 5 dice el rango
+    de las fechas; RF-05 1.4 suma la muestra de cada foto, y D-25, una nota con lo mismo.
+  - **Los README:** el principal dice qué hacen los filtros y la segunda muestra; el del frontend, qué hay nuevo en
+    `src/lote/` y las ayudas nuevas de las pruebas de punta a punta; el de `infra/`, la `V1` nueva en la lista de P-16
+    y cómo probar los filtros, `/registradores` y la segunda muestra con la API.
+  - **Decisiones pequeñas,** tomadas con el prototipo y las fichas:
+    - **La foto de un lote analizado:** sin sugerencia, o con la segunda muestra ya terminada, responde 409
+      `analisis.sin_otra_muestra`; con la segunda muestra enviada, 409 `foto.lote_no_pendiente`, como la primera.
+    - **El PDF anterior queda sin ruta** cuando la segunda muestra cambia el resultado: `reporte_ruta` vuelve a vacío
+      y el PR 5 borra el archivo.
+    - **«Usuario» se ordena** por nombre sin tildes ni mayúsculas, y los empates por nombre y por `id`, para que el
+      orden no cambie entre consultas.
+    - **OpenAPI:** `categoriaDelLimite` solo puede ser Premium, Estándar o Corriente: el CHECK no admite Fuera de
+      norma.
+    - **La dirección de la página:** la página 1 no se escribe; un valor que no sirve se ignora (un estado o una
+      categoría que no existen, una fecha que no es un día, un «Hasta» anterior a «Resultado desde», un código de más
+      de 30 caracteres, un usuario que no es un UUID, una página que no es un número desde 1).
+    - **El código se recorta** antes de buscarlo, como al registrar el lote.
+    - **«Aplicar filtros» con los mismos filtros** vuelve a pedir la lista; «Limpiar» sin filtros solo vacía los campos.
+    - **Un error 400 de un filtro** se marca en su campo y el foco va a él; el aviso general no ofrece «Reintentar»,
+      porque daría el mismo error.
+    - **En el celular,** con «Filtros» cerrado el formulario no se dibuja; se abre solo si la dirección trae filtros,
+      también al volver con «Atrás», y no se cierra al aplicar.
+    - **La lista «Usuario» se pide una sola vez.** Si falla, queda solo «Todos», con una ayuda.
+    - **El total de lotes** se anuncia en un `role="status"` oculto: «25 lotes encontrados».
+    - **«Limpiar filtros» de la lista vacía** lleva el foco al título, porque el botón desaparece.
+    - **Un usuario de la dirección que no está en la lista «Usuario»** se ignora y sale de la dirección; si la lista
+      no llegó, el campo muestra «Usuario elegido» y no «Todos», porque la lista sí está filtrada. El usuario se lee
+      en minúsculas.
+    - **Una página de la dirección que ya no existe,** por ejemplo al volver con «Atrás» cuando quedan menos lotes,
+      lleva a la última; una mayor que la que acepta la API se ignora.
+    - **El total en `role="status"` se vacía mientras llega la lista,** para que el lector de pantalla lo anuncie
+      aunque el número no cambie.
+    - **Las fechas de los filtros van de los años 0001 a 9999,** lo mismo que deja escribir el campo de fecha; fuera
+      de ese rango, «El valor no es válido.».
+    - **La muestra de cada foto:** va en el cuerpo de `POST …/fotos/{n}/subida` (`muestra`, de 1 a 2) y en la llave
+      (`<empresa>/<lote>/m<n>-<uuid>.<ext>`); la carpeta solo acepta esa forma. El 409 `foto.muestra_cambio` se ve en
+      la casilla, como los demás 409, sin recargar la página: el mensaje pide recargarla.
+    - **Los 400 de las rutas de las fotos dicen su campo:** como esas rutas validan también el número de la foto,
+      Spring juntaba los errores y el campo salía como `solicitud` o `confirmacion`. Ahora dicen `muestra`, `tipo` o
+      `llave`, como las demás rutas (`ManejadorDeErrores` 1.7).
+    - **El chip «Sugiere otra muestra»** va sin ícono, como el prototipo, en el tono de información, con el texto en
+      #1B4468 en lugar del #265C8A del prototipo, para el contraste.
+    - **El aviso de la sugerencia** no es un `role="status"`: está desde que carga la página. Su botón usa el color de
+      la superficie, que da más de 7:1 en los dos temas.
+    - **La muestra 2 devuelta:** el aviso de error va arriba, con «Volver a las fotos», y debajo el resultado de la 1,
+      sin el aviso de la sugerencia.
+    - **«Muestra N» y sus cifras** salen cuando el lote tiene más de una muestra, también mientras se toma la 2.
+    - **Las pruebas de punta a punta sostienen la espera de la muestra 2** con `page.route`: el clasificador falso
+      del entorno responde sin demora y la espera dura milisegundos. El envío sí llega al backend, y al soltarla el
+      final es real.
+    - **Los textos en inglés** que no daba el prototipo: «History filters», «Result from», «To», «Apply filters»,
+      «Clear filters», «The result was right at the {categoria} limit ({limite} %).», «Analyze another sample» y
+      «Continue sample {numero}», entre otros.
+  - **Queda fuera:**
+    - **PR 4, el servicio de IA:** escribir y mostrar `muestra.motivo_devolucion`, `region_pegada` y
+      `foto.granos_encontrados`; la revisión de las fotos en dos tiempos (D-46).
+    - **PR 5, el PDF:** un archivo por idioma (D-50) y borrar el PDF anterior cuando la segunda muestra cambia el
+      resultado.
+    - **El PR pequeño del final del módulo:** el tope de las páginas de los listados generados, la caja enfocable de
+      la tabla de `crud/PantallaDeRegistros.jsx` y el error «Maximum update depth exceeded» del inicio de sesión con
+      Selenium.
+    - **Revisar el mismo `flexWrap` en el celular** en otros botones de antes (`AnalizarMuestra.jsx`): hoy funcionan
+      porque el toque cae en el centro.
+    - **Una limitación conocida:** una página de fotos de la muestra 1 abierta desde antes, si pulsa «Analizar la
+      muestra» cuando alguien ya subió 2 fotos de la muestra 2, la envía. No cuenta granos dos veces (las fotos son de
+      la muestra 2), pero envía una muestra que esa página no estaba armando. Cerrarlo pediría la muestra también en
+      `POST …/analisis`; queda anotado para decidirlo con Cristhian.
+  - **Problemas encontrados:**
+    - **En Safari de celular, «Limpiar» no respondía después de «Atrás»:** con `flexWrap: 'wrap'` en una columna,
+      WebKit encogía el botón a su texto al tocarlo (de 324 a 102 px) y el toque caía fuera. Sin `wrap` en el celular,
+      el botón conserva su ancho. El de «Analizar otra muestra» tenía lo mismo.
+    - **Dos pruebas del PR 3a fallaban por modo estricto:** buscaban «Pendiente de análisis» en toda la página, y la
+      lista «Estado» de los filtros también lo dice. Ahora lo buscan en la fila del lote.
+    - **PostgreSQL revisa los CHECK en orden alfabético:** el nuevo del lote se llama `lote_sugerencia_con_su_limite`
+      para que la prueba de `lote_resultado_segun_estado` siga viendo su propio error.
+    - **Dos INSERT en una transacción de `EsquemaIT`:** el segundo fallaba con «current transaction is aborted». Se
+      partió la prueba en dos.
+    - **Un `ETIMEDOUT` pasajero a `vite preview`** en una corrida de punta a punta; no volvió a pasar.
+  - **Resultado,** sobre `16f26f6`, el último commit con código:
+    - Backend: 283 pruebas unitarias y 576 de integración (`./mvnw verify`). PIT mata 197 de los 200 mutantes del
+      dominio del análisis (99 %); los 3 que quedan son de antes, en `PorcentajeDelLote` y `RecallsDelModelo`.
+    - Frontend: 794 pruebas de Vitest en 52 archivos, ESLint y el build.
+    - Playwright: 390 pruebas en verde y 6 omitidas, sin Firefox, que no abre en este Windows (eran 354). Se omiten,
+      en el PC, la de la cámara, y en el celular, la del teclado y una de una ventana de PC.
+    - Selenium: 40 en verde (eran 36), con Chrome y Edge, en el PC y en el celular.
+    - Generador: 123 pruebas.
+    - Casos de prueba: 1301 pruebas y 45 criterios sin prueba (eran 48). Pasan `casos_de_prueba.py comprobar` y
+      `generar.py comprobar`, con RF-03, RF-12, RF-13 y RF-14 en «Implementado».
+- Por qué: la segunda muestra es la forma de confirmar un resultado que quedó cerca de un límite (D-24, D-25), y los
+  filtros dejan encontrar un lote entre todos los de la empresa (RF-14). Con este PR, el flujo completo del análisis,
+  de una o de dos muestras, queda hecho con el clasificador falso; falta el servicio de IA real (PR 4) y el PDF (PR 5).
+- Cómo se pidió:
+  - **Al revisar el PR #17,** Cristhian escribió: «Revisé el PR #17 y está bien. Cuando los 4 jobs estén en verde,
+    fusiona y sigue con el PR 3b. Antes de empezar el 3b, revisa si el 3b, el del servicio de IA o el del PDF
+    necesitan cambiar `V1` (por ejemplo, si el aviso de pocos granos de RF-07 tiene que guardarse). Si alguno lo
+    necesita, mete todos esos cambios en el 3b, para reiniciar la base una sola vez más. En el resumen del 3b dime qué
+    encontraste. La tarea del «Maximum update depth exceeded» va con las dos de lo generado, en el PR pequeño del
+    final del módulo. No voy a probar en mi PC por ahora: lo haré al final del módulo, con el modelo real.»
+  - **Las preguntas de `V1`:**
+    - el motivo de la muestra devuelta: «Columna en la muestra»;
+    - los granos pegados: «Tabla nueva en V1»;
+    - la sugerencia: «Texto del prototipo»;
+    - RF-06, con sus palabras: «Las dos: al subir cada foto, el servidor le pide al servicio de IA solo la revisión
+      rápida (nitidez, luz, granos pegados y cuántos granos tiene), y la foto queda «Aprobada» o «Por repetir» con su
+      motivo al momento, como en el prototipo. La clasificación con el modelo sigue en la cola, al analizar. Si el
+      servicio no responde al subir, la foto queda «Cargada» y se revisa en la cola. Si esto obliga a cambiar V1, que
+      entre en el 3b.»;
+    - RF-17: «También la de cada clase y la matriz»;
+    - el PDF: «Uno por idioma»;
+    - además: «Separar versión del SQL», «CHECK del modelo en uso» y «Aclarar 2 descripciones».
+  - **Las preguntas del 3b:**
+    - el aviso de D-47: «El más cercano; «justo en»»;
+    - la página mientras se analiza la muestra 2: «Espera y resultado actual»;
+    - las fichas: «Sí, RF-13 pasa con el 3b. Revisa también RF-03: quedó en «Aprobado» esperando a RF-14, porque su
+      C6 pide que los análisis de un usuario desactivado sigan en el historial. Agrega esa prueba en el 3b (los lotes
+      de un usuario desactivado siguen en el historial y él aparece en el filtro «Usuario») y, si con eso queda todo
+      probado, RF-03 también pasa a «Implementado».»
+  - **La forma de trabajo** es la del 22/11/2026: una sola parada por PR, las decisiones pequeñas anotadas aquí y en
+    el PR, y preguntar solo en los 4 casos. Como la sesión tenía activado ultracode, Claude Code escribió las pruebas
+    y el código con un flujo de 5 agentes (las pruebas y el código de cada lado, y después las de punta a punta), sin
+    commits: los hizo después, en orden, con las pruebas antes que el código.
+  - **La revisión antes del PR** la decidió Claude Code, como en los PR anteriores. Un flujo de 10 agentes revisó todo
+    el PR sin cambiar nada: cinco revisores (las reglas del backend, sus pruebas y las specs, el historial, el
+    resultado y la segunda muestra, y las pruebas de punta a punta) y un verificador por cada uno, que trató de
+    descartar cada hallazgo. Confirmaron 12 problemas, que corrigió otro flujo de 4 agentes (backend, frontend, punta
+    a punta y un revisor de las correcciones), en `16f26f6`:
+    - una foto pedida para la muestra 1 y confirmada después de que esa muestra se analizó creaba la muestra 2 sin
+      que nadie la pidiera, y una página de fotos abierta desde antes hacía lo mismo: si la foto era la repetición de
+      una ya confirmada, sus granos se contaban dos veces (de ahí la muestra de cada foto);
+    - una fecha extrema en los filtros respondía 500;
+    - la lista «Usuario» decía «Todos» mientras la lista seguía filtrada por alguien;
+    - una página de la dirección que ya no existía dejaba la tabla vacía, y una enorme daba un error sin salida;
+    - el total no se volvía a anunciar si no cambiaba;
+    - cuatro pruebas no comprobaban todo lo que dicen: la de RF-12 C8 de `FotosDeLaMuestraIT`, la del CHECK de
+      D-44, el filtro por código de punta a punta y las casillas vacías de la muestra 2;
+    - el límite de 65 de P-02 no tenía prueba de límite;
+    - la prueba de los filtros fallaba si la corrida cruzaba la medianoche de Colombia;
+    - en Selenium, si fallaba el análisis por la API, Luis quedaba activo en la empresa de prueba.
+
+    Descartó uno: el documento de casos de prueba no estaba al día, lo que hace el commit de la documentación. El
+    revisor de las correcciones encontró otro camino del primer problema: tras el 400 de «Analizar la muestra», la
+    página recargaba solo sus fotos y tomaba de ellas la muestra 2. Ahora espera la muestra de su título; se
+    corrigió en el mismo commit, con su prueba. También encontró la limitación conocida de «Queda fuera».
+
+    Stryker sobre las funciones nuevas del frontend, que no corre en la CI: `api/lotes.js` 100 %, `resultado.js`
+    98,9 %, `filtros.js` 94,3 % (era 80,5 % antes de `filtros.test.js`) y `api/fotos.js` 93,3 %; los que sobreviven
+    no cambian lo que hace la página, como el nombre interno de una regla de Yup.
+- Archivos o PR: la rama `feature/RF-14-segunda-muestra` y su PR hacia `main`.
 
 ## Plantilla para nuevas entradas
 

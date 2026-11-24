@@ -170,8 +170,8 @@
         ]
       },
       "rnf": "RNF-02 (capacidad), RNF-03 (datos separados por empresa) y RNF-04 (autenticación y permisos).",
-      "estado": "Aprobado",
-      "observaciones": "CRUD generado desde el JSON de la entidad usuario (RP-23, D-21), más la regla del límite de 25. La parte del historial de C6 (sus análisis siguen en el historial) se prueba con RF-14."
+      "estado": "Implementado",
+      "observaciones": "CRUD generado desde el JSON de la entidad usuario (RP-23, D-21), más la regla del límite de 25. La parte del historial de C6 (sus análisis siguen en el historial) se prueba con RF-14. Pasó a «Implementado» con el PR de la segunda muestra y los filtros del historial (24/11/2026), que trajo la prueba de esa parte de C6: los lotes de un usuario desactivado siguen en el historial y él sigue en el filtro «Usuario»."
     },
     {
       "encabezado": "Registrar un lote",
@@ -221,7 +221,7 @@
       "encabezado": "Tomar o subir las fotos de la muestra",
       "titulo": "Tomar o subir las fotos de la muestra del lote, con guía de captura",
       "codigo": "RF-05",
-      "version": "1.3",
+      "version": "1.4",
       "fuente": "D-08 (captura del lote), D-23 y D-26 (tamaño de la muestra) y D-25 (segunda muestra).",
       "descripcion": "El usuario toma con la cámara del celular, o sube desde el PC, 2 o 3 fotos de cada muestra del lote, siguiendo una guía de captura. Un lote tiene una muestra, o dos si la app sugiere otra (D-25).",
       "justificacion": "La calidad de las fotos define la calidad del resultado; la guía evita fotos que no sirven.",
@@ -232,7 +232,8 @@
           "Granos enteros sobre papel blanco, separados entre sí, con luz difusa y fotos tomadas desde arriba (D-08).",
           "Fotos en JPG o PNG, de hasta 10 MB cada una.",
           "Las fotos suben directo a S3 con un enlace temporal (D-16; detalle en el documento de arquitectura). Mientras no hay despliegue en AWS, y en las pruebas, una carpeta del servidor hace las veces de S3, con enlaces temporales que firma el mismo servidor (D-41).",
-          "Una foto rechazada (RF-06, RF-07) o reemplazada (RF-09) se borra de la base de datos y de S3."
+          "Una foto rechazada (RF-06, RF-07) o reemplazada (RF-09) se borra de la base de datos y de S3.",
+          "Cada foto dice a qué muestra va (D-25): la página la manda al pedir el enlace, y el enlace la guarda. Si el lote cambió mientras la página estaba abierta, por ejemplo porque otro usuario analizó la muestra, la foto no se guarda y se pide recargar la página con «El lote cambió mientras tenías abierta esta página: recárgala para ver qué muestra recibe las fotos.»."
         ]
       },
       "prioridad": "Alta",
@@ -616,8 +617,8 @@
         ]
       },
       "rnf": "RNF-07 (F1-score mínimo).",
-      "estado": "Aprobado",
-      "observaciones": "Es una regla del núcleo hexagonal del módulo de análisis (D-21). El margen de 1 punto para sugerir otra muestra se revisa en P-19."
+      "estado": "Implementado",
+      "observaciones": "Es una regla del núcleo hexagonal del módulo de análisis (D-21). El margen de 1 punto para sugerir otra muestra se revisa en P-19. Pasó a «Implementado» con el PR de la segunda muestra (24/11/2026), que trajo C8 y el aviso con el límite más cercano (D-47), con el clasificador falso: la recomendación no depende de quién clasifica los granos, y el servicio de IA real llega con RF-08."
     },
     {
       "encabezado": "Configurar los rangos de la empresa",
@@ -660,8 +661,8 @@
         ]
       },
       "rnf": "RNF-03 (datos separados por empresa) y RNF-04 (autenticación y permisos).",
-      "estado": "Aprobado",
-      "observaciones": "Pantalla generada desde el JSON de la entidad rango (RP-23), más la validación del orden de los límites."
+      "estado": "Implementado",
+      "observaciones": "Pantalla generada desde el JSON de la entidad rango (RP-23), más la validación del orden de los límites. Pasó a «Implementado» con el PR de la segunda muestra (24/11/2026): sus criterios ya tenían prueba, y el resultado de la segunda muestra usa los rangos vigentes al terminarla (C2)."
     },
     {
       "encabezado": "Consultar el historial de lotes",
@@ -678,9 +679,10 @@
           "La lista se muestra por páginas de 20 lotes.",
           "La lista va del último movimiento de cada lote al más antiguo: la fecha del resultado si el lote ya se analizó, o la de registro si está pendiente. Cada lote trae la fecha del resultado, que es la que muestra la columna «Fecha del resultado» del prototipo.",
           "«Continuar» un lote pendiente desde la captura de fotos (RF-05) y analizar la segunda muestra (D-25) son solo del usuario final, como la página de las fotos. El administrador de empresa ve el lote pendiente sin esa acción. Se aparta del prototipo, que la mostraba en el historial del administrador.",
-          "Filtros (C2), solos o combinados: la fecha del resultado, desde y hasta, en días de Colombia y con las dos fechas incluidas (un lote pendiente no tiene fecha del resultado, así que no sale al filtrar por fecha; si «Hasta» es anterior a «Resultado desde», la búsqueda se rechaza con «La fecha «Hasta» no puede ser anterior a «Resultado desde».»); el estado; la categoría; el código del lote, de hasta 30 caracteres, que se busca dentro del código sin distinguir mayúsculas ni los espacios del inicio y del final; y el usuario, que es quien registró el lote, como la columna «Registrado por» del prototipo.",
+          "Filtros (C2), solos o combinados: la fecha del resultado, desde y hasta, en días de Colombia y con las dos fechas incluidas (un lote pendiente no tiene fecha del resultado, así que no sale al filtrar por fecha; si «Hasta» es anterior a «Resultado desde», la búsqueda se rechaza con «La fecha «Hasta» no puede ser anterior a «Resultado desde».»); el estado; la categoría; el código del lote, de hasta 30 caracteres, que se busca dentro del código sin distinguir mayúsculas ni los espacios del inicio y del final; y el usuario, que es quien registró el lote, como la columna «Registrado por» del prototipo. Las fechas van de los años 0001 a 9999; una fuera de ese rango responde «El valor no es válido.».",
           "La lista del filtro «Usuario» sale de `GET /api/v1/lotes/registradores`, para los dos roles de empresa: trae solo el identificador y el nombre de quienes registraron lotes de la empresa, también los desactivados, ordenados por nombre sin distinguir tildes ni mayúsculas, y sin sus correos (RNF-03). Filtrar por un usuario de otra empresa da la lista vacía.",
-          "Un lote con otra muestra sugerida lleva en la lista la marca «Sugiere otra muestra», como el prototipo, hasta que termina la segunda."
+          "Un lote con otra muestra sugerida lleva en la lista la marca «Sugiere otra muestra», como el prototipo, hasta que termina la segunda.",
+          "Los filtros y la página van en la dirección de la página, así «Atrás» y un enlace copiado los conservan; un valor de la dirección que no sirve se ignora, también un usuario que no está en la lista «Usuario» o una página mayor que la que acepta la API. Una página que ya no existe, por ejemplo al volver con «Atrás» cuando quedan menos lotes, lleva a la última. Si la lista «Usuario» no llegó, el campo muestra «Usuario elegido» cuando la dirección filtra por alguien. Si ningún lote cumple los filtros, la lista lo dice y ofrece «Limpiar filtros». En el celular, los filtros van detrás del botón «Filtros», abierto si la dirección trae alguno."
         ]
       },
       "prioridad": "Alta",
@@ -711,8 +713,8 @@
         ]
       },
       "rnf": "RNF-02 (capacidad) y RNF-03 (datos separados por empresa).",
-      "estado": "Aprobado",
-      "observaciones": ""
+      "estado": "Implementado",
+      "observaciones": "Pasó a «Implementado» con el PR de la segunda muestra y los filtros del historial (24/11/2026), que trajo C2 y C6."
     },
     {
       "encabezado": "Descargar el reporte en PDF",
