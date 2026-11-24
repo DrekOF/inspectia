@@ -9,7 +9,7 @@
  * Fecha de creación: 24/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -20,8 +20,8 @@ import TableCell from '@mui/material/TableCell';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Typography from '@mui/material/Typography';
-import { Form, Formik, useFormikContext } from 'formik';
-import { useEffect, useEffectEvent, useState } from 'react';
+import { Form, Formik } from 'formik';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router';
 import { erroresPorCampo, textoDelError } from '../api/errores.js';
@@ -39,6 +39,7 @@ import { hoyEnColombia } from '../lote/fechas.js';
 import { useSesion } from '../sesion/contexto.js';
 import { letra, medidas } from '../tema/tokens.js';
 import { GraficaPorMes } from './GraficaPorMes.jsx';
+import { MarcarErroresDelPeriodo } from './MarcarErroresDelPeriodo.jsx';
 import { direccionDelPeriodo, esquemaDelPeriodo, leerPeriodo } from './periodo.js';
 
 /**
@@ -66,30 +67,6 @@ function mesLargo(mes, region) {
 }
 
 /**
- * Marca en su campo las fechas que el backend rechazó, con su mensaje, y lleva el foco a la primera (RNF-06 C3 y C4).
- *
- * @param {{ error: Error|null }} props el error de la última petición, si falló
- * @returns {null} no muestra nada
- */
-function MarcarErroresDelServidor({ error }) {
-  const { setErrors, setTouched } = useFormikContext();
-  const marcar = useEffectEvent((deLosCampos) => {
-    // Sin validar: la validación de Yup los aceptó y borraría los del backend.
-    setTouched(Object.fromEntries(Object.keys(deLosCampos).map((nombre) => [nombre, true])), false);
-    setErrors(deLosCampos);
-    document.getElementById(CAMPOS_DEL_PERIODO.find((nombre) => deLosCampos[nombre]))?.focus();
-  });
-
-  useEffect(() => {
-    const deLosCampos = error ? erroresPorCampo(error, CAMPOS_DEL_PERIODO) : null;
-    if (deLosCampos) {
-      marcar(deLosCampos);
-    }
-  }, [error]);
-  return null;
-}
-
-/**
  * El formulario del periodo: «Desde» y «Hasta», con Formik y Yup y las reglas del backend. En el PC va en una fila; en
  * el celular, en columna y con el botón a todo el ancho (RNF-05).
  *
@@ -111,7 +88,7 @@ function FormularioDelPeriodo({ periodo, error, alVer }) {
         border: `1px solid ${theme.vars.palette.divider}`, bgcolor: 'background.paper',
       })}>
         <EnfocarPrimerError campos={CAMPOS_DEL_PERIODO} />
-        <MarcarErroresDelServidor error={error} />
+        <MarcarErroresDelPeriodo error={error} />
         <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 2, flex: 1 }}>
           <CampoDeTexto nombre="desde" etiqueta={t('estadisticas.desde')} type="date" ayuda={t('estadisticas.ayudaPeriodo')}
             inputProps={{ max: hoy }} />

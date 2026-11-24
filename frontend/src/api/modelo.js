@@ -1,11 +1,11 @@
 /*
  * Nombre: modelo.js (api)
  * Descripción: La petición de la pantalla «Modelo de IA» al backend: las métricas de prueba de los modelos, cuál está
- *              en uso y la confianza promedio de los análisis de la empresa (RF-17).
+ *              en uso y la confianza promedio de los análisis de la empresa, en todo su historial o en un periodo (RF-17).
  * Fecha de creación: 24/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 
 /**
@@ -44,12 +44,22 @@
 
 /**
  * Las métricas de los modelos y la confianza promedio de la empresa de la sesión (GET /api/v1/modelo). Solo para el
- * administrador de empresa: a los demás roles, la API responde 403.
+ * administrador de empresa: a los demás roles, la API responde 403. El periodo de la confianza es opcional: sin
+ * fechas, es de todos sus análisis; con ellas, de las muestras que terminaron entre esos días de Colombia, incluidos.
  *
  * @param {import('./cliente.js').Pedir} pedir la función del cliente de la API
+ * @param {{ desde?: string, hasta?: string }} [periodo] el primer y el último día (aaaa-mm-dd), incluidos; los que
+ *   faltan no limitan el periodo
  * @returns {Promise<{ modelos: ModeloMedido[], confianza: ConfianzaPromedio }>} los modelos, del mayor F1 macro al
  *   menor, y la confianza promedio
  */
-export function metricasDelModelo(pedir) {
-  return pedir('GET', '/modelo');
+export function metricasDelModelo(pedir, periodo = {}) {
+  const parametros = new URLSearchParams();
+  for (const nombre of ['desde', 'hasta']) {
+    if (periodo[nombre]) {
+      parametros.set(nombre, periodo[nombre]);
+    }
+  }
+  const consulta = parametros.toString();
+  return pedir('GET', `/modelo${consulta ? `?${consulta}` : ''}`);
 }

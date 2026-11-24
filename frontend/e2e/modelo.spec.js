@@ -3,19 +3,21 @@
  * Descripción: Pruebas de punta a punta de la pantalla «Modelo de IA» (RF-17): las métricas de cada modelo, en la
  *              tabla del PC o en las tarjetas del celular, coinciden con las que guarda la tabla de modelos y responde la
  *              API (C1); la confianza promedio de cada empresa sale solo de sus análisis (C2), y el usuario final no ve la
- *              pantalla ni la API (C3). El entorno de punta a punta usa el clasificador falso: su modelo es el único
+ *              pantalla ni la API (C3). El periodo opcional de la confianza cuenta solo las muestras que terminaron
+ *              en esos días de Colombia. El entorno de punta a punta usa el clasificador falso: su modelo es el único
  *              registrado, solo con sus recall y sin estar en uso. Da 50 granos por foto, con confianza 90,00, salvo
  *              los primeros «alto módulo 50», que van con 55,00.
  * Fecha de creación: 24/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 import { randomUUID } from 'node:crypto';
 import {
   abrirMenu, analizarPorLaApi, cerrarSesion, crearEmpresaConUsuarioFinal, datos, expect, iniciarSesion, registrarLotes,
   subirFotosPorLaApi, test, tokenDe,
 } from './ayudas.js';
+import { diaEnColombia } from './fechas.js';
 import { png } from './imagenes.js';
 
 /** La pantalla en la app y su API. */
@@ -134,6 +136,35 @@ test('RF-17 · C2 · la confianza promedio de cada empresa usa solo los granos d
   await expect(confianza).toContainText('90,00 %');
   await expect(confianza)
     .toContainText(`De 100 granos en 1 muestra analizada de ${sinDudosos.empresa.nombre}.`);
+});
+
+test('RF-17 · el periodo de la confianza promedio cuenta solo las muestras que terminaron en esos días de Colombia: ayer no tiene análisis, hasta hoy sí, y «Todos los análisis» quita el periodo (de punta a punta)', async ({ page, request, isMobile }) => {
+  test.slow();
+  const { empresa, usuarioFinal } = await crearEmpresaConUsuarioFinal(request);
+  const hoy = diaEnColombia(0);
+  const ayer = diaEnColombia(-1);
+  await loteAnalizadoConAlto(request, usuarioFinal, 102);
+  test.skip(diaEnColombia(0) !== hoy, 'La preparación cruzó la medianoche de Colombia: la muestra no terminó hoy. '
+    + 'Vuelve a correr la prueba.');
+
+  await abrirElModelo(page, isMobile, empresa.administrador);
+  const periodo = page.getByRole('form', { name: 'Periodo de la confianza promedio' });
+  const confianza = page.getByRole('region', { name: 'Confianza promedio de tus análisis' });
+  await expect(confianza).toContainText('88,60 %');
+  await periodo.getByLabel('Desde', { exact: true }).fill(ayer);
+  await periodo.getByLabel('Hasta', { exact: true }).fill(ayer);
+  await periodo.getByRole('button', { name: 'Ver confianza' }).click();
+
+  await expect(page).toHaveURL(new RegExp(`desde=${ayer}&hasta=${ayer}`));
+  await expect(confianza).toContainText('Tu empresa no tiene análisis terminados en este periodo.');
+  await periodo.getByLabel('Hasta', { exact: true }).fill(hoy);
+  await periodo.getByRole('button', { name: 'Ver confianza' }).click();
+  await expect(page).toHaveURL(new RegExp(`desde=${ayer}&hasta=${hoy}`));
+  await expect(confianza).toContainText('88,60 %');
+  await expect(confianza).toContainText(`De 100 granos en 1 muestra analizada de ${empresa.nombre}.`);
+  await periodo.getByRole('button', { name: 'Todos los análisis' }).click();
+  await expect(page).toHaveURL(/\/modelo$/);
+  await expect(periodo.getByLabel('Desde', { exact: true })).toHaveValue('');
 });
 
 test('RF-17 · C3 · un usuario final no puede entrar a «Modelo de IA»: no está en su menú, su dirección le dice que no tiene permiso y la API le responde 403 (de punta a punta)', async ({ page, request, isMobile, usuarioFinal }) => {

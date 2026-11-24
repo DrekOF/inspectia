@@ -306,9 +306,11 @@ describe('Modelo de IA', () => {
     escribirPeriodo('2026-11-01', '');
     await usuario.click(within(periodo()).getByRole('button', { name: 'Ver confianza' }));
 
-    const desde = within(periodo()).getByLabelText('Desde');
-    await waitFor(() => expect(desde).toHaveAttribute('aria-invalid', 'true'));
-    expect(desde).toHaveAccessibleDescription(expect.stringContaining('El valor no es válido.'));
+    // El formulario se rehace con el periodo de la dirección: el campo se busca otra vez.
+    const desde = () => within(periodo()).getByLabelText('Desde');
+    await waitFor(() => expect(desde()).toHaveAttribute('aria-invalid', 'true'));
+    expect(desde()).toHaveAccessibleDescription(expect.stringContaining('El valor no es válido.'));
+    expect(desde()).toHaveValue('2026-11-01');
     expect(screen.queryByRole('button', { name: 'Reintentar' })).not.toBeInTheDocument();
   });
 
