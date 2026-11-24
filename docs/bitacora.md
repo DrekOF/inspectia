@@ -4,7 +4,7 @@ Descripción: Registro paso a paso de cómo se construyó InspectIA, para la sus
 Fecha de creación: 12/10/2026
 Actualización: 24/11/2026
 Autor: Equipo InspectIA
-Versión: 1.26
+Versión: 1.27
 -->
 
 # Bitácora de construcción (RP-24)
@@ -1749,6 +1749,284 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
     98,9 %, `filtros.js` 94,3 % (era 80,5 % antes de `filtros.test.js`) y `api/fotos.js` 93,3 %; los que sobreviven
     no cambian lo que hace la página, como el nombre interno de una regla de Yup.
 - Archivos o PR: la rama `feature/RF-14-segunda-muestra` y su PR hacia `main`.
+
+## 24/11/2026 · RF-06, RF-07, RF-08 y RF-09: el servicio de IA con el modelo de Julián
+
+- Quién: Cristhian Sánchez (`DrekOF`), con Claude Code.
+- Qué se hizo:
+  - **El PR del servicio de IA (el PR 4 del módulo de análisis), en la rama `feature/RF-08-servicio-ia`:**
+    1. El servicio de IA en Python (`ia-servicio/`):
+       - `3325bfb` las pruebas en rojo: la separación con fotos dibujadas, la API con un clasificador falso, el
+         SHA-256 y S3 con dobles, y la paridad con `inferencia.py` de Julián;
+       - `9ab91b7` el servicio con FastAPI, OpenCV y el SavedModel de EfficientNet-B0, `modelos.json` y el script que
+         sube los modelos a S3;
+       - `21dd84d` la imagen de Docker, el job «Servicio de IA» en la CI, con el modelo real, y el README del servicio.
+    2. El backend (`trabajo/ia-backend`, unido en `2a01663`):
+       - `049ac43` las pruebas en rojo;
+       - `d8d4e95` el backend usa el servicio de IA.
+    3. La página (`trabajo/ia-frontend`, unido en `1dc22ba`):
+       - `9fa451e` las pruebas en rojo, con MSW;
+       - `dcbd34b` la revisión de cada foto, la muestra devuelta con su motivo y el aviso de confianza baja.
+    4. Las correcciones de la revisión antes del PR, con las pruebas primero:
+       - `9252cff` y `56fe881` el lote de clasificación baja de 64 a 16 (hallazgo 1);
+       - `c3ceff2` y `3a51b4c` la prueba del F1 publicado por Julián deja de marcarse como RF-08 C4 (hallazgo 6);
+       - `4b02426` y `3957434` el tope explícito de 120 megapíxeles (hallazgo 8);
+       - `2c16a59` y `1833915` a lo sumo 2 fotos o análisis a la vez (hallazgo 7);
+       - `8d18819` la prueba que documenta el límite de D-09 (hallazgo 5);
+       - `7d264fd` el script que comprueba la imagen ya construida (hallazgo 2);
+       - `c2a02b8` y `7c23e88` `casos.py` lee también `ia-servicio/pruebas` (hallazgo 4);
+       - `58c8d7c` las marcas nuevas en una sola cadena.
+    5. Esta entrada de la bitácora, las specs, los README, `CLAUDE.md`, los casos de prueba y las fichas que pasan
+       a «Implementado».
+  - **El servicio de IA** (`ia-servicio/`, Python 3.12, FastAPI, OpenCV y TensorFlow 2.21.0 en CPU) escucha en el
+    puerto 8000, solo dentro de la red de Docker. Tiene cuatro rutas:
+    - `GET /salud`: 503 mientras carga el modelo y 200 con el modelo cargado;
+    - `GET /modelos`: los 5 modelos de la release con sus métricas (D-18, D-48);
+    - `POST /revisar`: la revisión rápida de una foto al confirmarla (D-46): luz, nitidez, granos pegados y cuántos
+      granos tiene;
+    - `POST /analizar`: las fotos de la muestra, con la revisión y los granos de cada una (posición, clase y
+      confianza) y el modelo que los clasificó.
+
+    La separación es la de `generar_recortes.py`, el script con que Julián hizo los recortes del entrenamiento, con
+    cuatro cambios porque la foto de un lote tiene unos 50 granos (ver «Decisiones pequeñas»). Cada recorte pasa por
+    un JPG de calidad 95 y el decodificador de TensorFlow, y se prepara como en `inferencia.py`: con el mismo recorte,
+    el servicio da las mismas probabilidades que Julián (diferencia menor que 0,002).
+  - **El modelo con su SHA-256** (D-40): `ia-servicio/modelos.json` trae los 5 modelos de `modelos-v1.0` con su
+    archivo, su SHA-256, su ficha JSON y sus métricas. El servicio busca el modelo en su caché o lo baja de
+    `INSPECTIA_MODELOS_URI` (`s3://inspectia-archivos-<cuenta>/modelos/` en AWS) y, si el SHA-256 no coincide, no
+    arranca: en Docker, con un zip falso, sale con el código 3. `ia-servicio/scripts/subir_modelos.py` baja de la
+    release los 11 archivos (el manifest, los 5 modelos y sus 5 fichas), comprueba cada SHA-256 con `modelos.json` y
+    con el manifest y los sube a `modelos/`, con el SHA-256 como checksum de S3; si uno no coincide, no sube nada. Lo
+    corre Cristhian, con sus credenciales: aquí solo se probó con un doble de S3, sin red.
+  - **El backend** (`inspectia.ia.clasificador=servicio`, con `INSPECTIA_IA_URL`):
+    - al confirmar cada foto le pide al servicio la revisión rápida, fuera de la transacción, y la foto queda
+      «Aprobada» con su conteo o «Por repetir» con su motivo; si el servicio no responde en 10 s, queda «Cargada»;
+    - la cola revisa en este orden: las fotos, el mínimo de 100 granos (POCOS_GRANOS), RF-09 y terminar; si el
+      servicio no responde en 60 s, no conecta o da un 5xx, la muestra vuelve con SIN_RESPUESTA_DE_LA_IA (RF-08 C6);
+    - RF-09 cuenta los dudosos sobre toda la muestra y pide repetir la foto con más dudosos, una por vez, y guarda sus
+      granos para mostrar cuáles son;
+    - «Analizar la muestra» con una foto «Por repetir» responde 400, con la clave nueva `analisis.fotos.por_repetir`;
+    - al arrancar registra los 5 modelos de `GET /modelos` y pone en uso el que cargó el servicio; si el servicio no
+      responde, arranca igual y lo reintenta cada 15 s.
+
+    `V1` no cambió: todo cabe en las columnas que creó el PR 3b (D-44 a D-46). Con el clasificador falso, el de
+    local y el de las pruebas de punta a punta, no hay revisión rápida: las fotos quedan «Cargada» como antes.
+  - **La página** muestra lo que deja la revisión:
+    - en cada casilla, el chip según el estado, cuántos granos tiene una foto aprobada y qué hacer con una por
+      repetir, con la foto entera y las zonas de granos pegados o los granos dudosos («?») marcados;
+    - debajo de las fotos, el total de granos, con un aviso si no llega a 100;
+    - «Analizar la muestra» desactivado mientras haya fotos por repetir, con el motivo;
+    - por qué volvió la muestra sin resultado y qué hacer: una foto por repetir, menos de 100 granos o el servicio
+      sin responder;
+    - el aviso de confianza baja del prototipo en el resultado (RF-09 C4), que hasta ahora no se mostraba.
+
+    Los textos van en español y en inglés (41 claves nuevas en cada idioma).
+  - **La CI:** el job nuevo «Servicio de IA» baja el zip del modelo de la release pública de Julián (o lo toma de la
+    caché), comprueba su SHA-256 y corre todas las pruebas del servicio, también las de paridad. El aviso de fallas
+    lo suma a sus jobs.
+  - **Los casos de prueba** (RP-13): `generador/inspectia_generador/casos.py` lee también las pruebas de Python de
+    `ia-servicio/pruebas`. Sin eso, RF-07 C1, C4 y C5, que solo tienen pruebas en el servicio, salían pendientes.
+  - **Las specs:**
+    - `specs/arquitectura.md` (1.8): la API del servicio de IA (3.1, con su detalle en `ia-servicio/README.md`) y
+      los campos nuevos de la API del backend (3.2);
+    - `specs/decisiones.md` (1.20): notas en D-40, D-44, D-45, D-46 y P-12 con lo que el código hace y no decían;
+    - `specs/fichas.json` (1.23): las restricciones nuevas de RF-06 (1.2), RF-07 (1.2), RF-08 (1.3) y RF-09 (1.4).
+      RF-06, RF-07 y RF-09 pasan a «Implementado» (D-29): todos sus criterios tienen prueba. RF-08 sigue en
+      «Propuesto»: su C5, el tiempo de la clasificación, se mide en la t4g.medium y todavía no tiene prueba, y su
+      C4 la tiene solo en el backend, porque la del servicio pasó a ser «D-48 · …». Además espera la revisión de
+      Julián (P-14).
+  - **Los README:**
+    - el principal, la tabla de versiones del servicio, su imagen de Docker (`python:3.12.16-slim-trixie`, ya no
+      ONNX), la revisión de las fotos y el job de la CI;
+    - el del frontend, lo nuevo de `src/lote/`;
+    - el del generador, que los casos de prueba leen también `ia-servicio/pruebas`;
+    - `CLAUDE.md`, en «Comandos», cómo crear el entorno del servicio, correr sus pruebas con y sin el modelo,
+      arrancarlo en local y usar el script de los modelos.
+
+    `infra/README.md` no cambió: el servicio no toca la base local.
+  - **Mediciones,** en el PC de desarrollo (Intel Core Ultra 9 275HX, Windows 11, Python 3.12.16, TensorFlow 2.21.0),
+    con 3 fotos compuestas de 4000 × 3000 px con 50 recortes reales cada una (150 granos), en 3 vueltas:
+
+    | Medida | 2 hilos de TensorFlow | Todos los núcleos (24) |
+    |---|---|---|
+    | Leer, revisar, separar y recortar las 3 fotos | 350 a 400 ms | 350 a 400 ms |
+    | Clasificar los 150 granos | 1975 a 2089 ms | 970 a 1023 ms |
+    | Total del servicio | 2354 a 2485 ms (unos 13 ms por grano) | 1334 a 1407 ms |
+    | Cargar el modelo al arrancar | 4,5 s | 4,4 s |
+
+    - **En Docker amd64,** con `INSPECTIA_HILOS=2`, `/analizar` por HTTP tardó 3,1 s: 558 ms de separación y 2511 ms
+      de clasificación. El contenedor arrancó en 5 s y cargó el modelo en 2,9 s.
+    - **RNF-01 cabe, pero ajustado.** Julián estimó 19 ms por grano para la t4g.medium, cuyo Graviton2 es más lento
+      por núcleo: allí el servicio puede tardar de 4 a 5 s de los 8 s. Se mide en la instancia (RNF-01 C3).
+    - **Memoria,** con el modelo real, 2 hilos y 150 recortes reales (TensorFlow no devuelve lo que reservó):
+
+      | Lote | Tras cargar el modelo | Tras 150 granos | Pico comprometido | Clasificar 150 granos |
+      |---|---|---|---|---|
+      | 16 (por defecto) | 454 MB | 742 a 745 MB | 1768 MB | 3,07 a 3,33 s |
+      | 32 | 449 MB | 1023 a 1028 MB | 2297 MB | 2,34 a 2,54 s |
+      | 64 | 454 MB | 1589 a 1594 MB | 3356 MB | 2,88 a 3,17 s |
+
+      Con 64, el valor del primer commit, el servicio pasaba de 1,5 GB, el límite de su contenedor en producción,
+      antes de abrir las fotos (cada foto de 12 MP ocupa de 150 a 250 MB mientras se revisa). Con 16 queda en unos
+      0,75 GB y casi no tarda más. Se confirma en la t4g.medium con `docker stats`, junto con RNF-01 C3.
+    - **La imagen ya construida,** con `comprobar_imagen.sh` y el zip: importa TensorFlow 2.21.0, OpenCV 5.1.0 y
+      Pillow 13.0.0, y las 4 pruebas de paridad pasan en 3,8 s; el script completo tarda unos 13 s.
+    - **El recorte del servicio contra el del script,** con 20 fotos originales del conjunto de prueba: la misma
+      clase en las 20; la probabilidad de no sano baja 0,033 en promedio (máximo 0,086) con el recorte de más
+      resolución.
+  - **Decisiones pequeñas,** tomadas con el contrato, las fichas y el prototipo.
+
+    Las que tocan lo que ve el usuario:
+    - **Los umbrales de la revisión,** fijados con 30 fotos originales del conjunto de prueba, son provisionales hasta
+      P-12 y se cambian sin tocar el código:
+      - luz: menos de 110 es «Poca luz»; en el dataset el papel mide de 169 a 193, y con la mitad de la luz, de 84
+        a 96;
+      - nitidez: menos de 100 es «Foto borrosa»; en el dataset mide de 1346 a 4766, y desenfocada con un gaussiano
+        de 3 px, de 168 a 424 (de 6 px, de 26 a 58).
+    - **Un solo motivo por foto,** en este orden: poca luz, borrosa y granos pegados.
+    - **`granosEncontrados`** cuenta solo los granos sueltos y completos, sin los pegados ni los cortados por el
+      borde. Al terminar la muestra con el servicio, queda en los granos que la cola clasificó en esa foto; con el
+      falso, vacío, para que la página se vea como antes.
+    - **Granos pegados con «el doble» de D-09 al pie de la letra:** dos granos punta con punta lo superan apenas; si se
+      solapan un poco quedan en 1,9 y no se detectan. Es configurable (`INSPECTIA_FACTOR_PEGADOS`); va a P-12.
+    - **El 10 % de RF-09 se cuenta sobre toda la muestra,** como dicen la ficha y el contrato, y se repite la foto con
+      más dudosos (en empate, la de número menor), una por vez. `repeticiones` sube al pedir la repetición.
+    - **Los dudosos de la foto por repetir** van en ámbar con «?» y sin su clase: todavía no hay resultado (D-42
+      pide la clase en el resultado).
+    - **El motivo de «Analizar la muestra» desactivado** ya no dice «hacen falta al menos 2 fotos aprobadas», como el
+      prototipo, porque con el falso o sin respuesta del servicio las fotos quedan «Cargada» y también sirven.
+    - **El total de granos solo avisa,** sin bloquear el envío: el mínimo lo decide la cola (D-44). El aviso de que
+      faltan granos no interrumpe (`role="status"`); el de la muestra devuelta por menos de 100 granos sí
+      (`role="alert"`).
+    - **El chip cambia de tono según el estado:** «Cargada» en información, «Aprobada» en éxito con chulo y «Por
+      repetir» en error con equis. Una foto por repetir bordea su casilla en rojo, como la Foto 2 del prototipo.
+    - **Los granos de una foto** solo se muestran si está «Aprobada»; los de una por repetir cuentan para el total.
+    - **El aviso de confianza baja** sale también mientras se espera la muestra 2 y cuando la 2 falló. Sin
+      `porcentajeMaxDudosos`, sale solo con su título.
+    - **En la página del resultado,** el texto de «menos de 100 granos» es el mismo con 2 o con 3 fotos.
+    - **Confirmar otra vez la misma foto ya revisada** responde su revisión sin pedir otra.
+    - **Los textos en inglés** siguen a los que ya tiene la app: el botón es «Analyze the sample», no «Analyze sample»
+      como decía el contrato, y las comillas son “ ”, como en «marked with “?” on the photo». Los plurales llevan
+      también `_many`, como el resto de `es.js`. Los textos que no vienen del prototipo, como «Entre todas las fotos:
+      {total} granos.», salen del contrato.
+
+    Las internas:
+    - **Cuatro cambios a la separación del script,** porque la foto de un lote tiene unos 50 granos: la detección
+      corre a 1156 px de lado mayor, la escala de las fotos del dataset; el área mínima baja de 0,0015 a 0,0003 y se
+      descarta como mancha lo que mide menos de 0,3 veces la mediana; los recortes salen de la foto en su resolución
+      completa (P-12).
+    - **El JPG de calidad 95 antes del modelo:** el decodificador de TensorFlow (INTEGER_FAST) no da lo mismo que
+      Pillow u OpenCV, y eso movía la probabilidad de no sano hasta 0,05.
+    - **`/analizar` acepta de 1 a 3 fotos;** solo `foto1` es obligatoria. Es más flexible que el contrato y no lo
+      rompe.
+    - **Errores del servicio:** 400 `{"error", "mensaje"}` si un archivo no es un JPG o PNG que se pueda leer o pasa
+      de 120 megapíxeles (el tope de Pillow, unos 89, se sube a 120 de forma explícita y el mensaje dice el máximo), y
+      413 si pasa de 20 MB.
+    - **Solo SavedModel:** los otros 4 modelos son `.keras`; están en `/modelos` para la comparación, pero el servicio
+      no arranca con ellos y el mensaje lo explica.
+    - **Lote de 16 y 2 trabajos a la vez:** las dos con su prueba «RNF-01 · …», porque no cubren un criterio.
+    - **Cualquier falla de la revisión al confirmar deja la foto «Cargada»:** un 400 del servicio, no poder leerla
+      del almacén o un JSON que no sirve. Un 4xx en la cola devuelve la muestra sin motivo.
+    - **Poner en uso un modelo saca de uso a cualquier otro.** El registro de los modelos usa
+      `INSERT … ON CONFLICT DO NOTHING`.
+    - **El servidor de IA de prueba del backend** (`ServidorDeIaDePrueba`) usa el `HttpServer` del JDK, sin
+      dependencias nuevas; sus 2 modelos «Transformador-A/B» tienen nombres y cifras inventados.
+    - **`MuestrasJpa.cambiarEstado` quedó sin uso;** no se borró.
+    - **Python 3.12.16 en el PC** se instaló con `uv`, porque solo había 3.13 y 3.14; la CI y la imagen usan la 3.12.
+  - **Queda fuera:**
+    - **La imagen arm64 se prueba en la CI:** el job `imagenes` del PR del despliegue la construye, y al unir los dos
+      PR se le agrega el paso que corre `comprobar_imagen.sh` con el zip en el runner arm64. Al unirlos también se
+      suma `ia-servicio` a los `needs` de `despliegue` y de `aviso`, para que una prueba del servicio que falla no
+      deje desplegar (RP-18). Hasta entonces, TensorFlow no se ha cargado en ARM: sus paquetes y los de las demás
+      dependencias existen para Linux ARM con Python 3.12 (se revisó en PyPI).
+    - **RNF-01 C3 y la memoria se miden en la t4g.medium,** con `docker stats`. RF-08 C5 queda sin prueba hasta
+      entonces.
+    - **El límite de D-09 con granos pequeños pegados:** dos granos más pequeños que la mediana que se tocan suman
+      menos del doble y cuentan como uno; una prueba lo documenta con un par de 1,77 veces la mediana. Cristhian lo
+      decide con P-12: otro criterio, como la convexidad del contorno, o bajar `INSPECTIA_FACTOR_PEGADOS`.
+    - **Los umbrales de luz y nitidez** se revisan con fotos reales de unos 50 granos (P-12).
+    - **P-17,** el límite de intentos de inicio de sesión por IP, sigue pendiente para el despliegue.
+    - **La limitación del PR 3b** sigue igual: una página de fotos de la muestra 1 abierta desde antes, si pulsa
+      «Analizar la muestra» cuando alguien ya subió 2 fotos de la muestra 2, la envía.
+    - **Subir los modelos a S3:** Cristhian corre `subir_modelos.py --bucket inspectia-archivos-<cuenta>` después de
+      crear el bucket.
+    - **Las estadísticas (RF-16, RF-17)** deben contar solo los granos de muestras terminadas: una muestra pendiente
+      puede tener los granos de su foto por repetir. Va en el PR de las funciones.
+    - **`infra/README.md`** todavía dice que los granos los da el clasificador falso «mientras no esté el servicio de
+      IA»; lo reescribe el PR del despliegue, que es el que configura el servicio.
+    - **El check «Servicio de IA» en el ruleset de `main`:** el README ya lo pone en la lista; lo agrega Cristhian
+      en GitHub.
+    - **El aviso de Starlette:** su cliente de pruebas avisa que `httpx` está obsoleto y sugiere `httpx2`. Es solo un
+      aviso; cambiarlo es una dependencia nueva, que el modo automático de Claude Code no dejó instalar.
+  - **Problemas encontrados:**
+    - **El modelo es sensible al decodificador del JPG:** leer el mismo recorte con Pillow en lugar de TensorFlow
+      movía la probabilidad hasta 0,05. Con el JPG de calidad 95 y `tf.io.decode_jpeg` la paridad con `inferencia.py`
+      quedó exacta.
+    - **El lote de 64 no cabía en 1,5 GB** (hallazgo 1 de la revisión): bajó a 16.
+    - **`MultipartBodyBuilder` necesita reactive-streams,** que el backend no tiene: 11 de las 12 fallas de la primera
+      corrida de las unitarias. Se cambió por `LinkedMultiValueMap`. La otra era un stub mal escrito de Mockito.
+    - **`ResultadoDelAnalisisIT` tenía 44 dudosos de 100:** con RF-09, que corre también con el falso, la muestra
+      volvía a pendiente. Pasó a fotos de 105 px de alto, con 10 dudosos, que no pasan del 10 %.
+    - **`casos.py` solo leía `generador/pruebas`:** las 78 pruebas del servicio no salían en el documento,
+      y RF-07 C1, C4 y C5 quedaban pendientes (hallazgo 4).
+    - **Pillow rechazaba las fotos de más de unos 89 MP** como bomba de descompresión, sin decir por qué (hallazgo 8).
+    - **La prueba de RF-08 C4 del servicio** solo leía el F1 copiado en `modelos.json` (hallazgo 6): ahora dice que
+      lee el F1 publicado por Julián, con la marca D-48.
+    - **El entorno del generador del agente del servicio no tenía Jinja2:** las marcas se comprobaron con el de la
+      copia principal.
+  - **Resultado:**
+    - Servicio de IA: 78 pruebas pasan con el modelo real en 17 s, también las 4 de paridad; sin el modelo, 74 pasan
+      y las 4 de paridad se saltan con su motivo.
+    - Backend: 11 clases unitarias, con 90 pruebas: en la primera corrida fallaron 12, de 2 clases, y después de
+      corregirlas esas 2 pasan (19 de 19). Pasan las 94 pruebas de integración de 8 clases (`ServicioDeIaIT`,
+      `ResultadoDelAnalisisIT`, `ColaDeAnalisisIT`, `SegundaMuestraIT`, `FotosDeLaMuestraIT`, `EnvioDeLaMuestraIT`,
+      `EsquemaIT` y `AnalisisPorEmpresaIT`). El revisor volvió a correr 5 clases unitarias (42 pruebas), en verde.
+    - Frontend: los 3 archivos de pruebas nuevos (50 pruebas; antes del código fallaban 36) y los 5 que ya existían
+      y tocan lo cambiado (130 pruebas), en verde, y ESLint sin errores en los 18 archivos tocados.
+    - Generador: 125 pruebas (eran 123), y `generar.py comprobar` al día.
+    - Casos de prueba: 1462 pruebas (187 de Python) y 28 criterios sin prueba (eran 45). Pasa
+      `casos_de_prueba.py comprobar`, con RF-06, RF-07 y RF-09 en «Implementado».
+    - No se corrieron en el PC el `./mvnw verify` completo, PIT, `npm test` completo, Stryker, Playwright ni
+      Selenium: con tres frentes trabajando a la vez, las suites pesadas iban con un candado, y las corre la CI del
+      PR. Con el clasificador falso, las de punta a punta no cambian.
+- Por qué: el servicio de IA es el camino crítico del despliegue del jueves 26/11: sin él, la app solo tiene el
+  clasificador falso. Con este PR la app revisa cada foto al subirla, separa y clasifica los granos con el modelo de
+  Julián, comprobado por su SHA-256, y dice qué hacer cuando una foto o la muestra no sirven (RF-06 a RF-09,
+  RNF-06 C3).
+- Cómo se pidió:
+  - **El cambio de plan:** el 24/11/2026 Cristhian escribió: «el jueves 26/11 todo tiene que estar desplegado en AWS
+    y funcionando […] Nada a medias.» y pidió tres frentes en paralelo: el servicio de IA (este PR), el despliegue y
+    las funciones que faltan (el PDF, las estadísticas y el modelo). El primero, con sus palabras: «Servicio de IA con
+    el modelo de Julián. Es el camino crítico: arráncalo ya.», con «que el servicio de IA lea el modelo de modelos/ en
+    S3 y compruebe su SHA-256, y un script que suba allí los 5 modelos desde el release de Julián».
+  - **TensorFlow en ARM:** pidió «Si TensorFlow da problemas en ARM, avísame enseguida». No hubo problemas en amd64,
+    y todas las dependencias publican paquetes para Linux ARM con Python 3.12; la prueba en ARM queda para la CI y la
+    t4g (ver «Queda fuera»).
+  - **La forma de trabajo:** Claude Code escribió un contrato común de los tres frentes (la API del servicio, los
+    modelos en S3, las variables de producción y las reglas de cada agente) y, para este frente, un contrato REST de
+    lo que la página ve del backend, con las decisiones que tocan al usuario aparte. Tres agentes trabajaron en
+    paralelo, cada uno en su worktree y su rama: el servicio en Python, el backend y la página, con las pruebas antes
+    que el código. Las suites pesadas, como `./mvnw verify` o construir una imagen de Docker, se corrían de a una,
+    con un candado compartido entre los frentes. Ningún agente llamó a AWS ni bajó de la release de Julián más de lo
+    que Cristhian autorizó: el zip del SavedModel de EfficientNet-B0, `inferencia.py`, el manifest y la ficha JSON de
+    cada modelo. Quien coordinaba unió las ramas en `feature/RF-08-servicio-ia`.
+  - **La revisión antes del PR,** con un solo revisor, como pidió Cristhian («La revisión antes de cada PR, con un
+    solo revisor»), sin cambiar nada. Encontró 8 problemas:
+    - alta: el servicio no cabía en el límite de memoria de su contenedor con el lote de 64;
+    - media: la imagen arm64 solo se construía, nadie la arrancaba antes de AWS; el despliegue del otro PR no espera
+      al job del servicio; `docs/casos-de-prueba.md` no veía las pruebas de Python del servicio; la regla de granos
+      pegados no ve dos granos pequeños pegados;
+    - baja: la prueba de RF-08 C4 del servicio no medía lo que decía; el servicio atendía sin límite de concurrencia;
+      una foto de más de unos 89 MP no se podía analizar nunca.
+
+    Otro agente los corrigió en 13 commits, con las pruebas primero, menos dos: los `needs` de la CI, que se arreglan
+    al unir con el PR del despliegue, y la regla de D-09, que no se cambió por cuenta propia: queda una prueba que
+    documenta el límite, para decidirlo con P-12. El revisor también confirmó, entre otras cosas, que la separación
+    es la del script, que las carreras al guardar la revisión están cubiertas (bloquea el lote y solo guarda si la
+    foto sigue «Cargada» con la misma llave) y que todas las consultas nuevas filtran por empresa (RNF-03).
+  - **La documentación** (este commit) la escribió otro agente con los informes de los tres frentes, la revisión y
+    sus correcciones.
+- Archivos o PR: la rama `feature/RF-08-servicio-ia` y su PR hacia `main`.
 
 ## Plantilla para nuevas entradas
 

@@ -4,7 +4,7 @@ Descripción: Qué hace el generador de InspectIA (RP-23), cómo se usa y cómo 
 Fecha de creación: 12/10/2026
 Actualización: 24/11/2026
 Autor: Equipo InspectIA
-Versión: 1.12
+Versión: 1.13
 -->
 
 # generador
@@ -70,7 +70,7 @@ Con `-- --con-pruebas`, antes de encenderla corre en la copia las pruebas genera
 
 ## Casos de prueba (RP-13)
 
-`casos_de_prueba.py` arma `docs/casos-de-prueba.md` desde `specs/fichas.json` y las marcas de las pruebas (`@DisplayName` en Java y `@pytest.mark.caso` en Python). Muestra cada criterio de aceptación con sus pruebas y, como pendientes, los que todavía no tienen ninguna. El documento no se escribe a mano:
+`casos_de_prueba.py` arma `docs/casos-de-prueba.md` desde `specs/fichas.json` y las marcas de las pruebas (`@DisplayName` en Java y `@pytest.mark.caso` en Python: las del generador, en `generador/pruebas`, y las del servicio de IA, en `ia-servicio/pruebas`). Muestra cada criterio de aceptación con sus pruebas y, como pendientes, los que todavía no tienen ninguna. El documento no se escribe a mano:
 
 ```bash
 generador/.venv/Scripts/python generador/casos_de_prueba.py generar     # escribe el documento
