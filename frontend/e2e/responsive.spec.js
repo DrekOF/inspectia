@@ -94,7 +94,8 @@ test('RNF-05 · C1 · a 360 px no se desplazan a los lados el historial con los 
   // La muestra 2 con sus fotos subidas, sin enviar: la prueba la retiene en la cola para mirar su espera.
   const enEspera = await loteAnalizado(request, usuarioFinal, [106, 107]);
   await subirFotosPorLaApi(request, usuarioFinal, enEspera.id, [
-    { numero: 1, archivo: png({ ancho: 108, alto: 100 }) }, { numero: 2, archivo: png({ ancho: 107, alto: 100 }) }]);
+    { numero: 1, archivo: png({ ancho: 108, alto: 100 }) }, { numero: 2, archivo: png({ ancho: 107, alto: 100 }) },
+  ], { muestra: 2 });
   const dosMuestras = await loteConDosMuestras(request, usuarioFinal);
   await page.setViewportSize({ width: 360, height: 740 });
   await iniciarSesion(page, usuarioFinal);

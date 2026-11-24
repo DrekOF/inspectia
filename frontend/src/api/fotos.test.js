@@ -1,11 +1,12 @@
 /*
  * Nombre: fotos.test.js (api)
- * Descripción: Pruebas de las peticiones de las fotos de un lote (RF-05, D-41): las rutas de la API, y la subida al
- *              enlace firmado, que va sin el token de la sesión y convierte sus errores en un ErrorDeApi.
+ * Descripción: Pruebas de las peticiones de las fotos de un lote (RF-05, D-41): las rutas de la API, con la muestra
+ *              que recibe la foto al pedir el enlace (D-25), y la subida al enlace firmado, que va sin el token de la
+ *              sesión, con PUT si el enlace no dice su método, y convierte sus errores en un ErrorDeApi.
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it, vi } from 'vitest';
@@ -27,14 +28,23 @@ describe('Peticiones de las fotos', () => {
     const pedir = vi.fn().mockResolvedValue({});
 
     await fotosDelLote(pedir, LOTE);
-    await pedirSubida(pedir, LOTE, 2, { tipo: 'image/png', tamanoBytes: 2048 });
-    await confirmarFoto(pedir, LOTE, 2, 'e/l/a.png');
+    await pedirSubida(pedir, LOTE, 2, { tipo: 'image/png', tamanoBytes: 2048, muestra: 1 });
+    await confirmarFoto(pedir, LOTE, 2, 'e/l/m1-a.png');
 
     expect(pedir.mock.calls).toEqual([
       ['GET', `/lotes/${LOTE}/fotos`],
-      ['POST', `/lotes/${LOTE}/fotos/2/subida`, { tipo: 'image/png', tamanoBytes: 2048 }],
-      ['PUT', `/lotes/${LOTE}/fotos/2`, { llave: 'e/l/a.png' }],
+      ['POST', `/lotes/${LOTE}/fotos/2/subida`, { tipo: 'image/png', tamanoBytes: 2048, muestra: 1 }],
+      ['PUT', `/lotes/${LOTE}/fotos/2`, { llave: 'e/l/m1-a.png' }],
     ]);
+  });
+
+  it('D-25 · el enlace de subida dice para qué muestra se pide: la 2 va en el cuerpo, junto al tipo y al tamaño', async () => {
+    const pedir = vi.fn().mockResolvedValue({});
+
+    await pedirSubida(pedir, LOTE, 3, { tipo: 'image/jpeg', tamanoBytes: 512, muestra: 2 });
+
+    expect(pedir).toHaveBeenCalledWith('POST', `/lotes/${LOTE}/fotos/3/subida`,
+      { tipo: 'image/jpeg', tamanoBytes: 512, muestra: 2 });
   });
 
   it('D-41 · la foto sube al enlace con su método y el tipo firmado, aunque el archivo no diga su tipo, sin el token de la sesión y con el idioma de la app', async () => {
@@ -50,6 +60,20 @@ describe('Peticiones de las fotos', () => {
 
     expect(recibido).toEqual({ url: `${window.location.origin}/api/v1/archivos/e/l/a.jpg?vence=1&firma=s`,
       tipo: 'image/jpeg', idioma: 'en', autorizacion: null, bytes: 100 });
+  });
+
+  it('D-41 · un enlace que no dice su método se sube con PUT, el método de los enlaces firmados de subida', async () => {
+    let metodo;
+    servidor.use(http.all('/api/v1/archivos/*', ({ request }) => {
+      metodo = request.method;
+      return new HttpResponse(null, { status: 200 });
+    }));
+    const sinMetodo = { ...ENLACE };
+    delete sinMetodo.metodo;
+
+    await subirArchivo(sinMetodo, archivo('a.jpg', 'image/jpeg'));
+
+    expect(metodo).toBe('PUT');
   });
 
   it('D-41 · si el enlace responde un error, es un ErrorDeApi con su estado y su mensaje; sin conexión, con estado 0', async () => {

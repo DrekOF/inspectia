@@ -3,7 +3,8 @@
  * Descripción: Caso de uso de subir las fotos de la muestra de un lote (RF-05): pedir el enlace de subida de una
  *              foto, después de revisar su tipo y su tamaño, y confirmarla cuando el archivo llegó, con la primera
  *              foto que crea la muestra y el reemplazo que borra la anterior; también las de la muestra 2 de un lote
- *              analizado que sugiere otra muestra, sin tocar la 1 (RF-12 C8, RF-14 C6, D-25).
+ *              analizado que sugiere otra muestra, sin tocar la 1 (RF-12 C8, RF-14 C6, D-25); la muestra que espera la
+ *              página, que va en la llave, responde 409 si el lote cambió mientras tanto.
  * Fecha de creación: 23/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
@@ -50,6 +51,12 @@ import org.springframework.transaction.annotation.Transactional;
  *   <li>Un lote analizado sin sugerencia, o con sus 2 muestras terminadas, no admite otra muestra: 409
  *       {@code analisis.sin_otra_muestra} (RF-12 C8).</li>
  * </ul>
+ *
+ * <p>La página dice qué muestra espera al pedir el enlace, y la llave la lleva hasta la confirmación
+ * ({@code <empresa>/<lote>/m<muestra>-<uuid>.<jpg|png>}). Si la muestra que recibe las fotos ya es otra, porque el lote
+ * cambió mientras la página estaba abierta (otra persona envió la muestra 1 y la cola la analizó, por ejemplo),
+ * responde 409 {@code foto.muestra_cambio}: así una foto pedida para la muestra 1 no crea la muestra 2 ni sus granos
+ * se cuentan dos veces en la suma (D-25).
  */
 @Service
 public class SubirFotos {
@@ -61,11 +68,12 @@ public class SubirFotos {
     private static final String FORMA_DE_UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
 
     /**
-     * Las llaves que arma este caso de uso: {@code <empresa>/<lote>/<uuid>.<jpg|png>}. Es la misma forma que acepta el
-     * almacén: una llave con otra forma responde 400 en la llave, y no llega al almacén.
+     * Las llaves que arma este caso de uso: {@code <empresa>/<lote>/m<muestra>-<uuid>.<jpg|png>}, con la muestra 1 o 2
+     * para la que se pidió el enlace. Es la misma forma que acepta el almacén: una llave con otra forma, como la de
+     * antes sin la muestra, responde 400 en la llave, y no llega al almacén.
      */
     private static final Pattern LLAVE = Pattern.compile(
-            "^(" + FORMA_DE_UUID + ")/(" + FORMA_DE_UUID + ")/" + FORMA_DE_UUID + "\\.(jpg|png)$");
+            "^(" + FORMA_DE_UUID + ")/(" + FORMA_DE_UUID + ")/m([12])-" + FORMA_DE_UUID + "\\.(jpg|png)$");
 
     private final RepositorioDeLotes lotes;
     private final RepositorioDeMuestras muestras;
@@ -92,33 +100,39 @@ public class SubirFotos {
     }
 
     /**
-     * El enlace para subir la foto {@code numero} de la muestra en curso. Antes revisa el lote y el archivo.
+     * El enlace para subir la foto {@code numero} de la muestra que recibe las fotos. Antes revisa el lote, que la
+     * muestra que espera la página sea esa y el archivo. La llave lleva el número de la muestra, para revisarlo otra
+     * vez al confirmar.
      *
      * @param empresaId la empresa de la sesión
      * @param loteId el lote
+     * @param muestra la muestra que espera la página: 1, o 2 para la segunda (D-25)
      * @param numero el número de la foto, de 1 a 3
      * @param tipo el tipo del archivo, como {@code image/jpeg}
      * @param bytes cuánto pesa
      * @return la llave del archivo y el enlace para subirlo
      * @throws NoEncontradoExcepcion si el lote no existe o es de otra empresa (404, RNF-03 C1)
-     * @throws ConflictoExcepcion si la muestra ya se envió, o si el lote ya tiene su resultado y no admite otra muestra
-     *     (409, RF-12 C8)
+     * @throws ConflictoExcepcion si la muestra ya se envió, si el lote ya tiene su resultado y no admite otra muestra
+     *     (409, RF-12 C8), o si la muestra que recibe las fotos no es la que espera la página (409, D-25)
      * @throws ReglaIncumplidaExcepcion si el número no va de 1 a 3 (RF-05 C2), o si el archivo no es JPG ni PNG o pesa
      *     más de 10 MB (400, RF-05 C3)
      */
     @Transactional(readOnly = true)
-    public SubidaDeFoto pedirSubida(UUID empresaId, UUID loteId, int numero, String tipo, long bytes) {
+    public SubidaDeFoto pedirSubida(UUID empresaId, UUID loteId, int muestra, int numero, String tipo, long bytes) {
         revisarNumero(numero);
-        muestraQueRecibe(empresaId, loteId, lotes.estado(empresaId, loteId));
+        MuestraQueRecibe destino = muestraQueRecibe(empresaId, loteId, lotes.estado(empresaId, loteId));
+        revisarQueSeaLaQueRecibe(destino, muestra);
         FormatoDeFoto formato = revisarArchivo(tipo, bytes);
-        String llave = empresaId + "/" + loteId + "/" + UUID.randomUUID() + "." + formato.getExtension();
+        String llave = empresaId + "/" + loteId + "/m" + destino.numero() + "-" + UUID.randomUUID() + "."
+                + formato.getExtension();
         return new SubidaDeFoto(llave, almacen.enlaceDeSubida(llave, formato.getTipo(), bytes, VIGENCIA_DE_SUBIDA));
     }
 
     /**
      * Confirma la foto {@code numero} de la muestra que recibe las fotos cuando su archivo ya llegó al almacén. Revisa
-     * cuánto pesa y sus primeros bytes, y solo entonces la guarda, cargada. Confirmar dos veces la misma llave responde
-     * la misma foto, así un reintento es seguro.
+     * que la muestra de la llave siga siendo la que recibe las fotos, cuánto pesa el archivo y sus primeros bytes, y
+     * solo entonces la guarda, cargada. Confirmar dos veces la misma llave responde la misma foto, así un reintento es
+     * seguro.
      *
      * @param empresaId la empresa de la sesión
      * @param usuarioId el usuario de la sesión
@@ -127,8 +141,8 @@ public class SubirFotos {
      * @param llave la llave que dio el enlace de subida
      * @return la foto, con su enlace para verla
      * @throws NoEncontradoExcepcion si el lote no existe o es de otra empresa (404, RNF-03 C1)
-     * @throws ConflictoExcepcion si la muestra ya se envió, o si el lote ya tiene su resultado y no admite otra muestra
-     *     (409, RF-12 C8)
+     * @throws ConflictoExcepcion si la muestra ya se envió, si el lote ya tiene su resultado y no admite otra muestra
+     *     (409, RF-12 C8), o si la llave se pidió para otra muestra que la que recibe las fotos (409, D-25)
      * @throws ReglaIncumplidaExcepcion si el número no va de 1 a 3, o si la llave no es de este lote, el archivo no
      *     llegó o no es JPG ni PNG (400)
      */
@@ -136,7 +150,10 @@ public class SubirFotos {
     public VistaDeFoto confirmar(UUID empresaId, UUID usuarioId, UUID loteId, int numero, String llave) {
         revisarNumero(numero);
         MuestraQueRecibe destino = muestraQueRecibe(empresaId, loteId, lotes.estadoParaActualizar(empresaId, loteId));
-        FormatoDeFoto formato = formatoDeLaLlave(llave, empresaId, loteId);
+        LlaveDeFoto deLaLlave = leerLlave(llave, empresaId, loteId);
+        // Una llave pedida para otra muestra no se guarda: el lote cambió desde que se pidió el enlace (D-25).
+        revisarQueSeaLaQueRecibe(destino, deLaLlave.muestra());
+        FormatoDeFoto formato = deLaLlave.formato();
         // Solo se busca y se reemplaza en la muestra que recibe las fotos: nunca en la 1 ya terminada (D-25).
         Optional<MuestraEnCurso> recibe = Optional.ofNullable(destino.existente());
         if (recibe.isPresent()) {
@@ -235,14 +252,41 @@ public class SubirFotos {
         }
     }
 
-    /** El formato de una llave que armó este caso de uso para el mismo lote y la misma empresa (RNF-03). */
-    private static FormatoDeFoto formatoDeLaLlave(String llave, UUID empresaId, UUID loteId) {
+    /**
+     * Lo que dice una llave que armó este caso de uso.
+     *
+     * @param muestra la muestra para la que se pidió el enlace: 1 o 2
+     * @param formato el formato de la foto, por su extensión
+     */
+    private record LlaveDeFoto(int muestra, FormatoDeFoto formato) {
+    }
+
+    /**
+     * La muestra y el formato de una llave que armó este caso de uso para el mismo lote y la misma empresa (RNF-03).
+     *
+     * @throws ReglaIncumplidaExcepcion si la llave no tiene esa forma o es de otro lote (400 en la llave)
+     */
+    private static LlaveDeFoto leerLlave(String llave, UUID empresaId, UUID loteId) {
         Matcher partes = llave == null ? null : LLAVE.matcher(llave);
         if (partes == null || !partes.matches() || !partes.group(1).equals(empresaId.toString())
                 || !partes.group(2).equals(loteId.toString())) {
             throw enLaLlave("error.valor_invalido");
         }
-        return FormatoDeFoto.deExtension(partes.group(3)).orElseThrow(() -> enLaLlave("error.valor_invalido"));
+        FormatoDeFoto formato = FormatoDeFoto.deExtension(partes.group(4))
+                .orElseThrow(() -> enLaLlave("error.valor_invalido"));
+        return new LlaveDeFoto(Integer.parseInt(partes.group(3)), formato);
+    }
+
+    /**
+     * La muestra que espera la página, o la de la llave, tiene que ser la que recibe las fotos en este momento. Si no,
+     * el lote cambió mientras la página estaba abierta: responde 409 sin dar el enlace ni guardar nada (D-25).
+     *
+     * @throws ConflictoExcepcion si es otra muestra (409 {@code foto.muestra_cambio})
+     */
+    private static void revisarQueSeaLaQueRecibe(MuestraQueRecibe destino, int muestra) {
+        if (muestra != destino.numero()) {
+            throw new ConflictoExcepcion("foto.muestra_cambio");
+        }
     }
 
     private static ReglaIncumplidaExcepcion enLaLlave(String clave) {

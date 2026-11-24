@@ -9,8 +9,11 @@
  *              combinados, los parámetros que llegan a la API, la lista «Usuario» del servicio de quienes registraron
  *              lotes, «Hasta» antes de «Resultado desde» y el código de más de 30 caracteres, que se marcan en su campo,
  *              como los errores del backend; los filtros y la página en la dirección, «Aplicar filtros», que vuelve a
- *              la página 1, «Limpiar», la lista sin coincidencias con «Limpiar filtros», el total anunciado y, en el
- *              celular, los filtros detrás del botón «Filtros».
+ *              la página 1, «Limpiar», la lista sin coincidencias con «Limpiar filtros», el total anunciado, también
+ *              cuando no cambia, y, en el celular, los filtros detrás del botón «Filtros». Los valores de la dirección
+ *              que no sirven: un usuario que no está en la lista «Usuario», que se quita, o que se muestra si la lista
+ *              no llegó, uno en mayúsculas, una página que ya no existe, que lleva a la última, y una mayor que la que
+ *              acepta la API.
  * Fecha de creación: 10/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
@@ -27,6 +30,7 @@ import {
 import { anchoDePantalla } from '../pruebas/preparacion.js';
 import { conResultado, resultadoAnalizado } from '../pruebas/resultados.js';
 import { problema, servidor } from '../pruebas/servidor.js';
+import { PAGINA_MAXIMA } from './filtros.js';
 
 /** Las columnas del prototipo, las mismas para los dos roles: la de las acciones tiene «Ver» y «Continuar». */
 const COLUMNAS = ['Fecha del resultado', 'Código', 'Finca o proveedor', 'Estado', '% de granos sanos',
@@ -47,6 +51,9 @@ const SIN_COINCIDENCIAS = 'Ningún lote cumple los filtros.';
 /** Los identificadores de María Torres, que registró el lote analizado, y de Luis Gómez, que está desactivado. */
 const MARIA = LOTE_ANALIZADO.usuario.id;
 const LUIS = REGISTRADORES[1].id;
+
+/** Un usuario que no está en la lista «Usuario»: no registró lotes de la empresa, o es de otra. */
+const AJENO = '0199e2a0-0000-7000-8000-0000000000ff';
 
 /**
  * Responde las páginas del historial y quienes registraron lotes, para el filtro «Usuario», y anota qué se pidió.
@@ -658,6 +665,130 @@ describe('Historial de lotes', () => {
       await pulsar(usuario, 'Aplicar filtros');
 
       await waitFor(() => expect(anunciado()).toMatch(/(^|\D)1 lote\b/));
+    });
+
+    it('RF-14 · al aplicar un filtro que deja el mismo total, el role="status" queda vacío mientras llega la lista y vuelve a decir el total, para que el lector de pantalla lo anuncie otra vez', async () => {
+      conSesion(USUARIOS.USUARIO_FINAL);
+      const { consultas } = conHistorial(() => paginaDeLotes([LOTE_ANALIZADO]));
+      let soltar;
+      const espera = new Promise((resolver) => { soltar = resolver; });
+      // La lista filtrada tarda hasta que la prueba la suelta; sin filtro responde el historial de arriba.
+      servidor.use(http.get('/api/v1/lotes', async ({ request }) => {
+        if (new URL(request.url).searchParams.has('estado')) {
+          await espera;
+        }
+        return undefined;
+      }));
+      const { usuario } = abrirApp('/historial');
+      await screen.findByRole('table', { name: 'Lotes de la empresa' });
+      const total = await waitFor(() => {
+        const region = screen.getAllByRole('status').find((una) => una.textContent === '1 lote encontrado');
+        expect(region).toBeDefined();
+        return region;
+      });
+
+      await usuario.selectOptions(campo('Estado'), 'Analizado');
+      await pulsar(usuario, 'Aplicar filtros');
+
+      await waitFor(() => expect(total).toBeEmptyDOMElement());
+      soltar();
+      await waitFor(() => expect(total).toHaveTextContent('1 lote encontrado'));
+      expect(consultas.at(-1)).toEqual({ pagina: '0', tamano: '20', estado: 'ANALIZADO' });
+      expect(filas().map((fila) => fila[1])).toEqual(['L-0139']);
+    });
+
+    it('RF-14 · un usuario de la dirección que no está en la lista «Usuario», que sí llegó, se ignora: sale de la dirección, la lista se pide sin él desde la página 1 y no vuelve con «Aplicar filtros»', async () => {
+      conSesion(USUARIOS.USUARIO_FINAL);
+      const todos = Array.from({ length: 25 }, (_, indice) => loteNumero(25 - indice));
+      const { consultas } = conHistorial((pagina) => paginaDeLotes(todos.slice(pagina * 20, pagina * 20 + 20),
+        { pagina, total: 25 }));
+      const { usuario } = abrirApp(`/historial?estado=PENDIENTE&usuario=${AJENO}&pagina=2`);
+
+      await waitFor(() => expect(direccion()).toEqual({ estado: 'PENDIENTE' }));
+      await waitFor(() => expect(consultas.at(-1)).toEqual({ pagina: '0', tamano: '20', estado: 'PENDIENTE' }));
+      await waitFor(() => expect(opciones('Usuario')).toEqual([['', 'Todos'],
+        ...REGISTRADORES.map(({ id, nombre }) => [id, nombre])]));
+      expect(campo('Usuario')).toHaveValue('');
+      expect(within(screen.getByRole('navigation', { name: 'Páginas del historial' }))
+        .getByRole('button', { name: 'Página 1' })).toHaveAttribute('aria-current', 'page');
+
+      await usuario.selectOptions(campo('Estado'), 'Analizado');
+      await pulsar(usuario, 'Aplicar filtros');
+
+      await waitFor(() => expect(consultas.at(-1)).toEqual({ pagina: '0', tamano: '20', estado: 'ANALIZADO' }));
+      // Solo la primera, que salió antes de que llegara la lista «Usuario», lo llevaba.
+      expect(consultas.filter((consulta) => 'usuario' in consulta))
+        .toEqual([{ pagina: '1', tamano: '20', estado: 'PENDIENTE', usuario: AJENO }]);
+      expect(direccion()).toEqual({ estado: 'ANALIZADO' });
+    });
+
+    it('RF-14 · si la lista «Usuario» no llega, el campo muestra que la dirección filtra por un usuario, con la opción «Usuario elegido» y no «Todos», y la lista sigue filtrada por él', async () => {
+      conSesion(USUARIOS.USUARIO_FINAL);
+      const { consultas } = conHistorial(() => paginaDeLotes([LOTE_ANALIZADO]));
+      servidor.use(http.get('/api/v1/lotes/registradores', () => problema(500, 'Error interno.')));
+      abrirApp(`/historial?usuario=${MARIA}`);
+
+      await screen.findByRole('table', { name: 'Lotes de la empresa' });
+      expect(await within(filtros()).findByText(/^No se pudo traer la lista de usuarios/)).toBeInTheDocument();
+      expect(consultas[0]).toEqual({ pagina: '0', tamano: '20', usuario: MARIA });
+      expect(opciones('Usuario')).toEqual([['', 'Todos'], [MARIA, 'Usuario elegido']]);
+      expect(campo('Usuario')).toHaveValue(MARIA);
+      expect(campo('Usuario').selectedOptions[0]).toHaveTextContent('Usuario elegido');
+      expect(direccion()).toEqual({ usuario: MARIA });
+    });
+
+    it('RF-14 · un usuario de la dirección en mayúsculas es el mismo de la lista: el campo muestra su nombre, la lista se pide con él en minúsculas y «Aplicar filtros» la vuelve a pedir', async () => {
+      conSesion(USUARIOS.USUARIO_FINAL);
+      const { consultas } = conHistorial(() => paginaDeLotes([LOTE_ANALIZADO]));
+      const { usuario } = abrirApp(`/historial?usuario=${MARIA.toUpperCase()}`);
+
+      await screen.findByRole('table', { name: 'Lotes de la empresa' });
+      expect(MARIA.toUpperCase()).not.toBe(MARIA);
+      expect(consultas[0]).toEqual({ pagina: '0', tamano: '20', usuario: MARIA });
+      await within(filtros()).findByRole('option', { name: 'María Torres' });
+      expect(campo('Usuario')).toHaveValue(MARIA);
+      expect(campo('Usuario').selectedOptions[0]).toHaveTextContent('María Torres');
+      expect(opciones('Usuario').map(([, texto]) => texto)).not.toContain('Usuario elegido');
+
+      await pulsar(usuario, 'Aplicar filtros');
+
+      await waitFor(() => expect(consultas).toHaveLength(2));
+      expect(consultas[1]).toEqual({ pagina: '0', tamano: '20', usuario: MARIA });
+      expect(direccion()).toEqual({ usuario: MARIA });
+    });
+
+    it('RF-14 · una página de la dirección que ya no existe, como al volver con «Atrás» cuando quedan menos lotes, lleva a la última: la lista se pide otra vez y esa página queda marcada', async () => {
+      conSesion(USUARIOS.USUARIO_FINAL);
+      const veinte = Array.from({ length: 20 }, (_, indice) => loteNumero(20 - indice));
+      const { consultas } = conHistorial((pagina) => paginaDeLotes(veinte.slice(pagina * 20, pagina * 20 + 20),
+        { pagina, total: 20 }));
+      abrirApp('/historial?estado=PENDIENTE&pagina=3');
+
+      await waitFor(() => expect(consultas.at(-1)).toEqual({ pagina: '0', tamano: '20', estado: 'PENDIENTE' }));
+      expect(consultas[0]).toEqual({ pagina: '2', tamano: '20', estado: 'PENDIENTE' });
+      await waitFor(() => expect(filas()).toHaveLength(20));
+      expect(direccion()).toEqual({ estado: 'PENDIENTE' });
+      expect(within(screen.getByRole('navigation', { name: 'Páginas del historial' }))
+        .getByRole('button', { name: 'Página 1' })).toHaveAttribute('aria-current', 'page');
+      await waitFor(() => expect(anunciado()).toMatch(/(^|\D)20 lotes encontrados\b/));
+    });
+
+    it('RF-14 · una página de la dirección mayor que la que acepta la API se ignora: la lista se pide desde la página 1 y no sale el error del backend (prueba de límite)', async () => {
+      conSesion(USUARIOS.USUARIO_FINAL);
+      const { consultas } = conHistorial(() => paginaDeLotes([LOTE_ANALIZADO, LOTE_PENDIENTE]));
+      // Como el backend: una página mayor que Pagina.PAGINA_MAXIMA responde 400 en «pagina».
+      servidor.use(http.get('/api/v1/lotes', ({ request }) => (
+        Number(new URL(request.url).searchParams.get('pagina')) > PAGINA_MAXIMA
+          ? problema(400, 'Revisa los datos marcados.', {
+            errores: [{ campo: 'pagina', mensaje: `Debe ser menor o igual a ${PAGINA_MAXIMA}.` }],
+          })
+          : undefined)));
+      abrirApp('/historial?pagina=30000000');
+
+      await screen.findByRole('table', { name: 'Lotes de la empresa' });
+      expect(consultas).toEqual([{ pagina: '0', tamano: '20' }]);
+      expect(screen.queryByText('Revisa los datos marcados.')).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Reintentar' })).not.toBeInTheDocument();
     });
 
     it('RF-14 · al volver con «Atrás» desde «Ver», la lista sigue con sus filtros', async () => {

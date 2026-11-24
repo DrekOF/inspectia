@@ -2,7 +2,8 @@
  * Nombre: fotos.js (pruebas)
  * Descripción: Fotos de prueba y respuestas simuladas de la API de las fotos de un lote, también las de la segunda
  *              muestra, y de sus enlaces firmados, para las pruebas de la página de las fotos (RF-05, RF-14 C5 y C6,
- *              D-25, D-41).
+ *              D-25, D-41). Como el backend, el enlace se pide para una muestra, su llave la lleva, y el enlace y la
+ *              confirmación responden 409 si esa muestra ya no es la que recibe las fotos.
  * Fecha de creación: 23/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
@@ -14,6 +15,13 @@ import { problema, servidor } from './servidor.js';
 
 /** El mensaje del backend para un enlace con otra firma, como el de un Content-Type distinto del firmado (D-41). */
 export const ENLACE_NO_VALIDO = 'El enlace de la foto venció o no es válido: vuelve a intentarlo.';
+
+/**
+ * El mensaje del backend cuando la muestra que espera la página ya no es la que recibe las fotos (foto.muestra_cambio,
+ * D-25).
+ */
+export const MUESTRA_CAMBIO =
+  'El lote cambió mientras tenías abierta esta página: recárgala para ver qué muestra recibe las fotos.';
 
 /** La muestra de un lote que todavía no tiene fotos. */
 export const SIN_FOTOS = { muestra: null, estado: null, fotos: [] };
@@ -96,25 +104,63 @@ export function conFotos(loteId, fotos, { muestra = 1, estado = 'PENDIENTE' } = 
 }
 
 /**
+ * El número de la muestra que dice una llave de foto, como la del backend: e/l/m2-….jpg dice la 2.
+ *
+ * @param {string} llave la llave
+ * @returns {number|null} el número de la muestra, o null si la llave no lo dice
+ */
+function muestraDeLaLlave(llave) {
+  const partes = /\/m([12])-[^/]+$/.exec(llave ?? '');
+  return partes ? Number(partes[1]) : null;
+}
+
+/**
+ * El error de la muestra que pide un enlace, como lo valida el backend: obligatoria y de 1 a 2.
+ *
+ * @param {unknown} muestra la muestra que llegó en el cuerpo
+ * @returns {string|null} el mensaje del error, o null si sirve
+ */
+function errorDeLaMuestra(muestra) {
+  if (muestra === undefined || muestra === null) {
+    return 'Este dato es obligatorio.';
+  }
+  if (!Number.isInteger(muestra) || muestra < 1) {
+    return 'Debe ser mayor o igual a 1.';
+  }
+  return muestra > 2 ? 'Debe ser menor o igual a 2.' : null;
+}
+
+/**
  * Responde la subida de las fotos de un lote, como el backend con la carpeta local (D-41): el enlace, el PUT al
- * enlace y la confirmación. Como el backend, el PUT responde 403 si su Content-Type no es el que se firmó. Anota lo
- * que llegó a cada uno.
+ * enlace y la confirmación. Como el backend, el enlace exige la muestra que espera la página, 1 o 2 (si falta o es
+ * otra cosa, 400 en «muestra»), y su llave la lleva; si no es la muestra que recibe las fotos, el enlace y la
+ * confirmación responden 409 (foto.muestra_cambio, D-25). El PUT responde 403 si su Content-Type no es el que se
+ * firmó. Anota lo que llegó a cada uno.
  *
  * @param {string} loteId el lote
- * @param {{ base?: string, espera?: Promise<unknown> }} [opciones] dónde están los enlaces: /api/v1/archivos, o el
- *   dominio de S3; y lo que espera el PUT antes de responder, para ver la página mientras sube
- * @returns {{ pedidas: object[], subidas: object[], confirmadas: object[] }} lo que llegó: lo que se pidió, cada PUT,
- *   con su Authorization, su Content-Type, su Accept-Language, sus bytes y su dirección, y cada confirmación
+ * @param {{ base?: string, espera?: Promise<unknown>, muestra?: number }} [opciones] dónde están los enlaces:
+ *   /api/v1/archivos, o el dominio de S3; lo que espera el PUT antes de responder, para ver la página mientras sube; y
+ *   la muestra que recibe las fotos, 1 si no se dice
+ * @returns {{ pedidas: object[], subidas: object[], confirmadas: object[], muestra: number }} lo que llegó: lo que se
+ *   pidió, cada PUT, con su Authorization, su Content-Type, su Accept-Language, sus bytes y su dirección, y cada
+ *   confirmación; y la muestra que recibe las fotos, que la prueba puede cambiar, como si otro usuario cambiara el lote
  */
-export function conSubidas(loteId, { base = '/api/v1/archivos', espera } = {}) {
-  const anotado = { pedidas: [], subidas: [], confirmadas: [] };
+export function conSubidas(loteId, { base = '/api/v1/archivos', espera, muestra = 1 } = {}) {
+  const anotado = { pedidas: [], subidas: [], confirmadas: [], muestra };
   const firmados = new Map();
   servidor.use(
     http.post(`/api/v1/lotes/${loteId}/fotos/:numero/subida`, async ({ request, params }) => {
       const cuerpo = await request.json();
       anotado.pedidas.push({ numero: Number(params.numero), ...cuerpo });
+      const rechazo = errorDeLaMuestra(cuerpo.muestra);
+      if (rechazo) {
+        return problema(400, 'Revisa los datos marcados.', { errores: [{ campo: 'muestra', mensaje: rechazo }] });
+      }
+      if (cuerpo.muestra !== anotado.muestra) {
+        return problema(409, MUESTRA_CAMBIO);
+      }
       const extension = cuerpo.tipo === 'image/png' ? 'png' : 'jpg';
-      const llave = `e/${loteId}/foto-${params.numero}-${anotado.pedidas.length}.${extension}`;
+      const llave = `e/${loteId}/m${cuerpo.muestra}-foto-${params.numero}-${anotado.pedidas.length}.${extension}`;
       firmados.set(llave, cuerpo.tipo);
       return HttpResponse.json({
         llave, url: `${base}/${llave}?vence=1&firma=s`, metodo: 'PUT', encabezados: { 'Content-Type': cuerpo.tipo },
@@ -138,6 +184,9 @@ export function conSubidas(loteId, { base = '/api/v1/archivos', espera } = {}) {
       const { llave } = await request.json();
       const numero = Number(params.numero);
       anotado.confirmadas.push({ numero, llave });
+      if (muestraDeLaLlave(llave) !== anotado.muestra) {
+        return problema(409, MUESTRA_CAMBIO);
+      }
       return HttpResponse.json(fotoCargada(numero, {
         formato: llave.endsWith('.png') ? 'PNG' : 'JPG', url: `${base}/${llave}?vence=2&firma=v`,
       }));

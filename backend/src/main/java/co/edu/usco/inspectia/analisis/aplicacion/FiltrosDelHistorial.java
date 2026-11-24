@@ -1,8 +1,8 @@
 /*
  * Nombre: FiltrosDelHistorial.java
  * Descripción: Los filtros del historial de lotes, todos opcionales y combinables: la fecha del resultado desde y
- *              hasta, en días de Colombia y con las dos fechas incluidas, el estado, la categoría, el código y quien
- *              registró el lote (RF-14 C2, restricción 5).
+ *              hasta, en días de Colombia, con las dos fechas incluidas y de los años 0001 a 9999, el estado, la
+ *              categoría, el código y quien registró el lote (RF-14 C2, restricción 5).
  * Fecha de creación: 24/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
@@ -14,6 +14,8 @@ import co.edu.usco.inspectia.analisis.dominio.EstadoDeLote;
 import co.edu.usco.inspectia.comun.texto.Textos;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -22,7 +24,8 @@ import java.util.UUID;
  * <p>Las fechas son días de Colombia («Fechas» en {@code specs/modelo-datos.md}), con las dos incluidas: el filtro
  * va de las 00:00 de {@code desde} hasta antes de las 00:00 del día siguiente a {@code hasta}, en la hora de Colombia
  * ({@link #inicio()} y {@link #fin()}). Así el adaptador de la base recibe instantes y no sabe de zonas. Un lote
- * pendiente todavía no tiene fecha del resultado: no sale cuando se filtra por fecha.
+ * pendiente todavía no tiene fecha del resultado: no sale cuando se filtra por fecha. Las fechas van de los años 0001
+ * a 9999 ({@link #fechasFueraDeRango()}).
  *
  * @param desde el primer día de la fecha del resultado, incluido, o {@code null}
  * @param hasta el último día de la fecha del resultado, incluido, o {@code null}
@@ -34,6 +37,12 @@ import java.util.UUID;
  */
 public record FiltrosDelHistorial(LocalDate desde, LocalDate hasta, EstadoDeLote estado, String categoria,
         String codigo, UUID usuarioId) {
+
+    /** El primer año que admiten las fechas del filtro: 0001. */
+    public static final int ANIO_MINIMO = 1;
+
+    /** El último año que admiten las fechas del filtro: 9999. */
+    public static final int ANIO_MAXIMO = 9999;
 
     /** Deja el código como se busca, y un código o una categoría en blanco como «sin filtro». */
     public FiltrosDelHistorial {
@@ -58,6 +67,28 @@ public record FiltrosDelHistorial(LocalDate desde, LocalDate hasta, EstadoDeLote
      */
     public Instant fin() {
         return hasta == null ? null : hasta.plusDays(1).atStartOfDay(RegistrarLote.COLOMBIA).toInstant();
+    }
+
+    /**
+     * Las fechas que se salen de los años {@value #ANIO_MINIMO} a {@value #ANIO_MAXIMO}, los que deja escribir el campo
+     * de fecha de la página. Fuera de ellos la búsqueda no sirve: un año muy grande desborda el día siguiente a
+     * {@code hasta} y uno muy antiguo no cabe en la base; por eso se rechaza antes de buscar (RF-14).
+     *
+     * @return {@code desde} y {@code hasta}, en ese orden, si se salen; vacía si las dos sirven o no están
+     */
+    public List<String> fechasFueraDeRango() {
+        List<String> campos = new ArrayList<>();
+        if (fueraDeRango(desde)) {
+            campos.add("desde");
+        }
+        if (fueraDeRango(hasta)) {
+            campos.add("hasta");
+        }
+        return campos;
+    }
+
+    private static boolean fueraDeRango(LocalDate fecha) {
+        return fecha != null && (fecha.getYear() < ANIO_MINIMO || fecha.getYear() > ANIO_MAXIMO);
     }
 
     /**

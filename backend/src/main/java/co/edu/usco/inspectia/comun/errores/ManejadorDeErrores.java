@@ -1,11 +1,12 @@
 /*
  * Nombre: ManejadorDeErrores.java
  * Descripción: Convierte los errores de la API en respuestas application/problem+json (RFC 9457), con
- *              la lista «errores» y los mensajes en el idioma de la petición (RP-03, RP-11).
+ *              la lista «errores» y los mensajes en el idioma de la petición (RP-03, RP-11); el cuerpo de una
+ *              ruta que también valida su ruta o sus parámetros dice el campo del cuerpo que falló.
  * Fecha de creación: 13/10/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.6
+ * Versión: 1.7
  */
 package co.edu.usco.inspectia.comun.errores;
 
@@ -28,8 +29,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
-import org.springframework.validation.BindingResult;
+import org.springframework.validation.Errors;
 import org.springframework.validation.FieldError;
+import org.springframework.validation.method.ParameterErrors;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -181,14 +183,21 @@ public class ManejadorDeErrores extends ResponseEntityExceptionHandler {
         return handleExceptionInternal(excepcion, problema, encabezados, estado, peticion);
     }
 
+    /**
+     * Datos inválidos de una ruta que valida también su ruta o sus parámetros, como el número de una foto: 400 con un
+     * error por parámetro y, si el que falla es el cuerpo, un error por cada campo del cuerpo, como con
+     * {@link #handleMethodArgumentNotValid}; así dice {@code muestra} y no el nombre del parámetro del cuerpo.
+     */
     @Override
     protected ResponseEntity<Object> handleHandlerMethodValidationException(
             HandlerMethodValidationException excepcion, HttpHeaders encabezados, HttpStatusCode estado,
             WebRequest peticion) {
         List<ErrorDeCampo> errores = excepcion.getParameterValidationResults().stream()
-                .flatMap(resultado -> resultado.getResolvableErrors().stream().limit(1)
-                        .map(error -> new ErrorDeCampo(resultado.getMethodParameter().getParameterName(),
-                                error.getDefaultMessage())))
+                .flatMap(resultado -> resultado instanceof ParameterErrors cuerpo
+                        ? errores(cuerpo).stream()
+                        : resultado.getResolvableErrors().stream().limit(1)
+                                .map(error -> new ErrorDeCampo(resultado.getMethodParameter().getParameterName(),
+                                        error.getDefaultMessage())))
                 .toList();
         ProblemDetail problema = problema(estado, "error.datos_invalidos", errores);
         return handleExceptionInternal(excepcion, problema, encabezados, estado, peticion);
@@ -254,7 +263,7 @@ public class ManejadorDeErrores extends ResponseEntityExceptionHandler {
     }
 
     /** Un error por campo, en orden alfabético de campo; los errores que no son de un campo, al final. */
-    private List<ErrorDeCampo> errores(BindingResult resultado) {
+    private List<ErrorDeCampo> errores(Errors resultado) {
         Map<String, FieldError> porCampo = new TreeMap<>();
         resultado.getFieldErrors().stream()
                 .sorted(Comparator.comparing((FieldError error) -> !FALTA_EL_DATO.contains(error.getCode()))

@@ -97,8 +97,9 @@ test('RF-05 · C2 · con 3 fotos subidas la página no ofrece una cuarta, y la A
   }
   await expect(page.getByRole('group', { name: /^Foto \d/ })).toHaveCount(3);
   await expect(page.getByLabel('Archivo de la foto 4')).toHaveCount(0);
+  // Con la muestra que recibe las fotos, así el 400 es por el número de la foto y no por la muestra (D-25).
   const cuarta = await request.post(`/api/v1/lotes/${lote.id}/fotos/4/subida`, {
-    data: { tipo: 'image/png', tamanoBytes: 2048 },
+    data: { tipo: 'image/png', tamanoBytes: 2048, muestra: 1 },
     headers: { Authorization: `Bearer ${await tokenDe(request, usuarioFinal)}` },
   });
   expect(cuarta.status()).toBe(400);

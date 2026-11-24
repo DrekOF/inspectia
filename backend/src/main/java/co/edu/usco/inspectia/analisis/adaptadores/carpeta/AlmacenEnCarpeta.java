@@ -1,11 +1,12 @@
 /*
  * Nombre: AlmacenEnCarpeta.java
  * Descripción: El puerto AlmacenDeArchivos en una carpeta del servidor (D-41): enlaces firmados relativos a la página,
- *              llaves que no salen de la carpeta, archivos que no se pisan y la lectura de una foto para clasificarla.
+ *              llaves que no salen de la carpeta y que llevan la muestra para la que se pidieron (D-25), archivos que
+ *              no se pisan y la lectura de una foto para clasificarla.
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 package co.edu.usco.inspectia.analisis.adaptadores.carpeta;
 
@@ -30,8 +31,9 @@ import java.util.regex.Pattern;
 /**
  * El almacén de los archivos en una carpeta del servidor (D-41), que hace las veces de S3 mientras no haya despliegue
  * en AWS. Los enlaces son relativos a la página ({@value #RUTA}), así pasan por el mismo origen (D-31). Las llaves las
- * arma el caso de uso: {@code <empresa>/<lote>/<uuid>.<jpg|png>}; una llave con otra forma, o que saldría de la
- * carpeta, no se acepta. Un archivo ya subido no se pisa.
+ * arma el caso de uso: {@code <empresa>/<lote>/m<muestra>-<uuid>.<jpg|png>}, con la muestra 1 o 2 para la que se
+ * pidió el enlace (D-25); una llave con otra forma, como la de antes sin la muestra, o que saldría de la carpeta, no
+ * se acepta. Un archivo ya subido no se pisa.
  */
 public class AlmacenEnCarpeta implements AlmacenDeArchivos {
 
@@ -40,8 +42,12 @@ public class AlmacenEnCarpeta implements AlmacenDeArchivos {
 
     private static final String UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
 
-    /** La forma de una llave: dos UUID y el nombre del archivo, con su extensión. */
-    private static final Pattern LLAVE = Pattern.compile("^" + UUID + "/" + UUID + "/" + UUID + "\\.(jpg|png)$");
+    /**
+     * La forma de una llave: dos UUID y el nombre del archivo, con la muestra (1 o 2), un UUID y su extensión, como
+     * {@code m1-<uuid>.jpg}.
+     */
+    private static final Pattern LLAVE = Pattern.compile(
+            "^" + UUID + "/" + UUID + "/m[12]-" + UUID + "\\.(jpg|png)$");
 
     private final Path raiz;
     private final FirmaDeEnlaces firma;
@@ -171,7 +177,7 @@ public class AlmacenEnCarpeta implements AlmacenDeArchivos {
 
     private static String revisada(String llave) {
         if (llave == null || !LLAVE.matcher(llave).matches()) {
-            throw new IllegalArgumentException("La llave no tiene la forma <empresa>/<lote>/<archivo>");
+            throw new IllegalArgumentException("La llave no tiene la forma <empresa>/<lote>/m<muestra>-<archivo>");
         }
         return llave;
     }

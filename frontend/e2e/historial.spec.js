@@ -5,7 +5,9 @@
  *              pantalla y con los lotes de una empresa propia; la dirección que los conserva al volver de «Ver»; la
  *              lista vacía con «Limpiar filtros»; el chip «Sugiere otra muestra», y los lotes de un usuario
  *              desactivado, que siguen en el historial y en la lista «Usuario». Las fotos se hacen en la prueba
- *              (RNF-08): el clasificador falso da 50 granos por foto y tantos no sanos como su ancho módulo 50.
+ *              (RNF-08): el clasificador falso da 50 granos por foto y tantos no sanos como su ancho módulo 50. Si la
+ *              preparación cruza la medianoche de Colombia, la prueba de los filtros se salta: sus lotes no tendrían
+ *              la misma fecha del resultado.
  * Fecha de creación: 24/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
@@ -16,11 +18,11 @@ import {
   abrirFiltros, crearEmpresaConUsuarioFinal, crearUsuarioFinalEn, desactivarUsuarioEn, expect, filtrarElHistorial,
   iniciarSesion, loteAnalizado, loteDelHistorial, registrarLotes, seVenSoloLosLotes, test,
 } from './ayudas.js';
-import { diaEnColombia } from './fechas.js';
+import { diaAnterior, diaEnColombia } from './fechas.js';
 
 /**
  * El comienzo de los códigos de los lotes de una prueba: una letra y 6 cifras hexadecimales, nuevas en cada prueba y
- * en cada navegador, que no tienen «s» ni «t».
+ * en cada navegador, que no tienen «s», «t», «p» ni «r»: así «est» y «pre» solo están en el final de un código.
  *
  * @returns {string} el comienzo
  */
@@ -46,15 +48,20 @@ test('RF-14 · C2 · los filtros por fecha del resultado, estado, categoría, c�
   const prefijo = prefijoNuevo();
   const [est, pre, cor, fdn, pen] = ['EST', 'PRE', 'COR', 'FDN', 'PEN'].map((sufijo) => `${prefijo}-${sufijo}`);
   const todos = [est, pre, cor, fdn, pen];
+  // El día de Colombia en que se analizan los lotes: es la fecha del resultado de los cuatro, si la preparación no
+  // cruza la medianoche. Se toma antes del primer análisis y no después, cuando el reloj ya pudo cambiar de día.
+  const hoy = diaEnColombia(0);
+  const ayer = diaAnterior(hoy);
   // Con los rangos por defecto: 87 de 100 sanos dan 90,6 % (Estándar, sugiere otra), 93 dan 100,0 % (Premium), 86
   // dan 88,3 % (Corriente, sin sugerencia) y 83 dan 81,6 % (Fuera de norma, a 0,4 de 82: sugiere otra).
   await loteAnalizado(request, marta, [106, 107], { codigo: est });
   await loteAnalizado(request, marta, [103, 104], { codigo: pre });
   await loteAnalizado(request, marta, [107, 107], { codigo: cor });
   await loteAnalizado(request, pedro, [108, 109], { codigo: fdn });
+  // El backend y la prueba usan el mismo reloj: si el día no cambió, los cuatro resultados quedaron en «hoy».
+  test.skip(diaEnColombia(0) !== hoy, 'La preparación cruzó la medianoche de Colombia: los cuatro lotes no tienen la '
+    + 'misma fecha del resultado y los filtros por fecha no se pueden comprobar. Vuelve a correr la prueba.');
   await registrarLotes(request, marta, [{ codigo: pen }]);
-  const hoy = diaEnColombia(0);
-  const ayer = diaEnColombia(-1);
   await iniciarSesion(page, marta);
 
   await page.goto('/historial');
@@ -75,9 +82,11 @@ test('RF-14 · C2 · los filtros por fecha del resultado, estado, categoría, c�
   expect(parametrosDe(page)).toEqual({ estado: 'PENDIENTE' });
   await filtrarElHistorial(formulario, { categoria: 'Estándar' });
   await seVenSoloLosLotes(page, todos, [est]);
-  await filtrarElHistorial(formulario, { codigo: '  est ' });
-  await seVenSoloLosLotes(page, todos, [est]);
-  expect(parametrosDe(page)).toEqual({ codigo: 'est' });
+  // Otro lote que el del paso anterior: mientras llega la lista nueva, la página deja la anterior, y con el mismo lote
+  // la prueba pasaría sin mirar la respuesta del código. «pre» solo está en el código del lote que termina en PRE.
+  await filtrarElHistorial(formulario, { codigo: '  pre ' });
+  await seVenSoloLosLotes(page, todos, [pre]);
+  expect(parametrosDe(page)).toEqual({ codigo: 'pre' });
   await filtrarElHistorial(formulario, { usuario: 'Pedro Salas' });
   await seVenSoloLosLotes(page, todos, [fdn]);
   expect(parametrosDe(page)).toEqual({ usuario: pedro.id });

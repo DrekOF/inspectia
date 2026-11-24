@@ -56,10 +56,17 @@ public class ConsultarLotes {
      * @param pagina número de la página, desde 0
      * @param tamano lotes por página
      * @return la página
-     * @throws ReglaIncumplidaExcepcion si «Hasta» es anterior a «Resultado desde» (400 en {@code hasta}, RF-14
-     *     restricción 5)
+     * @throws ReglaIncumplidaExcepcion si una fecha se sale de los años 0001 a 9999 (400 en su campo, o en los dos), o
+     *     si «Hasta» es anterior a «Resultado desde» (400 en {@code hasta}, RF-14 restricción 5)
      */
     public Page<VistaDeLote> historial(UUID empresaId, FiltrosDelHistorial filtros, int pagina, int tamano) {
+        // El rango va primero: con un año fuera de él, «Hasta antes de desde» no sería el motivo.
+        List<CampoInvalido> fueraDeRango = filtros.fechasFueraDeRango().stream()
+                .map(campo -> new CampoInvalido(campo, "error.valor_invalido"))
+                .toList();
+        if (!fueraDeRango.isEmpty()) {
+            throw new ReglaIncumplidaExcepcion(fueraDeRango);
+        }
         if (filtros.fechasAlReves()) {
             throw new ReglaIncumplidaExcepcion(
                     List.of(new CampoInvalido("hasta", "lote.filtro.hasta_antes_de_desde")));

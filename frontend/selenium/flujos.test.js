@@ -317,15 +317,18 @@ describe.each(COMBINACIONES)('%s en %s', (_, navegador, __, celular) => {
 
   it('RF-14 · C6 · el usuario final pulsa «Analizar otra muestra» en el resultado que la sugiere, sube dos fotos de la muestra 2, la analiza y ve la suma de las dos: 172 de 200 dan 88,3 % (Selenium)', async () => {
     const luis = await crearUsuario();
-    const lote = await registrarLote(luis, `S-${randomUUID().slice(0, 8)}`, diaEnColombia(-7));
-    // La muestra 1, por la API: 87 de 100 sanos, 90,6 %, a 0,6 puntos de 90. La 2, en la pantalla: 8 + 7 no sanos.
-    await analizarPorLaApi(luis, lote.id, [106, 107]);
-    const fotos = [108, 107].map((ancho) => {
-      const ruta = join(tmpdir(), `inspectia-selenium-${randomUUID().slice(0, 8)}-${ancho}.png`);
-      writeFileSync(ruta, png({ ancho, alto: 100 }));
-      return ruta;
-    });
+    // Solo crear a Luis va antes del try: si falla la preparación, como el análisis por la API, el finally borra las
+    // fotos que alcanzaron a escribirse y lo desactiva, así la empresa de prueba no llega a los 25 activos (RF-03).
+    let fotos = [];
     try {
+      const lote = await registrarLote(luis, `S-${randomUUID().slice(0, 8)}`, diaEnColombia(-7));
+      // La muestra 1, por la API: 87 de 100 sanos, 90,6 %, a 0,6 puntos de 90. La 2, en la pantalla: 8 + 7 no sanos.
+      await analizarPorLaApi(luis, lote.id, [106, 107]);
+      fotos = [108, 107].map((ancho) => {
+        const ruta = join(tmpdir(), `inspectia-selenium-${randomUUID().slice(0, 8)}-${ancho}.png`);
+        writeFileSync(ruta, png({ ancho, alto: 100 }));
+        return ruta;
+      });
       await entrar(driver, luis);
       await esperarTexto(driver, 'Hola, Luis');
       await driver.get(`${APP}/lotes/${lote.id}`);

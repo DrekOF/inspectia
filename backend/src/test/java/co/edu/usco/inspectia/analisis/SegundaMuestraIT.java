@@ -3,8 +3,8 @@
  * Descripción: Pruebas de integración de la segunda muestra de un lote (D-25): con otra muestra sugerida, el lote
  *              analizado recibe las fotos de la muestra 2 sin tocar la 1, la envía, la cola la atiende y el resultado
  *              se recalcula con la suma de las dos y los rangos vigentes, sin sugerencia ni límite; sin sugerencia, o
- *              con 2 muestras, no admite otra (RF-12 C8 y C12, RF-14 C3 y C6, RF-10 C4 y C11, RF-13 C2, RF-05 C2,
- *              RF-08, RF-15, D-47).
+ *              con 2 muestras, no admite otra; una foto pedida para una muestra que ya no recibe fotos responde 409
+ *              (RF-12 C8 y C12, RF-14 C3 y C6, RF-10 C4 y C11, RF-13 C2, RF-05 C2, RF-08, RF-15, D-47).
  * Fecha de creación: 24/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
@@ -19,6 +19,7 @@ import static co.edu.usco.inspectia.analisis.ApiAnalisis.granos;
 import static co.edu.usco.inspectia.analisis.ApiAnalisis.lote;
 import static co.edu.usco.inspectia.analisis.ApiAnalisis.muestras;
 import static co.edu.usco.inspectia.analisis.ApiFotos.LOTE_NO_PENDIENTE;
+import static co.edu.usco.inspectia.analisis.ApiFotos.MUESTRA_CAMBIO;
 import static co.edu.usco.inspectia.analisis.ApiFotos.PNG;
 import static co.edu.usco.inspectia.analisis.ApiFotos.SIN_OTRA_MUESTRA;
 import static co.edu.usco.inspectia.analisis.ApiFotos.png;
@@ -54,6 +55,9 @@ import org.springframework.test.web.servlet.assertj.MvcTestResult;
  * 87 de 100: 90,6 %, Estándar, con sugerencia por el límite de Estándar (90 %). Una muestra 2 igual da 174 de 200:
  * 90,6 %, sin sugerencia (D-25); con 108 × 100 y 107 × 100, 172 de 200: 88,3 %, Corriente. Las consultas a la tabla
  * {@code muestra} van siempre con su número: el lote tiene dos.
+ *
+ * <p>Como la página, cada enlace de subida dice qué muestra espera: {@code fotos} y {@code analisis} piden los de la
+ * muestra 1, y {@code fotosDeLaDos} y {@code analisisDeLaDos}, los de la 2.
  */
 @PruebaIntegracion
 class SegundaMuestraIT {
@@ -80,6 +84,8 @@ class SegundaMuestraIT {
 
     private ApiFotos fotos;
     private ApiAnalisis analisis;
+    private ApiFotos fotosDeLaDos;
+    private ApiAnalisis analisisDeLaDos;
     private UUID empresa;
     private UUID luis;
     private UUID pedro;
@@ -93,6 +99,8 @@ class SegundaMuestraIT {
         ApiSesion api = new ApiSesion(mvc, jdbc);
         fotos = new ApiFotos(api, mvc);
         analisis = new ApiAnalisis(api, fotos);
+        fotosDeLaDos = fotos.deLaMuestra(2);
+        analisisDeLaDos = new ApiAnalisis(api, fotosDeLaDos);
         ApiSesion.borrarDatos(jdbc);
         empresa = api.crearEmpresa("Cacaos del Huila", "900123456-8");
         luis = api.crearUsuario(empresa, "Luis Gómez", LUIS, "USUARIO_FINAL");
@@ -111,9 +119,19 @@ class SegundaMuestraIT {
         ConfiguracionContenedores.vaciarCarpetaDeFotos();
     }
 
-    /** Sube las fotos de la muestra en curso, la envía y atiende la cola. */
+    /** Sube las fotos de la muestra 1, la envía y atiende la cola. */
     private void analizar(String token, int[]... medidas) {
-        analisis.subirYEnviar(token, lote, medidas);
+        analizar(analisis, token, medidas);
+    }
+
+    /** Sube las fotos de la muestra 2, la envía y atiende la cola. */
+    private void analizarLaDos(String token, int[]... medidas) {
+        analizar(analisisDeLaDos, token, medidas);
+    }
+
+    /** Sube las fotos con las llamadas de su muestra, la envía y atiende la cola. */
+    private void analizar(ApiAnalisis deSuMuestra, String token, int[]... medidas) {
+        deSuMuestra.subirYEnviar(token, lote, medidas);
         assertThat(atender.atenderUna()).as("la cola atiende la muestra").isTrue();
     }
 
@@ -128,7 +146,7 @@ class SegundaMuestraIT {
     /** Las dos muestras: la 1 con sugerencia y la 2 con las fotos dadas, ya atendida por la cola. */
     private Map<String, Object> dosMuestras(int[]... segunda) {
         primeraMuestraConSugerencia();
-        analizar(tokenDeLuis, segunda);
+        analizarLaDos(tokenDeLuis, segunda);
         return analisis.resultadoOk(tokenDeLuis, lote);
     }
 
@@ -142,7 +160,7 @@ class SegundaMuestraIT {
         assertThat(resultadoGuardado()).as("95,4 %, a 0,6 de 96: la muestra 1 sugiere otra")
                 .containsEntry("estado", "ANALIZADO").containsEntry("sugerir_otra_muestra", true);
         clasificador.conGranos(125);
-        analizar(tokenDeLuis, new int[] {104, 100}, new int[] {104, 100}, new int[] {104, 100});
+        analizarLaDos(tokenDeLuis, new int[] {104, 100}, new int[] {104, 100}, new int[] {104, 100});
         return analisis.resultadoOk(tokenDeLuis, lote);
     }
 
@@ -175,9 +193,12 @@ class SegundaMuestraIT {
                 + "fecha_resultado FROM lote WHERE id = ?", lote);
     }
 
-    /** Una llave con la forma que arma el backend para este lote, para confirmar una foto que no se pidió. */
+    /**
+     * Una llave de la muestra 2 con la forma que arma el backend para este lote, para confirmar una foto que no se
+     * pidió.
+     */
     private String llaveDelLote() {
-        return empresa + "/" + lote + "/" + UUID.randomUUID() + ".png";
+        return ApiFotos.llave(empresa, lote, 2, "png");
     }
 
     @Test
@@ -199,7 +220,7 @@ class SegundaMuestraIT {
         assertThat(lote(analisis.resultadoOk(tokenDeLuis, lote))).containsEntry("sugerirOtraMuestra", true)
                 .containsEntry("limiteSugerencia", 90.0).containsEntry("categoriaDelLimite", "ESTANDAR");
 
-        analisis.subirFotos(tokenDePedro, lote, SEIS_NO_SANOS, SIETE_NO_SANOS);
+        analisisDeLaDos.subirFotos(tokenDePedro, lote, SEIS_NO_SANOS, SIETE_NO_SANOS);
         Map<String, Object> laLista = json(fotos.listar(tokenDePedro, lote));
         Map<String, Object> enviada = analisis.enviarOk(tokenDePedro, lote);
         Map<String, Object> enEspera = analisis.avanceOk(tokenDeLuis, lote);
@@ -238,7 +259,7 @@ class SegundaMuestraIT {
     @DisplayName("RF-14 · C3 · mientras la muestra 2 espera, el detalle trae el resultado guardado de la muestra 1, con su sugerencia, y las dos muestras: la 2 en espera, con sus fotos sin granos")
     void mientrasLaMuestraDosEspera() {
         primeraMuestraConSugerencia();
-        analisis.subirYEnviar(tokenDeLuis, lote, SEIS_NO_SANOS, SIETE_NO_SANOS);
+        analisisDeLaDos.subirYEnviar(tokenDeLuis, lote, SEIS_NO_SANOS, SIETE_NO_SANOS);
 
         Map<String, Object> resultado = analisis.resultadoOk(tokenDeAna, lote);
 
@@ -261,7 +282,7 @@ class SegundaMuestraIT {
         primeraMuestraConSugerencia();
         List<Map<String, Object>> deLaMuestraUno = fotosDeLaMuestra(1);
 
-        Map<String, Object> foto = fotos.subirFoto(tokenDePedro, lote, 1, PNG, png(106, 100));
+        Map<String, Object> foto = fotosDeLaDos.subirFoto(tokenDePedro, lote, 1, PNG, png(106, 100));
 
         assertThat(foto).containsEntry("numero", 1).containsEntry("estado", "CARGADA");
         assertThat(numerosDeMuestra()).containsExactly(1, 2);
@@ -277,13 +298,74 @@ class SegundaMuestraIT {
     }
 
     @Test
+    @DisplayName("D-25 · una foto pedida para la muestra 1 y confirmada después de su análisis responde 409 porque el lote cambió: no crea la muestra 2 y la muestra 1 conserva sus fotos y sus granos")
+    void laFotoPedidaParaLaMuestraUnoNoCreaLaDos() {
+        analisis.subirFotos(tokenDeLuis, lote, SEIS_NO_SANOS, SIETE_NO_SANOS);
+        byte[] reemplazo = png(106, 100);
+        Map<String, Object> subida = fotos.subida(tokenDePedro, lote, 1, PNG, reemplazo.length);
+        assertThat(fotos.subir((String) subida.get("url"), PNG, reemplazo))
+                .as("Pedro sube el reemplazo y no lo confirma").hasStatus(HttpStatus.OK);
+        analisis.enviarOk(tokenDeLuis, lote);
+        assertThat(atender.atenderUna()).as("la cola atiende la muestra 1").isTrue();
+        Map<String, Object> antes = resultadoGuardado();
+        assertThat(antes).containsEntry("estado", "ANALIZADO").containsEntry("sugerir_otra_muestra", true);
+        List<Map<String, Object>> deLaMuestraUno = fotosDeLaMuestra(1);
+
+        MvcTestResult confirmada = fotos.confirmar(tokenDePedro, lote, 1, (String) subida.get("llave"));
+
+        assertThat(confirmada).hasStatus(HttpStatus.CONFLICT);
+        assertThat(json(confirmada)).containsEntry("detail", MUESTRA_CAMBIO);
+        assertThat(numerosDeMuestra()).containsExactly(1);
+        assertThat(fotosDeLaMuestra(1)).as("las fotos de la muestra 1, sin reemplazar").hasSize(2)
+                .isEqualTo(deLaMuestraUno);
+        assertThat(granosDeLaMuestra(1)).isEqualTo(100);
+        assertThat(resultadoGuardado()).isEqualTo(antes);
+    }
+
+    @Test
+    @DisplayName("D-25 · confirmar dos veces la llave de la primera foto de la muestra 2 es seguro: las dos responden la misma foto, que crea una sola muestra 2 con una sola foto")
+    void confirmarDosVecesLaPrimeraDeLaDos() {
+        primeraMuestraConSugerencia();
+        byte[] contenido = png(106, 100);
+        Map<String, Object> subida = fotosDeLaDos.subida(tokenDePedro, lote, 1, PNG, contenido.length);
+        assertThat(fotos.subir((String) subida.get("url"), PNG, contenido)).hasStatus(HttpStatus.OK);
+
+        MvcTestResult primera = fotos.confirmar(tokenDePedro, lote, 1, (String) subida.get("llave"));
+        MvcTestResult segunda = fotos.confirmar(tokenDeLuis, lote, 1, (String) subida.get("llave"));
+
+        assertThat(primera).hasStatus(HttpStatus.OK);
+        assertThat(segunda).hasStatus(HttpStatus.OK);
+        assertThat(json(segunda)).containsEntry("numero", 1)
+                .containsEntry("tamanoBytes", json(primera).get("tamanoBytes"));
+        assertThat(numerosDeMuestra()).containsExactly(1, 2);
+        assertThat(fotosDeLaMuestra(2)).singleElement().extracting(foto -> foto.get("ruta"))
+                .isEqualTo(subida.get("llave"));
+    }
+
+    @Test
+    @DisplayName("D-25 · con la muestra 1 terminada y otra muestra sugerida, pedir el enlace de una foto para la muestra 1 responde 409 porque el lote cambió, y para la muestra 2 da el enlace, con la muestra en la llave")
+    void elEnlaceSoloParaLaMuestraQueRecibe() {
+        primeraMuestraConSugerencia();
+
+        MvcTestResult paraLaUno = fotos.pedirSubida(tokenDeLuis, lote, 1, PNG, 1_000);
+        MvcTestResult paraLaDos = fotosDeLaDos.pedirSubida(tokenDeLuis, lote, 1, PNG, 1_000);
+
+        assertThat(paraLaUno).hasStatus(HttpStatus.CONFLICT);
+        assertThat(json(paraLaUno)).containsEntry("detail", MUESTRA_CAMBIO);
+        assertThat(paraLaDos).hasStatus(HttpStatus.CREATED);
+        assertThat((String) json(paraLaDos).get("llave"))
+                .matches(empresa + "/" + lote + "/m2-[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}\\.png");
+        assertThat(numerosDeMuestra()).containsExactly(1);
+    }
+
+    @Test
     @DisplayName("RF-12 · C8 · un lote analizado sin sugerencia no admite otra muestra: pedir el enlace y confirmar una foto responden 409 con el motivo, enviarlo responde 409, y no se crea otra muestra")
     void sinSugerenciaNoAdmiteOtra() {
         analizar(tokenDeLuis, SANAS, SANAS);
         Map<String, Object> antes = resultadoGuardado();
         assertThat(antes).as("100 %, a 4 puntos de 96").containsEntry("sugerir_otra_muestra", false);
 
-        MvcTestResult pedir = fotos.pedirSubida(tokenDeLuis, lote, 1, PNG, 1_000);
+        MvcTestResult pedir = fotosDeLaDos.pedirSubida(tokenDeLuis, lote, 1, PNG, 1_000);
         MvcTestResult confirmar = fotos.confirmar(tokenDeLuis, lote, 1, llaveDelLote());
         MvcTestResult enviar = analisis.enviar(tokenDeLuis, lote);
 
@@ -306,7 +388,7 @@ class SegundaMuestraIT {
         dosMuestras(SEIS_NO_SANOS, SIETE_NO_SANOS);
         Map<String, Object> antes = resultadoGuardado();
 
-        MvcTestResult pedir = fotos.pedirSubida(tokenDeLuis, lote, 1, PNG, 1_000);
+        MvcTestResult pedir = fotosDeLaDos.pedirSubida(tokenDeLuis, lote, 1, PNG, 1_000);
         MvcTestResult confirmar = fotos.confirmar(tokenDeLuis, lote, 1, llaveDelLote());
         MvcTestResult enviar = analisis.enviar(tokenDeLuis, lote);
 
@@ -328,7 +410,7 @@ class SegundaMuestraIT {
         Map<String, Object> antes = resultadoGuardado();
 
         MvcTestResult sinFotos = analisis.enviar(tokenDeLuis, lote);
-        fotos.subirFoto(tokenDeLuis, lote, 1, PNG, png(106, 100));
+        fotosDeLaDos.subirFoto(tokenDeLuis, lote, 1, PNG, png(106, 100));
         MvcTestResult conUna = analisis.enviar(tokenDeLuis, lote);
 
         assertThat(sinFotos).hasStatus(HttpStatus.BAD_REQUEST);
@@ -344,9 +426,9 @@ class SegundaMuestraIT {
     @DisplayName("RF-12 · la muestra 2 enviada ya no recibe fotos: responde 409 porque ya no está pendiente")
     void laMuestraDosEnviadaNoRecibeFotos() {
         primeraMuestraConSugerencia();
-        analisis.subirYEnviar(tokenDeLuis, lote, SEIS_NO_SANOS, SIETE_NO_SANOS);
+        analisisDeLaDos.subirYEnviar(tokenDeLuis, lote, SEIS_NO_SANOS, SIETE_NO_SANOS);
 
-        MvcTestResult resultado = fotos.pedirSubida(tokenDeLuis, lote, 3, PNG, 1_000);
+        MvcTestResult resultado = fotosDeLaDos.pedirSubida(tokenDeLuis, lote, 3, PNG, 1_000);
 
         assertThat(resultado).hasStatus(HttpStatus.CONFLICT);
         assertThat(json(resultado)).containsEntry("detail", LOTE_NO_PENDIENTE);
@@ -357,7 +439,7 @@ class SegundaMuestraIT {
     void laAdministradoraNoTomaLaMuestraDos() {
         primeraMuestraConSugerencia();
 
-        MvcTestResult pedir = fotos.pedirSubida(tokenDeAna, lote, 1, PNG, 1_000);
+        MvcTestResult pedir = fotosDeLaDos.pedirSubida(tokenDeAna, lote, 1, PNG, 1_000);
         MvcTestResult enviar = analisis.enviar(tokenDeAna, lote);
 
         assertThat(lote(analisis.resultadoOk(tokenDeAna, lote))).containsEntry("sugerirOtraMuestra", true);
@@ -371,7 +453,7 @@ class SegundaMuestraIT {
     void laMuestraDosFalla() {
         primeraMuestraConSugerencia();
         Map<String, Object> antes = resultadoGuardado();
-        analisis.subirYEnviar(tokenDeLuis, lote, SEIS_NO_SANOS, SIETE_NO_SANOS);
+        analisisDeLaDos.subirYEnviar(tokenDeLuis, lote, SEIS_NO_SANOS, SIETE_NO_SANOS);
         clasificador.fallar(new IllegalStateException("El servicio de IA no responde"));
 
         assertThat(atender.atenderUna()).isTrue();
@@ -414,7 +496,7 @@ class SegundaMuestraIT {
         jdbc.update(insertar, empresa, "CORRIENTE", new BigDecimal("82.0"), "Selección a mano antes de vender");
         jdbc.update(insertar, empresa, "FUERA_DE_NORMA", new BigDecimal("0.0"), "Reproceso completo");
 
-        analizar(tokenDeLuis, SEIS_NO_SANOS, SIETE_NO_SANOS);
+        analizarLaDos(tokenDeLuis, SEIS_NO_SANOS, SIETE_NO_SANOS);
 
         assertThat(lote(analisis.resultadoOk(tokenDeLuis, lote))).containsEntry("porcentajeSanos", 90.6)
                 .containsEntry("categoria", "CORRIENTE")
@@ -428,7 +510,7 @@ class SegundaMuestraIT {
         primeraMuestraConSugerencia();
         jdbc.update("UPDATE lote SET reporte_ruta = ? WHERE id = ?", empresa + "/" + lote + "/reporte", lote);
 
-        analizar(tokenDeLuis, SEIS_NO_SANOS, SIETE_NO_SANOS);
+        analizarLaDos(tokenDeLuis, SEIS_NO_SANOS, SIETE_NO_SANOS);
 
         assertThat(jdbc.queryForObject("SELECT reporte_ruta FROM lote WHERE id = ?", String.class, lote)).isNull();
     }

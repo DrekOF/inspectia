@@ -110,7 +110,8 @@ public class LotesControlador {
             + "está pendiente. Los filtros son opcionales y se combinan: el lote cumple todos (RF-14 C2). Las fechas "
             + "filtran la fecha del resultado en días de Colombia, con las dos incluidas: un lote pendiente no tiene "
             + "fecha del resultado y no sale al filtrar por fecha. Si «hasta» es anterior a «desde», responde 400 en "
-            + "«hasta». Un valor que no es de su tipo responde 400 en su campo. Filtrar por un usuario de otra empresa "
+            + "«hasta». Un valor que no es de su tipo, o una fecha fuera de los años 0001 a 9999, responde 400 en su "
+            + "campo. Filtrar por un usuario de otra empresa "
             + "da la lista vacía (RNF-03). El total y las páginas cuentan solo los lotes que cumplen los filtros. "
             + "Roles: USUARIO_FINAL y ADMIN_EMPRESA.")
     public Pagina<LoteRespuesta> historial(
@@ -123,11 +124,13 @@ public class LotesControlador {
             @Min(value = 1, message = "{validacion.minimo}")
             @Max(value = Pagina.TAMANO_MAXIMO, message = "{validacion.maximo}") int tamano,
             @Parameter(description = "«Resultado desde»: el primer día de la fecha del resultado, en Colombia e "
-                    + "incluido, como 2026-11-01.", example = "2026-11-01")
+                    + "incluido, como 2026-11-01, de los años 0001 a 9999 (fuera de ellos, 400 en «desde»).",
+                    example = "2026-11-01")
             @RequestParam(name = "desde", required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate desde,
-            @Parameter(description = "«Hasta»: el último día de la fecha del resultado, en Colombia e incluido; no "
-                    + "puede ser anterior a «desde».", example = "2026-11-30")
+            @Parameter(description = "«Hasta»: el último día de la fecha del resultado, en Colombia e incluido, de los "
+                    + "años 0001 a 9999 (fuera de ellos, 400 en «hasta»); no puede ser anterior a «desde».",
+                    example = "2026-11-30")
             @RequestParam(name = "hasta", required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate hasta,
             @Parameter(description = "El estado del lote: PENDIENTE (de análisis) o ANALIZADO.")

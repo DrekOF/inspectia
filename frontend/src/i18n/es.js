@@ -191,6 +191,7 @@ export default {
   'historial.todos': 'Todos',
   'historial.todas': 'Todas',
   'historial.usuariosSinCargar': 'No se pudo traer la lista de usuarios: recarga la página para filtrar por quien registró el lote.',
+  'historial.usuarioElegido': 'Usuario elegido',
   'historial.aplicarFiltros': 'Aplicar filtros',
   'historial.limpiar': 'Limpiar',
   'historial.limpiarFiltros': 'Limpiar filtros',

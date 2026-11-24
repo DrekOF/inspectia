@@ -3,12 +3,14 @@
  * Descripción: La casilla de una foto de la muestra, como en el prototipo (RF-05): vacía, con «Elegir archivo» en el
  *              PC o «Tomar foto», que abre la cámara trasera, en el celular (C1); o con la foto ya subida, su estado y
  *              «Reemplazar». Revisa el archivo antes de pedir el enlace (C3), lo sube directo al enlace firmado
- *              (D-41), lo confirma y dice cómo terminó; si falló, ofrece «Reintentar». Avisa cuándo empieza y cuándo
- *              termina su subida, para que «Analizar la muestra» espere a que termine (RF-05 C2).
+ *              (D-41), lo confirma y dice cómo terminó; si falló, ofrece «Reintentar». El enlace se pide para la
+ *              muestra que la página espera que reciba la foto: si el lote cambió mientras la página estaba abierta,
+ *              el backend responde 409 y la casilla muestra su mensaje, sin «Reintentar» (D-25). Avisa cuándo empieza
+ *              y cuándo termina su subida, para que «Analizar la muestra» espere a que termine (RF-05 C2).
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 import CloudDone from '@mui/icons-material/CloudDone';
 import ErrorOutline from '@mui/icons-material/ErrorOutlineOutlined';
@@ -51,7 +53,7 @@ function mensajeDelError(error, t) {
 
 /**
  * Si vale la pena reintentar una subida que falló: sí, si falló la conexión, el servidor o el enlace; no, si el lote
- * no existe o ya no está pendiente, o si el backend rechazó la foto.
+ * no existe, ya no está pendiente o cambió la muestra que recibe las fotos (409), o si el backend rechazó la foto.
  *
  * @param {Error} error el error, normalmente un ErrorDeApi
  * @returns {boolean} si se ofrece «Reintentar»
@@ -95,6 +97,7 @@ function estiloDeLaCasilla({ vacia, esPc, conError }) {
  *
  * @param {object} props las propiedades
  * @param {string} props.loteId el lote
+ * @param {number} props.muestra el número de la muestra que la página espera que reciba la foto, 1 o 2 (D-25)
  * @param {number} props.numero el número de la foto, de 1 a 3; la 3 es opcional
  * @param {import('../api/fotos.js').Foto} [props.foto] la foto ya subida, si la hay
  * @param {(foto: import('../api/fotos.js').Foto) => void} props.alConfirmar se llama con la foto que se confirmó
@@ -103,7 +106,7 @@ function estiloDeLaCasilla({ vacia, esPc, conError }) {
  *   cuando termina, bien o mal
  * @returns {import('react').ReactElement} la casilla
  */
-export function CasillaDeFoto({ loteId, numero, foto, alConfirmar, alFallarLaVista, alCambiarLaSubida }) {
+export function CasillaDeFoto({ loteId, muestra, numero, foto, alConfirmar, alFallarLaVista, alCambiarLaSubida }) {
   const { t, i18n } = useTranslation();
   const { pedir } = useSesion();
   const esPc = useEsPc();
@@ -146,7 +149,8 @@ export function CasillaDeFoto({ loteId, numero, foto, alConfirmar, alFallarLaVis
           setAnuncio('');
           return;
         }
-        const enlace = await pedirSubida(pedir, loteId, numero, { tipo: revision.tipo, tamanoBytes: archivo.size });
+        const enlace = await pedirSubida(pedir, loteId, numero,
+          { tipo: revision.tipo, tamanoBytes: archivo.size, muestra });
         await subirArchivo(enlace, archivo, i18n.language);
         llave = enlace.llave;
       }

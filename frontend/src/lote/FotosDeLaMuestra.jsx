@@ -8,7 +8,9 @@
  *              Si su muestra ya se envió y está en espera o en proceso, lleva al resultado del lote, donde se ve la
  *              espera (RNF-02 C3). Un lote analizado que sugiere otra muestra recibe las fotos de la muestra 2, con su
  *              título y su subtítulo, y se retoma con las que ya tiene (D-25, RF-14 C6); uno sin la sugerencia, o con
- *              dos muestras, no recibe otra (RF-12 C8).
+ *              dos muestras, no recibe otra (RF-12 C8). Cada foto se sube para la muestra que la página espera, la
+ *              que dice su título; si el lote cambió mientras la página estaba abierta, el backend la rechaza y la
+ *              casilla lo dice (D-25).
  * Fecha de creación: 22/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
@@ -30,6 +32,9 @@ import { PasosDelAnalisis } from './PasosDelAnalisis.jsx';
 import { EN_CURSO } from './resultado.js';
 import { TusFotos } from './TusFotos.jsx';
 import { useFotosDelLote } from './useFotosDelLote.js';
+
+/** El número de la primera muestra de un lote. */
+const PRIMERA_MUESTRA = 1;
 
 /** El número de la otra muestra de un lote: como máximo tiene 2 (D-25). */
 const SEGUNDA_MUESTRA = 2;
@@ -75,6 +80,11 @@ function FotosDelLote({ loteId }) {
   // Un lote analizado solo recibe otra muestra si su resultado la sugiere: con 2 muestras ya no la sugiere (D-25).
   const otraMuestra = lote?.estado === 'ANALIZADO' && lote.sugerirOtraMuestra === true;
   const recibeFotos = pendiente || otraMuestra;
+  // La muestra que la página espera que reciba las fotos: la que dice su título, según el lote que cargó. Va en cada
+  // enlace, y si el lote cambió mientras la página estaba abierta, el backend lo rechaza (D-25). No sale de la lista de
+  // fotos: esa se vuelve a pedir sin el lote (por ejemplo, tras el 400 de «Analizar la muestra») y podría traer ya la
+  // muestra 2 bajo el título de la 1.
+  const muestraEsperada = otraMuestra ? SEGUNDA_MUESTRA : PRIMERA_MUESTRA;
   let descripcion;
   if (lote) {
     const datos = { codigo: lote.codigo, origen: lote.origen, numero: SEGUNDA_MUESTRA };
@@ -111,7 +121,7 @@ function FotosDelLote({ loteId }) {
       {recibeFotos && (
         <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: 3 }}>
           <GuiaDeCaptura />
-          <TusFotos loteId={lote.id} fotos={fotos} />
+          <TusFotos loteId={lote.id} muestra={muestraEsperada} fotos={fotos} />
         </Box>
       )}
     </>

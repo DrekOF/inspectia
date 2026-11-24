@@ -111,6 +111,19 @@ class EsquemaIT {
     }
 
     @Test
+    @DisplayName("P-02 · un modelo en uso necesita un F1 macro de 65 o más: 65,00 sirve y 64,99 no (prueba de límite)")
+    void modeloEnUsoConElF1JustoEnElLimite() {
+        UUID modelo = ModeloDeLaComparacion.EFFICIENTNET_B0.insertar(jdbc, true);
+
+        int conSesentaYCinco = jdbc.update("UPDATE modelo SET f1_macro = 65.00 WHERE id = ?", modelo);
+
+        assertThat(conSesentaYCinco).as("65,00 sirve").isEqualTo(1);
+        assertThatThrownBy(() -> jdbc.update("UPDATE modelo SET f1_macro = 64.99 WHERE id = ?", modelo))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("modelo_en_uso_con_f1_minimo");
+    }
+
+    @Test
     @DisplayName("D-48 · la base no deja en uso un modelo sin sus métricas, como el clasificador falso")
     void modeloEnUsoConSusMetricas() {
         assertThatThrownBy(() -> jdbc.update("INSERT INTO modelo (nombre, version, recall_sano, recall_no_sano, "
@@ -215,6 +228,21 @@ class EsquemaIT {
         jdbc.update("UPDATE muestra SET fecha_envio = now(), motivo_devolucion = 'POCOS_GRANOS' WHERE id = ?", muestra);
 
         assertThatThrownBy(() -> jdbc.update("UPDATE muestra SET estado = 'EN_ESPERA' WHERE id = ?", muestra))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("muestra_motivo_solo_si_devuelta");
+    }
+
+    @Test
+    @DisplayName("D-44 · una muestra pendiente que no se ha enviado no puede tener motivo de devolución")
+    void sinEnviarNoTieneMotivo() {
+        UUID empresa = crearEmpresa("900123456-8");
+        UUID usuario = crearUsuario(empresa, "ana@a.co");
+        UUID muestra = crearMuestra(empresa, crearLote(empresa, usuario, "L-001"), usuario);
+        assertThat(jdbc.queryForMap("SELECT estado, fecha_envio FROM muestra WHERE id = ?", muestra))
+                .as("pendiente y sin enviar").containsEntry("estado", "PENDIENTE").containsEntry("fecha_envio", null);
+
+        assertThatThrownBy(() -> jdbc.update("UPDATE muestra SET motivo_devolucion = 'POCOS_GRANOS' WHERE id = ?",
+                muestra))
                 .isInstanceOf(DataIntegrityViolationException.class)
                 .hasMessageContaining("muestra_motivo_solo_si_devuelta");
     }

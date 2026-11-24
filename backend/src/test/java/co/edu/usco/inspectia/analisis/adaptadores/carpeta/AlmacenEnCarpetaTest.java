@@ -2,11 +2,11 @@
  * Nombre: AlmacenEnCarpetaTest.java
  * Descripción: Pruebas unitarias del almacén de las fotos en una carpeta (D-41): los enlaces relativos, las llaves que
  *              no salen de la carpeta, los archivos que no se pisan, la lectura para el clasificador y el borrado que
- *              no falla.
+ *              no falla; las llaves llevan la muestra para la que se pidieron (D-25).
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 package co.edu.usco.inspectia.analisis.adaptadores.carpeta;
 
@@ -34,7 +34,8 @@ class AlmacenEnCarpetaTest {
     private static final Instant AHORA = Instant.parse("2026-11-23T15:00:00Z");
     private static final String EMPRESA = "0199f0a0-0000-7000-8000-000000000001";
     private static final String LOTE = "0199f0a0-0000-7000-8000-000000000002";
-    private static final String LLAVE = EMPRESA + "/" + LOTE + "/0199f0a0-0000-7000-8000-000000000003.jpg";
+    private static final String ARCHIVO = "m1-0199f0a0-0000-7000-8000-000000000003.jpg";
+    private static final String LLAVE = EMPRESA + "/" + LOTE + "/" + ARCHIVO;
     private static final byte[] JPG = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0, 1, 2, 3, 4, 5};
 
     @TempDir
@@ -67,15 +68,20 @@ class AlmacenEnCarpetaTest {
     }
 
     @Test
-    @DisplayName("D-41 · una llave que no tiene la forma <empresa>/<lote>/<archivo> o que sale de la carpeta se rechaza")
+    @DisplayName("D-41 · una llave sin la forma <empresa>/<lote>/m<muestra>-<archivo>, con la muestra 1 o 2, como la de antes sin la muestra, o que sale de la carpeta, se rechaza")
     void llavesFueraDeLaCarpeta() {
+        String sinMuestra = ARCHIVO.substring("m1-".length());
         for (String llave : new String[] {"../" + LLAVE, EMPRESA + "/../" + LOTE + "/x.jpg", "/etc/passwd",
-            EMPRESA + "/" + LOTE + "/archivo.exe", LLAVE.toUpperCase(), "", null}) {
+            EMPRESA + "/" + LOTE + "/archivo.exe", LLAVE.toUpperCase(), "", null, EMPRESA + "/" + LOTE + "/" + sinMuestra,
+            EMPRESA + "/" + LOTE + "/m3-" + sinMuestra, EMPRESA + "/" + LOTE + "/m0-" + sinMuestra}) {
             assertThatThrownBy(() -> almacen.ruta(llave)).as(String.valueOf(llave))
                     .isInstanceOf(IllegalArgumentException.class);
         }
         assertThat(AlmacenEnCarpeta.llave(EMPRESA, LOTE, "..")).isEmpty();
-        assertThat(AlmacenEnCarpeta.llave(EMPRESA, LOTE, "0199f0a0-0000-7000-8000-000000000003.jpg")).contains(LLAVE);
+        assertThat(AlmacenEnCarpeta.llave(EMPRESA, LOTE, sinMuestra)).isEmpty();
+        assertThat(AlmacenEnCarpeta.llave(EMPRESA, LOTE, ARCHIVO)).contains(LLAVE);
+        assertThat(AlmacenEnCarpeta.llave(EMPRESA, LOTE, "m2-" + sinMuestra)).contains(EMPRESA + "/" + LOTE + "/m2-"
+                + sinMuestra);
         assertThat(almacen.ruta(LLAVE).startsWith(carpeta.toAbsolutePath().normalize())).isTrue();
     }
 
@@ -91,8 +97,7 @@ class AlmacenEnCarpetaTest {
                 .isInstanceOf(ConflictoExcepcion.class);
         assertThat(Files.readAllBytes(almacen.ruta(LLAVE))).isEqualTo(JPG);
         try (var temporales = Files.list(almacen.ruta(LLAVE).getParent())) {
-            assertThat(temporales.map(ruta -> ruta.getFileName().toString())).containsExactly(
-                    "0199f0a0-0000-7000-8000-000000000003.jpg");
+            assertThat(temporales.map(ruta -> ruta.getFileName().toString())).containsExactly(ARCHIVO);
         }
     }
 

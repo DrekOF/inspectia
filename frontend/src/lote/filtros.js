@@ -1,9 +1,10 @@
 /*
  * Nombre: filtros.js (lote)
  * Descripción: Los filtros del historial sin dibujar nada (RF-14 C2): sus valores en la dirección de la página, que
- *              se leen y se escriben con la página desde 1, ignorando los que no existen; si hay alguno puesto, y el
- *              esquema de Yup del formulario, con las mismas reglas que valida el backend: «Hasta» no anterior a
- *              «Resultado desde» y el código del lote de hasta 30 caracteres.
+ *              se leen y se escriben con la página desde 1, ignorando los que no existen y una página mayor que la que
+ *              acepta la API, y con el usuario en minúsculas, como los da la API; si hay alguno puesto, y el esquema
+ *              de Yup del formulario, con las mismas reglas que valida el backend: «Hasta» no anterior a «Resultado
+ *              desde» y el código del lote de hasta 30 caracteres.
  * Fecha de creación: 24/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
@@ -33,6 +34,13 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const PAGINA = /^[1-9]\d{0,8}$/;
 
 /**
+ * La página más alta que acepta la API, desde 0: la misma Pagina.PAGINA_MAXIMA del backend (Integer.MAX_VALUE / 100,
+ * el tamaño máximo de una página), con la que la fila donde empieza la página todavía cabe en un int. Una página mayor
+ * respondería 400, así que la de la dirección se ignora.
+ */
+export const PAGINA_MAXIMA = Math.floor(2147483647 / 100);
+
+/**
  * Si un texto es un día del calendario que existe, en el formato de un campo de fecha (aaaa-mm-dd).
  *
  * @param {string|null} texto el texto
@@ -60,7 +68,9 @@ function codigoParaBuscar(codigo) {
 
 /**
  * Los filtros y la página que dice la dirección del historial. Un valor que no existe, como un estado que no es de un
- * lote, una fecha que no es un día o un «Hasta» anterior a «Resultado desde», se ignora, como si no estuviera.
+ * lote, una fecha que no es un día, un «Hasta» anterior a «Resultado desde» o una página mayor que la que acepta la
+ * API, se ignora, como si no estuviera. El usuario queda en minúsculas, como los identificadores que da la API, para
+ * encontrarlo en la lista «Usuario».
  *
  * @param {URLSearchParams} parametros los parámetros de la dirección
  * @returns {{ filtros: import('../api/lotes.js').FiltrosDelHistorial, pagina: number }} los filtros y la página,
@@ -75,13 +85,13 @@ export function leerDireccion(parametros) {
     estado: ESTADOS_DEL_LOTE.includes(valor('estado')) ? valor('estado') : '',
     categoria: CATEGORIAS.includes(valor('categoria')) ? valor('categoria') : '',
     codigo: codigo.length <= LIMITES_DEL_LOTE.codigo ? codigo : '',
-    usuario: UUID.test(valor('usuario')) ? valor('usuario') : '',
+    usuario: UUID.test(valor('usuario')) ? valor('usuario').toLowerCase() : '',
   };
   if (filtros.desde && filtros.hasta && filtros.hasta < filtros.desde) {
     filtros.hasta = '';
   }
   const pagina = PAGINA.test(valor('pagina')) ? Number(valor('pagina')) - 1 : 0;
-  return { filtros, pagina };
+  return { filtros, pagina: pagina <= PAGINA_MAXIMA ? pagina : 0 };
 }
 
 /**

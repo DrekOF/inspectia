@@ -306,6 +306,39 @@ class FiltrosDelHistorialIT {
         });
     }
 
+    /**
+     * El «+» del año va tal cual: en MockMvc llega como «+», y codificado ({@code %2B}) se codificaría dos veces. Con
+     * las dos fechas fuera de rango y «Hasta» antes de «Resultado desde», responde los dos campos y no el motivo de
+     * las fechas al revés: el rango se revisa primero.
+     */
+    @Test
+    @DisplayName("RF-14 · una fecha fuera de los años 0001 a 9999, como -5000-01-01 o +999999999-12-31, responde 400 en su campo, y no un error del servidor (prueba de límite)")
+    void fechasFueraDeLosAniosPermitidos() {
+        analizado(token, "L-001", "ESTANDAR", "2026-11-20T10:00-05:00");
+
+        MvcTestResult desdeAntiguo = lotes.listar(token, filtros("desde", "-5000-01-01"));
+        MvcTestResult hastaEnorme = lotes.listar(token, filtros("hasta", "+999999999-12-31"));
+        MvcTestResult anioCero = lotes.listar(token, filtros("desde", "0000-12-31"));
+        MvcTestResult anioDiezMil = lotes.listar(token, filtros("hasta", "+10000-01-01"));
+        MvcTestResult lasDos = lotes.listar(token, filtros("desde", "+10000-01-01", "hasta", "0000-12-31"));
+
+        assertThat(desdeAntiguo).hasStatus(HttpStatus.BAD_REQUEST);
+        assertThat(errores(desdeAntiguo)).containsExactly(error("desde", VALOR_INVALIDO));
+        assertThat(hastaEnorme).hasStatus(HttpStatus.BAD_REQUEST);
+        assertThat(errores(hastaEnorme)).containsExactly(error("hasta", VALOR_INVALIDO));
+        assertThat(anioCero).hasStatus(HttpStatus.BAD_REQUEST);
+        assertThat(errores(anioCero)).containsExactly(error("desde", VALOR_INVALIDO));
+        assertThat(anioDiezMil).hasStatus(HttpStatus.BAD_REQUEST);
+        assertThat(errores(anioDiezMil)).containsExactly(error("hasta", VALOR_INVALIDO));
+        assertThat(lasDos).hasStatus(HttpStatus.BAD_REQUEST);
+        assertThat(errores(lasDos)).containsExactlyInAnyOrder(error("desde", VALOR_INVALIDO),
+                error("hasta", VALOR_INVALIDO));
+        assertThat(codigos("desde", "0001-01-01")).as("el primer día que admite").containsExactly("L-001");
+        assertThat(codigos("hasta", "9999-12-31")).as("el último día que admite").containsExactly("L-001");
+        assertThat(codigos("desde", "0001-01-01", "hasta", "9999-12-31")).as("las dos a la vez")
+                .containsExactly("L-001");
+    }
+
     @Test
     @DisplayName("RF-14 · la lista del filtro «Usuario» trae el id y el nombre de quienes registraron lotes de la empresa, sin correos ni a quienes no registraron, ordenada por nombre sin distinguir tildes ni mayúsculas, para los dos roles")
     void quienesRegistraronLotes() {

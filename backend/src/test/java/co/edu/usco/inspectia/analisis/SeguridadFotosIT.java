@@ -3,9 +3,9 @@
  * Descripción: Pruebas de seguridad de la API de las fotos de un lote (RNF-04, RP-12): sin sesión responde 401, y
  *              la administradora de empresa y el administrador de la plataforma, que no suben fotos, 403.
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis;
 
@@ -117,8 +117,8 @@ class SeguridadFotosIT {
         return Stream.of(
                 Arguments.of("listar las fotos", HttpMethod.GET, ruta, null),
                 Arguments.of("pedir el enlace de subida", HttpMethod.POST, ruta + "/1/subida",
-                        Map.of("tipo", ApiFotos.JPG, "tamanoBytes", 1_000)),
+                        Map.of("muestra", 1, "tipo", ApiFotos.JPG, "tamanoBytes", 1_000)),
                 Arguments.of("confirmar la foto", HttpMethod.PUT, ruta + "/1",
-                        Map.of("llave", UUID.randomUUID() + "/" + UUID.randomUUID() + "/" + UUID.randomUUID() + ".jpg")));
+                        Map.of("llave", ApiFotos.llave(UUID.randomUUID(), UUID.randomUUID(), 1, "jpg"))));
     }
 }

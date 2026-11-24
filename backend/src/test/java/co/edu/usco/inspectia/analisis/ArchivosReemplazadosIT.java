@@ -3,9 +3,9 @@
  * Descripción: Pruebas de integración del borrado del archivo de una foto reemplazada (RF-05 C5): espera a que la
  *              transacción se confirme, y si se revierte, el archivo de la foto anterior queda.
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis;
 
@@ -48,7 +48,7 @@ class ArchivosReemplazadosIT {
     @BeforeEach
     void preparar() throws IOException {
         transaccion = new TransactionTemplate(transacciones);
-        llave = UUID.randomUUID() + "/" + UUID.randomUUID() + "/" + UUID.randomUUID() + ".jpg";
+        llave = ApiFotos.llave(UUID.randomUUID(), UUID.randomUUID(), 1, "jpg");
         archivo = ConfiguracionContenedores.CARPETA_DE_FOTOS.resolve(llave);
         Files.createDirectories(archivo.getParent());
         Files.write(archivo, ApiFotos.jpg());

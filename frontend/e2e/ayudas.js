@@ -4,10 +4,10 @@
  *              de cada rol, crear usuarios y empresas propios por la API para las pruebas que cambian datos,
  *              iniciar y cerrar sesión, buscar una fila en la lista de una pantalla generada, una empresa propia
  *              con su usuario final y sus lotes, para las pruebas de los lotes (RF-04, RF-14), subir fotos de la
- *              muestra en la pantalla o por la API (RF-05), analizar un lote por la API (RF-10), también su segunda
- *              muestra (RF-14 C6), crear y desactivar usuarios finales de una empresa propia (RF-03 C6), filtrar el
- *              historial y encontrar un lote en él (RF-14 C2), y retener la espera de la segunda muestra para mirarla
- *              (D-25).
+ *              muestra en la pantalla o por la API, para la muestra que las recibe (RF-05, D-25), analizar un lote
+ *              por la API (RF-10), también su segunda muestra (RF-14 C6), crear y desactivar usuarios finales de una
+ *              empresa propia (RF-03 C6), filtrar el historial y encontrar un lote en él (RF-14 C2), y retener la
+ *              espera de la segunda muestra para mirarla (D-25).
  * Fecha de creación: 20/10/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
@@ -156,20 +156,23 @@ export async function registrarLotes(api, persona, lotes) {
 }
 
 /**
- * Sube fotos de la muestra de un lote por la API, como la página (D-41): pide el enlace, sube el archivo al enlace
- * sin el token y lo confirma.
+ * Sube fotos de la muestra de un lote por la API, como la página (D-41): pide el enlace para la muestra que debe
+ * recibirlas, sube el archivo al enlace sin el token y lo confirma. Como la página, dice qué muestra espera: si la
+ * que recibe las fotos es otra, el backend responde 409 y la prueba falla (D-25).
  *
  * @param {import('@playwright/test').APIRequestContext} api el cliente de la API de Playwright
  * @param {{ correo: string, contrasena: string }} persona el usuario final
  * @param {string} loteId el lote
  * @param {Array<{ numero: number, archivo: Buffer, tipo?: string }>} fotos el número de cada foto, sus bytes y su
  *   tipo; por defecto, image/png
+ * @param {{ muestra?: number }} [opciones] la muestra que recibe las fotos: la 1, por defecto, en un lote pendiente,
+ *   o la 2 en uno analizado que la sugiere
  */
-export async function subirFotosPorLaApi(api, persona, loteId, fotos) {
+export async function subirFotosPorLaApi(api, persona, loteId, fotos, { muestra = 1 } = {}) {
   const autorizacion = { Authorization: `Bearer ${await tokenDe(api, persona)}` };
   for (const { numero, archivo, tipo = 'image/png' } of fotos) {
     const pedido = await api.post(`/api/v1/lotes/${loteId}/fotos/${numero}/subida`,
-      { data: { tipo, tamanoBytes: archivo.length }, headers: autorizacion });
+      { data: { tipo, tamanoBytes: archivo.length, muestra }, headers: autorizacion });
     expect(pedido.status(), `enlace de la foto ${numero}`).toBe(201);
     const enlace = await pedido.json();
     const subida = await api.fetch(enlace.url, { method: enlace.metodo, headers: enlace.encabezados, data: archivo });
@@ -239,7 +242,7 @@ export async function loteAnalizado(api, persona, anchos = [106, 107],
  * @param {number[]} anchos el ancho de cada foto de la muestra 2
  */
 export async function segundaMuestraPorLaApi(api, persona, loteId, anchos) {
-  await subirFotosPorLaApi(api, persona, loteId, fotosDeAnchos(anchos));
+  await subirFotosPorLaApi(api, persona, loteId, fotosDeAnchos(anchos), { muestra: 2 });
   await analizarPorLaApi(api, persona, loteId, { muestra: 2 });
 }
 

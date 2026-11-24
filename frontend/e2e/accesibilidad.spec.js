@@ -113,7 +113,8 @@ test('RNF-06 · C4 · el historial con los filtros, un error y el chip «Sugiere
   // La muestra 2 con sus fotos subidas, sin enviar: la prueba la retiene en la cola para mirar su espera.
   const enEspera = await loteAnalizado(request, usuarioFinal, [106, 107]);
   await subirFotosPorLaApi(request, usuarioFinal, enEspera.id, [
-    { numero: 1, archivo: png({ ancho: 108, alto: 100 }) }, { numero: 2, archivo: png({ ancho: 107, alto: 100 }) }]);
+    { numero: 1, archivo: png({ ancho: 108, alto: 100 }) }, { numero: 2, archivo: png({ ancho: 107, alto: 100 }) },
+  ], { muestra: 2 });
   const dosMuestras = await loteConDosMuestras(request, usuarioFinal);
   await iniciarSesion(page, usuarioFinal);
   for (const esquema of ['light', 'dark']) {

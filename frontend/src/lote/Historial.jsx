@@ -7,8 +7,9 @@
  *              un lote analizado con «Ver» (RF-14 C3); el usuario final retoma un lote pendiente con «Continuar»
  *              (RF-14 C5), y la administradora no. Un lote que sugiere otra muestra lleva el chip «Sugiere otra
  *              muestra» junto a su estado (D-25). Los filtros (RF-14 C2) y la página van en la dirección, así se
- *              conservan al volver con «Atrás» o al recargar; el total se anuncia a los lectores de pantalla, y si
- *              ningún lote cumple los filtros, lo dice y ofrece quitarlos.
+ *              conservan al volver con «Atrás» o al recargar; una página que ya no existe lleva a la última. El total
+ *              se anuncia a los lectores de pantalla con cada respuesta, también si no cambia, y si ningún lote cumple
+ *              los filtros, lo dice y ofrece quitarlos.
  * Fecha de creación: 22/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
@@ -28,7 +29,7 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Typography from '@mui/material/Typography';
 import usePagination from '@mui/material/usePagination';
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useId, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router';
 import { erroresPorCampo, textoDelError } from '../api/errores.js';
@@ -308,12 +309,16 @@ export default function Historial() {
   const titulo = useRef(null);
   // Los filtros y la página viven en la dirección: «Atrás» desde «Ver», recargar o volver a entrar los conservan.
   const [parametros, setParametros] = useSearchParams();
-  const { filtros, pagina } = useMemo(() => leerDireccion(parametros), [parametros]);
+  const leidos = useMemo(() => leerDireccion(parametros), [parametros]);
+  // Los filtros y la página como se aplican: la misma dirección escrita de otra forma, como con un usuario en
+  // mayúsculas o un valor que se ignora, da los mismos, y no vuelve a pedir la lista.
+  const aplicados = direccionDe(leidos.filtros, leidos.pagina).toString();
+  const { filtros, pagina } = useMemo(() => leerDireccion(new URLSearchParams(aplicados)), [aplicados]);
   const [recargas, setRecargas] = useState(0);
   const [respuesta, setRespuesta] = useState({ pedido: null, datos: null, error: null });
   const region = idiomaDe(i18n.language).region;
 
-  const pedido = `${direccionDe(filtros, pagina)}|${recargas}`;
+  const pedido = `${aplicados}|${recargas}`;
   useEffect(() => {
     let vigente = true;
     historialDeLotes(pedir, pagina, filtros)
@@ -334,18 +339,43 @@ export default function Historial() {
   // Solo el usuario final registra lotes (RF-04) y los retoma (RF-14 C5); la administradora solo consulta.
   const registra = sesion.usuario.rol === ROLES.USUARIO_FINAL;
 
+  // Una página de la dirección que ya no existe, como al volver con «Atrás» cuando quedan menos lotes, lleva a la
+  // última, sin dejar otra entrada en el historial del navegador. Solo con la respuesta del pedido vigente: mientras
+  // llega otra, la que se ve puede ser de otros filtros o de otra página.
+  const ultima = !cargando && datos && datos.totalPaginas > 0 && pagina >= datos.totalPaginas
+    ? datos.totalPaginas - 1 : null;
+  const irALaUltima = useEffectEvent((otra) => setParametros(direccionDe(filtros, otra), { replace: true }));
+  useEffect(() => {
+    if (ultima !== null) {
+      irALaUltima(ultima);
+    }
+  }, [ultima]);
+
   /**
-   * Aplica unos filtros desde la primera página. Si son los mismos de la dirección, pide la lista otra vez.
+   * Aplica unos filtros desde la primera página. Si son los mismos que ya se ven, en la primera página, pide la lista
+   * otra vez; si la dirección los decía de otra forma, como un usuario en mayúsculas o un valor que se ignoró, la deja
+   * escrita como se aplican, sin otra entrada en el historial del navegador.
    *
    * @param {import('../api/lotes.js').FiltrosDelHistorial} nuevos los filtros
    */
   function aplicar(nuevos) {
     const siguiente = direccionDe(nuevos, 0);
-    if (siguiente.toString() === parametros.toString()) {
-      setRecargas((veces) => veces + 1);
-    } else {
+    if (siguiente.toString() !== aplicados) {
       setParametros(siguiente);
+      return;
     }
+    setRecargas((veces) => veces + 1);
+    if (siguiente.toString() !== parametros.toString()) {
+      setParametros(siguiente, { replace: true });
+    }
+  }
+
+  /**
+   * Quita de la dirección el usuario que no está en la lista «Usuario», desde la primera página, porque cambió el
+   * filtro, y sin dejar otra entrada en el historial del navegador (RF-14).
+   */
+  function ignorarUsuario() {
+    setParametros(direccionDe({ ...filtros, usuario: '' }, 0), { replace: true });
   }
 
   /** Quita todos los filtros y vuelve a la primera página. */
@@ -365,9 +395,14 @@ export default function Historial() {
     <>
       <TituloDePagina refDelTitulo={titulo} titulo={t('historial.titulo')}
         descripcion={t('historial.subtitulo', { empresa: sesion.usuario.empresa?.nombre })} />
-      <FiltrosDelHistorial filtros={filtros} error={error} alAplicar={aplicar} alLimpiar={limpiar} />
-      {/* El total, para los lectores de pantalla: al aplicar un filtro dice cuántos lotes quedan (WCAG 4.1.3). */}
-      <Box role="status" sx={OCULTO_A_LA_VISTA}>{datos ? t('historial.encontrados', { count: total }) : ''}</Box>
+      <FiltrosDelHistorial filtros={filtros} error={error} alAplicar={aplicar} alLimpiar={limpiar}
+        alIgnorarUsuario={ignorarUsuario} />
+      {/* El total, para los lectores de pantalla: al aplicar un filtro dice cuántos lotes quedan (WCAG 4.1.3). Queda
+          vacío mientras llega la lista, así cada respuesta cambia su texto y se anuncia, también si el total no
+          cambió. */}
+      <Box role="status" sx={OCULTO_A_LA_VISTA}>
+        {datos && !cargando ? t('historial.encontrados', { count: total }) : ''}
+      </Box>
       {cargando && !datos && (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
           <CircularProgress aria-label={t('crud.cargando')} />

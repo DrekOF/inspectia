@@ -191,6 +191,7 @@ export default {
   'historial.todos': 'All',
   'historial.todas': 'All',
   'historial.usuariosSinCargar': 'The list of users could not be loaded: reload the page to filter by who registered the lot.',
+  'historial.usuarioElegido': 'Selected user',
   'historial.aplicarFiltros': 'Apply filters',
   'historial.limpiar': 'Clear',
   'historial.limpiarFiltros': 'Clear filters',

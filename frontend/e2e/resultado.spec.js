@@ -273,8 +273,14 @@ test('RF-14 · C6 · desde el detalle de un lote con otra muestra sugerida, el u
   await expect(page.getByRole('heading', { level: 1, name: 'Fotos de la muestra 2' })).toBeVisible();
   await expect(page.getByText(`Muestra 2 del lote ${lote.codigo} · Finca La Esperanza. Sube 2 o 3 fotos de otra `
     + 'muestra del mismo lote; si sales ahora, la retomas desde el resultado del lote.')).toBeVisible();
-  // Las casillas de la muestra 2 empiezan vacías: las fotos de la muestra 1 no se tocan.
-  await expect(casillaDeFoto(page, 1).getByRole('img')).toHaveCount(0);
+  // Las casillas de la muestra 2 empiezan vacías: las fotos de la muestra 1 no se tocan. La lista de las fotos llega
+  // después del título: primero se espera el botón de la casilla vacía, que una casilla con foto cambia por
+  // «Reemplazar», y solo entonces se revisa que no tenga imagen.
+  for (const numero of [1, 2]) {
+    await expect(casillaDeFoto(page, numero).getByRole('button', { name: /^(Elegir archivo|Tomar foto)$/ }))
+      .toBeVisible();
+    await expect(casillaDeFoto(page, numero).getByRole('img')).toHaveCount(0);
+  }
   // 8 + 7 no sanos: 85 de 100 sanos en la muestra 2.
   for (const [indice, ancho] of [108, 107].entries()) {
     const numero = indice + 1;
@@ -359,8 +365,9 @@ test('RF-12 · C8 · un lote sin sugerencia, con 100 de 100 sanos, no ofrece otr
   await expect(page.getByRole('heading', { level: 1, name: 'Fotos de la muestra', exact: true })).toBeVisible();
   await expect(page.getByLabel(/^Archivo de la foto/)).toHaveCount(0);
   const autorizacion = { Authorization: `Bearer ${await tokenDe(request, usuarioFinal)}` };
+  // La foto se pide para la muestra 2, la última que admite la API: el 409 es porque el lote no admite otra (D-25).
   const foto = await request.post(`/api/v1/lotes/${lote.id}/fotos/1/subida`,
-    { data: { tipo: 'image/png', tamanoBytes: 1_000 }, headers: autorizacion });
+    { data: { tipo: 'image/png', tamanoBytes: 1_000, muestra: 2 }, headers: autorizacion });
   expect(foto.status()).toBe(409);
   expect((await foto.json()).detail).toBe(SIN_OTRA_MUESTRA);
   const analisis = await request.post(`/api/v1/lotes/${lote.id}/analisis`, { headers: autorizacion });
@@ -383,8 +390,9 @@ test('RF-12 · C8 · un lote con 2 muestras no admite una tercera ni sugiere otr
   await expect(page.getByRole('region', { name: 'Sugerencia' })).toHaveCount(0);
   await expect(page.getByRole('link', { name: 'Analizar otra muestra' })).toHaveCount(0);
   const autorizacion = { Authorization: `Bearer ${await tokenDe(request, usuarioFinal)}` };
+  // La foto se pide para la muestra 2, la última que admite la API: el 409 es porque el lote no admite otra (D-25).
   const foto = await request.post(`/api/v1/lotes/${lote.id}/fotos/1/subida`,
-    { data: { tipo: 'image/png', tamanoBytes: 1_000 }, headers: autorizacion });
+    { data: { tipo: 'image/png', tamanoBytes: 1_000, muestra: 2 }, headers: autorizacion });
   expect(foto.status()).toBe(409);
   expect((await foto.json()).detail).toBe(SIN_OTRA_MUESTRA);
   const analisis = await request.post(`/api/v1/lotes/${lote.id}/analisis`, { headers: autorizacion });

@@ -5,8 +5,10 @@
  *              quién lo registró, de la lista que da el backend, también con los desactivados. Usa Formik y Yup, con
  *              las reglas del backend, y marca en su campo los errores de los dos (RNF-06 C3). Los filtros se aplican
  *              con «Aplicar filtros» y «Limpiar» los quita todos; los aplicados viven en la dirección de la página y el
- *              formulario los sigue, también al volver con «Atrás». En el PC se ve siempre; en el celular va detrás
- *              del botón «Filtros», abierto si hay alguno puesto (RNF-05).
+ *              formulario los sigue, también al volver con «Atrás». Un usuario de la dirección que no está en la lista
+ *              «Usuario» se muestra con la opción «Usuario elegido» mientras la lista llega o si no llegó, y si la
+ *              lista llegó sin él, se ignora, como los demás valores de la dirección que no sirven (RF-14). En el PC
+ *              se ve siempre; en el celular va detrás del botón «Filtros», abierto si hay alguno puesto (RNF-05).
  * Fecha de creación: 24/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
@@ -118,8 +120,8 @@ function MarcarErroresDelServidor({ error }) {
  *
  * @param {object} props las propiedades
  * @param {import('../api/lotes.js').FiltrosDelHistorial} props.filtros los filtros aplicados
- * @param {{ lista: { id: string, nombre: string }[], error: Error|null }} props.registradores quienes registraron
- *   lotes, para la lista «Usuario», o el error si no llegaron
+ * @param {{ lista: { id: string, nombre: string }[]|null, error: Error|null }} props.registradores quienes
+ *   registraron lotes, para la lista «Usuario»: null mientras llegan o si no llegaron, con el error
  * @param {Error|null} props.error el error de la última lista, si falló
  * @param {(filtros: import('../api/lotes.js').FiltrosDelHistorial) => void} props.alAplicar se llama con los filtros
  *   de «Aplicar filtros»
@@ -131,6 +133,12 @@ function FormularioDeFiltros({ filtros, registradores, error, alAplicar, alLimpi
   const esPc = useEsPc();
   const hoy = hoyEnColombia();
   const opcionesDe = (codigos, prefijo) => codigos.map((codigo) => ({ valor: codigo, etiqueta: t(`${prefijo}.${codigo}`) }));
+  const usuarios = (registradores.lista ?? []).map(({ id, nombre }) => ({ valor: id, etiqueta: nombre }));
+  // El usuario aplicado que no está en la lista, porque todavía no llega o no llegó, va con su propia opción: si no,
+  // el campo diría «Todos» mientras la lista sí filtra por él (RF-14).
+  if (filtros.usuario && !usuarios.some(({ valor }) => valor === filtros.usuario)) {
+    usuarios.unshift({ valor: filtros.usuario, etiqueta: t('historial.usuarioElegido') });
+  }
 
   return (
     <Formik initialValues={filtros} validationSchema={esquemaDeFiltros(t)}
@@ -157,8 +165,7 @@ function FormularioDeFiltros({ filtros, registradores, error, alAplicar, alLimpi
             <CampoDeTexto nombre="codigo" etiqueta={t('lote.codigo.etiqueta')} type="search"
               placeholder={t('historial.ejemploCodigo')} autoComplete="off" />
             <CampoDeFiltro nombre="usuario" etiqueta={t('historial.usuario')} todas={t('historial.todos')}
-              opciones={registradores.lista.map(({ id, nombre }) => ({ valor: id, etiqueta: nombre }))}
-              ayuda={registradores.error ? t('historial.usuariosSinCargar') : undefined} />
+              opciones={usuarios} ayuda={registradores.error ? t('historial.usuariosSinCargar') : undefined} />
           </Box>
           {/* En el celular, en columna y sin flexWrap: con «wrap», Safari encoge el botón a su texto al tocarlo y el toque
               que cae fuera del texto no lo pulsa. */}
@@ -187,9 +194,11 @@ function FormularioDeFiltros({ filtros, registradores, error, alAplicar, alLimpi
  * @param {(filtros: import('../api/lotes.js').FiltrosDelHistorial) => void} props.alAplicar se llama con los filtros
  *   de «Aplicar filtros»
  * @param {() => void} props.alLimpiar se llama con «Limpiar»
+ * @param {() => void} props.alIgnorarUsuario se llama si la lista «Usuario» llegó y el usuario de la dirección no está
+ *   en ella: no registró lotes de la empresa, y el filtro se quita de la dirección (RF-14)
  * @returns {import('react').ReactElement} los filtros
  */
-export function FiltrosDelHistorial({ filtros, error, alAplicar, alLimpiar }) {
+export function FiltrosDelHistorial({ filtros, error, alAplicar, alLimpiar, alIgnorarUsuario }) {
   const { t } = useTranslation();
   const { pedir } = useSesion();
   const esPc = useEsPc();
@@ -205,18 +214,30 @@ export function FiltrosDelHistorial({ filtros, error, alAplicar, alLimpiar }) {
       setAbiertos(true);
     }
   }
-  const [registradores, setRegistradores] = useState({ lista: [], error: null });
+  const [registradores, setRegistradores] = useState({ lista: null, error: null });
 
   // La lista «Usuario» se pide una vez, aunque el formulario se cierre y se abra en el celular.
   useEffect(() => {
     let vigente = true;
     registradoresDeLotes(pedir)
       .then((lista) => vigente && setRegistradores({ lista, error: null }))
-      .catch((rechazo) => vigente && setRegistradores({ lista: [], error: rechazo }));
+      .catch((rechazo) => vigente && setRegistradores({ lista: null, error: rechazo }));
     return () => {
       vigente = false;
     };
   }, [pedir]);
+
+  // Un usuario de la dirección que no está en la lista, que sí llegó, no registró lotes de la empresa, como uno de otra
+  // empresa o de un enlace viejo: se ignora, como los demás valores de la dirección que no sirven (RF-14). Se revisa
+  // otra vez con cada dirección nueva, por si otro cambio de la dirección lo volvió a poner.
+  const usuarioAjeno = registradores.lista !== null && filtros.usuario !== ''
+    && !registradores.lista.some(({ id }) => id === filtros.usuario);
+  const ignorarUsuario = useEffectEvent(() => alIgnorarUsuario());
+  useEffect(() => {
+    if (usuarioAjeno) {
+      ignorarUsuario();
+    }
+  }, [usuarioAjeno, filtros]);
 
   const formulario = (
     <FormularioDeFiltros filtros={filtros} registradores={registradores} error={error} alAplicar={alAplicar}
