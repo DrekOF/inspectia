@@ -1,6 +1,6 @@
 <!--
 Nombre: README.md (infra)
-Descripción: Qué va en la carpeta infra/ de InspectIA, cómo reiniciar la base local, dónde quedan las fotos en tu PC, cómo crear el administrador de la plataforma y restablecer su contraseña, cómo probar la sesión, los lotes y las fotos en local, cómo usan infra/ las pruebas de punta a punta y la demostración de otra temática, y el despliegue en AWS (D-16): la guía de la consola, paso a paso, la CI que despliega, el primer administrador en producción, las pruebas y la copia diaria de la base con su restauración.
+Descripción: Qué va en la carpeta infra/ de InspectIA, el header RP-10 de los JSON de AWS, cómo reiniciar la base local, dónde quedan las fotos en tu PC, cómo crear el administrador de la plataforma y restablecer su contraseña, cómo probar la sesión, los lotes y las fotos en local, cómo usan infra/ las pruebas de punta a punta y la demostración de otra temática, y el despliegue en AWS (D-16): la guía de la consola, paso a paso, la CI que despliega, el primer administrador en producción, las pruebas y la copia diaria de la base con su restauración.
 Fecha de creación: 12/10/2026
 Actualización: 24/11/2026
 Autor: Equipo InspectIA
@@ -18,12 +18,25 @@ Qué hay:
 - `bd/crear-admin-plataforma.sql`, con sus envoltorios `.sh` y `.ps1`: crea el primer administrador de la plataforma (RF-01, RP-15). Las tablas no se crean aquí: las crea Flyway al arrancar el backend, con la migración que genera `generador/` (RP-23).
 - `bd/restablecer-admin-plataforma.sql`, con sus envoltorios `.sh` y `.ps1`: restablece la contraseña del administrador de la plataforma si la olvida (D-30).
 - `produccion/`: lo que corre en la instancia de AWS (D-16), y que cada despliegue deja en `/opt/inspectia`: el `docker-compose.yml` de producción y sus scripts (`actualizar.sh`, `respaldar.sh`, `restaurar-respaldo.sh`, `admin-plataforma.sh` y `comun.sh`). Ver «Despliegue en AWS».
-- `aws/`: lo que se usa en la consola de AWS y en la CI: el script de arranque de la instancia (`datos-de-usuario.sh`), la CloudFront Function de las rutas de React (`cloudfront/rutas-react.js`), la política de seguridad de contenido (`cloudfront/csp.txt`), las políticas IAM (`iam/`), la configuración de los buckets (`s3/`), la regla de ECR (`ecr/`) y el paso de la CI que actualiza la instancia (`actualizar-instancia.sh`). Los JSON no llevan header porque la consola los pide tal cual: su header es esta lista.
+- `aws/`: lo que se usa en la consola de AWS y en la CI: el script de arranque de la instancia (`datos-de-usuario.sh`), la CloudFront Function de las rutas de React (`cloudfront/rutas-react.js`), la política de seguridad de contenido (`cloudfront/csp.txt`), las políticas IAM (`iam/`), la configuración de los buckets (`s3/`), la regla de ECR (`ecr/`) y el paso de la CI que actualiza la instancia (`actualizar-instancia.sh`). Los JSON no llevan header porque la consola los pide tal cual y JSON no admite comentarios: su header (RP-10) es la tabla «Header de los JSON de AWS», más abajo.
 - `probar.sh`: las pruebas de la infraestructura, sin red (RP-16): `bash infra/probar.sh`. Revisa los scripts, los JSON, el compose de producción, la CloudFront Function, las políticas IAM y el script de arranque. La CI lo corre en el job «Infraestructura».
 
 Los flujos de GitHub Actions (RP-18 y RP-19) tienen que estar en `.github/workflows/`, en la raíz del repositorio, porque GitHub solo los busca ahí: `.github/workflows/ci.yml` prueba todo en cada PR y en cada push a `main` y, en `main`, despliega en AWS (ver «Despliegue en AWS»). Sus pruebas de punta a punta encienden el entorno aislado, que usa `infra/docker-compose.yml` y el script del administrador de la plataforma.
 
 La EC2 t4g es ARM (Graviton), así que toda imagen debe funcionar en amd64 y en arm64. La CI las construye en runners arm64.
+
+## Header de los JSON de AWS
+
+Header RP-10 de cada JSON de `infra/aws/` (los JSON no admiten comentarios y la consola los pide tal cual). Al cambiar uno, actualiza aquí su versión y su fecha de actualización.
+
+| Nombre | Descripción | Fecha de creación | Actualización | Autor | Versión |
+|---|---|---|---|---|---|
+| `ecr/ciclo-de-vida.json` | Regla de ciclo de vida de los repositorios de ECR (paso 4): borra las imágenes sin etiqueta al día y guarda las 15 más recientes. | 24/11/2026 | 24/11/2026 | Equipo InspectIA | 1.0 |
+| `iam/inspectia-ec2-permisos.json` | Política en línea del rol de la instancia `inspectia-ec2` (paso 6): bajar de ECR, sus prefijos del bucket de archivos, los dos parámetros de SSM, CloudWatch y SNS. | 24/11/2026 | 24/11/2026 | Equipo InspectIA | 1.0 |
+| `iam/inspectia-github-confianza.json` | Relación de confianza del rol de la CI `inspectia-github` (paso 11): solo GitHub Actions desde `main` de `DrekOF/inspectia`, por OIDC. | 24/11/2026 | 24/11/2026 | Equipo InspectIA | 1.0 |
+| `iam/inspectia-github-permisos.json` | Política en línea del rol `inspectia-github` (paso 11): subir a ECR, escribir en el bucket web, invalidar la distribución, encender la instancia y mandarle el comando de SSM. | 24/11/2026 | 24/11/2026 | Equipo InspectIA | 1.0 |
+| `s3/cors-archivos.json` | CORS del bucket de archivos (paso 9.7): la página sube y ve las fotos con PUT y GET prefirmados desde el dominio de CloudFront. | 24/11/2026 | 24/11/2026 | Equipo InspectIA | 1.0 |
+| `s3/politica-archivos.json` | Política del bucket de archivos (paso 3): rechaza todo lo que no llegue por HTTPS. | 24/11/2026 | 24/11/2026 | Equipo InspectIA | 1.0 |
 
 ## Base de datos local
 
