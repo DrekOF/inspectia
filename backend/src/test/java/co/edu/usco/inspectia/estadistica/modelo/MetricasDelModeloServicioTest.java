@@ -46,8 +46,10 @@ class MetricasDelModeloServicioTest {
     @Test
     @DisplayName("RF-17 · C1 · cada modelo pasa a la respuesta con sus métricas de prueba, su matriz de confusión y si está en uso, en el orden del repositorio")
     void pasaLasMetricasDeCadaModelo() {
-        when(repositorio.comparados()).thenReturn(List.of(efficientNet(), falso()));
-        when(repositorio.confianzaDe(EMPRESA)).thenReturn(confianza(null, 0, 0));
+        List<ModeloComparado> modelos = List.of(efficientNet(), falso());
+        ConfianzaDeLaEmpresa sinAnalisis = confianza(null, 0, 0);
+        when(repositorio.comparados()).thenReturn(modelos);
+        when(repositorio.confianzaDe(EMPRESA)).thenReturn(sinAnalisis);
 
         MetricasDelModeloRespuesta respuesta = servicio.consultar(EMPRESA);
 
@@ -62,8 +64,10 @@ class MetricasDelModeloServicioTest {
     @Test
     @DisplayName("RF-17 · C1 · un modelo sin las métricas de la comparación, como el del clasificador falso, va con sus recall, sin matriz y sin las demás")
     void elModeloSinMetricasVaSinMatriz() {
-        when(repositorio.comparados()).thenReturn(List.of(falso()));
-        when(repositorio.confianzaDe(EMPRESA)).thenReturn(confianza(null, 0, 0));
+        List<ModeloComparado> modelos = List.of(falso());
+        ConfianzaDeLaEmpresa sinAnalisis = confianza(null, 0, 0);
+        when(repositorio.comparados()).thenReturn(modelos);
+        when(repositorio.confianzaDe(EMPRESA)).thenReturn(sinAnalisis);
 
         ModeloMedidoRespuesta modelo = servicio.consultar(EMPRESA).modelos().get(0);
 
@@ -74,8 +78,9 @@ class MetricasDelModeloServicioTest {
     @Test
     @DisplayName("RF-17 · C2 · la confianza promedio se pide con la empresa de la sesión y pasa a la respuesta con cuántos granos y muestras la dan")
     void laConfianzaEsDeLaEmpresa() {
+        ConfianzaDeLaEmpresa conAnalisis = confianza(new BigDecimal("88.60"), 200, 2);
         when(repositorio.comparados()).thenReturn(List.of());
-        when(repositorio.confianzaDe(EMPRESA)).thenReturn(confianza(new BigDecimal("88.60"), 200, 2));
+        when(repositorio.confianzaDe(EMPRESA)).thenReturn(conAnalisis);
 
         MetricasDelModeloRespuesta respuesta = servicio.consultar(EMPRESA);
 
@@ -86,8 +91,9 @@ class MetricasDelModeloServicioTest {
     @Test
     @DisplayName("RF-17 · C2 · sin análisis en la empresa, la confianza promedio va vacía, con 0 granos y 0 muestras")
     void sinAnalisisLaConfianzaVaVacia() {
+        ConfianzaDeLaEmpresa sinAnalisis = confianza(null, 0, 0);
         when(repositorio.comparados()).thenReturn(List.of());
-        when(repositorio.confianzaDe(EMPRESA)).thenReturn(confianza(null, 0, 0));
+        when(repositorio.confianzaDe(EMPRESA)).thenReturn(sinAnalisis);
 
         assertThat(servicio.consultar(EMPRESA).confianza()).isEqualTo(new ConfianzaPromedioRespuesta(null, 0, 0));
     }
@@ -124,6 +130,11 @@ class MetricasDelModeloServicioTest {
         lenient().when(modelo.getEnUso()).thenReturn(false);
         lenient().when(modelo.getRecallSano()).thenReturn(new BigDecimal("91.20"));
         lenient().when(modelo.getRecallNoSano()).thenReturn(new BigDecimal("53.40"));
+        // Mockito responde 0 en los Integer sin simular: la base los deja vacíos.
+        lenient().when(modelo.getSanosComoSanos()).thenReturn(null);
+        lenient().when(modelo.getSanosComoNoSanos()).thenReturn(null);
+        lenient().when(modelo.getNoSanosComoSanos()).thenReturn(null);
+        lenient().when(modelo.getNoSanosComoNoSanos()).thenReturn(null);
         return modelo;
     }
 
