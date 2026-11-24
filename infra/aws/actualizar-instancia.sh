@@ -89,7 +89,7 @@ jq -n --arg paquete "$contenido" --arg etiqueta "$etiqueta" '{
     "rm -rf \"$nuevo\"",
     ("bash /opt/inspectia/actualizar.sh " + ($etiqueta | @sh))
   ],
-  executionTimeout: ["1800"]
+  executionTimeout: ["2100"]
 }' > "$parametros"
 comando=$(aws ssm send-command \
     --instance-ids "$instancia" \
@@ -101,9 +101,10 @@ comando=$(aws ssm send-command \
     --query Command.CommandId --output text)
 echo "   $comando"
 
-# Espera hasta 30 minutos (bajar la imagen de TensorFlow la primera vez tarda).
+# Espera hasta 35 minutos, lo que dura el comando: bajar la imagen de TensorFlow la primera vez tarda y, si la
+# versión nueva no queda sana, actualizar.sh espera hasta 15 minutos por ella y hasta 10 por la anterior.
 resultado=Pending
-for _ in $(seq 1 180); do
+for _ in $(seq 1 210); do
     sleep 10
     resultado=$(aws ssm get-command-invocation --command-id "$comando" --instance-id "$instancia" \
         --query Status --output text 2> /dev/null || echo Pending)

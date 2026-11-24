@@ -251,7 +251,9 @@ jobs:
       && vars.AWS_CUENTA != '' && vars.AWS_ROL_GITHUB != '' && vars.CLOUDFRONT_DISTRIBUCION != ''
       && vars.EC2_INSTANCIA != '' && vars.INSPECTIA_URL != ''
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    # Compilar la página, encender la instancia, esperar su agente de SSM (hasta 10 min), el comando (hasta 35 min) y
+    # la invalidación de CloudFront (hasta 10 min): el primer despliegue baja la imagen de TensorFlow.
+    timeout-minutes: 60
     # Un despliegue a la vez y en orden: el siguiente espera al que está corriendo, no lo corta a mitad.
     concurrency:
       group: despliegue-produccion

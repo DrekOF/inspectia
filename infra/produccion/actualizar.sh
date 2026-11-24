@@ -91,8 +91,9 @@ aws ecr get-login-password | docker login --username AWS --password-stdin "$regi
 # --pull missing: baja las imágenes de la etiqueta si no están (al encender ya están y no baja nada).
 # --wait: el servicio de IA puede tardar unos minutos si baja el modelo de S3.
 #   $1: etiqueta
+#   $2: segundos que espera a que queden sanos
 levantar() {
-    AWS_CUENTA=$cuenta ETIQUETA=$1 compose up -d --pull missing --remove-orphans --wait --wait-timeout 900
+    AWS_CUENTA=$cuenta ETIQUETA=$1 compose up -d --pull missing --remove-orphans --wait --wait-timeout "$2"
 }
 
 # Muestra el estado y los últimos registros, para el registro del despliegue.
@@ -102,12 +103,14 @@ mostrar_estado() {
 }
 
 paso 'Imágenes y contenedores'
-if ! levantar "$etiqueta"; then
+if ! levantar "$etiqueta" 900; then
     paso "InspectIA $etiqueta no arrancó. Estado y últimos registros:"
     mostrar_estado "$etiqueta"
     [ -n "$volver_a" ] || fallar "InspectIA $etiqueta no quedó sano."
     paso "Vuelve a la versión anterior, $volver_a"
-    if ! levantar "$volver_a"; then
+    # La anterior ya corrió aquí y su modelo ya está en el disco: arranca más rápido. Con 600 s, las dos esperas
+    # caben en el tiempo del comando de SSM (infra/aws/actualizar-instancia.sh).
+    if ! levantar "$volver_a" 600; then
         mostrar_estado "$volver_a"
         fallar "InspectIA $etiqueta no quedó sano y la versión anterior, $volver_a, tampoco arrancó. Si la nueva aplicó una migración de Flyway, la anterior no arranca con esa base: ver infra/README.md, «Volver atrás»."
     fi
