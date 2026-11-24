@@ -1,10 +1,10 @@
 <!--
 Nombre: README.md
-Descripción: Presentación del monorepo de InspectIA: estructura, versiones, requisitos del entorno de desarrollo, base de datos local, frontend, integración continua y cita del dataset.
+Descripción: Presentación del monorepo de InspectIA: estructura, versiones, requisitos del entorno de desarrollo, base de datos local, frontend, integración continua, despliegue en AWS y cita del dataset.
 Fecha de creación: 12/10/2026
 Actualización: 24/11/2026
 Autor: Equipo InspectIA
-Versión: 1.15
+Versión: 1.16
 -->
 
 # InspectIA
@@ -28,7 +28,7 @@ Proyecto final de Inteligencia Artificial, Universidad Surcolombiana. Docente: J
 
 ## Versiones
 
-Fijadas el 12/10/2026; las del frontend, el 20/10/2026. La versión exacta de cada librería queda en `backend/pom.xml` y `frontend/package.json`.
+Fijadas el 12/10/2026; las del frontend, el 20/10/2026, y las del despliegue en AWS, el 24/11/2026. La versión exacta de cada librería queda en `backend/pom.xml` y `frontend/package.json`.
 
 | Pieza | Versión | Notas |
 |---|---|---|
@@ -47,7 +47,10 @@ Fijadas el 12/10/2026; las del frontend, el 20/10/2026. La versión exacta de ca
 | Calidad del backend | PIT 1.30.2 (`pitest-maven`), con `pitest-junit5-plugin` 1.2.3 | Pruebas de mutación del dominio del análisis, en el perfil `mutacion` de Maven: `./mvnw -Pmutacion test` desde `backend/`. |
 | Python | 3.13 | Para `ia-servicio/` y `generador/`. El generador usa Jinja2 3.1.6 y pytest 9.1.1 (`generador/requirements*.txt`). |
 | PostgreSQL | 18 | Corre en Docker; no hace falta instalarlo. |
+| AWS SDK for Java | 2.59.8 (BOM `software.amazon.awssdk:bom`) | Solo el cliente de S3, con el cliente HTTP de Apache: el backend guarda las fotos y los reportes en S3 y firma sus enlaces temporales (D-16). Se excluye `netty-nio-client`, que solo usan los clientes asíncronos. |
+| Docker Compose en la instancia | v5.6.0 | La instancia EC2 usa Amazon Linux 2023. `infra/aws/datos-de-usuario.sh` baja el plugin del release oficial y comprueba su SHA-256. |
 | GitHub Actions | `checkout` v7, `setup-java` v6, `setup-python` v7, `setup-node` v7 y `upload-artifact` v7, en Ubuntu 24.04 | Las acciones oficiales de GitHub, en su versión mayor; fijadas el 04/11/2026. |
+| GitHub Actions del despliegue | `docker/setup-buildx-action` v4, `docker/build-push-action` v7, `aws-actions/configure-aws-credentials` v6 y `aws-actions/amazon-ecr-login` v2 | Construyen las imágenes arm64 en `ubuntu-24.04-arm`, las suben a ECR y entran a AWS por OIDC, sin claves; fijadas el 24/11/2026. |
 
 ### Imágenes de Docker
 
@@ -56,8 +59,8 @@ En producción todo corre en una EC2 t4g, que tiene procesador ARM (Graviton, D-
 | Uso | Imagen base | Por qué |
 |---|---|---|
 | Base de datos | `postgres:18-alpine` | Imagen oficial. |
-| Backend: compilar | `eclipse-temurin:25-jdk-noble` | Ubuntu. |
-| Backend: ejecutar | `eclipse-temurin:25-jre-noble` | Solo el JRE: imagen más liviana. |
+| Backend: compilar | `eclipse-temurin:25-jdk-noble` | Ubuntu. La usa `backend/Dockerfile`. |
+| Backend: ejecutar | `eclipse-temurin:25-jre-noble` | Solo el JRE: imagen más liviana. Corre con el usuario `inspectia` (UID 10001) y el heap en el 60 % de la memoria del contenedor. |
 | Servicio de IA | `python:3.13-slim` | Debian y no Alpine: OpenCV y ONNX Runtime publican paquetes para Linux con glibc, no para Alpine (musl). |
 | Frontend: compilar | `node:24-alpine` | Solo para compilar. En producción la página se sirve desde S3 y CloudFront. |
 
@@ -149,8 +152,9 @@ Los comandos están en la sección Comandos de `CLAUDE.md`. En resumen:
 - **Contraseñas:** cada usuario cambia la suya con `PUT /api/v1/sesion/contrasena` (RF-18). Si el administrador de la plataforma olvida la suya, el equipo la restablece con un script de la base de datos (D-30); los pasos están en `infra/README.md`.
 - **Rangos de recomendación:** el administrador de empresa lista, edita en bloque y restaura los 4 rangos de su empresa en la pantalla «Rangos de recomendación» o en `/api/v1/rangos-recomendacion` (RF-13); los pasos para probar la API están en `infra/README.md`.
 - **Lotes:** el usuario final registra un lote en «Nuevo lote» o con `POST /api/v1/lotes` (RF-04), y él y el administrador de empresa ven los lotes de su empresa en «Historial» o en `GET /api/v1/lotes` (RF-14), con filtros por fecha del resultado, estado, categoría, código y quien registró el lote, solos o combinados (RF-14 C2); los pasos para probar la API están en `infra/README.md`.
-- **Fotos de la muestra:** después de registrar un lote, o con «Continuar» en el historial, el usuario final sube 2 o 3 fotos en «Fotos de la muestra»: en el celular, «Tomar foto» abre la cámara, y en el PC, «Elegir archivo» abre el selector (RF-05, RF-14 C5). Mientras no haya despliegue en AWS, las fotos se guardan en una carpeta de tu PC, fuera del repositorio, con enlaces que firma el backend (D-41). No hace falta tocar `infra/.env` ni reiniciar la base; ver «Fotos en tu PC» en `infra/README.md`.
+- **Fotos de la muestra:** después de registrar un lote, o con «Continuar» en el historial, el usuario final sube 2 o 3 fotos en «Fotos de la muestra»: en el celular, «Tomar foto» abre la cámara, y en el PC, «Elegir archivo» abre el selector (RF-05, RF-14 C5). En AWS suben directo a S3 con enlaces prefirmados (D-16); en tu PC, las fotos se guardan en una carpeta, fuera del repositorio, con enlaces que firma el backend (D-41). No hace falta tocar `infra/.env` ni reiniciar la base; ver «Fotos en tu PC» en `infra/README.md`.
 - **Resultado del lote:** con 2 o 3 fotos, el usuario final pulsa «Analizar la muestra». El análisis espera su turno en una cola guardada en la base (RNF-02) y la página muestra el avance; al terminar, «Resultado del lote» trae el porcentaje de granos sanos corregido (D-39) con su rango probable (D-43), la categoría probable con su recomendación (RF-12) y las fotos con cada grano marcado (RF-11). Si el resultado quedó a menos de 1 punto del límite de una categoría, la página lo dice, con el límite (D-47), y el usuario final puede analizar una segunda muestra del mismo lote; al terminar, el resultado suma los granos de las dos (D-25, RF-14 C6). «Ver» en el historial abre el mismo detalle, también a la administradora. Mientras no esté el servicio de IA (PR 4), los granos los da un clasificador falso; los pasos para probar la API están en `infra/README.md`.
+- **Despliegue en AWS (D-16):** en cada push a `main`, la CI sube las imágenes a ECR, actualiza la instancia EC2 por SSM (con los secretos de SSM solo en memoria y la vuelta sola a la versión anterior si la nueva no queda sana), publica la página en S3 e invalida CloudFront. Trae el perfil `produccion` del backend, que exige S3 y el servicio de IA, la copia diaria de la base a S3 y la guía de la consola de AWS, paso a paso, en `infra/README.md`.
 - **Generador:** los CRUD (tablas, backend y pantallas) salen de `specs/entidades/*.json` y no se editan a mano (RP-23). Hoy tienen pantalla las empresas, los usuarios y los rangos. Ver `generador/README.md`.
 - **Casos de prueba:** `docs/casos-de-prueba.md` lista cada criterio de aceptación con sus pruebas y los que aún no tienen ninguna (RP-13). Lo arma `generador/casos_de_prueba.py` desde las marcas de las pruebas.
 
@@ -175,6 +179,9 @@ GitHub Actions corre `.github/workflows/ci.yml` en cada PR hacia `main`, en cada
 | Backend | `./mvnw verify`: las pruebas unitarias y las de integración, con PostgreSQL en Testcontainers | 2 min |
 | Frontend | `npm ci`, ESLint, Vitest y el build | 2 min |
 | De punta a punta | Si pasan los tres anteriores, contra un solo entorno aislado: Playwright, en Chrome, Firefox y Safari, de PC y de celular, y Selenium, en Chrome | 13 min, 10 de ellos de Playwright |
+| Infraestructura | `bash infra/probar.sh`: la sintaxis y ShellCheck de los scripts del despliegue, los JSON de AWS, el compose de producción, la CloudFront Function, las políticas IAM y el script de arranque de la instancia | Segundos |
+| Imágenes Docker | Construye las imágenes arm64 del backend y del servicio de IA (si existe `ia-servicio/Dockerfile`); solo en `main` las sube a ECR | Sin medir todavía |
+| Despliegue en AWS | Solo en `main`, si pasan todos los anteriores y están las 5 variables de AWS del repositorio: actualiza la instancia, publica la página, invalida CloudFront y comprueba el sitio. Sin las variables, se salta | Sin medir todavía |
 | Aviso de fallas | Solo en `main`: abre, comenta o cierra el issue de cada job | Segundos |
 
 - **Si un job falla en `main`:**

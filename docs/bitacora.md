@@ -4,7 +4,7 @@ Descripción: Registro paso a paso de cómo se construyó InspectIA, para la sus
 Fecha de creación: 12/10/2026
 Actualización: 24/11/2026
 Autor: Equipo InspectIA
-Versión: 1.26
+Versión: 1.27
 -->
 
 # Bitácora de construcción (RP-24)
@@ -1749,6 +1749,189 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
     98,9 %, `filtros.js` 94,3 % (era 80,5 % antes de `filtros.test.js`) y `api/fotos.js` 93,3 %; los que sobreviven
     no cambian lo que hace la página, como el nombre interno de una regla de Yup.
 - Archivos o PR: la rama `feature/RF-14-segunda-muestra` y su PR hacia `main`.
+
+## 24/11/2026 · D-16: el código del despliegue en AWS
+
+- Quién: Cristhian Sánchez (`DrekOF`), con Claude Code.
+- Qué se hizo:
+  - **El PR del despliegue (frente B), en la rama `feature/D-16-despliegue-aws`, desde `56014b1`:**
+    1. `94ad2d0` las pruebas de la infraestructura en rojo: la CloudFront Function de las rutas de React, las
+       políticas IAM, el script de arranque de la instancia y el compose de producción.
+    2. `f57a3f0` las pruebas del backend en rojo: el almacén en S3, el perfil `produccion` y los encabezados de
+       CloudFront.
+    3. `556a303` el almacén de los archivos en S3, con enlaces prefirmados, y el método `guardar` del puerto
+       `AlmacenDeArchivos`.
+    4. `176c9e4` el perfil `produccion`: exige S3 y el servicio de IA, lee los encabezados de CloudFront, escribe los
+       registros en JSON y cierra Swagger UI.
+    5. `e442568` la Content-Security-Policy de CloudFront con el bucket de los archivos (D-31).
+    6. `1c06917` la imagen del backend, el compose de producción, los scripts de la instancia, el script de arranque,
+       la CloudFront Function y las políticas IAM.
+    7. `4a2b5e1` la CI: prueba la infraestructura, construye las imágenes arm64, las sube a ECR en `main` y despliega
+       cuando todo pasa.
+    8. `706afe2` la guía de la consola de AWS en `infra/README.md`.
+    9. `00fe8c5` une la rama del backend (`trabajo/despliegue-backend`, pasos 2 a 5) con la de la infraestructura.
+    10. `8b3d762` a `c6e2c38` las correcciones de la revisión antes del PR, en 9 commits.
+    11. Esta entrada de la bitácora, los README, las notas de D-16 y D-31, RF-05 y los casos de prueba.
+  - **El backend para AWS:**
+    - **El almacén en S3** (`analisis/adaptadores/s3/`), detrás del mismo puerto que la carpeta de D-41. Una foto va
+      en `fotos/<llave>` y un reporte en `reportes/…`. La subida es un PUT prefirmado que firma el tipo, el tamaño e
+      `If-None-Match: *`, así S3 no deja pisar una foto (412), como la carpeta; la vista, un GET prefirmado con el
+      tipo según la extensión. Una llave que no es de una foto ni de un reporte se rechaza antes de llamar a S3: el
+      servidor nunca toca `modelos/` ni `respaldos/` (`LlavesDeArchivos`).
+    - **El puerto gana `guardar(llave, contenido, tipo)`**, para el PDF de RF-15; la carpeta también lo implementa.
+    - **El perfil `produccion`** (`application-produccion.yml` y `comun/produccion/`): si el almacén no es `s3` o el
+      clasificador no es `servicio`, el servidor no arranca y el mensaje nombra la variable. Toma la IP y el protocolo
+      del cliente de `CloudFront-Viewer-Address` y `CloudFront-Forwarded-Proto`, no de `X-Forwarded-For`, cuyo
+      principio lo escribe el navegador. Escribe los registros en JSON (ECS), uno por línea, para CloudWatch.
+    - **La imagen** (`backend/Dockerfile`): compila con `eclipse-temurin:25-jdk-noble` y corre con el JRE, con el
+      usuario `inspectia` (UID 10001) y el heap en el 60 % del contenedor. `docker/entrada.sh` convierte cada archivo
+      de `/run/secrets` en su variable, solo dentro del proceso. El healthcheck espera el 401 de `/api/v1/sesion`.
+  - **La infraestructura** (`infra/produccion/`, `infra/aws/` e `infra/probar.sh`):
+    - **El compose de producción:** PostgreSQL 18, el backend y el servicio de IA desde ECR con el SHA del commit; los
+      secretos de SSM como archivos de `/run`, nunca en el entorno ni en el disco; límites de memoria que caben en la
+      t4g.medium; registros a CloudWatch Logs; solo el backend se publica, en el puerto 80, para CloudFront.
+    - **Los scripts de la instancia:** `actualizar.sh` (lee los secretos de SSM, baja las imágenes, levanta todo y, si
+      la versión nueva no queda sana, vuelve sola a la anterior), `respaldar.sh` (la copia diaria a S3),
+      `restaurar-respaldo.sh` (con `--prueba`, la restaura aparte y compara las filas) y `admin-plataforma.sh` (el
+      primer administrador y su contraseña en producción).
+    - **El script de arranque de la instancia** (`infra/aws/datos-de-usuario.sh`, Amazon Linux 2023): Docker, el
+      plugin compose v5.6.0 con su SHA-256, el agente de CloudWatch, 2 GB de swap, el servicio `inspectia` de systemd y
+      el temporizador de la copia diaria.
+    - **Lo que se pega en la consola:** la CloudFront Function `inspectia-rutas`, la CSP, las políticas IAM de la
+      instancia y de GitHub, el CORS y la política del bucket de archivos y el ciclo de vida de ECR.
+    - **La CI** (`ci.yml` 1.1): los jobs nuevos «Infraestructura», «Imágenes Docker» y «Despliegue en AWS». El
+      despliegue corre solo en `main`, cuando pasaron todos los demás jobs y están las 5 variables de AWS del
+      repositorio; sin ellas se salta y la CI sigue en verde. Primero el servidor, por SSM, y después la página.
+    - **La guía de la consola** (`infra/README.md` 1.15): 16 pasos en orden, el primer administrador en producción,
+      cómo probar todo, la copia diaria y su restauración, y la operación.
+  - **Las specs:**
+    - **D-16, una nota:** el perfil `produccion` que exige S3 y el servicio de IA, los secretos de SSM solo en
+      memoria, la vuelta sola a la versión anterior, Swagger UI cerrado en producción y la copia diaria con su
+      retención de 35 días.
+    - **D-31, una nota:** la CSP exacta, con el bucket de archivos en `connect-src` e `img-src`.
+    - **RF-05 1.5, en su restricción 4:** cómo es el enlace de subida con S3 y que una foto ya subida no se pisa. Es
+      comportamiento que ninguna ficha pedía; se anota aquí, en D-16 y en el PR.
+  - **Los README:** el principal suma las versiones del despliegue (AWS SDK for Java 2.59.8, Docker Compose v5.6.0 en
+    la instancia y las acciones nuevas de GitHub), qué trae el despliegue y los tres jobs nuevos de la CI; el del
+    frontend dice cómo se publica la página: quién, la caché, las rutas de React y la CSP.
+  - **Decisiones pequeñas:**
+    - **Swagger UI y `/v3/api-docs` quedan cerrados en producción:** CloudFront solo pasa `/api/*` a la instancia, la
+      CSP de la página no dejaría correr Swagger UI y no hace falta publicar el mapa de la API. La documentación sigue
+      en el PC de desarrollo. Queda en la nota de D-16.
+    - **Los enlaces temporales son solo de fotos,** con la carpeta y con S3. Un reporte se descarga por el backend,
+      con la sesión.
+    - **`guardar` con una llave que ya existe es un error del servidor (500),** no un 409: la llave la arma el
+      servidor al azar. Así no hizo falta un mensaje nuevo en `mensajes*.properties`.
+    - **La región sale de `AWS_REGION` y es obligatoria;** no se usa la cadena de regiones del SDK, que buscaría en
+      los metadatos de la instancia.
+    - **El mensaje de arranque del perfil `produccion` va solo en español,** como los demás mensajes de arranque: no
+      es un texto de la API.
+    - **Los secretos llegan como archivos** (`secrets:` de compose) y no con `env_file`: así no quedan en la
+      configuración del contenedor en el disco.
+    - **`restart: on-failure`** y no `unless-stopped`: al encender, Docker no debe levantar los contenedores antes de
+      que systemd lea los secretos de SSM.
+    - **El despliegue también corre a mano** (desde Actions, sobre `main`), para el primer despliegue sin un commit
+      nuevo.
+    - **Las imágenes se suben a ECR en paralelo a las pruebas,** para ganar tiempo; producción solo se toca cuando
+      todo pasó.
+    - **La CI enciende la instancia si está apagada,** para no dejar la página nueva con el servidor viejo; el
+      horario la vuelve a apagar.
+    - **Primero el servidor y después la página,** que no se publica si la instancia no queda sana.
+    - **La caché de la página:** `index.html` sin caché y `assets/` con caché de un año, inmutable; los assets viejos
+      se dejan, por si una pestaña abierta todavía los pide.
+    - **La vuelta a la versión anterior espera 600 s,** no 900 como la nueva, para que las dos esperas quepan en los
+      35 minutos del comando de SSM. El job de despliegue espera hasta 60 minutos.
+    - **`actualizar.sh` deja activo el servicio `inspectia`** de systemd al terminar un despliegue de la CI, para que
+      `systemctl status` no confunda. Sabe si lo corre el servicio por su cgroup, no por `INVOCATION_ID`, que también
+      hereda lo que corre el agente de SSM.
+    - **`/api/*` usa la política de solicitudes al origen `AllViewerAndCloudFrontHeaders-2022-06`:** pasa
+      `Authorization` y el `Host` de CloudFront, y agrega la IP y el protocolo del cliente.
+    - **Los JSON de AWS no llevan header RP-10,** porque la consola los pide tal cual: su header es la tabla «Header de
+      los JSON de AWS» de `infra/README.md`. Es una excepción a RP-10.
+    - **El rol de la instancia usa la política administrada de Session Manager.** Riesgo aceptado: deja leer cualquier
+      parámetro de SSM. El rol no puede borrar en `respaldos/`.
+    - **ShellCheck en la CI revisa solo los scripts del despliegue,** no los de `infra/bd`, que no se revisaron.
+    - **La guía propone apagar la instancia de 22:00 a 7:00, de lunes a viernes.** Hay que quitar el apagado el jueves
+      26/11 y durante la prueba de estrés.
+    - **Las pruebas de `infra/` no entran en `docs/casos-de-prueba.md`:** `casos_de_prueba.py` no lee `infra/` y sus
+      marcas son de D-16, no de un criterio. Las corre el job «Infraestructura».
+  - **Queda fuera:**
+    - **El primer despliegue real:** lo hace Cristhian en la consola, con la guía de `infra/README.md`. Las 5
+      variables de GitHub se ponen solo cuando estén los modelos en S3 (paso 14) y el PR del servicio de IA en `main`
+      (paso 15): sin él no hay imagen de `ia-servicio` ni el clasificador `servicio`, y el backend no arranca con el
+      perfil `produccion`.
+    - **El job `ia-servicio` se suma a los `needs` del despliegue y del aviso** (y a la lista de nombres y al bucle
+      del aviso) al unir el PR del servicio de IA, que lo trae; en esta rama no existe.
+    - **El encabezado secreto de origen,** para cuando llegue P-17: la lista de prefijos de CloudFront del grupo de
+      seguridad admite cualquier distribución de cualquier cuenta. Hoy no da acceso a nada, porque nadie usa la IP y
+      la API exige el token. P-17 sigue pendiente de la respuesta de Cristhian; la guía anota las dos opciones (WAF o
+      el backend).
+    - **RNF-03 C3** dice que las fotos y los reportes en S3 solo se abren con enlaces temporales, pero el reporte se
+      descarga por el backend con la sesión. Cambiar el texto del criterio cambia una ficha: queda para decidirlo con
+      Cristhian, con el PR del PDF (D-50).
+    - **Unir `AlmacenEnCarpeta` con el PR del PDF:** los dos implementan `guardar`; el choque se resuelve al unirlos.
+    - **Una foto que nunca se confirma queda huérfana en `fotos/`:** se puede resolver más adelante con una regla de
+      ciclo de vida de S3.
+  - **Problemas encontrados:**
+    - **Dos pruebas de `PerfilDeProduccionTest` fallaban** porque esperaban la excepción envuelta en otra, y la
+      comprobación la lanza sola: corre antes de crear cualquier bean. Se ajustó la prueba.
+    - **La prueba de humo de la imagen,** hecha antes de unir el adaptador de S3, cargaba la carpeta de D-41 y no
+      arrancaba: la carpeta de inicio del usuario de la imagen (`/aplicacion`) no es escribible. Con S3 la carpeta no
+      se carga; la prueba se repitió con `INSPECTIA_FOTOS_CARPETA=/tmp/fotos` y arrancó sana en unos 8 s.
+    - **ShellCheck, actionlint y PyYAML no estaban en este PC:** ShellCheck se corrió en Docker en la revisión, y el
+      YAML de `ci.yml` se leyó con el lector de `docker compose config`.
+  - **Resultado:**
+    - **Backend,** solo las pruebas unitarias de lo que cambió, como pidió Cristhian: las 8 clases nuevas o tocadas y
+      `VerificacionDeClasesTest`, 37 de 37; en la revisión, 35 de 35; después de las correcciones,
+      `EncabezadosDeCloudFrontTest` y `PerfilDeProduccionTest`, 8 de 8. `./mvnw verify` y las de punta a punta las
+      corre la CI.
+    - **Infraestructura:** `bash infra/probar.sh`, 33 de 33, también después de las correcciones. ShellCheck v0.10.0
+      con `--severity=warning`, sin advertencias.
+    - **La imagen del backend** se construyó para amd64 y arrancó sana contra un PostgreSQL temporal: Flyway aplicó
+      `V1`, corre con el UID 10001 y los secretos no aparecen en la configuración del contenedor. Después se borró
+      todo.
+    - **Casos de prueba:** 1330 pruebas (eran 1301) y 45 criterios sin prueba, como antes. Pasan
+      `casos_de_prueba.py comprobar` y `generar.py comprobar`.
+    - **Nada se probó contra AWS:** no se creó ni se llamó a nada de AWS.
+- Por qué: Cristhian pidió que el jueves 26/11 todo esté desplegado en AWS y funcionando, como en el diagrama de D-16.
+  Este PR es el código de ese despliegue: lo que corre en la instancia, lo que se pega en la consola y la CI que
+  despliega sola cuando las pruebas pasan (RP-18, RP-19). Los recursos de AWS los crea Cristhian en la consola.
+- Cómo se pidió:
+  - **El 24/11/2026,** Cristhian cambió el plan: «Cambio de plan: el jueves 26/11 todo tiene que estar desplegado en
+    AWS y funcionando, como en el diagrama de arquitectura (D-16, 02_Analisis_Diseno/InspectIA_Despliegue_AWS.pdf).
+    Nada a medias.» Pidió trabajar en tres frentes a la vez, «cada uno en su rama, con worktrees y agentes aparte»: el
+    servicio de IA con el modelo de Julián; el despliegue; y las funciones que faltan, el PDF (RF-15), las
+    estadísticas (RF-16) y la pantalla del modelo (RF-17), con la prueba de estrés (RNF-01 y RNF-02) contra AWS al
+    final.
+  - **Sobre este frente:** «los recursos de AWS los creo yo en la consola, en paralelo, con una guía aparte. No
+    escribas Terraform ni CloudFormation, ni crees nada en AWS. Tu parte es el código».
+  - **Sobre las pruebas:** «en mi PC corre solo las pruebas rápidas de lo que cambias; las de punta a punta, que las
+    corra la CI. Nunca corras dos suites pesadas a la vez. La revisión antes de cada PR, con un solo revisor.»
+  - **Cómo se trabajó:** Claude Code repartió el frente en dos agentes, cada uno en su worktree: el backend para AWS
+    (rama `trabajo/despliegue-backend`) y la infraestructura y la CI (esta rama), con las pruebas antes del código.
+    Las dos pruebas con Docker (la imagen y la prueba de humo) usaron un candado para no correr junto a otra suite
+    pesada. Después unió las dos ramas.
+  - **La revisión antes del PR,** con un solo revisor, como pidió Cristhian, sin cambiar nada. No encontró defectos de
+    gravedad alta; encontró 3 de gravedad media y 8 de gravedad baja. Otro agente corrigió 10 en 9 commits (`8b3d762`
+    a `c6e2c38`):
+    - un despliegue que fallaba dejaba el sitio caído con la versión rota y `.env` apuntando a ella, y la CI y la guía
+      decían lo contrario: ahora vuelve sola a la anterior y solo anota la nueva cuando quedó sana;
+    - la guía ponía las variables de GitHub antes de subir los modelos, y el primer despliegue habría fallado; ahora
+      van después, y solo con el PR del servicio de IA en `main`;
+    - el JavaDoc del filtro y la guía pedían políticas de origen distintas, y con la de la guía el `Location` de
+      `POST /api/v1/empresas` salía con el DNS de la instancia: se unificó en `AllViewerAndCloudFrontHeaders-2022-06`;
+    - el JavaDoc decía que solo nuestra CloudFront llega a la instancia, y no es así: se corrigió, y la guía anota el
+      encabezado secreto de origen para P-17;
+    - el heap del 70 % dejaba poco margen fuera de él en 1 GB: baja al 60 %;
+    - los JSON de AWS no tenían su header: una tabla en `infra/README.md`;
+    - la copia diaria no dejaba registro si fallaba antes de leer la cuenta;
+    - el job de despliegue podía pasar de sus 45 minutos en el primer despliegue: sube a 60, y el comando de SSM a 35;
+    - la guía mandaba crear un grupo de registros que ya crea el agente de CloudWatch, y el servicio `inspectia`
+      quedaba inactivo después de un despliegue de la CI.
+
+    El hallazgo 8, RNF-03 C3, no es un error del código: queda en «Queda fuera». El 3 (la dependencia del PR del
+    servicio de IA) se resolvió en la guía y en «Queda fuera».
+- Archivos o PR: la rama `feature/D-16-despliegue-aws` y su PR hacia `main`.
 
 ## Plantilla para nuevas entradas
 

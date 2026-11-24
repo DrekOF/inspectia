@@ -5,7 +5,7 @@
     "fecha_creacion": "12/10/2026",
     "actualizacion": "24/11/2026",
     "autor": "Equipo InspectIA",
-    "version": "1.22"
+    "version": "1.23"
   },
   "rf": [
     {
@@ -221,7 +221,7 @@
       "encabezado": "Tomar o subir las fotos de la muestra",
       "titulo": "Tomar o subir las fotos de la muestra del lote, con guía de captura",
       "codigo": "RF-05",
-      "version": "1.4",
+      "version": "1.5",
       "fuente": "D-08 (captura del lote), D-23 y D-26 (tamaño de la muestra) y D-25 (segunda muestra).",
       "descripcion": "El usuario toma con la cámara del celular, o sube desde el PC, 2 o 3 fotos de cada muestra del lote, siguiendo una guía de captura. Un lote tiene una muestra, o dos si la app sugiere otra (D-25).",
       "justificacion": "La calidad de las fotos define la calidad del resultado; la guía evita fotos que no sirven.",
@@ -231,7 +231,7 @@
           "La guía pide entre 100 y 150 granos por muestra, repartidos en 2 o 3 fotos (D-23). Si la muestra pasa de 150 granos, se acepta; el mínimo de 100 es obligatorio (D-26, RF-07).",
           "Granos enteros sobre papel blanco, separados entre sí, con luz difusa y fotos tomadas desde arriba (D-08).",
           "Fotos en JPG o PNG, de hasta 10 MB cada una.",
-          "Las fotos suben directo a S3 con un enlace temporal (D-16; detalle en el documento de arquitectura). Mientras no hay despliegue en AWS, y en las pruebas, una carpeta del servidor hace las veces de S3, con enlaces temporales que firma el mismo servidor (D-41).",
+          "Las fotos suben directo a S3 con un enlace temporal (D-16; detalle en el documento de arquitectura). Mientras no hay despliegue en AWS, y en las pruebas, una carpeta del servidor hace las veces de S3, con enlaces temporales que firma el mismo servidor (D-41). En AWS, el enlace de subida es un PUT prefirmado de S3 que firma el tipo, el tamaño y que la foto todavía no exista: una foto ya subida no se pisa, como en la carpeta (D-16). S3 no revisa el contenido al subirlo: el servidor revisa el formato y el tamaño al confirmar la foto. El de vista es un GET prefirmado, con las mismas vigencias: 10 minutos para subir y 15 para ver.",
           "Una foto rechazada (RF-06, RF-07) o reemplazada (RF-09) se borra de la base de datos y de S3.",
           "Cada foto dice a qué muestra va (D-25): la página la manda al pedir el enlace, y el enlace la guarda. Si el lote cambió mientras la página estaba abierta, por ejemplo porque otro usuario analizó la muestra, la foto no se guarda y se pide recargar la página con «El lote cambió mientras tenías abierta esta página: recárgala para ver qué muestra recibe las fotos.»."
         ]
