@@ -47,10 +47,11 @@ COPY --from=compilacion /extraido/snapshot-dependencies/ ./
 COPY --from=compilacion /extraido/application/ ./
 COPY --chmod=755 docker/entrada.sh /usr/local/bin/entrada.sh
 
-# Memoria: el compose de producción le da 1 GB al contenedor. El heap usa hasta el 70 % (unos 700 MB) y el resto
-# queda para el metaspace, los hilos y los búferes. Si se acaba, el proceso termina y Docker lo reinicia, en lugar
-# de quedar vivo pero sin responder.
-ENV JAVA_OPTS="-XX:MaxRAMPercentage=70 -XX:+ExitOnOutOfMemoryError" \
+# Memoria: el compose de producción le da 1 GB al contenedor. El heap usa hasta el 60 % (unos 614 MB) y quedan unos
+# 400 MB fuera del heap para el metaspace, el code cache, las pilas de los hilos de Tomcat y los búferes, que suman
+# 200 a 300 MB: así el proceso no llega al límite y Docker no lo mata sin aviso (SIGKILL) en la prueba de estrés. Si
+# se acaba el heap, el proceso termina y Docker lo reinicia, en lugar de quedar vivo pero sin responder.
+ENV JAVA_OPTS="-XX:MaxRAMPercentage=60 -XX:+ExitOnOutOfMemoryError" \
     LANG=C.UTF-8
 
 USER 10001:10001
