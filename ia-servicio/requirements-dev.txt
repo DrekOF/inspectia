@@ -1,0 +1,9 @@
+# Nombre: requirements-dev.txt
+# Descripción: Dependencias para probar el servicio de IA (incluye las de requirements.txt).
+# Fecha de creación: 24/11/2026
+# Actualización: 24/11/2026
+# Autor: Equipo InspectIA
+# Versión: 1.0
+-r requirements.txt
+pytest==9.2.0
+httpx==0.28.1
