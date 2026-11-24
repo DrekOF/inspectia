@@ -2,11 +2,12 @@
  * Nombre: AlmacenEnCarpetaTest.java
  * Descripción: Pruebas unitarias del almacén de las fotos en una carpeta (D-41): los enlaces relativos, las llaves que
  *              no salen de la carpeta, los archivos que no se pisan, la lectura para el clasificador y el borrado que
- *              no falla; las llaves llevan la muestra para la que se pidieron (D-25).
+ *              no falla; las llaves llevan la muestra para la que se pidieron (D-25). Los reportes PDF se guardan
+ *              con su propia llave y no tienen enlaces (D-16, RF-15).
  * Fecha de creación: 23/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.2
+ * Versión: 1.3
  */
 package co.edu.usco.inspectia.analisis.adaptadores.carpeta;
 
@@ -18,6 +19,7 @@ import co.edu.usco.inspectia.analisis.aplicacion.ArchivoGuardado;
 import co.edu.usco.inspectia.analisis.aplicacion.EnlaceTemporal;
 import co.edu.usco.inspectia.comun.errores.ConflictoExcepcion;
 import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -37,6 +39,9 @@ class AlmacenEnCarpetaTest {
     private static final String ARCHIVO = "m1-0199f0a0-0000-7000-8000-000000000003.jpg";
     private static final String LLAVE = EMPRESA + "/" + LOTE + "/" + ARCHIVO;
     private static final byte[] JPG = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0, 1, 2, 3, 4, 5};
+    private static final String REPORTE = "reportes/" + EMPRESA + "/" + LOTE
+            + "/0199f0a0-0000-7000-8000-000000000004-es.pdf";
+    private static final byte[] PDF = "%PDF-1.7 reporte".getBytes(StandardCharsets.US_ASCII);
 
     @TempDir
     private Path carpeta;
@@ -122,5 +127,39 @@ class AlmacenEnCarpetaTest {
         almacen.borrar(LLAVE);
         assertThatThrownBy(() -> almacen.leer(LLAVE)).isInstanceOf(UncheckedIOException.class);
         assertThatThrownBy(() -> almacen.leer("../" + LLAVE)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("D-16 · la carpeta guarda un archivo que arma el servidor, como el reporte PDF con su llave reportes/<empresa>/<lote>/<uuid>-<idioma>.pdf: lo describe, lo lee y lo borra")
+    void guardarUnReporte() {
+        almacen.guardar(REPORTE, PDF, "application/pdf");
+
+        assertThat(almacen.leer(REPORTE)).isEqualTo(PDF);
+        assertThat(almacen.describir(REPORTE).orElseThrow().bytes()).isEqualTo(PDF.length);
+        assertThat(almacen.ruta(REPORTE)).isEqualTo(carpeta.toAbsolutePath().normalize().resolve(REPORTE));
+        almacen.borrar(REPORTE);
+        assertThat(almacen.describir(REPORTE)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("D-16 · guardar con el tipo tampoco pisa un archivo: con la llave al azar del servidor, sería un error del servidor; y una llave con otra forma se rechaza")
+    void guardarConTipoNoPisa() {
+        almacen.guardar(LLAVE, JPG, "image/jpeg");
+
+        assertThatThrownBy(() -> almacen.guardar(LLAVE, PDF, "image/jpeg")).isInstanceOf(IllegalStateException.class);
+        assertThat(almacen.leer(LLAVE)).isEqualTo(JPG);
+        assertThatThrownBy(() -> almacen.guardar("reportes/" + EMPRESA + "/x.pdf", PDF, "application/pdf"))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> almacen.guardar("../" + REPORTE, PDF, "application/pdf"))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    @DisplayName("D-16 · los enlaces firmados son solo de fotos: un reporte se descarga por el backend, con la sesión, y no tiene enlace")
+    void unReporteNoTieneEnlace() {
+        assertThatThrownBy(() -> almacen.enlaceDeVista(REPORTE, Duration.ofMinutes(15)))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> almacen.enlaceDeSubida(REPORTE, "application/pdf", PDF.length, Duration.ofMinutes(10)))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 }
