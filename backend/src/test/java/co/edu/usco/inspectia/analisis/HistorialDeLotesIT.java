@@ -1,11 +1,11 @@
 /*
  * Nombre: HistorialDeLotesIT.java
  * Descripción: Pruebas de integración del historial de lotes: solo los de la empresa, del más reciente al
- *              más antiguo, por páginas de 20, y el detalle de un lote (RF-14).
+ *              más antiguo, por páginas de 20, si sugiere otra muestra, y el detalle de un lote (RF-14).
  * Fecha de creación: 10/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.2
+ * Versión: 1.3
  */
 package co.edu.usco.inspectia.analisis;
 
@@ -124,7 +124,7 @@ class HistorialDeLotesIT {
     }
 
     @Test
-    @DisplayName("RF-14 · cada lote de la lista trae su fecha de recepción, código, estado, quién lo registró, porcentaje y categoría; los de un lote pendiente van vacíos")
+    @DisplayName("RF-14 · cada lote de la lista trae su fecha de recepción, código, estado, quién lo registró, porcentaje, categoría y si sugiere otra muestra; los de un lote pendiente van vacíos")
     void datosDeCadaLote() {
         UUID id = lotes.registrarOk(token, "L-001");
 
@@ -136,8 +136,9 @@ class HistorialDeLotesIT {
                 .containsEntry("origen", "Finca La Esperanza")
                 .containsEntry("estado", "PENDIENTE")
                 .containsEntry("usuario", Map.of("id", luis.toString(), "nombre", "Luis Gómez"))
-                .containsKeys("fechaCreacion", "fechaResultado");
+                .containsKeys("fechaCreacion", "fechaResultado", "sugerirOtraMuestra");
         assertThat(lote.get("porcentajeSanos")).isNull();
+        assertThat(lote.get("sugerirOtraMuestra")).isNull();
         assertThat(lote.get("categoria")).isNull();
         assertThat(lote.get("fechaResultado")).isNull();
     }
@@ -163,8 +164,30 @@ class HistorialDeLotesIT {
         assertThat(analizado).containsEntry("codigo", "L-001")
                 .containsEntry("estado", "ANALIZADO")
                 .containsEntry("porcentajeSanos", 93.0)
-                .containsEntry("categoria", "ESTANDAR");
+                .containsEntry("categoria", "ESTANDAR")
+                .containsEntry("sugerirOtraMuestra", false);
         assertThat(analizado.get("fechaResultado")).as("la columna «Fecha del resultado» del prototipo").isNotNull();
+    }
+
+    @Test
+    @DisplayName("RF-14 · un lote con otra muestra sugerida lo dice en la lista y en su detalle, para la marca «Sugiere otra muestra» del prototipo")
+    void sugiereOtraMuestra() {
+        UUID id = lotes.registrarOk(token, "L-0143");
+        lotes.registrarOk(token, "L-0144");
+        jdbc.update("""
+                UPDATE lote SET estado = 'ANALIZADO', porcentaje_sanos = 90.6, margen = 7.5, categoria = 'ESTANDAR',
+                    recomendacion = 'Apto para venta estándar.', sugerir_otra_muestra = true,
+                    limite_sugerencia = 90.0, categoria_del_limite = 'ESTANDAR', aviso_confianza_baja = false,
+                    fecha_resultado = now()
+                WHERE id = ?""", id);
+
+        MvcTestResult historial = lotes.listar(token, 0);
+
+        Map<String, Object> conSugerencia = JsonPath.read(cuerpo(historial), "$.contenido[0]");
+        Map<String, Object> pendiente = JsonPath.read(cuerpo(historial), "$.contenido[1]");
+        assertThat(conSugerencia).containsEntry("codigo", "L-0143").containsEntry("sugerirOtraMuestra", true);
+        assertThat(pendiente).containsEntry("codigo", "L-0144").containsEntry("sugerirOtraMuestra", null);
+        assertThat(json(lotes.ver(api.token(ANA), id))).containsEntry("sugerirOtraMuestra", true);
     }
 
     @Test
@@ -181,8 +204,7 @@ class HistorialDeLotesIT {
     }
 
     @Test
-    @DisplayName("RF-14 · las páginas van de 0 a la más alta que la consulta puede pedir y traen de 1 a 100 lotes; "
-            + "fuera de esos límites responde 400 y no un error del servidor (prueba de límite)")
+    @DisplayName("RF-14 · las páginas van de 0 a la más alta que la consulta puede pedir y traen de 1 a 100 lotes; fuera de esos límites responde 400 y no un error del servidor (prueba de límite)")
     void limitesDeLaPagina() {
         String ultima = "?pagina=" + Pagina.PAGINA_MAXIMA + "&tamano=" + Pagina.TAMANO_MAXIMO;
         MvcTestResult negativa = api.enviar(HttpMethod.GET, ApiLotes.RUTA + "?pagina=-1", null, token);

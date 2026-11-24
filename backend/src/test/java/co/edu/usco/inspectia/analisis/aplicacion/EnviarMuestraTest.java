@@ -1,18 +1,19 @@
 /*
  * Nombre: EnviarMuestraTest.java
  * Descripción: Pruebas unitarias del caso de uso «Analizar la muestra», con Mockito: al menos 2 fotos, la muestra en
- *              espera con su fecha y quien la envía, el reintento seguro, el lote ya analizado y otra empresa
- *              (RF-05 C2, RNF-02 C3, RNF-03).
+ *              espera con su fecha y quien la envía, el reintento seguro, el lote ya analizado, la muestra 2 de un
+ *              lote con otra muestra sugerida y otra empresa (RF-05 C2, RF-12 C8, RF-14 C6, RNF-02 C3, RNF-03).
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis.aplicacion;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -40,12 +41,16 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 import org.springframework.context.ApplicationEventPublisher;
 
-/** «Analizar la muestra» (RF-05 C2, RNF-02 C3), sin Spring ni la base. */
+/**
+ * «Analizar la muestra» (RF-05 C2, RNF-02 C3), sin Spring ni la base. Un lote analizado solo envía su muestra 2, y solo
+ * si sugiere otra muestra ({@link RepositorioDeLotes#sugiereOtraMuestra}, D-25).
+ */
 class EnviarMuestraTest {
 
     private static final UUID EMPRESA = UUID.fromString("0199f0a0-0000-7000-8000-000000000001");
     private static final UUID LOTE = UUID.fromString("0199f0a0-0000-7000-8000-000000000002");
     private static final UUID MUESTRA = UUID.fromString("0199f0a0-0000-7000-8000-000000000005");
+    private static final UUID MUESTRA_2 = UUID.fromString("0199f0a0-0000-7000-8000-000000000015");
     private static final UUID CARLOS = UUID.fromString("0199f0a0-0000-7000-8000-000000000009");
     /** Con nanosegundos: lo que se guarda y se responde queda al microsegundo, como en PostgreSQL. */
     private static final Instant AHORA = Instant.parse("2026-11-23T15:00:00.123456789Z");
@@ -66,11 +71,21 @@ class EnviarMuestraTest {
     }
 
     private void conMuestra(EstadoDeMuestra estado, int fotos) {
-        when(muestras.muestraEnCurso(EMPRESA, LOTE)).thenReturn(Optional.of(new MuestraEnCurso(MUESTRA, 1, estado)));
-        when(muestras.fotos(EMPRESA, MUESTRA)).thenReturn(IntStream.rangeClosed(1, fotos)
-                .mapToObj(numero -> new FotoGuardada(UUID.randomUUID(), numero, "llave-" + numero, FormatoDeFoto.JPG,
+        conMuestra(MUESTRA, 1, estado, fotos);
+    }
+
+    private void conMuestra(UUID id, int numero, EstadoDeMuestra estado, int fotos) {
+        when(muestras.muestraEnCurso(EMPRESA, LOTE)).thenReturn(Optional.of(new MuestraEnCurso(id, numero, estado)));
+        when(muestras.fotos(EMPRESA, id)).thenReturn(IntStream.rangeClosed(1, fotos)
+                .mapToObj(foto -> new FotoGuardada(UUID.randomUUID(), foto, "llave-" + foto, FormatoDeFoto.JPG,
                         1_000, EstadoDeFoto.CARGADA))
                 .toList());
+    }
+
+    /** El lote ya analizado, con otra muestra sugerida o sin ella (D-24, D-25). */
+    private void analizado(boolean sugiereOtraMuestra) {
+        when(lotes.estadoParaActualizar(EMPRESA, LOTE)).thenReturn(Optional.of(EstadoDeLote.ANALIZADO));
+        when(lotes.sugiereOtraMuestra(EMPRESA, LOTE)).thenReturn(sugiereOtraMuestra);
     }
 
     private static List<CampoInvalido> campos(ReglaIncumplidaExcepcion excepcion) {
@@ -140,14 +155,80 @@ class EnviarMuestraTest {
     }
 
     @Test
-    @DisplayName("RF-12 · un lote ya analizado no se vuelve a analizar: 409 con el motivo")
+    @DisplayName("RF-12 · C8 · un lote analizado sin sugerencia de otra muestra no se vuelve a analizar: 409 con el motivo")
     void loteAnalizado() {
-        when(lotes.estadoParaActualizar(EMPRESA, LOTE)).thenReturn(Optional.of(EstadoDeLote.ANALIZADO));
+        analizado(false);
+        conMuestra(EstadoDeMuestra.TERMINADA, 2);
 
         assertThatThrownBy(() -> enviar.enviar(EMPRESA, CARLOS, LOTE))
                 .isInstanceOfSatisfying(ConflictoExcepcion.class,
                         excepcion -> assertThat(excepcion.getClave()).isEqualTo("analisis.lote_analizado"));
         verify(muestras, never()).enviar(any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("RF-12 · C8 · un lote con sus 2 muestras terminadas no se vuelve a analizar: 409 con el motivo, aunque la sugerencia siguiera guardada")
+    void conDosMuestrasTerminadas() {
+        conMuestra(MUESTRA_2, 2, EstadoDeMuestra.TERMINADA, 2);
+
+        for (boolean sugerencia : new boolean[] {false, true}) {
+            analizado(sugerencia);
+            assertThatThrownBy(() -> enviar.enviar(EMPRESA, CARLOS, LOTE)).as("sugerencia %s", sugerencia)
+                    .isInstanceOfSatisfying(ConflictoExcepcion.class,
+                            excepcion -> assertThat(excepcion.getClave()).isEqualTo("analisis.lote_analizado"));
+        }
+        verify(muestras, never()).enviar(any(), any(), any(), any());
+        verify(eventos, never()).publishEvent(any(Object.class));
+    }
+
+    @Test
+    @DisplayName("RF-14 · C6 · con otra muestra sugerida, la muestra 2 con 2 fotos se envía: queda en espera con su número, la fecha de envío y quien la envía, y avisa a la cola")
+    void enviaLaMuestraDos() {
+        analizado(true);
+        conMuestra(MUESTRA_2, 2, EstadoDeMuestra.PENDIENTE, 2);
+
+        AvanceDelAnalisis avance = enviar.enviar(EMPRESA, CARLOS, LOTE);
+
+        assertThat(avance).isEqualTo(new AvanceDelAnalisis(2, EstadoDeMuestra.EN_ESPERA, AHORA_EN_MICROS, null, null,
+                false));
+        InOrder orden = inOrder(lotes, muestras, eventos);
+        orden.verify(lotes).estadoParaActualizar(EMPRESA, LOTE);
+        orden.verify(muestras).enviar(EMPRESA, MUESTRA_2, CARLOS, AHORA_EN_MICROS);
+        orden.verify(eventos).publishEvent(new MuestraEnviada(MUESTRA_2));
+        verify(muestras, never()).enviar(any(), eq(MUESTRA), any(), any());
+    }
+
+    @Test
+    @DisplayName("RF-05 · C2 · con otra muestra sugerida, enviar sin la muestra 2 o con 1 foto en ella responde 400 en «fotos» y no cambia nada (prueba de límite)")
+    void laMuestraDosNecesitaDosFotos() {
+        analizado(true);
+        conMuestra(MUESTRA, 1, EstadoDeMuestra.TERMINADA, 2);
+        assertThatThrownBy(() -> enviar.enviar(EMPRESA, CARLOS, LOTE)).as("sin la muestra 2")
+                .isInstanceOfSatisfying(ReglaIncumplidaExcepcion.class, excepcion -> assertThat(campos(excepcion))
+                        .containsExactly(new CampoInvalido("fotos", "analisis.fotos.minimo")));
+
+        conMuestra(MUESTRA_2, 2, EstadoDeMuestra.PENDIENTE, 1);
+        assertThatThrownBy(() -> enviar.enviar(EMPRESA, CARLOS, LOTE)).as("con 1 foto en la muestra 2")
+                .isInstanceOfSatisfying(ReglaIncumplidaExcepcion.class, excepcion -> assertThat(campos(excepcion))
+                        .containsExactly(new CampoInvalido("fotos", "analisis.fotos.minimo")));
+        verify(muestras, never()).enviar(any(), any(), any(), any());
+        verify(eventos, never()).publishEvent(any(Object.class));
+    }
+
+    @Test
+    @DisplayName("RNF-02 · enviar otra vez la muestra 2 en espera o en proceso responde su avance sin cambiar nada: el reintento es seguro")
+    void reintentoDeLaMuestraDos() {
+        analizado(true);
+        AvanceDelAnalisis enEspera = AvanceDelAnalisis.de(2, EstadoDeMuestra.EN_ESPERA,
+                Instant.parse("2026-11-24T14:59:00Z"), null, null);
+        when(muestras.avance(EMPRESA, LOTE)).thenReturn(Optional.of(enEspera));
+
+        for (EstadoDeMuestra estado : List.of(EstadoDeMuestra.EN_ESPERA, EstadoDeMuestra.EN_PROCESO)) {
+            conMuestra(MUESTRA_2, 2, estado, 2);
+            assertThat(enviar.enviar(EMPRESA, CARLOS, LOTE)).as(estado.name()).isEqualTo(enEspera);
+        }
+        verify(muestras, never()).enviar(any(), any(), any(), any());
+        verify(eventos, never()).publishEvent(any(Object.class));
     }
 
     @Test

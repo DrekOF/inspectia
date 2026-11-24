@@ -2,11 +2,11 @@
  * Nombre: ApiFotos.java
  * Descripción: Llamadas a la API de las fotos de un lote y a sus enlaces firmados, sus mensajes, y fotos JPG y PNG
  *              hechas en la misma prueba, también de un tamaño dado para el clasificador falso, para las pruebas
- *              (RF-05, RF-14 C5, RNF-03, RNF-04, D-41).
+ *              (RF-05, RF-14 C5, RNF-03, RNF-04, D-41), y el mensaje de un lote que no admite otra muestra (RF-12 C8).
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 package co.edu.usco.inspectia.analisis;
 
@@ -49,6 +49,10 @@ import org.springframework.test.web.servlet.assertj.MvcTestResult;
  * La lista de la muestra en curso ({@code GET .../fotos}) responde {@code muestra} (su número, o vacío si todavía
  * no tiene fotos), {@code estado} y {@code fotos}, cada una con un enlace de vista nuevo. Solo el usuario final usa
  * estas rutas, siempre con lotes de su empresa: los de otra responden 404, como si no existieran (RNF-03).
+ *
+ * <p>Un lote analizado que sugiere otra muestra recibe las fotos de la muestra 2 (D-25): mientras no tiene ninguna, la
+ * lista va vacía y sin número, y la primera foto confirmada la crea. Un lote analizado sin sugerencia, o con sus 2
+ * muestras, responde 409 con {@link #SIN_OTRA_MUESTRA}; una muestra enviada, 409 con {@link #LOTE_NO_PENDIENTE}.
  */
 final class ApiFotos {
 
@@ -63,6 +67,8 @@ final class ApiFotos {
     static final String NO_LLEGO = "La foto no llegó completa: súbela de nuevo.";
     static final String LOTE_NO_PENDIENTE =
             "Este lote ya no está pendiente de análisis: sus fotos no se pueden cambiar.";
+    static final String SIN_OTRA_MUESTRA = "Este lote ya tiene su resultado y no admite otra muestra: solo se analiza "
+            + "otra cuando el resultado la sugiere, y como máximo 2.";
     static final String ENLACE_NO_VALIDO = "El enlace de la foto venció o no es válido: vuelve a intentarlo.";
     static final String YA_SUBIDA = "Ese enlace ya se usó: pide uno nuevo para subir otra foto.";
 

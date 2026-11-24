@@ -1,16 +1,18 @@
 /*
  * Nombre: SeguridadLotesIT.java
  * Descripción: Pruebas de seguridad de la API de lotes (RNF-04, RP-12): sin sesión responde 401; el
- *              administrador de empresa no registra lotes y el de la plataforma no usa la API, con 403.
+ *              administrador de empresa no registra lotes y el de la plataforma no usa la API, con 403, tampoco la
+ *              lista de quienes registraron lotes (RF-14).
  * Fecha de creación: 10/11/2026
- * Actualización: 10/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis;
 
 import static co.edu.usco.inspectia.analisis.ApiLotes.ORIGENES;
 import static co.edu.usco.inspectia.analisis.ApiLotes.RECEPCION;
+import static co.edu.usco.inspectia.analisis.ApiLotes.REGISTRADORES;
 import static co.edu.usco.inspectia.analisis.ApiLotes.RUTA;
 import static co.edu.usco.inspectia.analisis.ApiLotes.datos;
 import static co.edu.usco.inspectia.usuario.sesion.ApiSesion.json;
@@ -114,13 +116,17 @@ class SeguridadLotesIT {
         assertThat(resultado).hasStatus(HttpStatus.FORBIDDEN);
     }
 
-    /** Las 4 operaciones de la API de lotes, con datos válidos cuando llevan cuerpo. */
+    /** Las 6 operaciones de la API de lotes, con datos válidos cuando llevan cuerpo o filtros. */
     static Stream<Arguments> operaciones() {
         return Stream.of(
                 Arguments.of("historial", HttpMethod.GET, RUTA, null),
+                Arguments.of("historial con filtros", HttpMethod.GET,
+                        RUTA + "?desde=2026-11-01&hasta=2026-11-20&estado=ANALIZADO&categoria=ESTANDAR&codigo=L-01"
+                                + "&usuario=" + UUID.randomUUID(), null),
                 Arguments.of("detalle", HttpMethod.GET, RUTA + "/" + UUID.randomUUID(), null),
                 Arguments.of("registrar", HttpMethod.POST, RUTA, datos("L-001", RECEPCION, "Finca La Esperanza", null)),
-                Arguments.of("sugerencias de finca o proveedor", HttpMethod.GET, ORIGENES + "?texto=finca", null));
+                Arguments.of("sugerencias de finca o proveedor", HttpMethod.GET, ORIGENES + "?texto=finca", null),
+                Arguments.of("quienes registraron lotes", HttpMethod.GET, REGISTRADORES, null));
     }
 
     private int contarLotes() {

@@ -1,12 +1,12 @@
 /*
  * Nombre: ConsultarResultadoTest.java
  * Descripción: Pruebas unitarias de las consultas del análisis, con Mockito: el avance de la muestra en curso y el
- *              resultado guardado, sin recalcular y con los granos dudosos según el umbral que copió su muestra
- *              (RF-09 C5, RF-11 C4, RF-14 C3, RNF-01 C4, RNF-03).
+ *              resultado guardado, sin recalcular, con el límite de la sugerencia y con los granos dudosos según el
+ *              umbral que copió su muestra (RF-09 C5, RF-11 C4, RF-14 C3, RNF-01 C4, RNF-03, D-47).
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis.aplicacion;
 
@@ -77,7 +77,8 @@ class ConsultarResultadoTest {
     private static ResultadoGuardado analizado() {
         return new ResultadoGuardado(LOTE, "L-0143", LocalDate.parse("2026-10-20"), "La Esperanza",
                 EstadoDeLote.ANALIZADO, OffsetDateTime.ofInstant(FIN, ZoneOffset.UTC), new BigDecimal("90.6"),
-                new BigDecimal("7.5"), "ESTANDAR", "Apto para venta estándar.", true, false);
+                new BigDecimal("7.5"), "ESTANDAR", "Apto para venta estándar.", true, new BigDecimal("90.0"),
+                "ESTANDAR", false);
     }
 
     private static MuestraGuardada terminada(String umbral) {
@@ -86,7 +87,7 @@ class ConsultarResultadoTest {
     }
 
     @Test
-    @DisplayName("RF-14 · C3 · el detalle trae las cifras guardadas del lote, sin recalcularlas, y las de la muestra: 87 de 100, 87,0 % contado")
+    @DisplayName("RF-14 · C3 · el detalle trae las cifras guardadas del lote, sin recalcularlas, con el límite de la sugerencia, y las de la muestra: 87 de 100, 87,0 % contado")
     void cifrasGuardadas() {
         when(lotes.resultado(EMPRESA, LOTE)).thenReturn(Optional.of(analizado()));
         when(muestras.delLote(EMPRESA, LOTE)).thenReturn(List.of(terminada("60.00")));
@@ -95,6 +96,8 @@ class ConsultarResultadoTest {
         DetalleDelResultado detalle = resultado.detalle(EMPRESA, LOTE);
 
         assertThat(detalle.lote()).isEqualTo(analizado());
+        assertThat(detalle.lote().limiteSugerencia()).isEqualByComparingTo("90.0");
+        assertThat(detalle.lote().categoriaDelLimite()).isEqualTo("ESTANDAR");
         assertThat(detalle.totalGranos()).isEqualTo(100);
         assertThat(detalle.granosSanos()).isEqualTo(87);
         assertThat(detalle.porcentajeContado()).isEqualTo(new BigDecimal("87.0"));
@@ -134,7 +137,7 @@ class ConsultarResultadoTest {
     @DisplayName("RF-14 · con el lote pendiente, el resultado va vacío y las fotos de la muestra en espera van sin granos")
     void lotePendiente() {
         ResultadoGuardado pendiente = new ResultadoGuardado(LOTE, "L-0143", LocalDate.parse("2026-10-20"),
-                "La Esperanza", EstadoDeLote.PENDIENTE, null, null, null, null, null, null, null);
+                "La Esperanza", EstadoDeLote.PENDIENTE, null, null, null, null, null, null, null, null, null);
         MuestraGuardada enEspera = new MuestraGuardada(MUESTRA, 1, EstadoDeMuestra.EN_ESPERA, CARLOS, "Carlos Ramírez",
                 null, null, null, null, null, null, ENVIO, null);
         when(lotes.resultado(EMPRESA, LOTE)).thenReturn(Optional.of(pendiente));

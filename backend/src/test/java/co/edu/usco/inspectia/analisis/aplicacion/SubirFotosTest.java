@@ -2,11 +2,13 @@
  * Nombre: SubirFotosTest.java
  * Descripción: Pruebas unitarias del caso de uso de subir las fotos, con Mockito (RF-05): el reemplazo borra la fila
  *              anterior y deja el archivo para un evento, la revisión del archivo al confirmarlo, el número de la foto,
- *              la forma de la llave, y un lote que no está pendiente no recibe fotos.
+ *              la forma de la llave, un lote que no está pendiente no recibe fotos, y la segunda muestra de un lote
+ *              con otra muestra sugerida, que se crea con su primera foto sin tocar la muestra 1 (RF-12 C8,
+ *              RF-14 C6, D-25).
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis.aplicacion;
 
@@ -16,6 +18,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -42,13 +45,18 @@ import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 import org.springframework.context.ApplicationEventPublisher;
 
-/** El caso de uso de subir las fotos (RF-05), sin Spring ni la base. */
+/**
+ * El caso de uso de subir las fotos (RF-05), sin Spring ni la base. Un lote analizado solo recibe fotos si sugiere otra
+ * muestra ({@link RepositorioDeLotes#sugiereOtraMuestra}) y su muestra en curso es la 1 terminada, que da paso a la
+ * 2, o la 2 pendiente (D-25).
+ */
 class SubirFotosTest {
 
     private static final UUID EMPRESA = UUID.fromString("0199f0a0-0000-7000-8000-000000000001");
     private static final UUID LOTE = UUID.fromString("0199f0a0-0000-7000-8000-000000000002");
     private static final UUID USUARIO = UUID.fromString("0199f0a0-0000-7000-8000-000000000009");
     private static final UUID MUESTRA = UUID.fromString("0199f0a0-0000-7000-8000-000000000005");
+    private static final UUID MUESTRA_2 = UUID.fromString("0199f0a0-0000-7000-8000-000000000015");
     private static final String ANTERIOR = EMPRESA + "/" + LOTE + "/0199f0a0-0000-7000-8000-000000000006.jpg";
     private static final String NUEVA = EMPRESA + "/" + LOTE + "/0199f0a0-0000-7000-8000-000000000007.png";
     private static final byte[] PNG = {(byte) 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A};
@@ -115,12 +123,117 @@ class SubirFotosTest {
     }
 
     @Test
-    @DisplayName("RF-05 · un lote que no está pendiente no recibe fotos: no se pide ningún enlace")
+    @DisplayName("RF-12 · C8 · un lote analizado sin sugerencia de otra muestra no recibe fotos: 409 con el motivo, sin pedir ningún enlace")
     void soloLotesPendientes() {
         when(lotes.estado(EMPRESA, LOTE)).thenReturn(Optional.of(EstadoDeLote.ANALIZADO));
+        when(lotes.sugiereOtraMuestra(EMPRESA, LOTE)).thenReturn(false);
+        when(muestras.muestraEnCurso(EMPRESA, LOTE))
+                .thenReturn(Optional.of(new MuestraEnCurso(MUESTRA, 1, EstadoDeMuestra.TERMINADA)));
 
         assertThatThrownBy(() -> subir.pedirSubida(EMPRESA, LOTE, 1, "image/jpeg", 1_000))
-                .isInstanceOf(ConflictoExcepcion.class).hasMessage("foto.lote_no_pendiente");
+                .isInstanceOf(ConflictoExcepcion.class).hasMessage("analisis.sin_otra_muestra");
+        verify(almacen, never()).enlaceDeSubida(anyString(), anyString(), anyLong(), any(Duration.class));
+    }
+
+    @Test
+    @DisplayName("RF-12 · C8 · un lote que ya tiene 2 muestras no recibe fotos para otra: 409 con el motivo, aunque la sugerencia siguiera guardada")
+    void conDosMuestrasNoRecibeFotos() {
+        when(lotes.estado(EMPRESA, LOTE)).thenReturn(Optional.of(EstadoDeLote.ANALIZADO));
+        when(lotes.estadoParaActualizar(EMPRESA, LOTE)).thenReturn(Optional.of(EstadoDeLote.ANALIZADO));
+        when(muestras.muestraEnCurso(EMPRESA, LOTE))
+                .thenReturn(Optional.of(new MuestraEnCurso(MUESTRA_2, 2, EstadoDeMuestra.TERMINADA)));
+
+        for (boolean sugerencia : new boolean[] {false, true}) {
+            when(lotes.sugiereOtraMuestra(EMPRESA, LOTE)).thenReturn(sugerencia);
+            assertThatThrownBy(() -> subir.pedirSubida(EMPRESA, LOTE, 1, "image/jpeg", 1_000))
+                    .as("pedir, sugerencia %s", sugerencia)
+                    .isInstanceOf(ConflictoExcepcion.class).hasMessage("analisis.sin_otra_muestra");
+            assertThatThrownBy(() -> subir.confirmar(EMPRESA, USUARIO, LOTE, 1, NUEVA))
+                    .as("confirmar, sugerencia %s", sugerencia)
+                    .isInstanceOf(ConflictoExcepcion.class).hasMessage("analisis.sin_otra_muestra");
+        }
+        verify(almacen, never()).enlaceDeSubida(anyString(), anyString(), anyLong(), any(Duration.class));
+        verify(almacen, never()).describir(anyString());
+        verify(muestras, never()).crear(any(), any(), anyInt(), any());
+        verify(muestras, never()).guardarFoto(any(), any(), anyInt(), anyString(), any(), anyLong());
+    }
+
+    @Test
+    @DisplayName("RF-14 · C6 · con otra muestra sugerida y la muestra 1 terminada, el lote analizado da el enlace para subir la primera foto de la muestra 2")
+    void conSugerenciaDaElEnlace() {
+        EnlaceTemporal subida = new EnlaceTemporal("/api/v1/archivos/y", "PUT", Map.of("Content-Type", "image/jpeg"),
+                Instant.parse("2026-11-24T15:10:00Z"));
+        when(lotes.estado(EMPRESA, LOTE)).thenReturn(Optional.of(EstadoDeLote.ANALIZADO));
+        when(lotes.sugiereOtraMuestra(EMPRESA, LOTE)).thenReturn(true);
+        when(muestras.muestraEnCurso(EMPRESA, LOTE))
+                .thenReturn(Optional.of(new MuestraEnCurso(MUESTRA, 1, EstadoDeMuestra.TERMINADA)));
+        when(almacen.enlaceDeSubida(anyString(), anyString(), anyLong(), any(Duration.class))).thenReturn(subida);
+
+        SubidaDeFoto pedida = subir.pedirSubida(EMPRESA, LOTE, 1, "image/jpeg", 1_000);
+
+        assertThat(pedida.enlace()).isEqualTo(subida);
+        assertThat(pedida.llave()).startsWith(EMPRESA + "/" + LOTE + "/").endsWith(".jpg");
+        verify(muestras, never()).crear(any(), any(), anyInt(), any());
+    }
+
+    @Test
+    @DisplayName("RF-12 · la primera foto de la muestra 2 crea la muestra 2 con quien la subió y no borra ni reemplaza la foto con ese número de la muestra 1 (D-25)")
+    void laPrimeraFotoDeLaMuestraDos() {
+        FotoGuardada deLaMuestraUno = new FotoGuardada(UUID.randomUUID(), 1, ANTERIOR, FormatoDeFoto.JPG, 1_000,
+                EstadoDeFoto.APROBADA);
+        when(lotes.estadoParaActualizar(EMPRESA, LOTE)).thenReturn(Optional.of(EstadoDeLote.ANALIZADO));
+        when(lotes.sugiereOtraMuestra(EMPRESA, LOTE)).thenReturn(true);
+        when(muestras.muestraEnCurso(EMPRESA, LOTE))
+                .thenReturn(Optional.of(new MuestraEnCurso(MUESTRA, 1, EstadoDeMuestra.TERMINADA)));
+        when(muestras.foto(EMPRESA, MUESTRA, 1)).thenReturn(Optional.of(deLaMuestraUno));
+        when(almacen.describir(NUEVA)).thenReturn(Optional.of(new ArchivoGuardado(PNG.length, PNG)));
+        when(muestras.crear(EMPRESA, LOTE, 2, USUARIO))
+                .thenReturn(new MuestraEnCurso(MUESTRA_2, 2, EstadoDeMuestra.PENDIENTE));
+        when(muestras.foto(EMPRESA, MUESTRA_2, 1)).thenReturn(Optional.empty());
+        when(muestras.guardarFoto(EMPRESA, MUESTRA_2, 1, NUEVA, FormatoDeFoto.PNG, PNG.length)).thenReturn(
+                new FotoGuardada(UUID.randomUUID(), 1, NUEVA, FormatoDeFoto.PNG, PNG.length, EstadoDeFoto.CARGADA));
+
+        VistaDeFoto vista = subir.confirmar(EMPRESA, USUARIO, LOTE, 1, NUEVA);
+
+        assertThat(vista.numero()).isEqualTo(1);
+        verify(muestras).crear(EMPRESA, LOTE, 2, USUARIO);
+        verify(muestras).guardarFoto(EMPRESA, MUESTRA_2, 1, NUEVA, FormatoDeFoto.PNG, PNG.length);
+        verify(muestras, never()).crear(EMPRESA, LOTE, 1, USUARIO);
+        verify(muestras, never()).borrarFoto(any(), any());
+        verify(muestras, never()).guardarFoto(any(), eq(MUESTRA), anyInt(), anyString(), any(), anyLong());
+        verify(eventos, never()).publishEvent(any(Object.class));
+    }
+
+    @Test
+    @DisplayName("RF-14 · C6 · con la muestra 2 pendiente, una foto nueva va a la muestra 2, sin crear otra muestra")
+    void conLaMuestraDosPendiente() {
+        when(lotes.estadoParaActualizar(EMPRESA, LOTE)).thenReturn(Optional.of(EstadoDeLote.ANALIZADO));
+        when(lotes.sugiereOtraMuestra(EMPRESA, LOTE)).thenReturn(true);
+        when(muestras.muestraEnCurso(EMPRESA, LOTE))
+                .thenReturn(Optional.of(new MuestraEnCurso(MUESTRA_2, 2, EstadoDeMuestra.PENDIENTE)));
+        when(almacen.describir(NUEVA)).thenReturn(Optional.of(new ArchivoGuardado(PNG.length, PNG)));
+        when(muestras.foto(EMPRESA, MUESTRA_2, 2)).thenReturn(Optional.empty());
+        when(muestras.guardarFoto(EMPRESA, MUESTRA_2, 2, NUEVA, FormatoDeFoto.PNG, PNG.length)).thenReturn(
+                new FotoGuardada(UUID.randomUUID(), 2, NUEVA, FormatoDeFoto.PNG, PNG.length, EstadoDeFoto.CARGADA));
+
+        subir.confirmar(EMPRESA, USUARIO, LOTE, 2, NUEVA);
+
+        verify(muestras).guardarFoto(EMPRESA, MUESTRA_2, 2, NUEVA, FormatoDeFoto.PNG, PNG.length);
+        verify(muestras, never()).crear(any(), any(), anyInt(), any());
+    }
+
+    @Test
+    @DisplayName("RF-12 · la muestra 2 enviada, en espera o en proceso, ya no recibe fotos: 409 porque ya no está pendiente")
+    void laMuestraDosEnviada() {
+        when(lotes.estado(EMPRESA, LOTE)).thenReturn(Optional.of(EstadoDeLote.ANALIZADO));
+        when(lotes.sugiereOtraMuestra(EMPRESA, LOTE)).thenReturn(true);
+
+        for (EstadoDeMuestra estado : List.of(EstadoDeMuestra.EN_ESPERA, EstadoDeMuestra.EN_PROCESO)) {
+            when(muestras.muestraEnCurso(EMPRESA, LOTE))
+                    .thenReturn(Optional.of(new MuestraEnCurso(MUESTRA_2, 2, estado)));
+            assertThatThrownBy(() -> subir.pedirSubida(EMPRESA, LOTE, 3, "image/jpeg", 1_000)).as(estado.name())
+                    .isInstanceOf(ConflictoExcepcion.class).hasMessage("foto.lote_no_pendiente");
+        }
         verify(almacen, never()).enlaceDeSubida(anyString(), anyString(), anyLong(), any(Duration.class));
     }
 
@@ -155,12 +268,15 @@ class SubirFotosTest {
     }
 
     @Test
-    @DisplayName("RF-05 · al confirmar, un lote que ya no está pendiente responde 409 sin mirar el almacén ni guardar nada")
+    @DisplayName("RF-12 · C8 · al confirmar, un lote analizado sin sugerencia de otra muestra responde 409 sin mirar el almacén ni guardar nada")
     void alConfirmarSoloLotesPendientes() {
         when(lotes.estadoParaActualizar(EMPRESA, LOTE)).thenReturn(Optional.of(EstadoDeLote.ANALIZADO));
+        when(lotes.sugiereOtraMuestra(EMPRESA, LOTE)).thenReturn(false);
+        when(muestras.muestraEnCurso(EMPRESA, LOTE))
+                .thenReturn(Optional.of(new MuestraEnCurso(MUESTRA, 1, EstadoDeMuestra.TERMINADA)));
 
         assertThatThrownBy(() -> subir.confirmar(EMPRESA, USUARIO, LOTE, 1, NUEVA))
-                .isInstanceOf(ConflictoExcepcion.class).hasMessage("foto.lote_no_pendiente");
+                .isInstanceOf(ConflictoExcepcion.class).hasMessage("analisis.sin_otra_muestra");
         verify(almacen, never()).describir(anyString());
         verify(muestras, never()).guardarFoto(any(), any(), anyInt(), anyString(), any(), anyLong());
     }

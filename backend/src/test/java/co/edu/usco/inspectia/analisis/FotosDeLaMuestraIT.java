@@ -2,21 +2,22 @@
  * Nombre: FotosDeLaMuestraIT.java
  * Descripción: Pruebas de integración de las fotos de la muestra de un lote (RF-05, RF-14 C5): la primera foto crea
  *              la muestra, hasta 3 fotos, JPG o PNG de hasta 10 MB, el reemplazo que borra la anterior, la
- *              confirmación de una foto que no llegó y retomar el lote con sus fotos.
+ *              confirmación de una foto que no llegó, retomar el lote con sus fotos, y un lote analizado sin
+ *              sugerencia que no admite otra muestra (RF-12 C8).
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 package co.edu.usco.inspectia.analisis;
 
 import static co.edu.usco.inspectia.analisis.ApiFotos.DEMASIADO_GRANDE;
 import static co.edu.usco.inspectia.analisis.ApiFotos.FORMATO_NO_PERMITIDO;
 import static co.edu.usco.inspectia.analisis.ApiFotos.JPG;
-import static co.edu.usco.inspectia.analisis.ApiFotos.LOTE_NO_PENDIENTE;
 import static co.edu.usco.inspectia.analisis.ApiFotos.MAXIMO_DE_BYTES;
 import static co.edu.usco.inspectia.analisis.ApiFotos.NO_LLEGO;
 import static co.edu.usco.inspectia.analisis.ApiFotos.PNG;
+import static co.edu.usco.inspectia.analisis.ApiFotos.SIN_OTRA_MUESTRA;
 import static co.edu.usco.inspectia.analisis.ApiFotos.conTamano;
 import static co.edu.usco.inspectia.analisis.ApiFotos.jpg;
 import static co.edu.usco.inspectia.analisis.ApiFotos.pdf;
@@ -239,7 +240,7 @@ class FotosDeLaMuestraIT {
     }
 
     @Test
-    @DisplayName("RF-05 · no se suben fotos a un lote que ya no está pendiente de análisis: responde 409 con el motivo")
+    @DisplayName("RF-12 · C8 · no se suben fotos a un lote analizado sin sugerencia de otra muestra: responde 409 con el motivo y no guarda nada")
     void soloLotesPendientes() {
         jdbc.update("UPDATE lote SET estado = 'ANALIZADO', porcentaje_sanos = 93.0, margen = 5.7, "
                 + "categoria = 'ESTANDAR', recomendacion = 'Apto para la venta', sugerir_otra_muestra = false, "
@@ -249,7 +250,7 @@ class FotosDeLaMuestraIT {
         MvcTestResult resultado = fotos.pedirSubida(token, lote, 1, JPG, 1_000);
 
         assertThat(resultado).hasStatus(HttpStatus.CONFLICT);
-        assertThat(json(resultado)).containsEntry("detail", LOTE_NO_PENDIENTE);
+        assertThat(json(resultado)).containsEntry("detail", SIN_OTRA_MUESTRA);
         assertThat(contarFotos()).isZero();
     }
 

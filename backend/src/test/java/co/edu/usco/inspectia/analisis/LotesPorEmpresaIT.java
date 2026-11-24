@@ -1,11 +1,12 @@
 /*
  * Nombre: LotesPorEmpresaIT.java
- * Descripción: Pruebas de seguridad de los lotes entre empresas: un usuario no ve los lotes ni las fincas
- *              de otra empresa, y la empresa y el usuario de un lote salen de la sesión (RNF-03, RP-12).
+ * Descripción: Pruebas de seguridad de los lotes entre empresas: un usuario no ve los lotes, las fincas ni
+ *              quienes registraron lotes de otra empresa, ni filtra por ellos, y la empresa y el usuario de un lote
+ *              salen de la sesión (RNF-03, RP-12, RF-14).
  * Fecha de creación: 10/11/2026
- * Actualización: 10/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis;
 
@@ -119,6 +120,36 @@ class LotesPorEmpresaIT {
                 .containsEntry("empresa_id", empresa)
                 .containsEntry("usuario_id", luis)
                 .containsEntry("estado", "PENDIENTE");
+    }
+
+    @Test
+    @DisplayName("RNF-03 · C2 · la lista de quienes registraron lotes no trae a los de otra empresa ni los correos de nadie")
+    void losRegistradoresNoMezclanEmpresas() {
+        lotes.registrarOk(token, "L-001");
+        lotes.registrarOk(api.token(MARTA), "S-001");
+
+        MvcTestResult registradores = lotes.registradores(api.token(JORGE));
+
+        assertThat(registradores).hasStatus(HttpStatus.OK);
+        assertThat(ApiSesion.lista(registradores)).containsExactly(
+                Map.<String, Object>of("id", marta.toString(), "nombre", "Marta Ruiz"));
+        assertThat(cuerpo(registradores)).doesNotContain("@");
+        assertThat(ApiSesion.lista(lotes.registradores(token)))
+                .containsExactly(Map.<String, Object>of("id", luis.toString(), "nombre", "Luis Gómez"));
+    }
+
+    @Test
+    @DisplayName("RNF-03 · C2 · filtrar el historial por un usuario de otra empresa da la lista vacía, sin mostrar sus lotes")
+    void filtrarPorUnUsuarioDeOtraEmpresa() {
+        lotes.registrarOk(token, "L-001");
+        lotes.registrarOk(api.token(MARTA), "S-001");
+
+        MvcTestResult historial = lotes.listar(token, Map.of("usuario", marta.toString()));
+
+        assertThat(historial).hasStatus(HttpStatus.OK);
+        List<String> codigos = JsonPath.read(cuerpo(historial), "$.contenido[*].codigo");
+        assertThat(codigos).isEmpty();
+        assertThat(json(historial)).containsEntry("totalElementos", 0);
     }
 
     @Test
