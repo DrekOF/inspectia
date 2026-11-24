@@ -7,11 +7,12 @@
  *              muestra en la pantalla o por la API, para la muestra que las recibe (RF-05, D-25), analizar un lote
  *              por la API (RF-10), también su segunda muestra (RF-14 C6), crear y desactivar usuarios finales de una
  *              empresa propia (RF-03 C6), filtrar el historial y encontrar un lote en él (RF-14 C2), y retener la
- *              espera de la segunda muestra para mirarla (D-25).
+ *              espera de la segunda muestra para mirarla (D-25). Un lote analizado puede llevar su finca o proveedor,
+ *              para las estadísticas (RF-16 C4).
  * Fecha de creación: 20/10/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.7
+ * Versión: 1.8
  */
 import { randomUUID } from 'node:crypto';
 import { test as base, expect } from '@playwright/test';
@@ -221,12 +222,13 @@ function fotosDeAnchos(anchos) {
  * @param {import('@playwright/test').APIRequestContext} api el cliente de la API de Playwright
  * @param {{ correo: string, contrasena: string }} persona el usuario final
  * @param {number[]} [anchos] el ancho de cada foto
- * @param {{ codigo?: string }} [opciones] el código del lote; por defecto, uno nuevo
+ * @param {{ codigo?: string, origen?: string }} [opciones] el código del lote, por defecto uno nuevo, y su finca o
+ *   proveedor, por defecto la de registrarLotes
  * @returns {Promise<object>} el lote, como lo responde la API al registrarlo
  */
 export async function loteAnalizado(api, persona, anchos = [106, 107],
-  { codigo = `R-${randomUUID().slice(0, 8)}` } = {}) {
-  const [lote] = await registrarLotes(api, persona, [{ codigo }]);
+  { codigo = `R-${randomUUID().slice(0, 8)}`, origen } = {}) {
+  const [lote] = await registrarLotes(api, persona, [origen === undefined ? { codigo } : { codigo, origen }]);
   await subirFotosPorLaApi(api, persona, lote.id, fotosDeAnchos(anchos));
   await analizarPorLaApi(api, persona, lote.id);
   return lote;

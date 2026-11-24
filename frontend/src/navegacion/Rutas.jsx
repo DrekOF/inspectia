@@ -5,17 +5,19 @@
  *              pantallas generadas reciben aquí sus extensiones (RP-23), y las del análisis, escritas a mano, salen de
  *              PANTALLAS_DEL_ANALISIS (RF-04, RF-14); la de las fotos de la muestra solo la abre el usuario final
  *              (RF-05), y la del resultado de un lote, el usuario final y la administradora (RF-10 a RF-12, RF-14 C3).
+ *              Las de las estadísticas, también a mano, salen de PANTALLAS_DE_ESTADISTICA (RF-16).
  *              Las secciones que todavía no existen muestran «Esta sección estará disponible pronto.».
  * Fecha de creación: 20/10/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.3
+ * Versión: 1.4
  */
 import Box from '@mui/material/Box';
 import CircularProgress from '@mui/material/CircularProgress';
 import { Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Navigate, Outlet, Route, Routes } from 'react-router';
+import Estadisticas from '../estadistica/Estadisticas.jsx';
 import { EXTENSIONES } from '../extensiones.js';
 import FotosDeLaMuestra from '../lote/FotosDeLaMuestra.jsx';
 import Historial from '../lote/Historial.jsx';
@@ -37,6 +39,9 @@ import { ROLES, SECCIONES } from './menu.js';
  * como Cambiar contraseña, y no aparte, como las generadas.
  */
 const PANTALLAS_DEL_ANALISIS = { '/lotes/nuevo': NuevoLote, '/historial': Historial };
+
+/** Las pantallas de las estadísticas, escritas a mano (D-21), según la ruta de su sección del menú (RF-16). */
+const PANTALLAS_DE_ESTADISTICA = { '/estadisticas': Estadisticas };
 
 /**
  * Las pantallas que piden una sesión: sin ella llevan a Iniciar sesión; con ella van dentro del marco.
@@ -77,14 +82,14 @@ function Cargando() {
 }
 
 /**
- * Una sección: su pantalla del análisis, la generada con sus extensiones, o la página de lo que está pendiente.
+ * Una sección: su pantalla del análisis o de las estadísticas, la generada con sus extensiones, o la página de lo que está pendiente.
  *
  * @param {{ seccion: import('./menu.js').Seccion }} props la sección
  * @returns {import('react').ReactElement} la pantalla
  */
 function PantallaDeSeccion({ seccion }) {
   const { Pantalla, entidad, etiqueta, ruta } = seccion;
-  const DelAnalisis = PANTALLAS_DEL_ANALISIS[ruta];
+  const DelAnalisis = PANTALLAS_DEL_ANALISIS[ruta] ?? PANTALLAS_DE_ESTADISTICA[ruta];
   if (DelAnalisis) {
     return <DelAnalisis />;
   }
