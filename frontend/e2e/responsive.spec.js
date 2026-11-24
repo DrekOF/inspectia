@@ -5,11 +5,11 @@
  *              páginas, las fotos de la muestra con una foto subida y un error a la vista (RF-05) y el resultado de un
  *              lote (RF-10, RF-11), el historial con los filtros abiertos, un error y el chip «Sugiere otra muestra»
  *              (RF-14 C2) y el resultado con la sugerencia, con la espera de la muestra 2 y con dos muestras (RF-14
- *              C6), y las pruebas corren en tamaño de PC y de celular.
+ *              C6), y «Modelo de IA» (RF-17); las pruebas corren en tamaño de PC y de celular.
  * Fecha de creación: 20/10/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.5
+ * Versión: 1.6
  */
 import { randomUUID } from 'node:crypto';
 import {
@@ -43,7 +43,7 @@ test('RNF-05 · C1 · ninguna pantalla se desplaza a los lados desde 360 px de a
   await sinDesplazamientoLateral(page, 'Acerca de, sin sesión');
   await iniciarSesion(page, datos.adminEmpresa);
   await sinDesplazamientoLateral(page, 'Inicio');
-  for (const ruta of ['/cambiar-contrasena', '/acerca-de', '/estadisticas', '/historial']) {
+  for (const ruta of ['/cambiar-contrasena', '/acerca-de', '/estadisticas', '/historial', '/modelo']) {
     await page.goto(ruta);
     await expect(page.getByRole('main')).toBeVisible();
     await expect(page.getByRole('progressbar')).toHaveCount(0);
