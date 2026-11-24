@@ -135,8 +135,9 @@ paso "InspectIA $etiqueta quedó arriba y sano."
 # Si no lo corrió systemd (lo corrió la CI por SSM o alguien a mano) y el servicio inspectia está inactivo, como tras
 # el primer despliegue, se activa: así «systemctl status inspectia» dice la verdad y su ExecStop detiene los
 # contenedores con orden al apagar. Corre otra vez este script cuando este termina, sin etiqueta: levanta la misma
-# versión, que ya está sana, y no cambia nada. systemd marca con INVOCATION_ID lo que él corre.
-if [ -z "${INVOCATION_ID:-}" ] && command -v systemctl > /dev/null \
+# versión, que ya está sana, y no cambia nada. Lo que corre el servicio está en su cgroup (INVOCATION_ID no sirve:
+# lo hereda también lo que corre el agente de SSM, que es otro servicio).
+if ! grep -qs 'inspectia\.service' /proc/self/cgroup && command -v systemctl > /dev/null \
     && systemctl cat inspectia.service > /dev/null 2>&1 && ! systemctl is-active --quiet inspectia.service; then
     systemctl start --no-block inspectia.service || true
 fi
