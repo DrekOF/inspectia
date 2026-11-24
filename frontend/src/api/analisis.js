@@ -2,11 +2,12 @@
  * Nombre: analisis.js (api)
  * Descripción: Las peticiones del análisis de un lote: enviar la muestra en curso a la cola (RF-05 C2, RNF-02 C3),
  *              consultar su avance mientras espera o se procesa (RNF-01 C4) y traer el resultado guardado del lote,
- *              con sus muestras, sus fotos y los granos marcados de cada una (RF-10, RF-11, RF-12, RF-14 C3).
+ *              con sus muestras, sus fotos y los granos marcados de cada una (RF-10, RF-11, RF-12, RF-14 C3), y el
+ *              límite cercano de la sugerencia de otra muestra (D-47). La muestra en curso puede ser la segunda (D-25).
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 
 /** @typedef {'PENDIENTE'|'EN_ESPERA'|'EN_PROCESO'|'TERMINADA'} EstadoDeMuestra el estado de una muestra */
@@ -65,7 +66,11 @@
  * @property {number|null} margen el margen del porcentaje, con 1 decimal (P-19, D-43)
  * @property {string|null} categoria la categoría probable, como ESTANDAR
  * @property {string|null} recomendacion el texto de la recomendación, como se guardó
- * @property {boolean|null} sugerirOtraMuestra si sugiere analizar otra muestra (D-24)
+ * @property {boolean|null} sugerirOtraMuestra si sugiere analizar otra muestra (D-24); con 2 muestras, nunca (D-25)
+ * @property {number|null} limiteSugerencia el límite de la categoría más cercano al porcentaje, el que hizo sugerir
+ *   otra muestra, como se guardó (D-47); null sin la sugerencia
+ * @property {string|null} categoriaDelLimite la categoría que empieza en ese límite, como ESTANDAR, que puede ser
+ *   otra que la del lote; null sin la sugerencia
  * @property {boolean|null} avisoConfianzaBaja si alguna muestra quedó con confianza baja (RF-09)
  * @property {number|null} totalGranos los granos de sus muestras terminadas
  * @property {number|null} granosSanos los marcados como sanos en sus muestras terminadas

@@ -4,9 +4,9 @@
  *              comparte con el backend no van aquí: salen de sus archivos .properties
  *              (herramientas/textos-del-backend.js). Los marcadores van entre llaves, como en el backend.
  * Fecha de creación: 20/10/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.7
+ * Versión: 1.8
  */
 
 /** Textos en español, por clave. en.js tiene las mismas claves (i18n.test.js lo revisa). */
@@ -180,8 +180,28 @@ export default {
   'historial.continuarLote': 'Continuar el lote {codigo}',
   'historial.ver': 'Ver',
   'historial.verLote': 'Ver el lote {codigo}',
+  // Los filtros del historial (RF-14 C2), con los textos del prototipo
+  'historial.filtros': 'Filtros del historial',
+  'historial.mostrarFiltros': 'Filtros',
+  'historial.desde': 'Resultado desde',
+  'historial.hasta': 'Hasta',
+  'historial.ayudaFechas': 'Los lotes pendientes todavía no tienen fecha del resultado.',
+  'historial.usuario': 'Usuario',
+  'historial.ejemploCodigo': 'L-0142',
+  'historial.todos': 'Todos',
+  'historial.todas': 'Todas',
+  'historial.usuariosSinCargar': 'No se pudo traer la lista de usuarios: recarga la página para filtrar por quien registró el lote.',
+  'historial.aplicarFiltros': 'Aplicar filtros',
+  'historial.limpiar': 'Limpiar',
+  'historial.limpiarFiltros': 'Limpiar filtros',
+  'historial.sinCoincidencias': 'Ningún lote cumple los filtros.',
+  'historial.encontrados_one': '{count} lote encontrado',
+  'historial.encontrados_many': '{count} lotes encontrados',
+  'historial.encontrados_other': '{count} lotes encontrados',
   'fotos.titulo': 'Fotos de la muestra',
+  'fotos.tituloDeLaMuestra': 'Fotos de la muestra {numero}',
   'fotos.descripcion': 'Lote {codigo} · {origen}. Sube 2 o 3 fotos; si sales ahora, el lote queda pendiente y lo retomas desde el Historial.',
+  'fotos.descripcionDeOtraMuestra': 'Muestra {numero} del lote {codigo} · {origen}. Sube 2 o 3 fotos de otra muestra del mismo lote; si sales ahora, la retomas desde el resultado del lote.',
   'fotos.descripcionSinSubir': 'Lote {codigo} · {origen}.',
   'fotos.verElResultado': 'Ver el resultado',
   'fotos.tusFotos': 'Tus fotos',
@@ -211,12 +231,14 @@ export default {
 
   // Espera del análisis, en la página del resultado (RNF-01 C4, RNF-02 C3)
   'espera.titulo': 'Análisis de la muestra',
+  'espera.tituloDeLaMuestra': 'Análisis de la muestra {numero}',
   'espera.avance': 'Avance del análisis',
   'espera.EN_ESPERA': 'Tu análisis está en espera: empieza apenas termine el que va antes.',
   'espera.EN_PROCESO': 'Analizando la muestra…',
   'espera.tarda': 'Está tardando más de lo normal. Puedes esperar aquí o volver al Historial: el resultado queda guardado.',
   'espera.irAlHistorial': 'Ir al Historial',
   'espera.fallo': 'El análisis de la muestra no terminó: la muestra volvió a quedar pendiente.',
+  'espera.falloDeLaMuestra': 'El análisis de la muestra {numero} no terminó: la muestra volvió a quedar pendiente.',
   'espera.falloQueHacer': 'Revisa las fotos y pulsa otra vez «Analizar la muestra».',
   'espera.falloAdmin': 'Un usuario final de tu empresa puede revisar las fotos y enviarla de nuevo.',
   'espera.volverALasFotos': 'Volver a las fotos',
@@ -237,8 +259,15 @@ export default {
   'resultado.marcados': '{sanos} de {total} marcados como sanos',
   'resultado.corrige': 'El porcentaje corrige los errores conocidos del modelo.',
   'resultado.nota': 'Es una categoría probable: la oficial se confirma con la prueba de corte.',
-  'resultado.sugerencia': 'El resultado quedó a menos de 1 punto del límite de una categoría.',
-  'resultado.sugerenciaDetalle': 'Conviene analizar otra muestra del mismo lote para confirmarlo: el resultado sumará los granos de las dos muestras.',
+  // El aviso de la sugerencia de otra muestra (D-24, D-25, D-47), con los textos del prototipo
+  'resultado.sugerenciaNombre': 'Sugerencia',
+  'resultado.sugerencia': 'El resultado quedó a {puntos} puntos del límite de {categoria} ({limite} %).',
+  'resultado.sugerenciaEnElLimite': 'El resultado quedó justo en el límite de {categoria} ({limite} %).',
+  'resultado.sugerenciaDetalle': 'Analiza una segunda muestra del mismo lote para confirmarlo. El resultado sumará los granos de las dos muestras.',
+  'resultado.sugerenciaDetalleAdmin': 'Un usuario final de tu empresa puede analizar una segunda muestra del mismo lote para confirmarlo.',
+  'resultado.analizarOtraMuestra': 'Analizar otra muestra',
+  'resultado.continuarLaMuestra': 'Continuar la muestra {numero}',
+  'resultado.cambiara': 'Este resultado cambiará cuando termine la muestra {numero}: sumará los granos de las dos.',
   'resultado.fotosMarcadas': 'Fotos marcadas',
   'resultado.muestra': 'Muestra {numero}',
   'resultado.analizadaPor': 'Analizada por {nombre}',
@@ -249,7 +278,9 @@ export default {
   'resultado.granosDeLaPestana_many': '{count} granos',
   'resultado.granosDeLaPestana_other': '{count} granos',
   'resultado.imagen': 'Foto {numero} de la muestra, con sus granos marcados',
+  'resultado.imagenDeLaMuestra': 'Foto {numero} de la muestra {muestra}, con sus granos marcados',
   'resultado.granosDeLaFoto': 'Granos de la foto {numero}',
+  'resultado.granosDeLaFotoDeLaMuestra': 'Granos de la foto {numero} de la muestra {muestra}',
   'resultado.grano.SANO': 'Grano {numero}: sano',
   'resultado.grano.NO_SANO': 'Grano {numero}: no sano',
   'resultado.granoDudoso': '{grano}, dudoso',

@@ -3,19 +3,24 @@
  * Descripción: La pantalla Resultado del lote, /lotes/:id: el paso 3 del análisis y el detalle del lote desde el
  *              historial, para el usuario final y la administradora (RF-14 C3). Con el lote analizado muestra su
  *              resultado guardado: la cifra con su rango probable (RF-10, D-43), los granos que contó el modelo, la
- *              categoría probable con su recomendación (RF-12), la sugerencia de otra muestra, si la hay (D-24), y las
- *              fotos marcadas (RF-11). Con la muestra en la cola o en proceso muestra la espera, consulta su avance y,
- *              al terminar, el resultado, con el foco en el título (RNF-01 C4, RNF-02 C3); también si el resultado
- *              llegó con la muestra ya terminada y el lote todavía pendiente. Si el análisis no terminó,
- *              lo dice y lleva a las fotos; si el lote no tiene resultado, lo dice. Los pasos del análisis solo se ven
- *              al llegar desde «Analizar la muestra» o mientras espera. Si el lote no existe o es de otra empresa, lo
- *              dice sin «Reintentar» (RNF-03); si no llegó por otra causa, ofrece «Reintentar».
+ *              categoría probable con su recomendación (RF-12), la sugerencia de otra muestra, si la hay, con el límite
+ *              guardado y «Analizar otra muestra» para el usuario final (D-24, D-47, RF-14 C6), y las fotos marcadas
+ *              (RF-11), con las cifras de cada muestra si son dos. Con la muestra en la cola o en proceso muestra la
+ *              espera, consulta su avance y, al terminar, el resultado, con el foco en el título (RNF-01 C4, RNF-02
+ *              C3); también si el resultado llegó con la muestra ya terminada y el lote todavía pendiente. Mientras la
+ *              segunda muestra espera o se analiza, la espera va arriba y debajo el resultado de la primera, con el
+ *              aviso de que cambiará (D-25). Si el análisis no terminó, lo dice y lleva a las fotos; si fue el de la
+ *              segunda muestra, junto al resultado de la primera; si el lote no tiene resultado, lo dice. Los pasos
+ *              del análisis solo se ven al llegar desde «Analizar la muestra» o mientras espera. Si el lote no existe
+ *              o es de otra empresa, lo dice sin «Reintentar» (RNF-03); si no llegó por otra causa, ofrece
+ *              «Reintentar».
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 import Add from '@mui/icons-material/Add';
+import InfoOutlined from '@mui/icons-material/InfoOutlined';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
@@ -39,13 +44,14 @@ import { FotosMarcadas } from './FotosMarcadas.jsx';
 import { PasosDelAnalisis } from './PasosDelAnalisis.jsx';
 import { EN_CURSO, muestraEnCurso, vistaDelLote } from './resultado.js';
 import { ResumenDelResultado } from './ResumenDelResultado.jsx';
+import { SugerenciaDeOtraMuestra } from './SugerenciaDeOtraMuestra.jsx';
 import { useAnalisisEnCurso } from './useAnalisisEnCurso.js';
 
 /** Los errores que dicen que el lote no está: no existe, es de otra empresa o su id no es válido (RNF-03). */
 const SIN_EL_LOTE = [400, 404];
 
-/** Los estados de la muestra en curso de un lote pendiente con los que se consulta el avance. */
-const POR_CONSULTAR = [...EN_CURSO, 'TERMINADA'];
+/** Las vistas que muestran la espera del análisis y consultan su avance. */
+const ESPERAS = ['espera', 'esperaConResultado'];
 
 /**
  * La descripción debajo del título: la finca o el proveedor, la fecha de recepción y, si ya se analizó, la fecha y la
@@ -83,6 +89,53 @@ function NuevoLote({ esPc }) {
 }
 
 /**
+ * Un análisis que no terminó: la muestra volvió de la cola sin resultado y quedó pendiente otra vez (RNF-06 C3). Al
+ * usuario final lo lleva a las fotos, para revisarlas y enviarla de nuevo; a la administradora le dice quién puede.
+ *
+ * @param {object} props las propiedades
+ * @param {string} props.titulo lo que pasó
+ * @param {string} props.loteId el lote
+ * @param {boolean} props.esUsuarioFinal si la sesión es del usuario final, el único que sube fotos
+ * @returns {import('react').ReactElement} el aviso
+ */
+function AnalisisSinTerminar({ titulo, loteId, esUsuarioFinal }) {
+  const { t } = useTranslation();
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1.5 }}>
+      <Aviso tipo="error" titulo={titulo}>
+        {esUsuarioFinal ? t('espera.falloQueHacer') : t('espera.falloAdmin')}
+      </Aviso>
+      {esUsuarioFinal && (
+        <Button component={Link} to={`/lotes/${loteId}/fotos`} variant="contained">
+          {t('espera.volverALasFotos')}
+        </Button>
+      )}
+    </Box>
+  );
+}
+
+/**
+ * El aviso, debajo de la espera de la segunda muestra, de que el resultado que se ve es el de la primera y cambiará
+ * (D-25). Es una nota que se lee en su lugar, no un anuncio: lo que se anuncia es el estado de la espera.
+ *
+ * @param {{ numero: number }} props el número de la muestra que se espera
+ * @returns {import('react').ReactElement} la nota
+ */
+function ResultadoQueCambiara({ numero }) {
+  const { t } = useTranslation();
+  return (
+    <Box role="note" sx={(theme) => ({
+      display: 'flex', alignItems: 'flex-start', gap: 1, px: 2, py: 1.5, borderRadius: `${medidas.boton.radio}px`,
+      border: `1px solid ${theme.vars.palette.cacao.informacion.principal}`,
+      bgcolor: theme.vars.palette.cacao.informacion.fondo, color: theme.vars.palette.cacao.informacion.texto,
+    })}>
+      <InfoOutlined aria-hidden sx={(theme) => ({ fontSize: 20, mt: '2px', color: theme.vars.palette.cacao.informacion.principal })} />
+      <Typography variant="body2" sx={{ fontSize: 15, color: 'inherit' }}>{t('resultado.cambiara', { numero })}</Typography>
+    </Box>
+  );
+}
+
+/**
  * El resultado de un lote.
  *
  * @param {{ loteId: string, desdeElAnalisis: boolean }} props el lote y si se llegó desde «Analizar la muestra»
@@ -115,9 +168,12 @@ function ResultadoDe({ loteId, desdeElAnalisis }) {
   // Mientras llega otra vez el resultado, sigue a la vista el anterior.
   const cargando = respuesta.recarga !== recargas;
   const { datos, error } = respuesta;
-  // Con la muestra terminada y el lote pendiente, el resultado se leyó mientras se guardaba: el avance dirá TERMINADA y
-  // el resultado se pide otra vez, en lugar de quedarse cargando.
-  const enCurso = datos?.lote.estado === 'PENDIENTE' && POR_CONSULTAR.includes(muestraEnCurso(datos.muestras)?.estado);
+  const muestra = datos ? muestraEnCurso(datos.muestras) : null;
+  // La muestra en curso se sigue mientras espera o se analiza, también la segunda con el lote ya analizado (D-25). Con
+  // la muestra terminada y el lote pendiente, el resultado se leyó mientras se guardaba: el avance dirá TERMINADA y el
+  // resultado se pide otra vez, en lugar de quedarse cargando.
+  const enCurso = EN_CURSO.includes(muestra?.estado)
+    || (datos?.lote.estado === 'PENDIENTE' && muestra?.estado === 'TERMINADA');
   const analisis = useAnalisisEnCurso(pedir, loteId, {
     activo: Boolean(enCurso),
     alTerminar: () => {
@@ -155,15 +211,25 @@ function ResultadoDe({ loteId, desdeElAnalisis }) {
     setRecargas((veces) => veces + 1);
   }
 
+  const estadoDeLaEspera = analisis.avance?.estado ?? muestra?.estado;
   // Lo que se anuncia a los lectores de pantalla: solo cambia cuando cambia el estado, no con cada consulta.
   let anuncio = '';
-  if (vista === 'espera') {
-    anuncio = t(`espera.${analisis.avance?.estado ?? muestraEnCurso(datos.muestras).estado}`);
+  if (ESPERAS.includes(vista)) {
+    anuncio = t(`espera.${estadoDeLaEspera}`);
   } else if (vista === 'resultado' && termino) {
     anuncio = t('resultado.listo', { codigo: lote.codigo });
   }
-  const conPasos = desdeElAnalisis || termino || vista === 'espera';
+  const conPasos = desdeElAnalisis || termino || ESPERAS.includes(vista);
   const conAcciones = esUsuarioFinal && vista === 'resultado';
+  // La segunda muestra empezada y sin enviar se retoma desde el aviso de la sugerencia (RF-14 C6).
+  const muestraEmpezada = muestra?.numero > 1 && muestra.estado === 'PENDIENTE' ? muestra.numero : null;
+  const espera = (
+    <EsperaDelAnalisis estado={estadoDeLaEspera} muestra={muestra?.numero} error={analisis.error}
+      alReintentar={analisis.reintentar} />
+  );
+  const fotosMarcadas = datos && (
+    <FotosMarcadas muestras={datos.muestras} alFallarLaVista={vistaFallida} alCargarLaVista={vistaCargada} />
+  );
 
   return (
     <>
@@ -190,21 +256,9 @@ function ResultadoDe({ loteId, desdeElAnalisis }) {
           )}
         </Box>
       )}
-      {vista === 'espera' && (
-        <EsperaDelAnalisis estado={analisis.avance?.estado ?? muestraEnCurso(datos.muestras).estado}
-          error={analisis.error} alReintentar={analisis.reintentar} />
-      )}
+      {vista === 'espera' && espera}
       {vista === 'fallo' && (
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1.5 }}>
-          <Aviso tipo="error" titulo={t('espera.fallo')}>
-            {esUsuarioFinal ? t('espera.falloQueHacer') : t('espera.falloAdmin')}
-          </Aviso>
-          {esUsuarioFinal && (
-            <Button component={Link} to={`/lotes/${loteId}/fotos`} variant="contained">
-              {t('espera.volverALasFotos')}
-            </Button>
-          )}
-        </Box>
+        <AnalisisSinTerminar titulo={t('espera.fallo')} loteId={loteId} esUsuarioFinal={esUsuarioFinal} />
       )}
       {vista === 'sinResultado' && (
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
@@ -221,10 +275,29 @@ function ResultadoDe({ loteId, desdeElAnalisis }) {
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: esPc ? 3 : 2 }}>
           <ResumenDelResultado lote={lote} region={region} />
           {lote.sugerirOtraMuestra && (
-            <Aviso tipo="info" urgente={false} titulo={t('resultado.sugerencia')}>{t('resultado.sugerenciaDetalle')}</Aviso>
+            <SugerenciaDeOtraMuestra lote={lote} region={region} esUsuarioFinal={esUsuarioFinal}
+              muestraEmpezada={muestraEmpezada} />
           )}
-          <FotosMarcadas muestras={datos.muestras} alFallarLaVista={vistaFallida} alCargarLaVista={vistaCargada} />
+          {fotosMarcadas}
           {conAcciones && !esPc && <NuevoLote esPc={false} />}
+        </Box>
+      )}
+      {/* La segunda muestra en la cola o en proceso: su espera arriba y, debajo, el resultado de la primera (D-25). */}
+      {vista === 'esperaConResultado' && (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: esPc ? 3 : 2 }}>
+          {espera}
+          <ResultadoQueCambiara numero={muestra.numero} />
+          <ResumenDelResultado lote={lote} region={region} />
+          {fotosMarcadas}
+        </Box>
+      )}
+      {/* La segunda muestra volvió sin resultado: el aviso arriba y el resultado de la primera debajo. */}
+      {vista === 'resultadoConFallo' && (
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: esPc ? 3 : 2 }}>
+          <AnalisisSinTerminar titulo={t('espera.falloDeLaMuestra', { numero: muestra.numero })} loteId={loteId}
+            esUsuarioFinal={esUsuarioFinal} />
+          <ResumenDelResultado lote={lote} region={region} />
+          {fotosMarcadas}
         </Box>
       )}
     </>
