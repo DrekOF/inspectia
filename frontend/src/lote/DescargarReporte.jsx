@@ -3,11 +3,11 @@
  * Descripción: El botón «Descargar PDF» del resultado del lote, como en el prototipo (RF-15): baja el reporte con la
  *              sesión, en el idioma de la página, y lo guarda como archivo. Mientras baja, el botón lo dice y no se
  *              puede pulsar otra vez; al terminar, lo anuncia a los lectores de pantalla, y si falla, muestra el
- *              motivo.
+ *              motivo. La descarga misma (bajarReporte) la usa también el historial (RF-15).
  * Fecha de creación: 24/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 import FileDownloadOutlined from '@mui/icons-material/FileDownloadOutlined';
 import Box from '@mui/material/Box';
@@ -43,6 +43,21 @@ export function guardarArchivo(archivo, nombre) {
 }
 
 /**
+ * Baja el reporte PDF de un lote con la sesión, en un idioma, y lo guarda en el equipo con el nombre que manda el
+ * servidor, o con InspectIA-<código>-<idioma>.pdf si no lo manda (RF-15). Lo usan el resultado y el historial.
+ *
+ * @param {import('../api/cliente.js').Pedir} pedir la función del cliente de la API
+ * @param {string} loteId el lote
+ * @param {string} codigo su código, para el nombre del archivo si el servidor no lo manda
+ * @param {'es'|'en'} idioma el idioma del reporte, el de la página
+ * @returns {Promise<void>} se cumple cuando el archivo ya se entregó al navegador
+ */
+export async function bajarReporte(pedir, loteId, codigo, idioma) {
+  const { archivo, nombre } = await reporteDelLote(pedir, loteId, idioma);
+  guardarArchivo(archivo, nombre ?? `InspectIA-${codigo}-${idioma}.pdf`);
+}
+
+/**
  * «Descargar PDF» del resultado de un lote analizado (RF-15), para el usuario final y la administradora.
  *
  * @param {object} props las propiedades
@@ -66,8 +81,7 @@ export function DescargarReporte({ loteId, codigo, aLoAncho = false }) {
     enCurso.current = true;
     setEstado({ descargando: true, listo: false, error: null });
     try {
-      const { archivo, nombre } = await reporteDelLote(pedir, loteId, idioma);
-      guardarArchivo(archivo, nombre ?? `InspectIA-${codigo}-${idioma}.pdf`);
+      await bajarReporte(pedir, loteId, codigo, idioma);
       setEstado({ descargando: false, listo: true, error: null });
     } catch (error) {
       setEstado({ descargando: false, listo: false, error });

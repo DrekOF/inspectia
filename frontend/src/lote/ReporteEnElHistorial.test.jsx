@@ -55,10 +55,11 @@ function conReporte({ espera } = {}) {
 /**
  * Las filas de la tabla del historial, sin la de los títulos.
  *
- * @returns {HTMLElement[]} las filas
+ * @param {string} [nombre] el nombre de la tabla, el de la página en español si no se dice
+ * @returns {Promise<HTMLElement[]>} las filas
  */
-async function filasDeLaTabla() {
-  const tabla = await screen.findByRole('table', { name: 'Lotes de la empresa' });
+async function filasDeLaTabla(nombre = 'Lotes de la empresa') {
+  const tabla = await screen.findByRole('table', { name: nombre });
   return within(tabla).getAllByRole('row').slice(1);
 }
 
@@ -107,7 +108,7 @@ describe('Descargar el reporte PDF desde el historial', () => {
     const reporte = conReporte();
     const { usuario } = abrirApp('/historial');
 
-    const [analizado] = await filasDeLaTabla();
+    const [analizado] = await filasDeLaTabla('Company lots');
     await usuario.click(within(analizado).getByRole('button', { name: 'Download the PDF of lot L-0139' }));
 
     await waitFor(() => expect(guardados.map(({ nombre }) => nombre)).toEqual(['InspectIA-L-0139-en.pdf']));

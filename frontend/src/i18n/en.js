@@ -297,6 +297,8 @@ export default {
   'reporte.descargando': 'Downloading the PDF…',
   'reporte.descargado': 'The PDF of lot {codigo} was downloaded.',
   'reporte.error': 'The PDF could not be downloaded.',
+  'reporte.errorDelLote': 'The PDF of lot {codigo} could not be downloaded.',
+  'reporte.descargarDelLote': 'Download the PDF of lot {codigo}',
 
   // Company statistics (RF-16)
   'estadisticas.titulo': 'Statistics',
