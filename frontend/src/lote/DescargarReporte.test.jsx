@@ -6,7 +6,7 @@
  * Fecha de creación: 24/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 import { screen, waitFor, within } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
@@ -131,7 +131,7 @@ describe('Descargar el reporte PDF', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
-  it('RF-15 · C3 · en el celular, «Descargar PDF» va al final, a todo el ancho, antes de «Nuevo lote» (RNF-05)', async () => {
+  it('RF-15 · en el celular, «Descargar PDF» va al final, a todo el ancho, antes de «Nuevo lote» (RNF-05)', async () => {
     anchoDePantalla(390);
     conSesion(USUARIOS.USUARIO_FINAL);
     conResultado(LOTE, resultadoAnalizado());
