@@ -303,10 +303,15 @@ export default function Estadisticas() {
    */
   function ver(elegido) {
     const siguiente = direccionDelPeriodo(elegido);
-    if (siguiente.toString() === direccionDelPeriodo({ desde, hasta }).toString()) {
-      setRecargas((veces) => veces + 1);
+    if (siguiente.toString() !== direccionDelPeriodo({ desde, hasta }).toString()) {
+      setParametros(siguiente);
+      return;
     }
-    setParametros(siguiente);
+    setRecargas((veces) => veces + 1);
+    // La dirección sin periodo, o escrita de otra forma, queda con el que se ve, sin otra entrada en el historial.
+    if (siguiente.toString() !== parametros.toString()) {
+      setParametros(siguiente, { replace: true });
+    }
   }
 
   return (
