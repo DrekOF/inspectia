@@ -271,7 +271,7 @@ systemctl list-timers inspectia-respaldo.timer   # la próxima copia, a las 12:0
 
 **12. CloudWatch.**
 
-- Logs → Log groups → Create, con retención de **30 días**: `/inspectia/contenedores` (los tres contenedores, un flujo por contenedor), `/inspectia/servidor` (las actualizaciones, la copia diaria y el arranque de la instancia) y `/inspectia/despliegue` (la salida de cada comando de SSM de la CI). Si no los creas, se crean solos, pero sin retención.
+- Logs → Log groups → Create, con retención de **30 días**: `/inspectia/contenedores` (los tres contenedores, un flujo por contenedor) y `/inspectia/despliegue` (la salida de cada comando de SSM de la CI). Si no los creas, se crean solos, pero sin retención. `/inspectia/servidor` (las actualizaciones, la copia diaria y el arranque de la instancia) no se crea: ya lo creó el agente de CloudWatch en el paso 8, con retención de 30 días (si lo intentas, la consola dice *already exists*).
 - Alarms → Create alarm, todas con acción a `inspectia-alertas` y con *Treat missing data as* **good (not breaching)**, porque de noche la instancia está apagada:
 
 | Alarma | Métrica | Condición |
