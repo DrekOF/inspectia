@@ -1,0 +1,135 @@
+# Nombre: docker-compose.yml (producción)
+# Descripción: Servicios de InspectIA en la instancia inspectia-servidor (D-16): PostgreSQL 18, el backend y el
+#              servicio de IA, con las imágenes de ECR de la etiqueta desplegada. Solo el backend se publica, en el
+#              puerto 80, al que solo llega CloudFront. Los secretos (la contraseña de la base y la clave de los
+#              tokens) salen de SSM y llegan como archivos de /run/secrets: nunca en el entorno ni en el disco.
+# Fecha de creación: 24/11/2026
+# Actualización: 24/11/2026
+# Autor: Equipo InspectIA
+# Versión: 1.0
+#
+# Uso: no se corre a mano. El despliegue lo deja en /opt/inspectia y lo levanta actualizar.sh, que antes escribe:
+#   - /opt/inspectia/.env, con AWS_CUENTA y ETIQUETA (el commit desplegado), sin secretos;
+#   - /run/inspectia/secretos/POSTGRES_PASSWORD e INSPECTIA_JWT_CLAVE, leídos de SSM, en memoria.
+# Validarlo sin red: bash infra/probar.sh (lo arma con infra/produccion/pruebas/ejemplo.env).
+#
+# Reinicio: «on-failure» y no «unless-stopped». Al encender la instancia, Docker no levanta los contenedores por su
+# cuenta, porque sus secretos todavía no están en /run: los levanta el servicio inspectia de systemd, que antes los
+# lee de SSM. Si un contenedor se cae, como al quedarse sin memoria, Docker lo vuelve a levantar.
+#
+# Memoria (t4g.medium, 4 GB, más 2 GB de swap): 512 MB para PostgreSQL, 1 GB para el backend y 1,5 GB para
+# TensorFlow; quedan unos 700 MB para el sistema, Docker y el agente de CloudWatch.
+
+name: inspectia-produccion
+
+# Registros de los contenedores en CloudWatch Logs, con el rol de la instancia. Un flujo por contenedor.
+x-registros: &registros
+  driver: awslogs
+  options:
+    awslogs-region: us-east-1
+    awslogs-group: /inspectia/contenedores
+    awslogs-create-group: "true"
+    tag: "{{.Name}}"
+    # Si CloudWatch no responde, el contenedor no se frena: se pierden registros, no peticiones.
+    mode: non-blocking
+    max-buffer-size: 4m
+
+services:
+  postgres:
+    # La misma imagen que en desarrollo y en las pruebas: multiarquitectura, corre en la t4g (arm64).
+    image: postgres:18-alpine
+    restart: on-failure
+    environment:
+      POSTGRES_DB: inspectia
+      POSTGRES_USER: inspectia
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_contrasena
+    secrets:
+      - postgres_contrasena
+    volumes:
+      # Desde PostgreSQL 18 los datos van en /var/lib/postgresql.
+      - datos-postgres:/var/lib/postgresql
+    shm_size: 128m
+    stop_grace_period: 60s
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U inspectia -d inspectia"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+    logging: *registros
+
+  ia-servicio:
+    image: ${AWS_CUENTA:?Falta AWS_CUENTA en /opt/inspectia/.env}.dkr.ecr.us-east-1.amazonaws.com/inspectia/ia-servicio:${ETIQUETA:?Falta ETIQUETA en /opt/inspectia/.env}
+    restart: on-failure
+    environment:
+      INSPECTIA_MODELO: EfficientNet-B0
+      INSPECTIA_MODELOS_URI: s3://inspectia-archivos-${AWS_CUENTA}/modelos/
+      AWS_REGION: us-east-1
+    volumes:
+      # El modelo bajado de S3, para no bajarlo en cada arranque (el servicio vuelve a comprobar su SHA-256).
+      - modelos-ia:/var/lib/inspectia/modelos
+    stop_grace_period: 30s
+    healthcheck:
+      # /salud responde 200 solo con el modelo cargado; el primer arranque lo baja de S3.
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/salud', timeout=4)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 300s
+    deploy:
+      resources:
+        limits:
+          memory: 1536m
+    logging: *registros
+
+  backend:
+    image: ${AWS_CUENTA:?Falta AWS_CUENTA en /opt/inspectia/.env}.dkr.ecr.us-east-1.amazonaws.com/inspectia/backend:${ETIQUETA:?Falta ETIQUETA en /opt/inspectia/.env}
+    restart: on-failure
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ia-servicio:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: produccion
+      INSPECTIA_ARCHIVOS_ALMACEN: s3
+      INSPECTIA_ARCHIVOS_BUCKET: inspectia-archivos-${AWS_CUENTA}
+      AWS_REGION: us-east-1
+      INSPECTIA_IA_CLASIFICADOR: servicio
+      INSPECTIA_IA_URL: http://ia-servicio:8000
+      POSTGRES_HOST: postgres
+      # El puerto de PostgreSQL dentro de la red de Docker, no el de un equipo: aquí no cambia.
+      POSTGRES_PORT: "5432"
+      POSTGRES_DB: inspectia
+      POSTGRES_USER: inspectia
+    secrets:
+      # La entrada de la imagen (backend/docker/entrada.sh) convierte cada archivo de /run/secrets en la variable
+      # de entorno de su nombre, solo dentro del proceso.
+      - source: postgres_contrasena
+        target: POSTGRES_PASSWORD
+      - source: jwt_clave
+        target: INSPECTIA_JWT_CLAVE
+    ports:
+      # El único puerto publicado: el grupo de seguridad solo deja entrar a CloudFront.
+      - "80:8080"
+    stop_grace_period: 30s
+    # El healthcheck viene en la imagen (backend/Dockerfile).
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+    logging: *registros
+
+secrets:
+  postgres_contrasena:
+    file: ${INSPECTIA_SECRETOS:-/run/inspectia/secretos}/POSTGRES_PASSWORD
+  jwt_clave:
+    file: ${INSPECTIA_SECRETOS:-/run/inspectia/secretos}/INSPECTIA_JWT_CLAVE
+
+volumes:
+  datos-postgres:
+  modelos-ia:

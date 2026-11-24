@@ -26,9 +26,10 @@ done
 sh -n backend/docker/entrada.sh
 echo '   backend/docker/entrada.sh'
 
-echo '== ShellCheck'
+echo '== ShellCheck (los scripts del despliegue)'
 if command -v shellcheck > /dev/null; then
-    shellcheck --severity=warning "${scripts[@]}"
+    mapfile -t despliegue < <(find infra/aws infra/produccion -name '*.sh' -type f | sort)
+    shellcheck --severity=warning infra/probar.sh "${despliegue[@]}"
     shellcheck --severity=warning --shell=sh backend/docker/entrada.sh
     echo '   sin advertencias'
 else
