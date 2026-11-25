@@ -2,9 +2,9 @@
 Nombre: bitacora.md
 Descripción: Registro paso a paso de cómo se construyó InspectIA, para la sustentación (RP-24).
 Fecha de creación: 12/10/2026
-Actualización: 24/11/2026
+Actualización: 25/11/2026
 Autor: Equipo InspectIA
-Versión: 1.30
+Versión: 1.31
 -->
 
 # Bitácora de construcción (RP-24)
@@ -2512,16 +2512,17 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
       y lo que se ve en su repositorio: C1 (la medición misma), C3 (sin imágenes repetidas: `05_split.py` lo revisa
       con `assert` por ruta y por md5) y C5 (el prerregistro en `c7e216d`, antes de la medición en `642de84`, y la
       marca de un solo uso `test_usado.txt` del 26/10/2026). Las 4 preguntas para Julián están al final de
-      `docs/verificaciones.md`.
+      `docs/verificaciones.md`. Después de la revisión, C3 y C5 quedan pendientes hasta que Julián responda por
+      escrito las preguntas 1 a 3 (hallazgo 2).
   - **RNF-06 C2:** una prueba de punta a punta en los 5 navegadores: el usuario final elige «Nuevo lote» en el menú,
     registra el lote, sube 2 fotos y analiza la muestra, y la prueba cuenta las pantallas. **Qué cuenta como
     pantalla:** cada ruta distinta de la app por la que pasa, desde «Nuevo lote» hasta ver el porcentaje: las que
     registra la página al navegar y, en cada paso, la que se ve con su título (h1). La espera del análisis no es otra
     pantalla, porque se muestra dentro del resultado, en la misma ruta. Da 3: Nuevo lote (`/lotes/nuevo`), Fotos de la
     muestra (`/lotes/:id/fotos`) y Resultado del lote (`/lotes/:id`).
-  - **RNF-08 C2:** pruebas de Vitest que leen el README del repositorio y el del servicio de IA (la cita del dataset,
-    su autor, su licencia CC BY-NC 4.0 y el artículo con su título y su DOI) y abren Acerca de en español y en
-    inglés. Acerca de solo decía «Zhinin-Vera, L. et al. (2023). IWANN 2023, LNCS 14135.»: ahora lleva el título del
+  - **RNF-08 C2:** pruebas que leen el README del repositorio y el del servicio de IA (la cita del dataset, su autor,
+    su licencia CC BY-NC 4.0 y el artículo con su título y su DOI), en `generador/pruebas/test_cita_dataset.py`
+    después de la revisión (hallazgo 1), y una de Vitest que abre Acerca de en español y en inglés. Acerca de solo decía «Zhinin-Vera, L. et al. (2023). IWANN 2023, LNCS 14135.»: ahora lleva el título del
     artículo y un enlace a su DOI, junto al de Kaggle.
   - **RNF-08 C3:** no se puede probar que nadie cobre, pero sí que InspectIA no tenga con qué cobrar: una prueba busca
     precios, pagos, facturas o suscripciones, en español y en inglés y también dentro de los identificadores, en las
@@ -2532,8 +2533,8 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
     y si pasa (menos de 5 minutos y sin ayuda). Su verificación queda pendiente de la prueba del 25/11/2026.
 - Por qué: eran 16 criterios sin prueba; los de RNF-01, RNF-02 y RF-08 C5 se miden contra AWS después del primer
   despliegue. Los de RNF-06, RNF-07 y RNF-08 se podían cerrar esta noche, mientras Cristhian sube los modelos y pone
-  las variables. Ahora quedan 8: RF-08 C5, RNF-01 C1 a C3, RNF-02 C1, C2 y C4 (los de AWS) y RNF-06 C1 (la prueba con
-  personas).
+  las variables. Ahora quedan 10: RF-08 C5, RNF-01 C1 a C3, RNF-02 C1, C2 y C4 (los de AWS), RNF-06 C1 (la prueba con
+  personas) y RNF-07 C3 y C5 (la respuesta de Julián).
 - Cómo se pidió: el 24/11/2026, Cristhian escribió: «Bien. Cuando el #21 quede en `main`, mientras yo subo los modelos
   y pongo las variables, sigue esta noche con esto, en los PR que veas: 1. **Los criterios sin prueba que no dependen
   de AWS:** RNF-07 C1 a C5: pruebas que comprueben, con los datos del release `modelos-v1.0` y la tabla `modelo`, el
@@ -2551,10 +2552,13 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
   - Una verificación documentada pendiente deja su criterio pendiente aunque tenga pruebas; una verificada lo cubre.
     El resumen de `docs/casos-de-prueba.md` dice cuántas hay y su columna pasa a «Con prueba o verificación» solo si
     existe alguna.
-  - RNF-07 C3 y C5 quedan «Verificado» con la cita del README de Julián y lo que se ve en su repositorio (los `assert`
-    de `05_split.py`, el prerregistro antes de la medición y la marca de un solo uso), no «Pendiente»: es la
-    confirmación escrita que Cristhian pidió citar. Las preguntas para Julián son para reforzarla; si su respuesta
-    cambia algo, el estado pasa a «Pendiente» con una línea.
+  - RNF-07 C3 y C5 quedan «Pendiente» con la cita del README de Julián y lo que se ve en su repositorio (los `assert`
+    de `05_split.py`, el prerregistro antes de la medición y la marca de un solo uso), hasta que Julián responda por
+    escrito las preguntas 1 (C3) y 2 y 3 (C5). Primero quedaron «Verificado»; la revisión mostró que el texto de esas
+    secciones decía que faltaba su confirmación (hallazgo 2). Con su respuesta, el estado pasa a «Verificado» con
+    una línea y se vuelve a armar `docs/casos-de-prueba.md`.
+  - Las pruebas de RNF-08 C2 que leen los README van en Python, en `generador/pruebas/`, como `test_sin_cobro.py`:
+    las de `frontend/src` solo leen lo que hay dentro de `frontend/`, para que corran también en la copia de Stryker.
   - RNF-07 C1 también lleva verificación documentada: el código comprueba las cifras copiadas, no puede volver a
     medir el modelo con los 334 granos.
   - Las cifras de la tabla «Resultados» del README de Julián se copiaron en la prueba de Python: así la prueba compara
@@ -2572,16 +2576,31 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
   - Que el servicio de IA rechace al arrancar un modelo con F1 menor que 65 (`INSPECTIA_MODELO=MobileNetV3-L`): hoy
     lo rechaza la base al ponerlo en uso, y el registro de los modelos lo reintenta sin parar.
 - Problemas: Vite convierte `new URL('…', import.meta.url)` en una importación de archivos y rechazó leer el README así
-  en Vitest: la prueba lo lee con `fileURLToPath` y `resolve`.
+  en Vitest: la prueba lo leía con `fileURLToPath` y `resolve`, hasta que la revisión la pasó a Python (hallazgo 1).
+- **La revisión antes del PR,** con un solo revisor, como pidió Cristhian, leyó todo el PR sin cambiar nada. Encontró 2
+  hallazgos:
+  1. las dos pruebas de Vitest de RNF-08 C2 que leían `README.md` e `ia-servicio/README.md` buscaban la raíz tres
+     carpetas arriba de `frontend/src/paginas`. Stryker (`npm run test:mutacion`, RP-14) copia `frontend/` a
+     `frontend/.stryker-tmp/sandbox-…/` y corre ahí las pruebas: desde esa copia, la raíz caía en `.stryker-tmp`, los
+     README no estaban, las dos pruebas fallaban en la corrida inicial y Stryker se detenía. La CI no corre Stryker,
+     por eso no se veía. Se pasaron a `generador/pruebas/test_cita_dataset.py`, con las mismas marcas, y en Vitest
+     queda la de Acerca de en español y en inglés;
+  2. RNF-07 C3 y C5 decían «Verificado», pero su propio texto decía que faltaba la confirmación de Julián, y
+     `docs/casos-de-prueba.md` daba RNF-07 por cubierta del todo. Quedan «Pendiente» hasta que Julián responda las
+     preguntas 1 a 3.
+
+  Otro agente corrigió los dos, en `aafcf5a` (1) y `5642035` (2), y actualizó esta entrada.
 - Resultado de las pruebas (solo las rápidas de lo que cambió y una de integración; las de punta a punta las corre
   la CI):
-  - **Generador:** 142 pruebas, `generar.py comprobar` y `casos_de_prueba.py comprobar`.
+  - **Generador:** 142 pruebas, `generar.py comprobar` y `casos_de_prueba.py comprobar`. Después de la revisión, las 2
+    de `test_cita_dataset.py` y otra vez los dos `comprobar`.
   - **Servicio de IA:** 84 pruebas y 4 saltadas (las que necesitan el modelo), con las 10 nuevas.
   - **Backend:** `ComparativaDeModelosIT`, 3 pruebas, con PostgreSQL 18 en Testcontainers.
-  - **Frontend:** Vitest de Acerca de, Iniciar sesión y los textos (36 pruebas) y `npm run lint`. La prueba de punta a
+  - **Frontend:** Vitest de Acerca de, Iniciar sesión y los textos (36 pruebas) y `npm run lint`. Después de la
+    revisión, Acerca de (6 pruebas) y `npm run lint`; Stryker no se corrió (suite pesada). La prueba de punta a
     punta de RNF-06 C2 no se corrió en este PC: la corre la CI.
-  - **Casos de prueba:** 8 criterios pendientes (eran 16) y 5 verificaciones documentadas, 4 verificadas y 1
-    pendiente.
+  - **Casos de prueba:** 10 criterios pendientes (eran 16) y 5 verificaciones documentadas, 2 verificadas y 3
+    pendientes (RNF-06 C1 y RNF-07 C3 y C5).
 - Archivos o PR: la rama `feature/RNF-06-07-08-criterios` y su PR hacia `main`.
 
 ## Plantilla para nuevas entradas
