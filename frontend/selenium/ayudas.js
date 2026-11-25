@@ -6,11 +6,12 @@
  *              de una muestra, para la muestra que las recibe (D-25), y analizarla por la API, encontrar el selector
  *              oculto de una foto, esperar a que el menú del celular termine de entrar, dejar el navegador sin sesión
  *              antes de cada prueba y, si una prueba falla, guardar una captura de la pantalla y la consola del
- *              navegador en reports/selenium, que no se sube al repositorio.
+ *              navegador en reports/selenium, que no se sube al repositorio, y leer de la consola el error de React
+ *              «Maximum update depth exceeded».
  * Fecha de creación: 20/10/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.6
+ * Versión: 1.7
  */
 import { randomUUID } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -340,6 +341,19 @@ export async function descartarConsola(driver) {
   } catch {
     // Si el navegador no entrega su consola, guardarFalla lo anota.
   }
+}
+
+/**
+ * Los mensajes de la consola del navegador con el error de React «Maximum update depth exceeded», que apareció al
+ * escribir el correo en «Iniciar sesión» con sendKeys. Leer la consola la vacía: si una prueba falla por esto, el
+ * mensaje de la falla trae lo que se leyó.
+ *
+ * @param {import('selenium-webdriver').WebDriver} driver el navegador
+ * @returns {Promise<string[]>} los mensajes, vacío si no hubo ninguno
+ */
+export async function erroresDeProfundidad(driver) {
+  const entradas = await driver.manage().logs().get(logging.Type.BROWSER);
+  return entradas.map((entrada) => entrada.message).filter((mensaje) => mensaje.includes('Maximum update depth exceeded'));
 }
 
 /**
