@@ -3,19 +3,20 @@
 # Fecha de creación: 13/10/2026
 # Actualización: 24/11/2026
 # Autor: Equipo InspectIA
-# Versión: 1.3
+# Versión: 1.4
 """Pruebas de la lista de casos de prueba (RP-13): la lectura de las marcas de Java, de Python y de
-JavaScript, el reparto por criterio, el documento del repositorio y las fichas «Implementado» sin todas
-sus pruebas (D-29)."""
+JavaScript, el reparto por criterio, las verificaciones documentadas de docs/verificaciones.md, el documento
+del repositorio y las fichas «Implementado» sin todas sus pruebas (D-29)."""
 
 import pytest
 
 import casos_de_prueba
 from conftest import RAIZ
 from inspectia_generador.carga import cargar_codigos
-from inspectia_generador.casos import (RUTA_DOCUMENTO, Criterio, Ficha, Prueba, Resultado, armar_documento,
-                                       buscar_pruebas, documento, implementadas_incompletas, leer_fichas,
-                                       pruebas_java, pruebas_javascript, pruebas_python, revisar)
+from inspectia_generador.casos import (RUTA_DOCUMENTO, RUTA_VERIFICACIONES, Criterio, Ficha, Prueba, Resultado,
+                                       armar_documento, buscar_pruebas, documento, implementadas_incompletas,
+                                       leer_fichas, leer_verificaciones, pendientes_de, pruebas_java,
+                                       pruebas_javascript, pruebas_python, revisar)
 
 JAVA = '''package co.edu.usco.inspectia.ejemplo;
 
@@ -259,3 +260,126 @@ def test_comprobar_falla_con_una_implementada_incompleta(monkeypatch, capsys):
 @pytest.mark.caso('D-29 · ninguna ficha del repositorio está «Implementado» con criterios sin prueba')
 def test_implementadas_del_repositorio():
     assert armar_documento(RAIZ).implementadas_incompletas == []
+
+
+# --- Verificaciones documentadas (docs/verificaciones.md) ---------------------------------------------------------
+
+VERIFICACIONES = """<!--
+Nombre: verificaciones.md
+-->
+
+# Verificaciones documentadas
+
+## Cómo se lee
+
+Un título que no empieza con un código no es una verificación.
+
+## RF-02 · C2 · lo revisó el equipo a mano
+
+**Estado:** Verificado.
+
+Qué se revisó.
+
+## RF-02 · C1 · falta que alguien lo confirme
+
+**Estado:** Pendiente: falta la respuesta de Julián.
+"""
+
+
+@pytest.mark.caso('RP-13 · se leen las verificaciones documentadas de docs/verificaciones.md: su criterio, su estado y su línea')
+def test_lee_las_verificaciones():
+    verificaciones, errores = leer_verificaciones(VERIFICACIONES)
+
+    assert errores == []
+    assert [(v.linea, v.marca, v.verificada) for v in verificaciones] == [
+        (11, 'RF-02 · C2 · lo revisó el equipo a mano', True),
+        (17, 'RF-02 · C1 · falta que alguien lo confirme', False)]
+    assert {v.archivo for v in verificaciones} == {RUTA_VERIFICACIONES}
+
+
+@pytest.mark.caso('RP-13 · una verificación documentada verificada cubre su criterio y sale como «verificación documentada»')
+def test_verificacion_verificada_cubre_el_criterio():
+    verificaciones, _ = leer_verificaciones(VERIFICACIONES)
+    revision = revisar([FICHA], [], {'RF-02', 'D-27'}, verificaciones)
+
+    texto = documento([FICHA], [], revision, {}, HEADER)
+
+    assert revision.errores == []
+    assert ('| C2. Dos. | [`verificaciones.md`](verificaciones.md) · lo revisó el equipo a mano '
+            '(verificación documentada, verificada) |') in texto
+    assert '| RF-02 · Registrar empresas | 3 | 1 | 1 |' in texto
+    assert '2 verificaciones documentadas' in texto
+
+
+@pytest.mark.caso('RP-13 · una verificación documentada pendiente deja el criterio pendiente, aunque tenga pruebas')
+def test_verificacion_pendiente_no_cubre_el_criterio():
+    verificaciones, _ = leer_verificaciones(VERIFICACIONES)
+    pruebas = [prueba('RF-02 · C1 · cubre una parte')]
+    revision = revisar([FICHA], pruebas, {'RF-02', 'D-27'}, verificaciones)
+
+    texto = documento([FICHA], pruebas, revision, {}, HEADER)
+
+    assert ('| C1. Uno. | **Pendiente:** [`A`](../backend/src/test/java/A.java) · cubre una parte<br>'
+            '[`verificaciones.md`](verificaciones.md) · falta que alguien lo confirme '
+            '(verificación documentada, pendiente) |') in texto
+    assert '| RF-02 · Registrar empresas | 3 | 1 | 1 |' in texto
+    assert pendientes_de([FICHA], revision) == ['RF-02 C1']
+
+
+@pytest.mark.caso('RP-13 · una verificación documentada mal escrita es un error: sin estado, sin criterio, repetida o que cita algo que no existe')
+def test_verificaciones_invalidas():
+    texto = '\n'.join([
+        '## RF-02 · C1 · sin estado', '', 'Nada.', '',
+        '## RF-02 · sin criterio', '', '**Estado:** Verificado.', '',
+        '## RF-02 · C2 · la primera', '', '**Estado:** Verificado.', '',
+        '## RF-02 · C2 · repetida', '', '**Estado:** Pendiente: otra vez.', '',
+        '## RF-02 · C3 · eliminado', '', '**Estado:** Verificado.', '',
+        '## RF-02 · C9 · no existe', '', '**Estado:** Verificado.', '',
+        '## RF-02 · C2 · con un estado que no sirve', '', '**Estado:** Casi.', ''])
+
+    verificaciones, errores = leer_verificaciones(texto)
+    errores += revisar([FICHA], [], {'RF-02', 'D-27'}, verificaciones).errores
+
+    assert errores == [
+        'docs/verificaciones.md:1: la verificación «RF-02 · C1 · sin estado» no dice su estado: '
+        '«**Estado:** Verificado.» o «**Estado:** Pendiente: …»',
+        'docs/verificaciones.md:5: una verificación documentada cubre un criterio: «<código> · C<n> · …»',
+        'docs/verificaciones.md:25: la verificación «RF-02 · C2 · con un estado que no sirve» no dice su estado: '
+        '«**Estado:** Verificado.» o «**Estado:** Pendiente: …»',
+        'docs/verificaciones.md:13: RF-02 C2 ya tiene otra verificación documentada',
+        'docs/verificaciones.md:17: el criterio C3 de RF-02 está eliminado',
+        'docs/verificaciones.md:21: RF-02 no tiene el criterio C9']
+
+
+@pytest.mark.caso('RP-13 · sin verificaciones documentadas, el documento sale igual que antes: no las nombra')
+def test_sin_verificaciones_el_documento_no_cambia():
+    pruebas = [prueba('RF-02 · C1 · cubre el primero')]
+    sin_archivo = documento([FICHA], pruebas, revisar([FICHA], pruebas, {'RF-02', 'D-27'}), {}, HEADER)
+    vacio = documento([FICHA], pruebas, revisar([FICHA], pruebas, {'RF-02', 'D-27'}, []), {}, HEADER)
+
+    assert sin_archivo == vacio
+    assert 'verificaci' not in sin_archivo
+    assert '| Ficha | Criterios | Con prueba | Pendientes |' in sin_archivo
+
+
+@pytest.mark.caso('D-29 · una verificación documentada pendiente no deja completa una ficha «Implementado»; una verificada sí')
+def test_implementada_con_verificaciones():
+    implementada = Ficha('RF-02', 'Registrar empresas', FICHA.criterios, 'Implementado')
+    verificaciones, _ = leer_verificaciones(VERIFICACIONES)
+    codigos = {'RF-02', 'D-27'}
+    con_pendiente = revisar([implementada], [prueba('RF-02 · C1 · uno')], codigos, verificaciones)
+    solo_verificada = revisar([implementada], [prueba('RF-02 · C1 · uno')], codigos, verificaciones[:1])
+
+    assert implementadas_incompletas([implementada], con_pendiente) == [
+        'RF-02 está «Implementado», pero le faltan pruebas para C1 (D-29)']
+    assert implementadas_incompletas([implementada], solo_verificada) == []
+
+
+@pytest.mark.caso('RP-13 · las verificaciones documentadas del repositorio están bien escritas y citan criterios que existen')
+def test_verificaciones_del_repositorio():
+    ruta = RAIZ / RUTA_VERIFICACIONES
+    verificaciones, errores = leer_verificaciones(ruta.read_text(encoding='utf-8'))
+
+    assert errores == []
+    assert verificaciones, f'{RUTA_VERIFICACIONES} no tiene verificaciones'
+    assert armar_documento(RAIZ).errores == []
