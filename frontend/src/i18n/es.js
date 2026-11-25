@@ -6,7 +6,7 @@
  * Fecha de creación: 20/10/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.10
+ * Versión: 1.11
  */
 
 /** Textos en español, por clave. en.js tiene las mismas claves (i18n.test.js lo revisa). */
@@ -138,7 +138,8 @@ export default {
   'acercaDe.autor': 'Autor',
   'acercaDe.autorValor': 'Luis Fernando Zhinin Vera, en Kaggle.',
   'acercaDe.articulo': 'Artículo',
-  'acercaDe.articuloValor': 'Zhinin-Vera, L. et al. (2023). IWANN 2023, LNCS 14135.',
+  'acercaDe.articuloValor': 'Zhinin-Vera, L. et al. (2023). Artificial Vision Technique to Detect and Classify Cocoa Beans. IWANN 2023, LNCS 14135, Springer.',
+  'acercaDe.doi': 'Ver el artículo (DOI 10.1007/978-3-031-43078-7_18)',
   'acercaDe.licencia': 'Licencia',
   'acercaDe.licenciaValor': 'CC BY-NC 4.0: permite el uso citando a los autores, pero no el uso comercial.',
   'acercaDe.kaggle': 'Ver el dataset en Kaggle',

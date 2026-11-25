@@ -4,7 +4,7 @@ Descripción: Qué hace el generador de InspectIA (RP-23), cómo se usa y cómo 
 Fecha de creación: 12/10/2026
 Actualización: 24/11/2026
 Autor: Equipo InspectIA
-Versión: 1.13
+Versión: 1.14
 -->
 
 # generador
@@ -79,7 +79,9 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py comprobar   # códig
 
 Los dos terminan con código 1 si una prueba no tiene marca, si la marca no tiene la forma «<código> · C<n> · …» o «<código> · …», o si cita una ficha, un criterio o un código que no existe. Con `--sin-pendientes` también fallan si queda algún criterio sin prueba, para revisar RP-13 al cerrar el proyecto. Una prueba del generador revisa que el documento esté al día: si agregas o cambias pruebas, vuelve a armarlo.
 
-Una ficha solo pasa a «Implementado» cuando funciona de punta a punta, todos sus criterios tienen prueba y está en `main` (D-29). Si una ficha en «Implementado» tiene criterios sin prueba, `comprobar` termina con código 1 y `generar` solo lo avisa.
+Lo que no se puede probar con código, como una prueba con personas o lo que solo puede confirmar quien entrenó el modelo, va en `docs/verificaciones.md` como una **verificación documentada**: una sección cuyo título es la marca del criterio (`## <código> · C<n> · …`) y, debajo, su estado: `**Estado:** Verificado.` o `**Estado:** Pendiente: <qué falta>.` En el documento sale junto a las pruebas del criterio. Una verificada cubre el criterio; una pendiente lo deja pendiente aunque tenga pruebas, así nunca esconde un criterio sin evidencia. Una verificación sin estado, repetida o que cita un criterio que no existe es un error, como una marca mala.
+
+Una ficha solo pasa a «Implementado» cuando funciona de punta a punta, todos sus criterios tienen prueba y está en `main` (D-29). Si una ficha en «Implementado» tiene criterios sin prueba, o con una verificación documentada pendiente, `comprobar` termina con código 1 y `generar` solo lo avisa.
 
 ## Estructura
 

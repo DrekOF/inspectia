@@ -2,17 +2,24 @@
  * Nombre: AcercaDe.test.jsx
  * Descripción: Pruebas de la página Acerca de (RNF-08): la cita del dataset con su autor, el artículo, la
  *              licencia CC BY-NC 4.0 y el enlace a Kaggle, la nota de que InspectIA no se cobra, y que se abre
- *              con sesión desde «Mi cuenta» y sin sesión.
+ *              con sesión desde «Mi cuenta» y sin sesión. También que Acerca de, en español y en inglés, cita el
+ *              dataset y el artículo de los autores con su DOI (RNF-08 C2); la cita en los README se revisa en
+ *              generador/pruebas/test_cita_dataset.py, porque Stryker copia solo frontend/.
  * Fecha de creación: 20/10/2026
- * Actualización: 20/10/2026
+ * Actualización: 25/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.2
  */
 import { screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+import i18n from '../i18n/i18n.js';
 import { abrirApp, conSesion, USUARIOS } from '../pruebas/ayudas.jsx';
 
 const KAGGLE = 'https://www.kaggle.com/datasets/luiszhinin979/ecuadorian-cocoa-beans-for-classification';
+
+/** El artículo de los autores del dataset (RNF-08 C2): su título y su DOI. */
+const ARTICULO = 'Artificial Vision Technique to Detect and Classify Cocoa Beans';
+const DOI = 'https://doi.org/10.1007/978-3-031-43078-7_18';
 
 /**
  * El valor de un dato de la cita, buscado por su nombre («Dataset», «Autor», «Artículo» o «Licencia»).
@@ -62,5 +69,22 @@ describe('Acerca de', () => {
     abrirApp('/acerca-de');
 
     expect(screen.getByText(/^Versión \d+\.\d+\.\d+$/)).toBeInTheDocument();
+  });
+
+  it.each([
+    ['es', 'Acerca de InspectIA', 'Artículo', 'Licencia', 'Ver el artículo (DOI 10.1007/978-3-031-43078-7_18)'],
+    ['en', 'About InspectIA', 'Article', 'License', 'See the article (DOI 10.1007/978-3-031-43078-7_18)'],
+  ])('RNF-08 · C2 · Acerca de cita el dataset y el artículo de los autores (Zhinin-Vera et al., 2023) con su título y el enlace a su DOI, con la licencia CC BY-NC 4.0: %s', async (idioma, titulo, articulo, licencia, enlace) => {
+    await i18n.changeLanguage(idioma);
+    abrirApp('/acerca-de');
+
+    expect(screen.getByRole('heading', { name: titulo })).toBeInTheDocument();
+    expect(dato('Dataset')).toContain('cacao-beans-for-classification');
+    expect(dato(articulo)).toContain('Zhinin-Vera, L. et al. (2023)');
+    expect(dato(articulo)).toContain(ARTICULO);
+    expect(dato(licencia)).toContain('CC BY-NC 4.0');
+    expect(screen.getByRole('link', { name: enlace })).toHaveAttribute('href', DOI);
+    expect(screen.getByRole('link', { name: idioma === 'es' ? 'Ver el dataset en Kaggle' : 'See the dataset on Kaggle' }))
+      .toHaveAttribute('href', KAGGLE);
   });
 });

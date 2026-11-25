@@ -9,9 +9,9 @@
  *              Si la preparación cruza la medianoche de Colombia, la prueba de las cifras se salta: sus lotes no
  *              tendrían la misma fecha del resultado.
  * Fecha de creación: 24/11/2026
- * Actualización: 24/11/2026
+ * Actualización: 25/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 import AxeBuilder from '@axe-core/playwright';
 import {
@@ -116,11 +116,13 @@ test('RF-16 · C1 · las cifras coinciden con los lotes del historial en el mism
   await expect(page.getByRole('table', { name: 'Evolución del promedio por mes' }).getByRole('row')).toHaveCount(2);
 
   // Con datos, la pantalla no se desplaza a los lados desde 360 px y no tiene fallas de accesibilidad (RNF-05, RNF-06).
+  // Al pasar de 1280 a 360 px, la página cambia del diseño de PC al de celular en el siguiente dibujo: se espera
+  // a que el ancho se asiente. Si la página de verdad se desplaza, la espera vence y la prueba falla.
   await page.setViewportSize({ width: 360, height: 740 });
   await expect(page.getByTestId('grafica-por-mes')).toBeAttached();
-  const { contenido, ventana } = await page.evaluate(() => ({
-    contenido: document.documentElement.scrollWidth, ventana: document.documentElement.clientWidth }));
-  expect(contenido).toBeLessThanOrEqual(ventana);
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth
+    - document.documentElement.clientWidth), { message: 'la pantalla se desplaza a los lados a 360 px' })
+    .toBeLessThanOrEqual(0);
   const revision = await new AxeBuilder({ page }).withTags(PAUTAS).analyze();
   expect(revision.violations.map((falla) => `${falla.id}: ${falla.help}`)).toEqual([]);
 });

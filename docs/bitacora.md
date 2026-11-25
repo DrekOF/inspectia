@@ -4,7 +4,7 @@ Descripción: Registro paso a paso de cómo se construyó InspectIA, para la sus
 Fecha de creación: 12/10/2026
 Actualización: 25/11/2026
 Autor: Equipo InspectIA
-Versión: 1.30
+Versión: 1.32
 -->
 
 # Bitácora de construcción (RP-24)
@@ -2547,7 +2547,155 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
     después de la revisión; ESLint en lo cambiado, también en `selenium/`.
   - Casos de prueba: 1636 pruebas y 16 criterios sin prueba; pasan `casos_de_prueba.py comprobar` y
     `generar.py comprobar`.
+- Después de abrir el PR (#24): la CI pasó toda en verde, también RF-01 C1 de Selenium con la revisión nueva de la
+  consola. El «Maximum update depth exceeded» no salió en Linux, así que `cbc8081` se queda: si el error aparece en la
+  CI, la prueba lo muestra. Cristhian lo aprobó el 25/11/2026: «Revisé el #23 y el #24 y están bien. Fusiónalos
+  cuando estén en verde, como propones: si la revisión de la consola deja en rojo el #24, revierte solo `cbc8081` y el
+  error queda como tarea aparte.» Se fusionó con todos sus jobs en verde. La causa del error sigue siendo una tarea
+  aparte: solo se ha visto en Chrome y Edge sobre Windows.
 - Archivos o PR: la rama `feature/arreglos-generados-y-sesion` y su PR hacia `main`.
+
+## 24/11/2026 · RNF-06, RNF-07 y RNF-08: los criterios sin prueba que no dependen de AWS
+
+- Quién: Cristhian Sánchez (`DrekOF`), con Claude Code.
+- Qué se hizo:
+  - **El PR de los criterios sin prueba, en la rama `feature/RNF-06-07-08-criterios`** (desde `5ca4b11`, con el #21
+    ya en `main`). Los commits, con las pruebas antes del código:
+    1. `ccfc995` las pruebas de las verificaciones documentadas en la lista de casos de prueba, en rojo, y `f6e60d4`
+       el código en `generador/inspectia_generador/casos.py` y su plantilla; `846e33b` el singular del resumen.
+    2. `71b54b1` las pruebas de RNF-07 C1 a C4 sobre el catálogo de la release `modelos-v1.0`
+       (`ia-servicio/pruebas/test_metricas_del_modelo.py`).
+    3. `9e172c6` la prueba de integración de RNF-07 C1, C2 y C4: del catálogo a la tabla `modelo` y a
+       `GET /api/v1/modelo` (`ComparativaDeModelosIT`).
+    4. `cc7d543` las pruebas de RNF-08 C2, en rojo, y `cf47b91` el título del artículo y el enlace a su DOI en Acerca
+       de, en español y en inglés.
+    5. `ad483e4` la prueba de punta a punta de RNF-06 C2 (`frontend/e2e/usabilidad.spec.js`).
+    6. `41b6aa0` las pruebas de RNF-08 C3 (`generador/pruebas/test_sin_cobro.py`).
+    7. Este commit: `docs/verificaciones.md`, `docs/prueba-de-usabilidad.md`, los README, los casos de prueba y esta
+       entrada.
+  - **Verificaciones documentadas (RP-13):** lo que no se prueba con código va en `docs/verificaciones.md`, una
+    sección por criterio con su marca como título (`## RNF-07 · C5 · …`) y su estado: `**Estado:** Verificado.` o
+    `**Estado:** Pendiente: <qué falta>.` `casos_de_prueba.py` las lee y las muestra junto a las pruebas del
+    criterio como «verificación documentada». Una verificada cubre el criterio; una pendiente lo deja pendiente
+    aunque tenga pruebas, así nunca esconde un criterio sin evidencia, y tampoco deja «Implementado» una ficha
+    (D-29). Sin `docs/verificaciones.md` el documento sale igual que antes. Una verificación sin estado, repetida o
+    que cita un criterio que no existe hace fallar `generar` y `comprobar`, como una marca mala.
+  - **RNF-07 (el F1 del modelo), con los datos de la release `modelos-v1.0`:**
+    - C1: EfficientNet-B0, el modelo que carga el servicio por defecto, tiene en `modelos.json` el F1 macro de la
+      tabla «Resultados» del README de Julián (0,735), que recalculado desde su matriz también pasa de 65 %; el
+      registro del servidor lo deja en uso en la tabla y en la API, y la base no deja en uso MobileNetV3-L (63,8 %).
+    - C2: de cada uno de los 5 modelos, la precisión y el recall de cada clase, las macro y el F1 se recalculan desde
+      los 4 enteros de la matriz, con el redondeo del catálogo (3 decimales los recall y el F1, 4 las precisiones de
+      cada clase, 2 decimales de porcentaje las macro), y coinciden con la tabla del README de Julián copiada en la
+      prueba; la API los entrega para los 5.
+    - C3: cada matriz suma 261 sanos y 73 no sanos (334 granos).
+    - C4: los 5 modelos que responde `GET /modelos` llegan a la tabla `modelo` y a la comparativa de
+      `GET /api/v1/modelo` con todos los valores del catálogo. La prueba usa el servicio de IA de mentira con el
+      catálogo real y el registro y el repositorio reales.
+    - Lo que solo Julián puede confirmar quedó como verificación documentada, con la cita de su README (versión 4.3)
+      y lo que se ve en su repositorio: C1 (la medición misma), C3 (sin imágenes repetidas: `05_split.py` lo revisa
+      con `assert` por ruta y por md5) y C5 (el prerregistro en `c7e216d`, antes de la medición en `642de84`, y la
+      marca de un solo uso `test_usado.txt` del 26/10/2026). Las 4 preguntas para Julián están al final de
+      `docs/verificaciones.md`. Después de la revisión, C3 y C5 quedan pendientes hasta que Julián responda por
+      escrito las preguntas 1 a 3 (hallazgo 2).
+  - **RNF-06 C2:** una prueba de punta a punta en los 5 navegadores: el usuario final elige «Nuevo lote» en el menú,
+    registra el lote, sube 2 fotos y analiza la muestra, y la prueba cuenta las pantallas. **Qué cuenta como
+    pantalla:** cada ruta distinta de la app por la que pasa, desde «Nuevo lote» hasta ver el porcentaje: las que
+    registra la página al navegar y, en cada paso, la que se ve con su título (h1). La espera del análisis no es otra
+    pantalla, porque se muestra dentro del resultado, en la misma ruta. Da 3: Nuevo lote (`/lotes/nuevo`), Fotos de la
+    muestra (`/lotes/:id/fotos`) y Resultado del lote (`/lotes/:id`).
+  - **RNF-08 C2:** pruebas que leen el README del repositorio y el del servicio de IA (la cita del dataset, su autor,
+    su licencia CC BY-NC 4.0 y el artículo con su título y su DOI), en `generador/pruebas/test_cita_dataset.py`
+    después de la revisión (hallazgo 1), y una de Vitest que abre Acerca de en español y en inglés. Acerca de solo decía «Zhinin-Vera, L. et al. (2023). IWANN 2023, LNCS 14135.»: ahora lleva el título del
+    artículo y un enlace a su DOI, junto al de Kaggle.
+  - **RNF-08 C3:** no se puede probar que nadie cobre, pero sí que InspectIA no tenga con qué cobrar: una prueba busca
+    precios, pagos, facturas o suscripciones, en español y en inglés y también dentro de los identificadores, en las
+    entidades, el backend, el frontend, el servicio de IA y las plantillas del generador; otra revisa que el README y
+    Acerca de digan que no se cobra. La verificación documentada explica el resto.
+  - **RNF-06 C1:** `docs/prueba-de-usabilidad.md`, una hoja corta para imprimir: por persona, fecha, dispositivo y
+    navegador, la hora de inicio y fin de cada paso y el total, si pidió ayuda y dónde, los errores, las fotos que usó
+    y si pasa (menos de 5 minutos y sin ayuda). Su verificación queda pendiente de la prueba del 25/11/2026.
+- Por qué: eran 16 criterios sin prueba; los de RNF-01, RNF-02 y RF-08 C5 se miden contra AWS después del primer
+  despliegue. Los de RNF-06, RNF-07 y RNF-08 se podían cerrar esta noche, mientras Cristhian sube los modelos y pone
+  las variables. Ahora quedan 10: RF-08 C5, RNF-01 C1 a C3, RNF-02 C1, C2 y C4 (los de AWS), RNF-06 C1 (la prueba con
+  personas) y RNF-07 C3 y C5 (la respuesta de Julián).
+- Cómo se pidió: el 24/11/2026, Cristhian escribió: «Bien. Cuando el #21 quede en `main`, mientras yo subo los modelos
+  y pongo las variables, sigue esta noche con esto, en los PR que veas: 1. **Los criterios sin prueba que no dependen
+  de AWS:** RNF-07 C1 a C5: pruebas que comprueben, con los datos del release `modelos-v1.0` y la tabla `modelo`, el
+  F1 de 0,65 o más, la precisión, el recall y la matriz de cada clase, los 5 modelos con el mismo conjunto de prueba y
+  la tabla comparativa. Lo que solo Julián puede confirmar (por ejemplo, C3 y C5), déjalo como verificación
+  documentada con la cita de su README, y dime qué le pregunto. RNF-06 C2: una prueba de punta a punta que cuente las
+  pantallas de registrar el lote, subir las fotos y ver el resultado (como máximo 3). RNF-08 C2: una prueba que revise
+  la cita del dataset y del artículo en el README y en «Acerca de». RNF-08 C3 y RNF-06 C1 no se prueban con código:
+  propón cómo quedan verificados. Para RNF-06 C1 haremos mañana la prueba con 3 personas: prepara un formato corto para
+  anotar los tiempos y las fotos que van a usar. 2. **Los tres arreglos pequeños:** el tope de página en los listados
+  generados, la tabla de las pantallas generadas con el teclado y el «Maximum update depth exceeded» de «Iniciar
+  sesión».» Claude Code repartió el trabajo en dos PR; este es el de los criterios (el punto 1), en su worktree, y los
+  arreglos pequeños van en otro.
+- Decisiones pequeñas:
+  - Una verificación documentada pendiente deja su criterio pendiente aunque tenga pruebas; una verificada lo cubre.
+    El resumen de `docs/casos-de-prueba.md` dice cuántas hay y su columna pasa a «Con prueba o verificación» solo si
+    existe alguna.
+  - RNF-07 C3 y C5 quedan «Pendiente» con la cita del README de Julián y lo que se ve en su repositorio (los `assert`
+    de `05_split.py`, el prerregistro antes de la medición y la marca de un solo uso), hasta que Julián responda por
+    escrito las preguntas 1 (C3) y 2 y 3 (C5). Primero quedaron «Verificado»; la revisión mostró que el texto de esas
+    secciones decía que faltaba su confirmación (hallazgo 2). Con su respuesta, el estado pasa a «Verificado» con
+    una línea y se vuelve a armar `docs/casos-de-prueba.md`.
+  - Las pruebas de RNF-08 C2 que leen los README van en Python, en `generador/pruebas/`, como `test_sin_cobro.py`:
+    las de `frontend/src` solo leen lo que hay dentro de `frontend/`, para que corran también en la copia de Stryker.
+  - RNF-07 C1 también lleva verificación documentada: el código comprueba las cifras copiadas, no puede volver a
+    medir el modelo con los 334 granos.
+  - Las cifras de la tabla «Resultados» del README de Julián se copiaron en la prueba de Python: así la prueba compara
+    el catálogo con la fuente y no consigo mismo.
+  - RNF-08 C2 también revisa el README del servicio de IA, que usa el modelo y los recortes del dataset.
+  - Acerca de lleva el título del artículo y un enlace a su DOI (`acercaDe.doi`, en español y en inglés).
+  - RNF-08 C3 se cubre con una prueba (no hay con qué cobrar y se dice que no se cobra) y con una verificación
+    documentada. La prueba no revisa `infra/`: el presupuesto de AWS es gasto del equipo, no cobro.
+  - Las fotos de la prueba con personas no pueden ser del dataset: en `..\Cacao_dataset_kaggle\` cada foto tiene un
+    solo grano. El formato pide fotos de muestras reales de 100 a 150 granos, fuera del repositorio.
+- Queda fuera:
+  - Los tres arreglos pequeños (punto 2 del pedido), en otro PR.
+  - RF-08 C5, RNF-01 y RNF-02: contra AWS después del primer despliegue.
+  - Cambiar el estado de alguna ficha: las RNF no tienen estado en `fichas.json`.
+  - Que el servicio de IA rechace al arrancar un modelo con F1 menor que 65 (`INSPECTIA_MODELO=MobileNetV3-L`): hoy
+    lo rechaza la base al ponerlo en uso, y el registro de los modelos lo reintenta sin parar.
+- Problemas: Vite convierte `new URL('…', import.meta.url)` en una importación de archivos y rechazó leer el README así
+  en Vitest: la prueba lo leía con `fileURLToPath` y `resolve`, hasta que la revisión la pasó a Python (hallazgo 1).
+- **La revisión antes del PR,** con un solo revisor, como pidió Cristhian, leyó todo el PR sin cambiar nada. Encontró 2
+  hallazgos:
+  1. las dos pruebas de Vitest de RNF-08 C2 que leían `README.md` e `ia-servicio/README.md` buscaban la raíz tres
+     carpetas arriba de `frontend/src/paginas`. Stryker (`npm run test:mutacion`, RP-14) copia `frontend/` a
+     `frontend/.stryker-tmp/sandbox-…/` y corre ahí las pruebas: desde esa copia, la raíz caía en `.stryker-tmp`, los
+     README no estaban, las dos pruebas fallaban en la corrida inicial y Stryker se detenía. La CI no corre Stryker,
+     por eso no se veía. Se pasaron a `generador/pruebas/test_cita_dataset.py`, con las mismas marcas, y en Vitest
+     queda la de Acerca de en español y en inglés;
+  2. RNF-07 C3 y C5 decían «Verificado», pero su propio texto decía que faltaba la confirmación de Julián, y
+     `docs/casos-de-prueba.md` daba RNF-07 por cubierta del todo. Quedan «Pendiente» hasta que Julián responda las
+     preguntas 1 a 3.
+
+  Otro agente corrigió los dos, en `aafcf5a` (1) y `5642035` (2), y actualizó esta entrada.
+- Resultado de las pruebas (solo las rápidas de lo que cambió y una de integración; las de punta a punta las corre
+  la CI):
+  - **Generador:** 142 pruebas, `generar.py comprobar` y `casos_de_prueba.py comprobar`. Después de la revisión, las 2
+    de `test_cita_dataset.py` y otra vez los dos `comprobar`.
+  - **Servicio de IA:** 84 pruebas y 4 saltadas (las que necesitan el modelo), con las 10 nuevas.
+  - **Backend:** `ComparativaDeModelosIT`, 3 pruebas, con PostgreSQL 18 en Testcontainers.
+  - **Frontend:** Vitest de Acerca de, Iniciar sesión y los textos (36 pruebas) y `npm run lint`. Después de la
+    revisión, Acerca de (6 pruebas) y `npm run lint`; Stryker no se corrió (suite pesada). La prueba de punta a
+    punta de RNF-06 C2 no se corrió en este PC: la corre la CI.
+  - **Casos de prueba:** 10 criterios pendientes (eran 16) y 5 verificaciones documentadas, 2 verificadas y 3
+    pendientes (RNF-06 C1 y RNF-07 C3 y C5).
+- Después de abrir el PR (#23):
+  - **Cristhian lo aprobó** el 25/11/2026: «Revisé el #23 y el #24 y están bien. Fusiónalos cuando estén en verde
+    […]. RNF-07 C3 y C5 quedan pendientes hasta que Julián responda por escrito; ya le mandé las preguntas.»
+  - **La CI falló en una prueba de RF-16 C1,** del #21 y no de este PR: en Chrome de PC, al pasar la ventana de 1280 a
+    360 px, midió el ancho (532 px) antes de que la página cambiara al diseño de celular. En el #21 y en el #24 había
+    pasado. Ahora `estadisticas.spec.js` espera con `expect.poll` a que el ancho se asiente; si la página de verdad se
+    desplaza a los lados, la espera vence y la prueba falla igual. `responsive.spec.js` no tiene el problema: pone
+    el ancho antes de abrir cada página.
+  - **Se unió `main`,** con el #24, para volver a correr la CI: la bitácora (las dos entradas) y los casos de prueba,
+    armados de nuevo.
+- Archivos o PR: la rama `feature/RNF-06-07-08-criterios` y su PR hacia `main`.
 
 ## Plantilla para nuevas entradas
 

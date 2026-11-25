@@ -1,10 +1,11 @@
 # Nombre: casos.py
-# Descripción: Lista de casos de prueba (RP-13): junta las marcas de las pruebas con los criterios de
-#              aceptación de specs/fichas.json y señala los criterios sin prueba.
+# Descripción: Lista de casos de prueba (RP-13): junta las marcas de las pruebas y las verificaciones
+#              documentadas de docs/verificaciones.md con los criterios de aceptación de specs/fichas.json y
+#              señala los criterios sin prueba.
 # Fecha de creación: 13/10/2026
 # Actualización: 24/11/2026
 # Autor: Equipo InspectIA
-# Versión: 1.3
+# Versión: 1.4
 """Lista de casos de prueba (RP-13).
 
 Cada prueba dice qué cubre con una marca (ver CLAUDE.md):
@@ -17,6 +18,13 @@ En Java la marca va en ``@DisplayName``, en Python en ``@pytest.mark.caso`` y en
 de ``test`` o ``it`` (Vitest, Playwright y Selenium). Con las marcas y las fichas se arma
 ``docs/casos-de-prueba.md``: cada criterio con sus pruebas, y los que no tienen ninguna como pendientes.
 El documento no lleva números de línea, para que no cambie cada vez que se edita una prueba.
+
+Lo que no se puede probar con código, como una prueba con personas o lo que solo puede confirmar quien entrenó el
+modelo, va en ``docs/verificaciones.md`` como una **verificación documentada**: una sección cuyo título es la marca
+del criterio (``## <código> · C<n> · …``), seguida de su estado, ``**Estado:** Verificado.`` o
+``**Estado:** Pendiente: <qué falta>.``. En el documento sale junto a las pruebas del criterio, como «verificación
+documentada». Una verificada cubre el criterio; una pendiente lo deja pendiente aunque tenga pruebas, porque dice que
+todavía falta algo. Así una verificación nunca esconde un criterio sin evidencia.
 
 También señala las fichas en estado «Implementado» que todavía tienen criterios sin prueba (D-29).
 """
@@ -33,8 +41,9 @@ from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
 from inspectia_generador.carga import cargar_codigos
 
-VERSION = '1.3'
+VERSION = '1.4'
 RUTA_DOCUMENTO = 'docs/casos-de-prueba.md'
+RUTA_VERIFICACIONES = 'docs/verificaciones.md'
 IMPLEMENTADO = 'Implementado'
 #: Carpetas de pruebas de Java y si lo que tienen es generado.
 CARPETAS_JAVA = (('backend/src/test/java', False), ('backend/src/test-generated/java', True))
@@ -56,6 +65,9 @@ _ANOTACION = re.compile(r'@\s*([A-Za-z_][\w.]*)')
 _PRUEBA_JS = re.compile(r'(?<![\w.$])(?:test|it)\b')
 _TIPO = re.compile(r'\b(class|interface|enum|record)\b')
 _FECHA = re.compile(r'(Fecha de creación|Actualización):\s*(\d{2}/\d{2}/\d{4})')
+#: El título de una sección de ``docs/verificaciones.md`` que empieza con un código: es una verificación.
+_TITULO_DE_VERIFICACION = re.compile(r'^## (?P<marca>(?:RF|RNF|RP|D|P)-\d{2}\b.*?)\s*$')
+_ESTADO = re.compile(r'^\*\*Estado:\*\* (?:(?P<verificado>Verificado)\.|Pendiente: \S.*)\s*$')
 
 
 @dataclass(frozen=True)
@@ -69,6 +81,19 @@ class Prueba:
     marca: str
     parametrizada: bool = False
     generada: bool = False
+
+
+@dataclass(frozen=True)
+class Verificacion:
+    """Una verificación documentada de ``docs/verificaciones.md``: cubre un criterio que no se prueba con código.
+
+    ``verificada`` es ``False`` si su estado es «Pendiente»: entonces el criterio sigue pendiente.
+    """
+
+    archivo: str
+    linea: int
+    marca: str
+    verificada: bool
 
 
 @dataclass(frozen=True)
@@ -96,11 +121,13 @@ class Ficha:
 
 @dataclass
 class Revision:
-    """Las pruebas repartidas por criterio y por código, y los errores de las marcas."""
+    """Las pruebas repartidas por criterio y por código, las verificaciones documentadas de cada criterio y los
+    errores de las marcas."""
 
     por_criterio: dict = field(default_factory=lambda: defaultdict(list))
     sin_criterio: dict = field(default_factory=lambda: defaultdict(list))
     errores: list = field(default_factory=list)
+    verificaciones: dict = field(default_factory=dict)
 
 
 @dataclass
@@ -411,13 +438,62 @@ def buscar_pruebas(raiz):
     return pruebas, errores
 
 
+# --- Verificaciones documentadas ------------------------------------------------------------------
+
+
+def leer_verificaciones(texto, archivo=RUTA_VERIFICACIONES):
+    """Las verificaciones documentadas de ``docs/verificaciones.md``.
+
+    Cada sección cuyo título empieza con un código (``## RNF-07 · C5 · …``) es una verificación: su título es la
+    marca del criterio que cubre y, antes de la sección siguiente, una línea dice su estado. Las demás secciones,
+    como la introducción, no cuentan.
+
+    Returns:
+        tuple: ``(verificaciones, errores)``.
+    """
+    lineas = texto.replace('\r\n', '\n').split('\n')
+    titulos = [i for i, linea in enumerate(lineas) if linea.startswith('## ')] + [len(lineas)]
+    verificaciones, errores = [], []
+    for inicio, fin in zip(titulos, titulos[1:]):
+        titulo = _TITULO_DE_VERIFICACION.match(lineas[inicio])
+        if titulo is None:
+            continue
+        marca, donde = titulo['marca'], f'{archivo}:{inicio + 1}'
+        m = MARCA.match(marca)
+        if m is None or m['criterio'] is None:
+            errores.append(f'{donde}: una verificación documentada cubre un criterio: «<código> · C<n> · …»')
+            continue
+        estados = [e for e in (_ESTADO.match(linea) for linea in lineas[inicio + 1:fin]) if e]
+        if len(estados) != 1:
+            errores.append(f'{donde}: la verificación «{marca}» no dice su estado: «**Estado:** Verificado.» o '
+                           '«**Estado:** Pendiente: …»')
+            continue
+        verificaciones.append(Verificacion(archivo, inicio + 1, marca, estados[0]['verificado'] is not None))
+    return verificaciones, errores
+
+
 # --- Revisión y documento -------------------------------------------------------------------------
 
 
-def revisar(fichas, pruebas, codigos):
-    """Reparte las pruebas según su marca y revisa que cada marca cite algo que existe."""
+def revisar(fichas, pruebas, codigos, verificaciones=()):
+    """Reparte las pruebas según su marca y revisa que cada marca cite algo que existe; también las verificaciones
+    documentadas, una como máximo por criterio."""
     revision = Revision()
     por_codigo = {f.codigo: f for f in fichas}
+    for v in verificaciones:
+        m = MARCA.match(v.marca)
+        donde = f'{v.archivo}:{v.linea}'
+        codigo, numero = m['codigo'], int(m['criterio'])
+        if codigo not in por_codigo:
+            revision.errores.append(f'{donde}: {codigo} no es una ficha de specs/fichas.json')
+        elif not 1 <= numero <= len(por_codigo[codigo].criterios):
+            revision.errores.append(f'{donde}: {codigo} no tiene el criterio C{numero}')
+        elif por_codigo[codigo].criterios[numero - 1].eliminado:
+            revision.errores.append(f'{donde}: el criterio C{numero} de {codigo} está eliminado')
+        elif (codigo, numero) in revision.verificaciones:
+            revision.errores.append(f'{donde}: {codigo} C{numero} ya tiene otra verificación documentada')
+        else:
+            revision.verificaciones[(codigo, numero)] = (v, m['texto'])
     for p in pruebas:
         donde = f'{p.archivo}:{p.linea}'
         m = MARCA.match(p.marca)
@@ -463,6 +539,14 @@ def _referencia(entrada):
     return f'[`{prueba.nombre}`](../{prueba.archivo}) · {_celda(texto)}{sufijo}'
 
 
+def _verificacion(entrada):
+    """Una verificación documentada en el documento: enlace a ``docs/verificaciones.md``, su texto y su estado."""
+    verificacion, texto = entrada
+    nombre = Path(verificacion.archivo).name
+    estado = 'verificada' if verificacion.verificada else 'pendiente'
+    return f'[`{nombre}`]({nombre}) · {_celda(texto)} (verificación documentada, {estado})'
+
+
 def _celda(texto):
     return texto.replace('|', '\\|').replace('\n', ' ')
 
@@ -477,15 +561,18 @@ def documento(fichas, pruebas, revision, titulos, header):
     contexto_fichas, total = [], defaultdict(int)
     for f in fichas:
         criterios = [{'numero': c.numero, 'texto': c.texto, 'eliminado': c.eliminado,
+                      'pendiente': _pendiente(f, c, revision),
                       'pruebas': sorted(revision.por_criterio.get((f.codigo, c.numero), []),
-                                        key=lambda e: (e[0].archivo, e[1]))}
+                                        key=lambda e: (e[0].archivo, e[1])),
+                      'verificaciones': [revision.verificaciones[(f.codigo, c.numero)]]
+                      if (f.codigo, c.numero) in revision.verificaciones else []}
                      for c in f.criterios]
-        con_prueba = sum(1 for c in criterios if c['pruebas'])
+        pendientes = sum(1 for c in criterios if c['pendiente'])
         eliminados = sum(1 for c in criterios if c['eliminado'])
         contexto_fichas.append({
             'codigo': f.codigo, 'titulo': f.titulo, 'criterios': criterios, 'total': len(criterios),
-            'con_prueba': con_prueba, 'eliminados': eliminados,
-            'pendientes': len(criterios) - con_prueba - eliminados,
+            'con_prueba': len(criterios) - pendientes - eliminados, 'eliminados': eliminados,
+            'pendientes': pendientes,
             'otras': sorted(revision.sin_criterio.get(f.codigo, []), key=lambda e: (e[0].archivo, e[1]))})
         for clave in ('total', 'con_prueba', 'eliminados', 'pendientes'):
             total[clave] += contexto_fichas[-1][clave]
@@ -495,7 +582,10 @@ def documento(fichas, pruebas, revision, titulos, header):
              for codigo in sorted(revision.sin_criterio, key=_orden_otros) if codigo not in fichas_con_codigo]
     java = [p for p in pruebas if p.archivo.endswith('.java')]
     javascript = [p for p in pruebas if p.archivo.endswith(('.js', '.jsx'))]
+    verificadas = sum(1 for v, _ in revision.verificaciones.values() if v.verificada)
     resumen = dict(total, fichas=len(fichas), pruebas=len(pruebas), java=len(java),
+                   verificaciones=len(revision.verificaciones), verificadas=verificadas,
+                   verificaciones_pendientes=len(revision.verificaciones) - verificadas,
                    generadas=sum(1 for p in java if p.generada), javascript=len(javascript),
                    generadas_javascript=sum(1 for p in javascript if p.generada),
                    python=len(pruebas) - len(java) - len(javascript))
@@ -503,14 +593,32 @@ def documento(fichas, pruebas, revision, titulos, header):
     entorno = Environment(loader=FileSystemLoader(PLANTILLAS), undefined=StrictUndefined, trim_blocks=True,
                           lstrip_blocks=True, keep_trailing_newline=True, autoescape=False)
     entorno.filters['referencia'] = _referencia
+    entorno.filters['verificacion'] = _verificacion
     entorno.filters['celda'] = _celda
     return entorno.get_template('docs/casos_de_prueba.md.j2').render(
         version=VERSION, header=header, resumen=resumen, fichas=contexto_fichas, otros=otros)
 
 
+def _pendiente(ficha, criterio, revision):
+    """``True`` si el criterio no tiene evidencia: ni prueba ni verificación documentada verificada, o si tiene una
+    verificación pendiente, que dice que todavía falta algo. Un criterio eliminado no está pendiente."""
+    if criterio.eliminado:
+        return False
+    clave = (ficha.codigo, criterio.numero)
+    verificacion = revision.verificaciones.get(clave)
+    if verificacion is not None:
+        return not verificacion[0].verificada
+    return clave not in revision.por_criterio
+
+
 def _sin_prueba(ficha, revision):
-    """Los criterios de una ficha que no tienen prueba; los eliminados no cuentan."""
-    return [c for c in ficha.criterios if not c.eliminado and (ficha.codigo, c.numero) not in revision.por_criterio]
+    """Los criterios de una ficha que siguen pendientes (ver ``_pendiente``); los eliminados no cuentan."""
+    return [c for c in ficha.criterios if _pendiente(ficha, c, revision)]
+
+
+def pendientes_de(fichas, revision):
+    """Los criterios pendientes de las fichas, como ``RNF-07 C3``."""
+    return [f'{f.codigo} C{c.numero}' for f in fichas for c in _sin_prueba(f, revision)]
 
 
 def implementadas_incompletas(fichas, revision):
@@ -537,8 +645,13 @@ def armar_documento(raiz):
     specs = raiz / 'specs'
     fichas = leer_fichas(specs / 'fichas.json')
     pruebas, errores = buscar_pruebas(raiz)
-    revision = revisar(fichas, pruebas, cargar_codigos(specs))
-    fuentes = sorted({p.archivo for p in pruebas}) + ['specs/requisitos-docente.md', 'specs/decisiones.md']
+    verificaciones, fuentes = [], sorted({p.archivo for p in pruebas}) + ['specs/requisitos-docente.md',
+                                                                          'specs/decisiones.md']
+    if (raiz / RUTA_VERIFICACIONES).is_file():
+        verificaciones, malas = leer_verificaciones((raiz / RUTA_VERIFICACIONES).read_text(encoding='utf-8'))
+        errores += malas
+        fuentes.append(RUTA_VERIFICACIONES)
+    revision = revisar(fichas, pruebas, cargar_codigos(specs), verificaciones)
     texto = documento(fichas, pruebas, revision, titulos_de_otros(specs), _fechas(raiz, fuentes))
-    pendientes = [f'{f.codigo} C{c.numero}' for f in fichas for c in _sin_prueba(f, revision)]
-    return Resultado(texto, errores + revision.errores, pendientes, implementadas_incompletas(fichas, revision))
+    return Resultado(texto, errores + revision.errores, pendientes_de(fichas, revision),
+                     implementadas_incompletas(fichas, revision))
