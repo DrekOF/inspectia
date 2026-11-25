@@ -1,11 +1,12 @@
 /*
  * Nombre: ConsultarResultado.java
  * Descripción: Caso de uso de consultar el resultado guardado de un lote y el detalle de sus muestras, con las fotos
- *              marcadas y sus granos, sin la confianza (RF-10, RF-11, RF-12, RF-14 C3).
+ *              marcadas y sus granos, sin la confianza, y las fotos por repetir de una muestra que volvió de la cola
+ *              (RF-09, RF-10, RF-11, RF-12, RF-14 C3, D-44).
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis.aplicacion;
 
@@ -81,9 +82,11 @@ public class ConsultarResultado {
     private DetalleDeMuestra detalleDe(UUID empresaId, MuestraGuardada muestra) {
         List<FotoGuardada> fotos = muestras.fotos(empresaId, muestra.id());
         if (muestra.estado() != EstadoDeMuestra.TERMINADA) {
+            // Una muestra que no terminó va sin granos, aunque la foto que RF-09 pidió repetir tenga los suyos.
             return new DetalleDeMuestra(muestra, null,
                     fotos.stream().map(foto -> new FotoMarcada(foto.numero(), vistas.de(foto).vista(), List.of()))
-                            .toList());
+                            .toList(),
+                    VistasDeFotosRevisadas.porRepetir(fotos));
         }
         ReglasDeConfianza confianza = new ReglasDeConfianza(muestra.umbralConfianzaBaja(),
                 muestra.porcentajeMaxDudosos());

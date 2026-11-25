@@ -4,11 +4,12 @@
  *              análisis y lleva al resultado del lote, donde se ve la espera (RNF-02 C3). Pide al menos 2 fotos y
  *              ninguna subida en curso (RF-05 C2). Mientras falta algo, el botón no se deshabilita, porque perdería el
  *              foco: queda marcado con aria-disabled y unido a un texto que dice qué falta (RNF-06 C3 y C4). Un doble
- *              clic envía la muestra una sola vez. Si el backend la rechaza, muestra su mensaje.
+ *              clic envía la muestra una sola vez. Si el backend la rechaza, muestra su mensaje. Con una foto que la
+ *              revisión del servicio de IA marcó «Por repetir», espera a que se repita y dice cuál (RF-06, RNF-06 C3).
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -20,28 +21,39 @@ import { enviarMuestra } from '../api/analisis.js';
 import { textoDelError } from '../api/errores.js';
 import { Aviso } from '../componentes/Aviso.jsx';
 import { useEsPc } from '../componentes/useEsPc.js';
+import { idiomaDe } from '../i18n/i18n.js';
 import { useSesion } from '../sesion/contexto.js';
 import { medidas } from '../tema/tokens.js';
+import { listaDeNumeros, numerosPorRepetir } from './revision.js';
 
 /** Las fotos que pide una muestra para analizarla; la tercera es opcional (RF-05 C2, D-23). */
 export const MINIMO_DE_FOTOS = 2;
 
 /**
- * Qué falta para poder analizar la muestra: que terminen las subidas en curso o que haya al menos 2 fotos.
+ * Qué falta para poder analizar la muestra: que terminen las subidas en curso, que se repitan las fotos que la
+ * revisión marcó «Por repetir» o que haya al menos 2 fotos.
  *
- * @param {number} fotos cuántas fotos ya están subidas
+ * @param {import('../api/fotos.js').Foto[]} fotos las fotos ya subidas
  * @param {number[]} subiendo los números de las fotos que se están subiendo
  * @param {(clave: string, opciones?: object) => string} t la función de traducción de i18next
+ * @param {string} region la región del idioma, como es-CO, para juntar los números de las fotos
  * @returns {string|null} el motivo, o null si ya se puede analizar
  */
-function motivoParaEsperar(fotos, subiendo, t) {
+function motivoParaEsperar(fotos, subiendo, t, region) {
   if (subiendo.length === 1) {
     return t('analizar.esperaSubida', { numero: subiendo[0] });
   }
   if (subiendo.length > 1) {
     return t('analizar.esperaSubidas');
   }
-  return fotos < MINIMO_DE_FOTOS ? t('analisis.fotos.minimo') : null;
+  const porRepetir = numerosPorRepetir(fotos);
+  if (porRepetir.length === 1) {
+    return t('analizar.repiteLaFoto', { numero: porRepetir[0] });
+  }
+  if (porRepetir.length > 1) {
+    return t('analizar.repiteLasFotos', { numeros: listaDeNumeros(porRepetir, region) });
+  }
+  return fotos.length < MINIMO_DE_FOTOS ? t('analisis.fotos.minimo') : null;
 }
 
 /**
@@ -66,7 +78,7 @@ function mensajeDelRechazo(error, t) {
  * @returns {import('react').ReactElement} el botón, con lo que falta o el error
  */
 export function AnalizarMuestra({ loteId, fotos, subiendo }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { pedir } = useSesion();
   const navegar = useNavigate();
   const esPc = useEsPc();
@@ -75,7 +87,7 @@ export function AnalizarMuestra({ loteId, fotos, subiendo }) {
   const enCurso = useRef(false);
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState(null);
-  const motivo = motivoParaEsperar(Object.keys(fotos.fotos).length, subiendo, t);
+  const motivo = motivoParaEsperar(Object.values(fotos.fotos), subiendo, t, idiomaDe(i18n.language).region);
 
   /** Envía la muestra y lleva al resultado del lote, donde se ve la espera. */
   async function analizar() {

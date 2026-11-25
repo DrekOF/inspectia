@@ -6,7 +6,7 @@
  * Fecha de creación: 23/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 package co.edu.usco.inspectia.analisis.adaptadores.rest;
 
@@ -118,6 +118,11 @@ public record ResultadoRespuesta(
      * @param fechaEnvio cuándo se envió, o vacía
      * @param fechaFin cuándo terminó, o vacía
      * @param fotos sus fotos, por número
+     * @param motivoDevolucion por qué volvió de la cola sin resultado, o vacío (D-44)
+     * @param repeticiones las fotos que RF-09 pidió repetir
+     * @param fotosPorRepetir sus fotos por repetir, mientras no termina
+     * @param avisoConfianzaBaja su aviso de confianza baja, o vacío mientras no termina (RF-09)
+     * @param porcentajeMaxDudosos la copia del máximo de dudosos que usó, o vacía
      */
     @Schema(description = "Una muestra del lote. Mientras no termina, el modelo, los conteos y la fecha de fin van "
             + "vacíos, y sus fotos, sin granos.")
@@ -135,7 +140,19 @@ public record ResultadoRespuesta(
             BigDecimal porcentajeContado,
             @Schema(description = "Cuándo se envió a analizar; vacía si no se ha enviado.") Instant fechaEnvio,
             @Schema(description = "Cuándo terminó; vacía mientras no termina.") Instant fechaFin,
-            @Schema(description = "Sus fotos, por número, con sus granos marcados.") List<FotoDelResultado> fotos) {
+            @Schema(description = "Sus fotos, por número, con sus granos marcados.") List<FotoDelResultado> fotos,
+            @Schema(description = "Por qué volvió de la cola sin resultado (D-44); vacío si no volvió o si la devolvió "
+                    + "una foto.", allowableValues = {"POCOS_GRANOS", "SIN_RESPUESTA_DE_LA_IA"}, nullable = true,
+                    example = "POCOS_GRANOS") String motivoDevolucion,
+            @Schema(description = "Cuántas fotos pidió repetir RF-09 por granos dudosos, de 0 a 2.", example = "0")
+            int repeticiones,
+            @Schema(description = "Las fotos de la muestra que están POR_REPETIR, por número, con su motivo; vacía si "
+                    + "no hay o si ya terminó.") List<AnalisisRespuesta.FotoPorRepetir> fotosPorRepetir,
+            @Schema(description = "Si esta muestra terminó con el aviso de confianza baja (RF-09 C4); vacío mientras no "
+                    + "termina.", example = "false", nullable = true) Boolean avisoConfianzaBaja,
+            @Schema(description = "La copia del máximo de dudosos que usó la muestra (P-15), con 1 decimal; vacía si "
+                    + "RF-09 todavía no la evaluó. Con la muestra terminada, siempre llena.", example = "10.0",
+                    nullable = true) BigDecimal porcentajeMaxDudosos) {
     }
 
     /**
@@ -226,7 +243,10 @@ public record ResultadoRespuesta(
         return new MuestraDelResultado(muestra.numero(), muestra.estado().name(),
                 new AnalizadaPor(muestra.usuarioId(), muestra.usuarioNombre()), modelo, muestra.totalGranos(),
                 muestra.granosSanos(), detalle.porcentajeContado(), muestra.fechaEnvio(), muestra.fechaFin(),
-                detalle.fotos().stream().map(ResultadoRespuesta::foto).toList());
+                detalle.fotos().stream().map(ResultadoRespuesta::foto).toList(),
+                muestra.motivoDevolucion() == null ? null : muestra.motivoDevolucion().name(), muestra.repeticiones(),
+                AnalisisRespuesta.FotoPorRepetir.de(detalle.fotosPorRepetir()), muestra.avisoConfianzaBaja(),
+                muestra.porcentajeMaxDudosos());
     }
 
     private static FotoDelResultado foto(FotoMarcada foto) {

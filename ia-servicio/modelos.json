@@ -1,0 +1,150 @@
+{
+  "_header": {
+    "nombre": "modelos.json",
+    "descripcion": "Catálogo de los 5 modelos de la release modelos-v1.0 de Julián (D-18, D-40, D-48): archivo, SHA-256 y métricas en el conjunto de prueba (334 granos). El servicio de IA comprueba con él el modelo que baja y lo entrega en GET /modelos; ia-servicio/scripts/subir_modelos.py sube a S3 lo que lista. F1 macro y recall de cada clase con los 3 decimales del README de Julián (D-39, D-48); precisión de cada clase con los 4 del JSON de cada modelo; precisión y recall macro, de la matriz de confusión; tiempo por grano con 2 hilos de CPU, la estimación de Julián para la t4g.medium.",
+    "fecha_creacion": "24/11/2026",
+    "actualizacion": "24/11/2026",
+    "autor": "Equipo InspectIA",
+    "version": "1.0"
+  },
+  "release": {
+    "etiqueta": "modelos-v1.0",
+    "url": "https://github.com/JulianSilvaMorales/Proyecto_IA-Cacao-Beans-/releases/download/modelos-v1.0/",
+    "manifest": {
+      "archivo": "manifest.json",
+      "sha256": "c8cf7e26c30b0af4a0b7b4001e1d5f06b640f1fea80b42c2b349005a8ed4e476"
+    }
+  },
+  "modelos": [
+    {
+      "nombre": "MobileNetV3-L",
+      "version": "1.0",
+      "tipo": "CNN",
+      "formato": "keras",
+      "archivo": "inspectia_MobileNetV3-L_v1.0.keras",
+      "sha256": "e9e30f7afce917f94252b9bbf144fcd46de40ec0f86f762db4408b02e92b77a2",
+      "ficha": {
+        "archivo": "inspectia_MobileNetV3-L_v1.0.json",
+        "sha256": "9d227adcf606d04521ae3b65d244968bfbd43e888135fa9ee84e920620612b3b"
+      },
+      "metricas": {
+        "f1Macro": 63.80,
+        "precisionMacro": 77.77,
+        "recallMacro": 61.67,
+        "recallSano": 97.30,
+        "recallNoSano": 26.00,
+        "precisionSano": 82.47,
+        "precisionNoSano": 73.08,
+        "sanosComoSanos": 254,
+        "sanosComoNoSanos": 7,
+        "noSanosComoSanos": 54,
+        "noSanosComoNoSanos": 19,
+        "tiempoPorGranoMs": 52.10
+      }
+    },
+    {
+      "nombre": "EfficientNet-B0",
+      "version": "1.0",
+      "tipo": "CNN",
+      "formato": "savedmodel-zip",
+      "archivo": "inspectia_EfficientNet-B0_v1.0_savedmodel.zip",
+      "sha256": "eb9a64394c51fdff8fc16e01fff71e3b3693bc36e43cafb0ddbb34ca5b765bfb",
+      "ficha": {
+        "archivo": "inspectia_EfficientNet-B0_v1.0.json",
+        "sha256": "ab417302d000066f60cf27cbfa871c4945d141f641f0c8202c67c3b37321dcad"
+      },
+      "metricas": {
+        "f1Macro": 73.50,
+        "precisionMacro": 75.20,
+        "recallMacro": 72.31,
+        "recallSano": 91.20,
+        "recallNoSano": 53.40,
+        "precisionSano": 87.50,
+        "precisionNoSano": 62.90,
+        "sanosComoSanos": 238,
+        "sanosComoNoSanos": 23,
+        "noSanosComoSanos": 34,
+        "noSanosComoNoSanos": 39,
+        "tiempoPorGranoMs": 19.00
+      }
+    },
+    {
+      "nombre": "ResNet-50",
+      "version": "1.0",
+      "tipo": "CNN",
+      "formato": "keras",
+      "archivo": "inspectia_ResNet-50_v1.0.keras",
+      "sha256": "4ce7179ad4d1d48ca6181a38f5e9c5c35ab7eda065c913348908e8ae2f30e408",
+      "ficha": {
+        "archivo": "inspectia_ResNet-50_v1.0.json",
+        "sha256": "c6dedc4009641c19a86b1b9043999ce3e76e8d03517fe69454b65ea99072a5bf"
+      },
+      "metricas": {
+        "f1Macro": 69.90,
+        "precisionMacro": 70.11,
+        "recallMacro": 69.71,
+        "recallSano": 87.40,
+        "recallNoSano": 52.10,
+        "precisionSano": 86.69,
+        "precisionNoSano": 53.52,
+        "sanosComoSanos": 228,
+        "sanosComoNoSanos": 33,
+        "noSanosComoSanos": 35,
+        "noSanosComoNoSanos": 38,
+        "tiempoPorGranoMs": 50.80
+      }
+    },
+    {
+      "nombre": "Swin-Tiny",
+      "version": "1.0",
+      "tipo": "TRANSFORMER",
+      "formato": "keras",
+      "archivo": "inspectia_Swin-Tiny_v1.0.keras",
+      "sha256": "4ef056c900ac81f320cb62c28f6e7e3a34df0aa693f1cf5a1712b6866253302f",
+      "ficha": {
+        "archivo": "inspectia_Swin-Tiny_v1.0.json",
+        "sha256": "5b515b1716d1c98851526424c6ac747b7d5c2bbd557e5e91d4165ec9d918a11a"
+      },
+      "metricas": {
+        "f1Macro": 71.30,
+        "precisionMacro": 75.29,
+        "recallMacro": 69.15,
+        "recallSano": 93.10,
+        "recallNoSano": 45.20,
+        "precisionSano": 85.87,
+        "precisionNoSano": 64.71,
+        "sanosComoSanos": 243,
+        "sanosComoNoSanos": 18,
+        "noSanosComoSanos": 40,
+        "noSanosComoNoSanos": 33,
+        "tiempoPorGranoMs": 89.40
+      }
+    },
+    {
+      "nombre": "DeiT-Small",
+      "version": "1.0",
+      "tipo": "TRANSFORMER",
+      "formato": "keras",
+      "archivo": "inspectia_DeiT-Small_v1.0.keras",
+      "sha256": "6e9fc9ef53c0b0a6df739aecb2d13958d5fe99d60032bc1f1966954d9a28aae6",
+      "ficha": {
+        "archivo": "inspectia_DeiT-Small_v1.0.json",
+        "sha256": "de89e06cb2f273bf5620757b2fade80905865bc776ac44bcfc3f42137810e73a"
+      },
+      "metricas": {
+        "f1Macro": 68.90,
+        "precisionMacro": 73.07,
+        "recallMacro": 66.91,
+        "recallSano": 92.70,
+        "recallNoSano": 41.10,
+        "precisionSano": 84.91,
+        "precisionNoSano": 61.22,
+        "sanosComoSanos": 242,
+        "sanosComoNoSanos": 19,
+        "noSanosComoSanos": 43,
+        "noSanosComoNoSanos": 30,
+        "tiempoPorGranoMs": 67.60
+      }
+    }
+  ]
+}

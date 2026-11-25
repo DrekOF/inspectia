@@ -2,9 +2,9 @@
 Nombre: CLAUDE.md
 Descripción: Instrucciones del proyecto InspectIA para Claude Code. Se lee al inicio de cada sesión.
 Fecha de creación: 12/10/2026
-Actualización: 26/10/2026
+Actualización: 24/11/2026
 Autor: Equipo InspectIA
-Versión: 1.12
+Versión: 1.13
 -->
 
 # InspectIA
@@ -40,7 +40,7 @@ App web multiempresa que estima el % de granos de cacao sanos de un lote a parti
   - `analisis` es hexagonal. Las reglas (% de granos sanos, categoría y sugerencia) van en `dominio/`, sin depender de Spring. El caso de uso `AnalizarLote` habla con el servicio de IA, S3, el PDF y la base de datos solo a través de interfaces (puertos).
   - `empresa`, `usuario` y `rango` van por capas y los genera `generador/`.
   - `estadistica` va por capas, a mano. `comun` tiene seguridad (JWT y roles), i18n y manejo de errores.
-- Julián ya entregó el modelo (release `modelos-v1.0`, D-40). Mientras el servicio de IA no lo use, el puerto `ClasificadorDeGranos` usa un clasificador falso.
+- Julián ya entregó el modelo (release `modelos-v1.0`, D-40) y el servicio de IA lo usa. El backend lo llama con `inspectia.ia.clasificador=servicio`; en local y en las pruebas, el puerto `ClasificadorDeGranos` usa un clasificador falso, que no revisa las fotos.
 - Sin microservicios ni ECS: todo corre con Docker Compose en una sola instancia EC2 (D-16).
 - Nombres del dominio en español y sin tildes en el código (`Lote`, `Grano`, `Analisis`).
 - Usa versiones estables actuales (LTS cuando exista) y anótalas en el README.
@@ -105,4 +105,9 @@ Desde la raíz del repositorio. Las versiones y cómo instalarlas están en `REA
   - Demostración de otra temática (RP-23), con Docker Desktop abierto y el entorno del generador creado: `npm run demo:otra-tematica` genera producto en una copia (`frontend/.demostracion`, en `.gitignore`), la enciende en el proyecto `inspectia-demo` y Ctrl+C la apaga y borra su base. Con `-- --entidad ../generador/pruebas/ejemplos/cafe.json`, otra entidad, como el café; con `-- --con-pruebas`, antes corre sus pruebas generadas. Las opciones van después de `--`. Guía para la sustentación: `docs/demostracion-otra-tematica.md`.
   - Si una prueba de Selenium falla, su captura y la consola del navegador quedan en `frontend/reports/selenium/`.
 - Integración continua (RP-18 y RP-19): `.github/workflows/ci.yml` corre sola en cada PR hacia `main`, en cada push a `main` y a mano, desde la pestaña Actions. En `main`, si un job falla, abre un issue con la etiqueta `ci`. Ver el README.
-- Servicio de IA: se agrega aquí cuando se cree el proyecto.
+- Servicio de IA (Python 3.12; en Linux o macOS, `ia-servicio/.venv/bin/python`; ver `ia-servicio/README.md`):
+  - Primera vez, desde `ia-servicio/`: `py -3.12 -m venv .venv` (o `uv venv .venv --python 3.12`) y `.venv/Scripts/python -m pip install -r requirements-dev.txt`.
+  - Pruebas, desde `ia-servicio/`: `.venv/Scripts/python -m pytest -rs`. Sin el modelo, las 4 de paridad con `inferencia.py` se saltan con su motivo; para correrlas, define `INSPECTIA_MODELO_PRUEBA` con la ruta del zip `inspectia_EfficientNet-B0_v1.0_savedmodel.zip` de la release (en PowerShell, `$env:INSPECTIA_MODELO_PRUEBA = 'C:\ruta\inspectia_EfficientNet-B0_v1.0_savedmodel.zip'`).
+  - Arrancar en local, desde `ia-servicio/`, con el zip en una carpeta: `INSPECTIA_MODELOS_URI=file:///ruta/modelos/ INSPECTIA_MODELOS_CACHE=/tmp/inspectia-modelos .venv/Scripts/python -m uvicorn inspectia_ia.principal:app --port 8000`. Si el SHA-256 del zip no coincide con `modelos.json`, no arranca. El backend lo usa con `INSPECTIA_IA_CLASIFICADOR=servicio` e `INSPECTIA_IA_URL=http://localhost:8000`.
+  - Subir los 5 modelos de la release a S3 (lo corre Cristhian, con credenciales que escriban en el bucket): `ia-servicio/.venv/Scripts/python ia-servicio/scripts/subir_modelos.py --bucket inspectia-archivos-<cuenta>`. Con `--simular` baja y comprueba sin subir; con `--carpeta <carpeta>`, deja ahí lo bajado. Si un SHA-256 no coincide, no sube nada.
+  - Comprobar una imagen ya construida (importa TensorFlow, OpenCV y Pillow y, con el zip, corre la paridad dentro de ella): `bash ia-servicio/scripts/comprobar_imagen.sh <imagen> [<zip>]`.

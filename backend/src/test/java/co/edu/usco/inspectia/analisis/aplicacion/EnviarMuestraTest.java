@@ -6,7 +6,7 @@
  * Fecha de creación: 23/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 package co.edu.usco.inspectia.analisis.aplicacion;
 
@@ -24,6 +24,7 @@ import co.edu.usco.inspectia.analisis.dominio.EstadoDeFoto;
 import co.edu.usco.inspectia.analisis.dominio.EstadoDeLote;
 import co.edu.usco.inspectia.analisis.dominio.EstadoDeMuestra;
 import co.edu.usco.inspectia.analisis.dominio.FormatoDeFoto;
+import co.edu.usco.inspectia.analisis.dominio.MotivoDeFoto;
 import co.edu.usco.inspectia.comun.errores.CampoInvalido;
 import co.edu.usco.inspectia.comun.errores.ConflictoExcepcion;
 import co.edu.usco.inspectia.comun.errores.NoEncontradoExcepcion;
@@ -100,6 +101,24 @@ class EnviarMuestraTest {
         assertThatThrownBy(() -> enviar.enviar(EMPRESA, CARLOS, LOTE))
                 .isInstanceOfSatisfying(ReglaIncumplidaExcepcion.class, excepcion -> assertThat(campos(excepcion))
                         .containsExactly(new CampoInvalido("fotos", "analisis.fotos.minimo")));
+        verify(muestras, never()).enviar(any(), any(), any(), any());
+        verify(eventos, never()).publishEvent(any(Object.class));
+    }
+
+    @Test
+    @DisplayName("RF-06 · con una foto «Por repetir», «Analizar la muestra» responde 400 en «fotos» y no la envía: primero hay que repetirla")
+    void conUnaFotoPorRepetirNoSeEnvia() {
+        when(muestras.muestraEnCurso(EMPRESA, LOTE)).thenReturn(Optional.of(new MuestraEnCurso(MUESTRA, 1,
+                EstadoDeMuestra.PENDIENTE)));
+        when(muestras.fotos(EMPRESA, MUESTRA)).thenReturn(List.of(
+                new FotoGuardada(UUID.randomUUID(), 1, "llave-1", FormatoDeFoto.JPG, 1_000, EstadoDeFoto.APROBADA,
+                        null, 50),
+                new FotoGuardada(UUID.randomUUID(), 2, "llave-2", FormatoDeFoto.JPG, 1_000, EstadoDeFoto.POR_REPETIR,
+                        MotivoDeFoto.BORROSA, 0)));
+
+        assertThatThrownBy(() -> enviar.enviar(EMPRESA, CARLOS, LOTE))
+                .isInstanceOfSatisfying(ReglaIncumplidaExcepcion.class, excepcion -> assertThat(campos(excepcion))
+                        .containsExactly(new CampoInvalido("fotos", "analisis.fotos.por_repetir")));
         verify(muestras, never()).enviar(any(), any(), any(), any());
         verify(eventos, never()).publishEvent(any(Object.class));
     }

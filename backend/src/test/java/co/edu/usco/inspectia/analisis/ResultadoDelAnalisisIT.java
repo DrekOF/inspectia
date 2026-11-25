@@ -8,7 +8,7 @@
  * Fecha de creación: 23/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.2
+ * Versión: 1.3
  */
 package co.edu.usco.inspectia.analisis;
 
@@ -184,7 +184,8 @@ class ResultadoDelAnalisisIT {
     @Test
     @DisplayName("RF-11 · C4 · los granos del resultado traen su posición, su clase y si son dudosos, pero no la confianza")
     void granosSinLaConfianza() {
-        analizar(lote, new int[] {106, 72}, new int[] {107, 72});
+        // 105 px de alto: 5 + 5 = 10 dudosos de 100, que no pasan del 10 %: RF-09 no pide repetir ninguna foto.
+        analizar(lote, new int[] {106, 105}, new int[] {107, 105});
 
         MvcTestResult resultado = analisis.resultado(tokenDeLuis, lote);
 
@@ -194,11 +195,11 @@ class ResultadoDelAnalisisIT {
                 .flatMap(foto -> granos(foto).stream()).toList();
         assertThat(todos).hasSize(100).allSatisfy(grano -> assertThat(grano.keySet())
                 .containsExactlyInAnyOrder("x", "y", "ancho", "alto", "clase", "dudoso"));
-        assertThat(todos.get(0)).isEqualTo(Map.of("x", 2, "y", 3, "ancho", 6, "alto", 8, "clase", "NO_SANO",
+        assertThat(todos.get(0)).isEqualTo(Map.of("x", 2, "y", 4, "ancho", 6, "alto", 12, "clase", "NO_SANO",
                 "dudoso", true));
-        assertThat(todos.stream().filter(grano -> Boolean.TRUE.equals(grano.get("dudoso")))).hasSize(44);
+        assertThat(todos.stream().filter(grano -> Boolean.TRUE.equals(grano.get("dudoso")))).hasSize(10);
         assertThat(todos.stream().filter(grano -> "NO_SANO".equals(grano.get("clase")))).hasSize(13);
-        assertThat(lote(ApiSesion.json(resultado))).as("sin repeticiones todavía no hay aviso (RF-09, PR 4)")
+        assertThat(lote(ApiSesion.json(resultado))).as("con 10 % de dudosos no hay aviso (RF-09 C2)")
                 .containsEntry("avisoConfianzaBaja", false).containsEntry("granosSanos", 87);
     }
 

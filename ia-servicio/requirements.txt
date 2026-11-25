@@ -1,0 +1,15 @@
+# Nombre: requirements.txt
+# Descripción: Dependencias del servicio de IA de InspectIA, con versión fija. Todas publican ruedas para Linux
+#              amd64 y arm64 (la t4g.medium, D-16) con Python 3.12.
+# Fecha de creación: 24/11/2026
+# Actualización: 24/11/2026
+# Autor: Equipo InspectIA
+# Versión: 1.0
+tensorflow==2.21.0
+numpy==2.5.5
+opencv-python-headless==5.1.0.95
+pillow==13.0.0
+fastapi==0.165.0
+uvicorn==0.54.0
+python-multipart==0.0.34
+boto3==1.44.10
