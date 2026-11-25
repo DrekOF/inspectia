@@ -4,9 +4,9 @@ Descripción: Verificaciones documentadas de los criterios de aceptación que no
              qué se revisó, con qué evidencia y qué falta. generador/casos_de_prueba.py las lee y las muestra en
              docs/casos-de-prueba.md junto a las pruebas de cada criterio.
 Fecha de creación: 24/11/2026
-Actualización: 24/11/2026
+Actualización: 25/11/2026
 Autor: Equipo InspectIA
-Versión: 1.0
+Versión: 1.1
 -->
 
 # Verificaciones documentadas
@@ -40,7 +40,7 @@ Algunos criterios de `specs/fichas.json` no se pueden comprobar con una prueba a
 
 ## RNF-07 · C3 · los 5 modelos se miden con el mismo conjunto de prueba, sin imágenes repetidas del entrenamiento ni del val
 
-**Estado:** Verificado.
+**Estado:** Pendiente: falta la confirmación escrita de Julián (pregunta 1 de «Para confirmar con Julián»).
 
 - **Con código:** `test_metricas_del_modelo.py` comprueba que la matriz de cada uno de los 5 modelos suma 261 sanos y 73 no sanos (334 granos), y `ComparativaDeModelosIT`, que así quedan en la API.
 - **Lo que solo Julián puede confirmar:** que ninguna imagen del conjunto de prueba está repetida en su `train` ni en su `val`.
@@ -49,7 +49,7 @@ Algunos criterios de `specs/fichas.json` no se pueden comprobar con una prueba a
 
 ## RNF-07 · C5 · el modelo se elige con el val de Julián, antes de medir la prueba, y la prueba se usa una sola vez
 
-**Estado:** Verificado.
+**Estado:** Pendiente: falta la confirmación escrita de Julián (preguntas 2 y 3 de «Para confirmar con Julián»).
 
 - **Lo que solo Julián puede confirmar:** el orden de lo que hizo. No hay nada en InspectIA que lo pruebe.
 - **Cita del README de Julián** («Medición final en `test`», «Prerregistro»): la regla del modelo de la app es «el de mejor F1 en `val`» entre los que clasifican 100 granos en 4 s o menos, y en la «Lectura» dice que EfficientNet-B0 «se eligió sin ver `test`». El título de «Resultados» dice que `test` se usó «una sola vez el 26-oct-2026».
@@ -66,7 +66,7 @@ Algunos criterios de `specs/fichas.json` no se pueden comprobar con una prueba a
 
 ## Para confirmar con Julián
 
-Las verificaciones de RNF-07 C3 y C5 se apoyan en su README y en su repositorio. Estas son las preguntas para que las confirme por escrito; su respuesta se copia aquí:
+Las verificaciones de RNF-07 C3 y C5 se apoyan en su README y en su repositorio. Estas son las preguntas para que las confirme por escrito; su respuesta se copia aquí. Mientras no responda la 1, C3 queda pendiente; mientras no responda la 2 y la 3, C5 queda pendiente. Con sus respuestas, el estado de cada una pasa a «Verificado» y se vuelve a armar `docs/casos-de-prueba.md`:
 
 1. ¿Alguna imagen del `test` (los 334 de `recortes_script/val`) es del mismo grano que una del `train` o del `val`, aunque sea otra foto? El `assert` por md5 de `05_split.py` solo encuentra archivos idénticos.
 2. Antes del 26/10/2026, ¿se usó el `test` para algo: la validación cruzada (`16_cv_ceiling.py`), Hyperband, los ensembles, el umbral o la elección del modelo? ¿Todas esas decisiones salieron solo del `train` y del `val`?
