@@ -2,13 +2,14 @@
  * Nombre: PantallaDeRegistros.test.jsx
  * Descripción: Pruebas de lo que las pantallas generadas tienen en común (RP-23), sobre la de empresas: las
  *              páginas de 20, las tarjetas en el celular (RNF-05), el foco en el primer error, el foco al abrir y
- *              cerrar el formulario y al desactivar o reactivar (RNF-06 C4), los errores de la API que no son de
- *              un campo, cancelar, volver a pedir la lista después de registrar y las notas del JSON. Lo propio
+ *              cerrar el formulario y al desactivar o reactivar, la caja de la tabla que recibe el foco
+ *              (RNF-06 C4), los errores de la API que no son de un campo, cancelar, volver a pedir la lista
+ *              después de registrar y las notas del JSON. Lo propio
  *              de cada entidad lo revisan sus pruebas generadas.
  * Fecha de creación: 26/10/2026
- * Actualización: 26/10/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 import { screen, waitFor, within } from '@testing-library/react';
 import { http } from 'msw';
@@ -64,6 +65,14 @@ describe('pantalla de registros', () => {
 
     expect(await screen.findByText('Empresa 21')).toBeInTheDocument();
     expect(simulada.peticiones.map(({ ruta }) => ruta)).toContain(`${API_EMPRESAS}?pagina=1&tamano=20`);
+  });
+
+  it('RNF-06 · C4 · la caja de la tabla recibe el foco y lleva el nombre de la lista, para recorrerla con el teclado si no cabe en la ventana', async () => {
+    abrirEmpresas();
+
+    const caja = await screen.findByRole('region', { name: 'Empresas registradas' });
+    expect(caja).toHaveAttribute('tabindex', '0');
+    expect(within(caja).getByRole('table', { name: 'Empresas registradas' })).toBeInTheDocument();
   });
 
   it('RNF-05 · en el celular, la lista se ve en tarjetas, cada una con sus datos y sus acciones, sin tabla', async () => {
