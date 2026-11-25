@@ -1,32 +1,42 @@
 <!--
 Nombre: README.md (infra)
-Descripción: Qué va en la carpeta infra/ de InspectIA, cómo reiniciar la base local, dónde quedan las fotos en tu PC, cómo crear el administrador de la plataforma y restablecer su contraseña, cómo probar la sesión, los lotes y las fotos en local y cómo usan infra/ las pruebas de punta a punta y la demostración de otra temática.
+Descripción: Qué va en la carpeta infra/ de InspectIA, el header RP-10 de los JSON de AWS, cómo reiniciar la base local, dónde quedan las fotos en tu PC, cómo crear el administrador de la plataforma y restablecer su contraseña, cómo probar la sesión, los lotes y las fotos en local, cómo usan infra/ las pruebas de punta a punta y la demostración de otra temática, y el despliegue en AWS (D-16): la guía de la consola, paso a paso (con el límite de intentos de inicio de sesión en AWS WAF, D-51), la CI que despliega, el primer administrador en producción, las pruebas y la copia diaria de la base con su restauración.
 Fecha de creación: 12/10/2026
 Actualización: 24/11/2026
 Autor: Equipo InspectIA
-Versión: 1.14
+Versión: 1.16
 -->
 
 # infra
 
 Infraestructura y despliegue de InspectIA.
 
-Qué hay hoy:
+Qué hay:
 
-- `docker-compose.yml`: PostgreSQL 18 para desarrollo local. El servidor y el servicio de IA se agregan cuando existan.
+- `docker-compose.yml`: PostgreSQL 18 para desarrollo local.
 - `.env.example`: variables locales de la base de datos, la clave de los tokens del inicio de sesión, el primer administrador de la plataforma y, si quieres otra, la carpeta de las fotos. Cópialo a `infra/.env`, que no se sube al repositorio, y escribe tus valores.
 - `bd/crear-admin-plataforma.sql`, con sus envoltorios `.sh` y `.ps1`: crea el primer administrador de la plataforma (RF-01, RP-15). Las tablas no se crean aquí: las crea Flyway al arrancar el backend, con la migración que genera `generador/` (RP-23).
 - `bd/restablecer-admin-plataforma.sql`, con sus envoltorios `.sh` y `.ps1`: restablece la contraseña del administrador de la plataforma si la olvida (D-30).
+- `produccion/`: lo que corre en la instancia de AWS (D-16), y que cada despliegue deja en `/opt/inspectia`: el `docker-compose.yml` de producción y sus scripts (`actualizar.sh`, `respaldar.sh`, `restaurar-respaldo.sh`, `admin-plataforma.sh` y `comun.sh`). Ver «Despliegue en AWS».
+- `aws/`: lo que se usa en la consola de AWS y en la CI: el script de arranque de la instancia (`datos-de-usuario.sh`), la CloudFront Function de las rutas de React (`cloudfront/rutas-react.js`), la política de seguridad de contenido (`cloudfront/csp.txt`), las políticas IAM (`iam/`), la configuración de los buckets (`s3/`), la regla de ECR (`ecr/`) y el paso de la CI que actualiza la instancia (`actualizar-instancia.sh`). Los JSON no llevan header porque la consola los pide tal cual y JSON no admite comentarios: su header (RP-10) es la tabla «Header de los JSON de AWS», más abajo.
+- `probar.sh`: las pruebas de la infraestructura, sin red (RP-16): `bash infra/probar.sh`. Revisa los scripts, los JSON, el compose de producción, la CloudFront Function, las políticas IAM y el script de arranque. La CI lo corre en el job «Infraestructura».
 
-Qué irá aquí:
+Los flujos de GitHub Actions (RP-18 y RP-19) tienen que estar en `.github/workflows/`, en la raíz del repositorio, porque GitHub solo los busca ahí: `.github/workflows/ci.yml` prueba todo en cada PR y en cada push a `main` y, en `main`, despliega en AWS (ver «Despliegue en AWS»). Sus pruebas de punta a punta encienden el entorno aislado, que usa `infra/docker-compose.yml` y el script del administrador de la plataforma.
 
-- Otros scripts de la base de datos, como la copia diaria a S3 (D-16).
-- Scripts de compilación y prueba del frontend y del backend (RP-16), y de gestión del repositorio en GitHub (RP-17).
-- Configuración del despliegue en AWS: una EC2 t4g con Docker Compose (D-16).
+La EC2 t4g es ARM (Graviton), así que toda imagen debe funcionar en amd64 y en arm64. La CI las construye en runners arm64.
 
-Los flujos de GitHub Actions (RP-18 y RP-19) tienen que estar en `.github/workflows/`, en la raíz del repositorio, porque GitHub solo los busca ahí. La integración continua ya está: `.github/workflows/ci.yml` (ver el README principal); sus pruebas de punta a punta encienden el entorno aislado, que usa `infra/docker-compose.yml` y el script del administrador de la plataforma. El despliegue, cuando llegue, se conectará a AWS por OIDC, sin claves guardadas.
+## Header de los JSON de AWS
 
-La EC2 t4g es ARM (Graviton), así que toda imagen debe funcionar en amd64 y en arm64.
+Header RP-10 de cada JSON de `infra/aws/` (los JSON no admiten comentarios y la consola los pide tal cual). Al cambiar uno, actualiza aquí su versión y su fecha de actualización.
+
+| Nombre | Descripción | Fecha de creación | Actualización | Autor | Versión |
+|---|---|---|---|---|---|
+| `ecr/ciclo-de-vida.json` | Regla de ciclo de vida de los repositorios de ECR (paso 4): borra las imágenes sin etiqueta al día y guarda las 15 más recientes. | 24/11/2026 | 24/11/2026 | Equipo InspectIA | 1.0 |
+| `iam/inspectia-ec2-permisos.json` | Política en línea del rol de la instancia `inspectia-ec2` (paso 6): bajar de ECR, sus prefijos del bucket de archivos, los dos parámetros de SSM, CloudWatch y SNS. | 24/11/2026 | 24/11/2026 | Equipo InspectIA | 1.0 |
+| `iam/inspectia-github-confianza.json` | Relación de confianza del rol de la CI `inspectia-github` (paso 11): solo GitHub Actions desde `main` de `DrekOF/inspectia`, por OIDC. | 24/11/2026 | 24/11/2026 | Equipo InspectIA | 1.0 |
+| `iam/inspectia-github-permisos.json` | Política en línea del rol `inspectia-github` (paso 11): subir a ECR, escribir en el bucket web, invalidar la distribución, encender la instancia y mandarle el comando de SSM. | 24/11/2026 | 24/11/2026 | Equipo InspectIA | 1.0 |
+| `s3/cors-archivos.json` | CORS del bucket de archivos (paso 9.7): la página sube y ve las fotos con PUT y GET prefirmados desde el dominio de CloudFront. | 24/11/2026 | 24/11/2026 | Equipo InspectIA | 1.0 |
+| `s3/politica-archivos.json` | Política del bucket de archivos (paso 3): rechaza todo lo que no llegue por HTTPS. | 24/11/2026 | 24/11/2026 | Equipo InspectIA | 1.0 |
 
 ## Base de datos local
 
@@ -62,7 +72,7 @@ El backend firma los tokens del inicio de sesión con la clave de `INSPECTIA_JWT
 - PowerShell: `$b = New-Object byte[] 32; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b); [Convert]::ToBase64String($b)`
 - Git Bash, Linux o macOS: `openssl rand -base64 32`
 
-No la compartas ni la subas al repositorio. Si cambia, las sesiones abiertas dejan de servir y hay que iniciar sesión de nuevo. En la EC2 vendrá de AWS SSM.
+No la compartas ni la subas al repositorio. Si cambia, las sesiones abiertas dejan de servir y hay que iniciar sesión de nuevo. En AWS sale del parámetro `/inspectia/jwt-clave` de SSM (ver «Despliegue en AWS»).
 
 ## Primer administrador de la plataforma
 
@@ -82,7 +92,7 @@ Qué hace:
 - Si el administrador ya existe, no cambia nada, así que se puede correr varias veces. Si el correo es de un usuario de una empresa, se detiene.
 - La contraseña no pasa por la línea de comandos ni queda en el registro de PostgreSQL.
 
-`backend/src/test/java/co/edu/usco/inspectia/CrearAdminPlataformaIT.java` lo prueba con Testcontainers. En la EC2, el despliegue tomará los datos de AWS SSM en lugar de `infra/.env`.
+`backend/src/test/java/co/edu/usco/inspectia/CrearAdminPlataformaIT.java` lo prueba con Testcontainers. En AWS se corre otro envoltorio del mismo SQL, que pide los datos por teclado: ver «Primer administrador en producción».
 
 ## Restablecer la contraseña del administrador de la plataforma
 
@@ -147,6 +157,255 @@ Para analizar la muestra (RF-10 a RF-12), con 2 o 3 fotos confirmadas:
 
 Si el resultado sugiere otra muestra (D-24), el usuario final analiza la segunda con los mismos tres pasos de las fotos y los mismos de arriba: la primera foto confirmada crea la muestra 2, sin tocar la 1, y `GET …/fotos` trae las de la 2. El lote sigue analizado con el resultado de la 1 hasta que la 2 termina; entonces el resultado se recalcula con los granos de las dos y ya no sugiere otra (D-25). Un lote sin sugerencia, o con sus 2 muestras, responde 409 a las fotos y al envío.
 
-Mientras no esté el servicio de IA (PR 4), los granos los da un clasificador falso, que registra su modelo (`clasificador-falso` 1.0) al arrancar el backend. Es predecible, para poder probar cada caso con la foto que se sube: da 50 granos por foto, son no sanos tantos como el ancho de la foto módulo 50, y dudosos tantos como el alto módulo 50. Dos fotos de 106 × 100 y 107 × 100 px dan 87 de 100 sanos: 90,6 %, Estándar, con sugerencia de otra muestra, a 0,6 puntos del límite de Estándar (90 %). Una segunda muestra con 108 × 100 y 107 × 100 px suma 172 de 200: 88,3 %, Corriente. Con `INSPECTIA_IA_FALSO_DEMORA` (por ejemplo `INSPECTIA_IA_FALSO_DEMORA=3s` en `infra/.env`) tarda más, para ver la espera en la página.
+En tu PC, los granos los da un clasificador falso (en AWS, el perfil `produccion` exige el servicio de IA; para usarlo en local, ver `ia-servicio/README.md`), que registra su modelo (`clasificador-falso` 1.0) al arrancar el backend. Es predecible, para poder probar cada caso con la foto que se sube: da 50 granos por foto, son no sanos tantos como el ancho de la foto módulo 50, y dudosos tantos como el alto módulo 50. Dos fotos de 106 × 100 y 107 × 100 px dan 87 de 100 sanos: 90,6 %, Estándar, con sugerencia de otra muestra, a 0,6 puntos del límite de Estándar (90 %). Una segunda muestra con 108 × 100 y 107 × 100 px suma 172 de 200: 88,3 %, Corriente. Con `INSPECTIA_IA_FALSO_DEMORA` (por ejemplo `INSPECTIA_IA_FALSO_DEMORA=3s` en `infra/.env`) tarda más, para ver la espera en la página.
 
 Para cambiar tu propia contraseña (RF-18), abre `PUT /api/v1/sesion/contrasena` con `contrasenaActual` y `contrasenaNueva`. La respuesta 200 trae un token nuevo, que vence a la misma hora que el anterior: pégalo en «Authorize», porque el anterior y los de tus demás sesiones responden 401 «Tu contraseña cambió». Una contraseña actual errada responde 400 y cuenta para el bloqueo; desde el quinto fallo seguido responde 429 hasta que termine.
+
+## Despliegue en AWS (D-16)
+
+Todo corre en la región **us-east-1 (N. Virginia)**, como en `02_Analisis_Diseno/InspectIA_Despliegue_AWS.pdf`:
+
+- **CloudFront** entrega la página desde el bucket `inspectia-web-<cuenta>` y lleva `/api/*` a la instancia por HTTP. **AWS WAF** limita, por IP, los intentos de inicio de sesión (P-17, D-51). Las rutas de React (`/lotes/12`) las resuelve la CloudFront Function `inspectia-rutas`, no las páginas de error: así un 404 de la API sigue siendo un 404 en JSON.
+- **La instancia** `inspectia-servidor` (t4g.medium, Amazon Linux 2023 arm64, sin llave SSH, con IP elástica) corre con Docker Compose PostgreSQL 18, el backend y el servicio de IA. Solo el backend se publica, en el puerto 80, y el grupo de seguridad solo deja entrar a CloudFront.
+- **S3** `inspectia-archivos-<cuenta>` guarda las fotos (`fotos/`), los reportes PDF (`reportes/`), los 5 modelos de Julián (`modelos/`) y la copia diaria de la base (`respaldos/`).
+- **ECR** guarda las imágenes `inspectia/backend` e `inspectia/ia-servicio`, con el SHA del commit como etiqueta.
+- **SSM Parameter Store** guarda los dos secretos: `/inspectia/jwt-clave` y `/inspectia/postgres-contrasena`. La instancia los lee al arrancar con su rol y los deja solo en memoria.
+- **CloudWatch** recibe los registros de los contenedores y del servidor, y las métricas de memoria, disco y swap; sus alarmas avisan por **SNS** (`inspectia-alertas`) al correo del equipo. **EventBridge Scheduler** apaga y enciende la instancia y **AWS Budgets** avisa si el gasto pasa del límite.
+
+Nada de esto se crea con código (ni Terraform ni CloudFormation): se crea una vez en la consola, con la guía de abajo. Lo que sí está en el repositorio es lo que se pega en la consola (`infra/aws/`), lo que corre en la instancia (`infra/produccion/`) y la CI que despliega.
+
+### Cómo despliega la CI
+
+`.github/workflows/ci.yml`, en cada push a `main` (o a mano, desde Actions, sobre `main`):
+
+1. Corren las pruebas de siempre y el job **Infraestructura** (`bash infra/probar.sh`).
+2. El job **Imágenes Docker** construye las imágenes del backend y del servicio de IA para arm64 en runners arm64 y las sube a ECR con la etiqueta del commit. En un PR solo las construye. La del servicio de IA primero se construye sin subirla, se arranca en el runner con `ia-servicio/scripts/comprobar_imagen.sh` y se le corre la prueba de paridad con el modelo de la release de Julián, comprobado por su SHA-256; solo si pasa se sube a ECR. Una imagen que no pasa nunca llega a ECR.
+3. Si todo pasó, el job **Despliegue en AWS**:
+   - revisa que las dos imágenes del commit estén en ECR;
+   - enciende la instancia si estaba apagada (el horario la vuelve a apagar a su hora);
+   - le manda por SSM (Run Command, sin SSH) `infra/produccion` y los SQL de `infra/bd`, que quedan en `/opt/inspectia`, y corre `actualizar.sh` con la etiqueta del commit: lee los secretos de SSM, baja las imágenes de ECR y levanta todo, esperando a que los tres servicios estén sanos. Solo cuando quedan sanos anota la etiqueta nueva en `/opt/inspectia/.env`. Si no quedan sanos, vuelve sola a la versión anterior (la que dice `.env`), el job falla y la página nueva no se publica: el sitio sigue con la versión anterior. Si la nueva aplicó una migración de Flyway, puede que la anterior no arranque con esa base: el registro del job lo dice y hay que seguir «Volver atrás»;
+   - compila la página y la sube al bucket web (`assets/` con caché de un año, `index.html` sin caché), invalida CloudFront y comprueba por CloudFront la página, una ruta de React y la API.
+4. Si algo falla en `main`, el job **Aviso de fallas** abre el issue, como siempre.
+
+GitHub entra a AWS con el rol `inspectia-github` por OIDC: no hay claves de AWS en GitHub. Mientras falte alguna de las variables del repositorio (paso 15), el despliegue se salta y la CI sigue en verde.
+
+### Guía de la consola, paso a paso
+
+Hazlo en este orden, con un usuario administrador de la cuenta (no con la cuenta raíz) y con la región **us-east-1** elegida arriba a la derecha. Cuando un archivo diga `<cuenta>`, `<instancia>`, `<distribucion>` o `<dominio-de-cloudfront>`, cámbialo por el valor real: el ID de la cuenta (12 dígitos, arriba a la derecha), el ID de la instancia (`i-…`), el ID de la distribución (`E…`) y su dominio (`d….cloudfront.net`).
+
+**1. AWS Budgets (el primer día).** Billing and Cost Management → Budgets → Create budget → Use a template → *Monthly cost budget*: nombre `inspectia-mensual`, monto **US$25** (lo previsto es ≈ US$16 apagándola de noche y ≈ US$31 encendida todo el mes, más ≈ US$6 de AWS WAF, D-51: ≈ US$22 y ≈ US$37; encendida todo el mes, llega el aviso del 100 %) y los correos del equipo. AWS avisa al 85 % y al 100 % del gasto real, y si el pronóstico pasa del 100 %.
+
+**2. SNS.** Simple Notification Service → Topics → Create topic → *Standard*, nombre `inspectia-alertas`. Después, Create subscription → protocolo *Email* → el correo del equipo. Cada correo debe aceptar el mensaje de confirmación que le llega.
+
+**3. Los dos buckets de S3.** S3 → Create bucket, dos veces, en us-east-1, con *Block all public access* encendido, *ACLs disabled* y el cifrado por defecto (SSE-S3):
+
+- `inspectia-web-<cuenta>`: la página. Queda vacío: lo llena la CI. Su política la da CloudFront en el paso 9.
+- `inspectia-archivos-<cuenta>`: fotos, reportes, modelos y respaldos. Después de crearlo:
+  - Permissions → Bucket policy: pega `infra/aws/s3/politica-archivos.json` (rechaza todo lo que no llegue por HTTPS).
+  - Management → Create lifecycle rule:
+    - `respaldos-35-dias`: prefijo `respaldos/`, *Expire current versions of objects* a los **35 días**.
+    - `subidas-incompletas`: todo el bucket, *Delete expired object delete markers or incomplete multipart uploads* → incompletas a los **7 días**.
+  - El CORS se pone en el paso 9, cuando ya está el dominio de CloudFront.
+
+**4. ECR.** Elastic Container Registry → Private repositories → Create repository, dos veces: `inspectia/backend` e `inspectia/ia-servicio`, con *Tag immutability* en **Mutable** (así volver a correr un despliegue no falla) y *Scan on push* encendido. En cada uno, Lifecycle policy → Edit JSON → pega `infra/aws/ecr/ciclo-de-vida.json`: guarda las 15 imágenes más recientes.
+
+**5. Los dos secretos en SSM, sin verlos ni pegarlos en ningún lado.** Abre **CloudShell** (el ícono `>_` de la barra de arriba de la consola) y corre:
+
+```sh
+aws ssm put-parameter --region us-east-1 --name /inspectia/jwt-clave --type SecureString --value "$(openssl rand -base64 32)"
+aws ssm put-parameter --region us-east-1 --name /inspectia/postgres-contrasena --type SecureString --value "$(openssl rand -hex 32)"
+```
+
+Los valores salen de `openssl` directo a SSM: nadie los ve ni quedan en un chat. Quedan cifrados con la llave por defecto de SSM (`aws/ssm`). `actualizar.sh` revisa su forma y no arranca si no sirven: la clave, 32 bytes o más en Base64; la contraseña, de 20 caracteres o más, solo letras sin tildes, números y `. _ ~ + -`.
+
+- **La contraseña de la base no se cambia** después del primer arranque: PostgreSQL la guarda al crear la base. Si hay que cambiarla, primero se cambia dentro de la base (`ALTER USER inspectia PASSWORD …` por Session Manager) y después en SSM, y se reinicia con `sudo /opt/inspectia/actualizar.sh && sudo docker compose -f /opt/inspectia/docker-compose.yml up -d --force-recreate`.
+- Cambiar la clave de los tokens cierra todas las sesiones abiertas.
+
+**6. El rol de la instancia, `inspectia-ec2`.** IAM → Roles → Create role → *AWS service* → *EC2* → agrega la política administrada **AmazonSSMManagedInstanceCore** (Session Manager y Run Command) → nombre `inspectia-ec2`. Después, en el rol: Add permissions → Create inline policy → JSON → pega `infra/aws/iam/inspectia-ec2-permisos.json` con tu `<cuenta>` → nombre `inspectia-ec2`. Con eso la instancia baja de ECR, usa solo sus prefijos del bucket de archivos (y no puede borrar los respaldos), lee los dos parámetros, escribe en CloudWatch y avisa a SNS si falla la copia. Riesgo aceptado: la política administrada de Session Manager deja leer cualquier parámetro de SSM; en esta cuenta solo están los de InspectIA.
+
+**7. El grupo de seguridad.** EC2 → Security Groups → Create: nombre `inspectia-servidor`, en la VPC por defecto. Inbound: una sola regla, *HTTP* (80) con origen la lista de prefijos administrada **`com.amazonaws.global.cloudfront.origin-facing`** (escribe `pl-` en el origen y elígela). Nada de SSH ni del 22: se entra por Session Manager. Outbound: el de siempre (todo).
+
+**8. La instancia.** EC2 → Launch instance:
+
+- Nombre `inspectia-servidor`; AMI **Amazon Linux 2023**, arquitectura **64-bit (Arm)**; tipo **t4g.medium**.
+- Key pair: **Proceed without a key pair**.
+- Red: la VPC por defecto, una subred pública, *Auto-assign public IP* encendido y el grupo `inspectia-servidor`.
+- Almacenamiento: **30 GiB gp3**, cifrado.
+- Advanced details:
+  - *IAM instance profile*: `inspectia-ec2`.
+  - *Metadata accessible* Enabled, *Metadata version* **V2 only (token required)** y *Metadata response hop limit* **2**: así los contenedores llegan al rol de la instancia (con 1 no llegan y el backend no puede usar S3).
+  - *Termination protection* encendido.
+  - *User data*: pega completo `infra/aws/datos-de-usuario.sh`. Instala Docker con su plugin compose y el agente de CloudWatch, crea 2 GB de swap, las carpetas y los servicios de systemd (el que levanta InspectIA al encender y el temporizador de la copia diaria).
+
+Después: EC2 → Elastic IPs → Allocate → Associate a `inspectia-servidor`. En la instancia, anota su ID (`i-…`) y su **Public IPv4 DNS** (`ec2-…compute-1.amazonaws.com`): es el origen de la API en CloudFront, que no acepta una IP.
+
+Para revisar que arrancó bien, a los 3 minutos: Connect → **Session Manager** → Connect, y:
+
+```sh
+sudo tail -n 20 /var/log/cloud-init-output.log   # termina con «Listo. El primer despliegue llega desde GitHub Actions»
+docker compose version                           # v5.6.0
+swapon --show                                    # /swapfile de 2G
+systemctl list-timers inspectia-respaldo.timer   # la próxima copia, a las 12:00 de Colombia
+```
+
+**9. CloudFront.**
+
+1. **La función de las rutas.** CloudFront → Functions → Create function: nombre `inspectia-rutas`, runtime **cloudfront-js-2.0**. Pega `infra/aws/cloudfront/rutas-react.js` → Save. En Test, con *Viewer request* y la URL `/lotes/12`, la respuesta debe tener `"uri": "/index.html"`; con `/api/v1/sesion`, la misma URL. Publish.
+2. **Los encabezados de seguridad.** CloudFront → Policies → Response headers → Create: nombre `inspectia-seguridad`, con *Strict-Transport-Security* (31536000 s, *includeSubDomains*), *X-Content-Type-Options*, *X-Frame-Options* `DENY`, *Referrer-Policy* `strict-origin-when-cross-origin` y *Content-Security-Policy* con el contenido de **`infra/aws/cloudfront/csp.txt`**, con los valores que ese archivo indica cambiar (el bucket de archivos, para subir y ver las fotos). Marca *Origin override* en todos. Es la política de D-31.
+3. **La distribución.** Create distribution, con el plan de pago por uso (la capa gratuita de CloudFront cubre este uso):
+   - Origen: el bucket `inspectia-web-<cuenta>` (elígelo de la lista, no el sitio web del bucket) con **Origin access control** (créalo con los valores por defecto). Al terminar, la consola ofrece copiar la política del bucket: pégala en `inspectia-web-<cuenta>` → Permissions → Bucket policy.
+   - Comportamiento por defecto: *Redirect HTTP to HTTPS*; métodos `GET, HEAD`; cache policy **CachingOptimized**; compresión; Function associations → *Viewer request* → **CloudFront Functions** → `inspectia-rutas`; response headers policy `inspectia-seguridad`.
+   - *Default root object*: `index.html`. En *Web Application Firewall (WAF)*, elige **Do not enable security protections**: las protecciones que propone la consola traen reglas administradas que se cobran aparte; el web ACL de InspectIA, con una sola regla, se crea en el paso 9.8. IPv6 y HTTP/2 y 3 encendidos; todas las ubicaciones.
+4. **El origen de la API.** En la distribución: Origins → Create origin: *Origin domain* el **Public IPv4 DNS** de la instancia, protocolo **HTTP only**, puerto **80**, *Response timeout* **60** s, nombre `inspectia-servidor`.
+5. **El comportamiento `/api/*`.** Behaviors → Create behavior: patrón **`/api/*`**, origen `inspectia-servidor`, *Redirect HTTP to HTTPS*, métodos **GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE**, cache policy **CachingDisabled**, origin request policy **AllViewerAndCloudFrontHeaders-2022-06** (pasa el token `Authorization`, la consulta, los demás encabezados y el `Host` de CloudFront, así las direcciones que arma el backend son las de CloudFront y no las de la instancia, y agrega `CloudFront-Viewer-Address` y `CloudFront-Forwarded-Proto`, con los que el backend sabe la IP del cliente y que llegó por HTTPS), response headers policy `inspectia-seguridad` y **sin** función. Revisa que `/api/*` quede antes que *Default (\*)*.
+6. Anota el **ID** de la distribución (`E…`) y su **dominio** (`d….cloudfront.net`).
+7. **El CORS del bucket de archivos**, ahora que está el dominio: `inspectia-archivos-<cuenta>` → Permissions → CORS → pega `infra/aws/s3/cors-archivos.json` con `https://d….cloudfront.net`. La página sube las fotos con `PUT` directo a S3, con la URL prefirmada que da el backend.
+8. **El límite de intentos de inicio de sesión por IP (P-17, D-51), con AWS WAF.** Sin cambios en el código: lo aplica CloudFront antes de llegar a la instancia.
+   1. **El web ACL.** AWS WAF & Shield → Web ACLs → arriba, la región **Global (CloudFront)** (el web ACL de CloudFront vive en us-east-1) → Create web ACL: *Resource type* **Amazon CloudFront distributions**, nombre **`inspectia-waf`** (la métrica, con el mismo nombre) y, en *Associated AWS resources*, Add → la distribución del paso 9.3. Next.
+   2. **La regla.** Add rules → *Add my own rules and rule groups* → *Rule builder*:
+      - *Type* **Rate-based rule**, nombre **`inspectia-limite-sesion`**.
+      - *Rate limit* **20** y *Evaluation window* **5 minutes (300 seconds)**; *Request aggregation* **Source IP address** (la IP del cliente, como la ve CloudFront).
+      - *Scope of inspection*: **Only consider requests that match the criteria in a rule statement**, con *If a request* **matches all the statements (AND)**:
+        - *Inspect* **HTTP method**, *Match type* **Exactly matches string**, *String to match* **`POST`**;
+        - *Inspect* **URI path**, *Match type* **Exactly matches string**, *String to match* **`/api/v1/sesion`**, con las *Text transformations* **URL decode** y **Normalize path**, para que `/api/v1/%73esion` o `/api/v1//sesion` cuenten igual.
+      - *Action* **Block** → *Custom response*: *Response code* **429**; *Response headers*, `Retry-After` con `300`; *Choose how you would like to specify the response body* → *Create a custom response body*: nombre `inspectia-demasiados-intentos`, *Content type* **JSON** y este cuerpo, con la forma de los errores de la API (RFC 9457):
+
+        ```json
+        {"type":"about:blank","title":"Demasiados intentos","status":429,"detail":"Demasiados intentos de inicio de sesión desde tu red. Espera 5 minutos y vuelve a intentarlo."}
+        ```
+
+        AWS WAF solo admite *text/plain*, *text/html* o *application/json* como tipo del cuerpo, así que sale como `application/json` y no como `application/problem+json`. La página lo lee igual: toma el `detail` de cualquier cuerpo en JSON. Va solo en español: la regla no distingue el idioma de la página.
+      - Add rule.
+   3. *Default web ACL action for requests that don't match any rules*: **Allow**. Next: es la única regla, no hay prioridad que ordenar. Next: deja encendidas *Request sampling* y las métricas de CloudWatch. Create web ACL.
+   4. Revisa en la distribución (General → Settings) que *AWS WAF* diga `inspectia-waf`.
+
+   **Por qué 20 en 5 minutos.** El bloqueo de D-28 y RF-01 cierra una cuenta 15 minutos después de 5 fallos seguidos. Con 20 intentos por IP en 5 minutos, una sola IP alcanza a bloquear a lo sumo 4 cuentas cada 5 minutos, y probar contraseñas se vuelve lento: 240 intentos por hora y por IP, y cada cuenta se cierra a los 5. A la vez, deja entrar sin bloqueo a unas 20 personas en 5 minutos detrás de una misma IP (la oficina de una empresa o la red del celular), y quien se equivoca varias veces no lo nota. Un límite más bajo, como 10 (el mínimo de WAF), empezaría a cortar oficinas compartidas al empezar la jornada. **Límite que se acepta:** ningún límite por IP impide bloquear una cuenta concreta, porque para eso bastan 5 intentos, ni frena a quien reparte los intentos entre muchas IP; eso lo sigue cubriendo el bloqueo de 15 minutos de D-28. WAF cuenta de forma aproximada y tarda del orden de un minuto en empezar a bloquear; el bloqueo dura hasta que esa IP baja de 20 intentos en los últimos 5 minutos.
+
+   **Probarlo** desde **CloudShell** (una sola IP), con un correo que no existe, para no bloquear ninguna cuenta (D-28 solo cuenta los fallos de un correo registrado):
+
+   ```sh
+   url=https://d….cloudfront.net
+   for i in $(seq 1 60); do
+     curl -s -o /dev/null -w '%{http_code}\n' -X POST "$url/api/v1/sesion" \
+       -H 'Content-Type: application/json' -d '{"correo":"prueba-waf@ejemplo.invalid","contrasena":"x"}'
+     sleep 2
+   done | sort | uniq -c        # primero 401 (correo o contraseña incorrectos) y, pasado el límite, 429
+   curl -s -i -X POST "$url/api/v1/sesion" -H 'Content-Type: application/json' -d '{}'   # el 429, con su cuerpo
+   ```
+
+   Mientras CloudShell está bloqueado, desde tu navegador (otra IP) se sigue entrando. A los 5 minutos sin intentos, CloudShell vuelve a recibir 401.
+
+   **Sus métricas:** AWS WAF & Shield → Web ACLs (Global) → `inspectia-waf` → *Traffic overview* (las peticiones permitidas y bloqueadas) y *Sampled requests* (cada petición bloqueada, con su IP); en *Rules*, la regla muestra las IP que tiene bloqueadas en ese momento. En CloudWatch (us-east-1) → Metrics → **WAFV2** → *Rule, WebACL* → `BlockedRequests` de `inspectia-limite-sesion`.
+
+   **Antes de la prueba de estrés (RNF-01 y RNF-02):** si la prueba inicia sesión muchas veces desde una misma IP, WAF la corta. Que inicie sesión una vez por usuario y reuse el token, o cambia la acción de la regla a **Count** mientras dura y vuelve a **Block** al terminar. La prueba de humo de la CI no la toca: usa `GET /api/v1/sesion`.
+
+**10. El proveedor OIDC de GitHub.** IAM → Identity providers → Add provider → *OpenID Connect*: URL `https://token.actions.githubusercontent.com` y audiencia `sts.amazonaws.com`.
+
+**11. El rol de la CI, `inspectia-github`.** IAM → Roles → Create role → *Web identity* → el proveedor `token.actions.githubusercontent.com`, audiencia `sts.amazonaws.com`, *GitHub organization* `DrekOF`, *repository* `inspectia`, *branch* `main` → sin políticas → nombre `inspectia-github`. Después, en el rol:
+
+- Trust relationships → Edit: debe quedar igual a `infra/aws/iam/inspectia-github-confianza.json` (con tu `<cuenta>`): solo `repo:DrekOF/inspectia:ref:refs/heads/main`, sin comodines. Un PR o una rama no lo pueden asumir.
+- Add permissions → Create inline policy → JSON → `infra/aws/iam/inspectia-github-permisos.json` con `<cuenta>`, `<instancia>` y `<distribucion>` → nombre `inspectia-github`. Solo sube a los dos repositorios de ECR, escribe en el bucket web, invalida esa distribución, enciende esa instancia y le manda el comando de SSM.
+- Copia el **ARN** del rol (`arn:aws:iam::<cuenta>:role/inspectia-github`).
+
+**12. CloudWatch.**
+
+- Logs → Log groups → Create, con retención de **30 días**: `/inspectia/contenedores` (los tres contenedores, un flujo por contenedor) y `/inspectia/despliegue` (la salida de cada comando de SSM de la CI). Si no los creas, se crean solos, pero sin retención. `/inspectia/servidor` (las actualizaciones, la copia diaria y el arranque de la instancia) no se crea: ya lo creó el agente de CloudWatch en el paso 8, con retención de 30 días (si lo intentas, la consola dice *already exists*).
+- Alarms → Create alarm, todas con acción a `inspectia-alertas` y con *Treat missing data as* **good (not breaching)**, porque de noche la instancia está apagada:
+
+| Alarma | Métrica | Condición |
+|---|---|---|
+| `inspectia-cpu` | EC2 → Per-Instance → `CPUUtilization` de la instancia | promedio > 80 % durante 3 periodos de 5 min |
+| `inspectia-estado` | EC2 → Per-Instance → `StatusCheckFailed` | máximo ≥ 1 durante 2 periodos de 1 min |
+| `inspectia-memoria` | CWAgent → InstanceId → `mem_used_percent` | promedio > 90 % durante 2 periodos de 5 min |
+| `inspectia-disco` | CWAgent → InstanceId, fstype, path → `disk_used_percent` (path `/`) | máximo > 80 % durante 1 periodo de 5 min |
+| `inspectia-errores-5xx` | CloudFront → Per-Distribution → `5xxErrorRate` (región *Global*) | promedio > 5 % durante 2 periodos de 5 min |
+
+Las métricas de CWAgent aparecen unos minutos después de que el agente arranca. Si la copia diaria falla, `respaldar.sh` avisa directo a `inspectia-alertas`.
+
+**13. EventBridge Scheduler.** EventBridge → Scheduler → Schedules → Create schedule, dos veces, con *Recurring schedule*, *Cron-based*, zona horaria **America/Bogota** y *Flexible time window* Off:
+
+- `inspectia-encender`: `cron(0 7 ? * MON-FRI *)` → target *All APIs* → *Amazon EC2* → **StartInstances** con `{"InstanceIds": ["<instancia>"]}`.
+- `inspectia-apagar`: `cron(0 22 ? * MON-FRI *)` → **StopInstances** con el mismo JSON.
+
+En Permissions deja *Create new role for this schedule*. Ajusta las horas a las del equipo. **El jueves de la sustentación y durante la prueba de estrés, desactiva `inspectia-apagar`** (Disable) y vuelve a activarlo después. Si la CI despliega con la instancia apagada, la enciende; el horario la vuelve a apagar a su hora.
+
+**14. Los modelos de IA en S3.** El servicio de IA baja de `s3://inspectia-archivos-<cuenta>/modelos/` el modelo elegido (EfficientNet-B0) y comprueba su SHA-256: sin él, no arranca. Súbelos una vez, antes de poner las variables del paso 15 (con ellas, el siguiente push a `main` ya despliega), con el script de `ia-servicio/scripts/` desde **CloudShell** (ya tiene las credenciales de tu sesión, así no hacen falta claves en tu PC): `git clone https://github.com/DrekOF/inspectia.git` y sigue `ia-servicio/README.md`. El script llegó a `main` con el PR del servicio de IA (#22). El script baja los 5 modelos del release `modelos-v1.0` de Julián, comprueba su SHA-256 y los sube con sus JSON y su `manifest.json`. Revisa en S3 que estén en `modelos/`.
+
+**15. Las variables del repositorio en GitHub.** En GitHub: Settings → Secrets and variables → Actions → pestaña **Variables** → New repository variable. Son variables, no secretos: no dan acceso a nada sin el rol, que solo se asume desde `main`.
+
+**Ponlas solo cuando estén listos los dos requisitos del primer despliegue:**
+
+- Los modelos ya están en S3 (paso 14). Sin ellos, el servicio de IA no queda sano y el despliegue falla.
+- El PR del servicio de IA (#22) ya está fusionado en `main` (desde el 24/11/2026). Trae `ia-servicio/Dockerfile` (sin él no hay imagen de `inspectia/ia-servicio` en ECR y el despliegue falla) y el clasificador `servicio` del backend, que el compose de producción pide con `INSPECTIA_IA_CLASIFICADOR: servicio` (sin él, el backend no arranca). Ese PR y el del despliegue van los dos en `main` antes del primer despliegue, en cualquier orden: mientras falten las variables, la CI no despliega.
+
+| Variable | Valor | Ejemplo |
+|---|---|---|
+| `AWS_CUENTA` | el ID de la cuenta | `123456789012` |
+| `AWS_ROL_GITHUB` | el ARN del rol del paso 11 | `arn:aws:iam::123456789012:role/inspectia-github` |
+| `CLOUDFRONT_DISTRIBUCION` | el ID de la distribución | `E2ABCDEF123456` |
+| `EC2_INSTANCIA` | el ID de la instancia | `i-0abc123def4567890` |
+| `INSPECTIA_URL` | la dirección de la página, sin `/` al final | `https://d1234abcd.cloudfront.net` |
+
+Con las cinco, el siguiente push a `main` despliega. Para desplegar sin un commit nuevo: Actions → CI → Run workflow → `main`.
+
+**16. El primer despliegue.** Con los pasos anteriores listos (los modelos en S3, el PR del servicio de IA y el del despliegue en `main`, y las variables puestas), haz un push a `main` o corre la CI a mano en `main` y mira el job **Despliegue en AWS**. La primera vez tarda más: la instancia baja las imágenes y el servicio de IA baja el modelo de S3.
+
+### Primer administrador en producción
+
+Con InspectIA arriba (el backend ya creó las tablas), entra a la instancia por Session Manager y corre:
+
+```sh
+sudo /opt/inspectia/admin-plataforma.sh crear
+```
+
+Pide el nombre, el correo y la contraseña inicial (dos veces, sin mostrarla) y corre `infra/bd/crear-admin-plataforma.sql` contra la base de producción, con las mismas reglas que en local. No queda nada en archivos ni en el historial. Para restablecer su contraseña (D-30): `sudo /opt/inspectia/admin-plataforma.sh restablecer`.
+
+### Probar que todo funciona
+
+1. En GitHub Actions, la corrida de `main` en verde, con **Despliegue en AWS** terminado (no saltado).
+2. En el navegador, `https://d….cloudfront.net`: carga la página con candado (HTTPS). Abre directo `https://d….cloudfront.net/lotes/1`: carga la página (la CloudFront Function), no un error de S3. `https://d….cloudfront.net/api/v1/sesion` responde 401 en JSON, no la página.
+3. Inicia sesión con el administrador de la plataforma. Crea una empresa con su administrador, entra con él, crea un usuario final y entra con él (si el token no llegara al backend, cada petición después de iniciar sesión daría 401: ver «Si algo falla»).
+4. Registra un lote, sube 2 fotos (van directo a S3: en `inspectia-archivos-<cuenta>/fotos/` aparecen) y analízalo: el resultado sale del modelo real, en pocos segundos (RNF-01). Descarga el reporte PDF (queda en `reportes/`).
+5. En la instancia, por Session Manager:
+
+   ```sh
+   sudo docker compose -f /opt/inspectia/docker-compose.yml ps   # postgres, ia-servicio y backend «healthy»
+   free -h                                                     # memoria y swap
+   sudo tail -n 20 /var/log/inspectia/actualizar.log           # «InspectIA <etiqueta> quedó arriba y sano.»
+   ```
+
+6. En CloudWatch: Logs → `/inspectia/contenedores` con un flujo por contenedor; Metrics → CWAgent con la memoria y el disco de la instancia; las alarmas en *OK* (o *Insufficient data* al principio).
+7. En SNS, `inspectia-alertas` → Publish message → «prueba»: llega al correo del equipo.
+8. Apaga y enciende la instancia desde la consola: a los 3 o 4 minutos InspectIA vuelve a responder solo (el servicio `inspectia` de systemd lee los secretos y levanta todo).
+
+### Copia diaria de la base y su restauración
+
+Cada día a las 12:00 de Colombia (o al encender, si a esa hora estaba apagada), el temporizador `inspectia-respaldo` corre `/opt/inspectia/respaldar.sh`: saca un `pg_dump` comprimido (formato custom de PostgreSQL), comprueba que `pg_restore` lo lee y lo sube a `s3://inspectia-archivos-<cuenta>/respaldos/inspectia-<fecha en UTC>.dump`. S3 borra las copias de más de 35 días. Si falla, avisa a `inspectia-alertas`. Su registro queda en `/var/log/inspectia/respaldo.log` y en CloudWatch (`/inspectia/servidor`).
+
+**Probar que una copia se restaura** (sin tocar producción), por Session Manager:
+
+```sh
+sudo systemctl start inspectia-respaldo.service              # saca una copia ahora
+aws s3 ls s3://inspectia-archivos-<cuenta>/respaldos/        # ahí está
+sudo /opt/inspectia/restaurar-respaldo.sh --prueba ultimo    # la restaura aparte y compara
+```
+
+`--prueba` restaura la copia en una base aparte (`inspectia_prueba`), compara cuántas filas tiene cada tabla con la base en uso, muestra el conteo y borra la base de prueba. Termina con «se restauró y tiene las mismas filas que la base en uso». Si alguien usó InspectIA entre la copia y la prueba, los conteos difieren: saca otra copia y repite. Hazlo una vez antes de la sustentación.
+
+**Restaurar de verdad** (reemplaza la base en uso): `sudo /opt/inspectia/restaurar-respaldo.sh ultimo` o con el nombre de una copia. Pide escribir `RESTAURAR`, antes saca una copia de lo que hay, detiene el backend, restaura y lo vuelve a levantar.
+
+### Operación
+
+- **Ver registros:** CloudWatch → Logs → `/inspectia/contenedores` (backend, ia-servicio y postgres). En la instancia, `sudo docker compose -f /opt/inspectia/docker-compose.yml logs --tail 100 backend`.
+- **Volver atrás:** `sudo /opt/inspectia/actualizar.sh <etiqueta>` con el SHA de un commit anterior que esté en ECR (el anterior queda en `/opt/inspectia/.env`, como `ETIQUETA_ANTERIOR`). Si la versión nueva aplicó una migración de Flyway, la anterior no arranca con esa base: en ese caso se corrige con un commit nuevo, o se restaura la copia de antes del despliegue.
+- **Volver a levantar todo:** `sudo systemctl restart inspectia`.
+- **Si algo falla:**
+  - El job de despliegue dice que falta la imagen de `inspectia/ia-servicio`: mira el job **Imágenes Docker (ia-servicio)** de esa corrida. Si falló su comprobación (las importaciones o la paridad con el modelo), la imagen no se subió a ECR, a propósito: corrige y haz un commit nuevo.
+  - El job de despliegue falla con «no quedó sano. Sigue la versión anterior, …, sana»: el sitio sigue con la versión anterior. Mira el registro del job (o `/var/log/inspectia/actualizar.log`), corrige y haz un commit nuevo. Si dice que la anterior tampoco arrancó, ve a «Volver atrás».
+  - `actualizar.sh` dice que un parámetro no es válido: revisa el paso 5.
+  - El servicio de IA no queda sano: mira su registro; si no encuentra el modelo o su SHA-256 no coincide, revisa el paso 14.
+  - Con la sesión iniciada, todo responde 401: CloudFront no está pasando el encabezado `Authorization`. Revisa que `/api/*` tenga **CachingDisabled** y **AllViewerAndCloudFrontHeaders-2022-06**. Si aun así no pasa, crea una cache policy `inspectia-api` con TTL mínimo 0, por defecto 0 y máximo 1, y el encabezado `Authorization` en la clave de caché, y úsala en `/api/*` en lugar de CachingDisabled.
+  - Las fotos no suben (error de CORS en la consola del navegador): revisa el paso 9.7 y la política de seguridad de contenido.
+- **P-17 (límite de intentos de inicio de sesión por IP):** resuelto con AWS WAF (D-51, paso 9.8), sin cambios en el código: el backend no usa la IP para limitar nada.
+- **El encabezado secreto de origen** ya no hace falta para P-17, pero sigue sirviendo para otra cosa: la lista de prefijos de CloudFront del grupo de seguridad admite cualquier distribución de cualquier cuenta, así que una distribución ajena que apunte al DNS de la instancia llega al backend **sin pasar por nuestro WAF** (y puede mandar el `CloudFront-Viewer-Address` que quiera). Hoy eso no da acceso a nada, porque la API exige el token y el bloqueo de D-28 sigue en el backend: solo le quita a quien lo intente el límite de WAF. Cerrarlo pide un cambio en el código, que queda fuera de D-51: un encabezado en el origen `inspectia-servidor` (*Add custom header*, por ejemplo `X-Origen-Inspectia`, con un valor al azar guardado en SSM) que el filtro `EncabezadosDeCloudFront` del perfil `produccion` exija.
+- **Riesgo aceptado:** entre CloudFront y la instancia el tráfico va por HTTP (el navegador sí usa HTTPS con CloudFront). La instancia solo acepta conexiones de CloudFront.

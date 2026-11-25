@@ -1,11 +1,12 @@
 <!--
 Nombre: README.md (frontend)
 Descripción: La página web de InspectIA: qué hay en frontend/, cómo arrancarla junto con el backend, sus textos,
-             sus pruebas, el entorno aislado de las pruebas de punta a punta y la demostración de otra temática.
+             sus pruebas, el entorno aislado de las pruebas de punta a punta, la demostración de otra temática y cómo se
+             publica en AWS.
 Fecha de creación: 12/10/2026
 Actualización: 24/11/2026
 Autor: Equipo InspectIA
-Versión: 1.12
+Versión: 1.13
 -->
 
 # frontend
@@ -123,6 +124,11 @@ La copia va dentro de `frontend/` y no en la raíz del repositorio: el backend d
 ## Producción
 
 La página se publica en S3 y se sirve con CloudFront (D-16), en el mismo origen que la API, así que el backend no necesita CORS (D-31). CloudFront agrega la cabecera Content-Security-Policy con `script-src 'self'` y `style-src 'self' 'unsafe-inline'`: Material UI inyecta sus estilos en la página. Es un riesgo aceptado en D-31.
+
+- **Quién la publica:** el job «Despliegue en AWS» de la CI, en cada push a `main` y solo cuando el servidor nuevo quedó sano: `npm ci`, `npm run build` y `dist/` al bucket `inspectia-web-<cuenta>`. No se publica a mano.
+- **La caché:** `assets/` lleva el hash en el nombre y se guarda un año, sin cambios (`immutable`); los archivos viejos se dejan, por si una pestaña abierta con la versión anterior todavía los pide. `index.html` va al final y con `no-cache`, así el navegador siempre pregunta si hay una versión nueva. Después, la CI invalida `/*` en CloudFront y comprueba `/`, `/lotes/1` y que `/api/v1/sesion` responda 401.
+- **Las rutas de React:** la CloudFront Function `inspectia-rutas` (`infra/aws/cloudfront/rutas-react.js`) manda a `/index.html` toda ruta que no sea de `/api` ni de un archivo (con un punto en su último tramo). Por eso una ruta nueva de React no debe llevar puntos.
+- **La política de contenido:** la exacta está en `infra/aws/cloudfront/csp.txt`. Deja subir y ver las fotos en el bucket de archivos de S3 (`connect-src` e `img-src`) y las fuentes en `data:`; la página no puede tener scripts en línea ni cargar nada de otro origen fuera de ese bucket.
 
 ## Convenciones
 

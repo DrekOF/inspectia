@@ -1,0 +1,15 @@
+# Nombre: .dockerignore (backend)
+# Descripción: Qué entra al contexto de la imagen del backend (D-16): solo Maven, el pom, el código de src/main y
+#              src/generated, y la entrada de docker/. Ni target/, ni las pruebas, ni archivos del editor.
+# Fecha de creación: 24/11/2026
+# Actualización: 24/11/2026
+# Autor: Equipo InspectIA
+# Versión: 1.0
+
+*
+!.mvn/
+!mvnw
+!pom.xml
+!src/main/
+!src/generated/
+!docker/entrada.sh

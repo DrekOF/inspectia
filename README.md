@@ -1,10 +1,10 @@
 <!--
 Nombre: README.md
-Descripción: Presentación del monorepo de InspectIA: estructura, versiones, requisitos del entorno de desarrollo, base de datos local, servicio de IA, frontend, integración continua y cita del dataset.
+Descripción: Presentación del monorepo de InspectIA: estructura, versiones, requisitos del entorno de desarrollo, base de datos local, servicio de IA, frontend, integración continua, despliegue en AWS y cita del dataset.
 Fecha de creación: 12/10/2026
 Actualización: 24/11/2026
 Autor: Equipo InspectIA
-Versión: 1.16
+Versión: 1.17
 -->
 
 # InspectIA
@@ -28,7 +28,7 @@ Proyecto final de Inteligencia Artificial, Universidad Surcolombiana. Docente: J
 
 ## Versiones
 
-Fijadas el 12/10/2026; las del frontend, el 20/10/2026, y las del servicio de IA, el 24/11/2026. La versión exacta de cada librería queda en `backend/pom.xml`, `frontend/package.json` e `ia-servicio/requirements.txt`.
+Fijadas el 12/10/2026; las del frontend, el 20/10/2026, y las del servicio de IA y las del despliegue en AWS, el 24/11/2026. La versión exacta de cada librería queda en `backend/pom.xml`, `frontend/package.json` e `ia-servicio/requirements.txt`.
 
 | Pieza | Versión | Notas |
 |---|---|---|
@@ -48,7 +48,10 @@ Fijadas el 12/10/2026; las del frontend, el 20/10/2026, y las del servicio de IA
 | Python | 3.13 para `generador/`; 3.12 (3.12.16) para `ia-servicio/` | El generador usa Jinja2 3.1.6 y pytest 9.1.1 (`generador/requirements*.txt`). El servicio de IA usa la 3.12, la de su imagen de Docker y la de la CI. |
 | Servicio de IA | TensorFlow 2.21.0 (CPU), FastAPI 0.165.0 con Uvicorn 0.54.0, OpenCV 5.1.0 (`opencv-python-headless` 5.1.0.95), Pillow 13.0.0 y numpy 2.5.5 | TensorFlow 2.21 es la versión con la que Julián exportó el SavedModel (D-40). Todas publican paquetes para Linux amd64 y arm64 con Python 3.12. boto3 1.44.10 baja el modelo de S3; las pruebas usan pytest 9.2.0 y httpx 0.28.1 (`ia-servicio/requirements*.txt`). |
 | PostgreSQL | 18 | Corre en Docker; no hace falta instalarlo. |
+| AWS SDK for Java | 2.59.8 (BOM `software.amazon.awssdk:bom`) | Solo el cliente de S3, con el cliente HTTP de Apache: el backend guarda las fotos y los reportes en S3 y firma sus enlaces temporales (D-16). Se excluye `netty-nio-client`, que solo usan los clientes asíncronos. |
+| Docker Compose en la instancia | v5.6.0 | La instancia EC2 usa Amazon Linux 2023. `infra/aws/datos-de-usuario.sh` baja el plugin del release oficial y comprueba su SHA-256. |
 | GitHub Actions | `checkout` v7, `setup-java` v6, `setup-python` v7, `setup-node` v7 y `upload-artifact` v7, en Ubuntu 24.04 | Las acciones oficiales de GitHub, en su versión mayor; fijadas el 04/11/2026. |
+| GitHub Actions del despliegue | `docker/setup-buildx-action` v4, `docker/build-push-action` v7, `aws-actions/configure-aws-credentials` v6 y `aws-actions/amazon-ecr-login` v2 | Construyen las imágenes arm64 en `ubuntu-24.04-arm`, las suben a ECR y entran a AWS por OIDC, sin claves; fijadas el 24/11/2026. |
 
 ### Imágenes de Docker
 
@@ -57,9 +60,9 @@ En producción todo corre en una EC2 t4g, que tiene procesador ARM (Graviton, D-
 | Uso | Imagen base | Por qué |
 |---|---|---|
 | Base de datos | `postgres:18-alpine` | Imagen oficial. |
-| Backend: compilar | `eclipse-temurin:25-jdk-noble` | Ubuntu. |
-| Backend: ejecutar | `eclipse-temurin:25-jre-noble` | Solo el JRE: imagen más liviana. |
-| Servicio de IA | `python:3.12.16-slim-trixie` | Debian y no Alpine: TensorFlow y OpenCV publican paquetes para Linux con glibc, no para Alpine (musl). |
+| Backend: compilar | `eclipse-temurin:25-jdk-noble` | Ubuntu. La usa `backend/Dockerfile`. |
+| Backend: ejecutar | `eclipse-temurin:25-jre-noble` | Solo el JRE: imagen más liviana. Corre con el usuario `inspectia` (UID 10001) y el heap en el 60 % de la memoria del contenedor. |
+| Servicio de IA | `python:3.12.16-slim-trixie` | Debian y no Alpine: TensorFlow y OpenCV publican paquetes para Linux con glibc, no para Alpine (musl). La usa `ia-servicio/Dockerfile`. |
 | Frontend: compilar | `node:24-alpine` | Solo para compilar. En producción la página se sirve desde S3 y CloudFront. |
 
 Las imágenes propias se construyen para las dos arquitecturas con `docker buildx build --platform linux/amd64,linux/arm64`.
@@ -150,10 +153,11 @@ Los comandos están en la sección Comandos de `CLAUDE.md`. En resumen:
 - **Contraseñas:** cada usuario cambia la suya con `PUT /api/v1/sesion/contrasena` (RF-18). Si el administrador de la plataforma olvida la suya, el equipo la restablece con un script de la base de datos (D-30); los pasos están en `infra/README.md`.
 - **Rangos de recomendación:** el administrador de empresa lista, edita en bloque y restaura los 4 rangos de su empresa en la pantalla «Rangos de recomendación» o en `/api/v1/rangos-recomendacion` (RF-13); los pasos para probar la API están en `infra/README.md`.
 - **Lotes:** el usuario final registra un lote en «Nuevo lote» o con `POST /api/v1/lotes` (RF-04), y él y el administrador de empresa ven los lotes de su empresa en «Historial» o en `GET /api/v1/lotes` (RF-14), con filtros por fecha del resultado, estado, categoría, código y quien registró el lote, solos o combinados (RF-14 C2); los pasos para probar la API están en `infra/README.md`.
-- **Fotos de la muestra:** después de registrar un lote, o con «Continuar» en el historial, el usuario final sube 2 o 3 fotos en «Fotos de la muestra»: en el celular, «Tomar foto» abre la cámara, y en el PC, «Elegir archivo» abre el selector (RF-05, RF-14 C5). Mientras no haya despliegue en AWS, las fotos se guardan en una carpeta de tu PC, fuera del repositorio, con enlaces que firma el backend (D-41). No hace falta tocar `infra/.env` ni reiniciar la base; ver «Fotos en tu PC» en `infra/README.md`.
+- **Fotos de la muestra:** después de registrar un lote, o con «Continuar» en el historial, el usuario final sube 2 o 3 fotos en «Fotos de la muestra»: en el celular, «Tomar foto» abre la cámara, y en el PC, «Elegir archivo» abre el selector (RF-05, RF-14 C5). En AWS suben directo a S3 con enlaces prefirmados (D-16); en tu PC, las fotos se guardan en una carpeta, fuera del repositorio, con enlaces que firma el backend (D-41). No hace falta tocar `infra/.env` ni reiniciar la base; ver «Fotos en tu PC» en `infra/README.md`.
 - **Revisión de las fotos:** con el servicio de IA, al confirmar cada foto el backend le pide la revisión rápida (D-46) y la foto queda «Aprobada», con cuántos granos tiene, o «Por repetir», con su motivo: foto borrosa, poca luz o granos pegados, marcados sobre la foto (RF-06, RF-07). Debajo de las fotos, la página suma los granos y avisa si no llegan a 100. Si la muestra vuelve sin resultado, la página dice por qué y qué hacer: una foto por repetir, menos de 100 granos o el servicio de IA sin responder (D-44). Si más del 10 % de los granos quedan dudosos, pide repetir la foto con más dudosos, marcados con «?», hasta 2 veces; después, el resultado sale con el aviso «Confianza baja: confirma con la prueba de corte.» (RF-09). En local, el backend sigue con el clasificador falso, que no revisa las fotos.
-- **Resultado del lote:** con 2 o 3 fotos, el usuario final pulsa «Analizar la muestra». El análisis espera su turno en una cola guardada en la base (RNF-02) y la página muestra el avance; al terminar, «Resultado del lote» trae el porcentaje de granos sanos corregido (D-39) con su rango probable (D-43), la categoría probable con su recomendación (RF-12) y las fotos con cada grano marcado (RF-11). Si el resultado quedó a menos de 1 punto del límite de una categoría, la página lo dice, con el límite (D-47), y el usuario final puede analizar una segunda muestra del mismo lote; al terminar, el resultado suma los granos de las dos (D-25, RF-14 C6). «Ver» en el historial abre el mismo detalle, también a la administradora. En local, los granos los da un clasificador falso; los pasos para probar la API están en `infra/README.md`.
+- **Resultado del lote:** con 2 o 3 fotos, el usuario final pulsa «Analizar la muestra». El análisis espera su turno en una cola guardada en la base (RNF-02) y la página muestra el avance; al terminar, «Resultado del lote» trae el porcentaje de granos sanos corregido (D-39) con su rango probable (D-43), la categoría probable con su recomendación (RF-12) y las fotos con cada grano marcado (RF-11). Si el resultado quedó a menos de 1 punto del límite de una categoría, la página lo dice, con el límite (D-47), y el usuario final puede analizar una segunda muestra del mismo lote; al terminar, el resultado suma los granos de las dos (D-25, RF-14 C6). «Ver» en el historial abre el mismo detalle, también a la administradora. En local, los granos los da un clasificador falso, y en AWS, el servicio de IA; los pasos para probar la API están en `infra/README.md`.
 - **Servicio de IA:** `ia-servicio/` revisa las fotos, separa los granos y los clasifica con EfficientNet-B0 v1.0, el SavedModel de la release `modelos-v1.0` de Julián (RF-06 a RF-08, D-40). Al arrancar comprueba el SHA-256 del modelo con `ia-servicio/modelos.json` y, si no coincide, no arranca. El backend lo usa con `INSPECTIA_IA_CLASIFICADOR=servicio` e `INSPECTIA_IA_URL`. `ia-servicio/scripts/subir_modelos.py` sube los 5 modelos de la release a S3. Cómo crear su entorno, probarlo y arrancarlo: «Comandos» en `CLAUDE.md` y `ia-servicio/README.md`.
+- **Despliegue en AWS (D-16):** en cada push a `main`, la CI sube las imágenes a ECR, actualiza la instancia EC2 por SSM (con los secretos de SSM solo en memoria y la vuelta sola a la versión anterior si la nueva no queda sana), publica la página en S3 e invalida CloudFront. Trae el perfil `produccion` del backend, que exige S3 y el servicio de IA, la copia diaria de la base a S3 y la guía de la consola de AWS, paso a paso, en `infra/README.md`.
 - **Generador:** los CRUD (tablas, backend y pantallas) salen de `specs/entidades/*.json` y no se editan a mano (RP-23). Hoy tienen pantalla las empresas, los usuarios y los rangos. Ver `generador/README.md`.
 - **Casos de prueba:** `docs/casos-de-prueba.md` lista cada criterio de aceptación con sus pruebas y los que aún no tienen ninguna (RP-13). Lo arma `generador/casos_de_prueba.py` desde las marcas de las pruebas.
 
@@ -179,6 +183,9 @@ GitHub Actions corre `.github/workflows/ci.yml` en cada PR hacia `main`, en cada
 | Frontend | `npm ci`, ESLint, Vitest y el build | 2 min |
 | Servicio de IA | Sus pruebas con pytest, también la de paridad con `inferencia.py`, con el modelo real: lo baja de la release de Julián (o de la caché) y comprueba su SHA-256 | Se mide en la primera corrida |
 | De punta a punta | Si pasan los tres anteriores, contra un solo entorno aislado: Playwright, en Chrome, Firefox y Safari, de PC y de celular, y Selenium, en Chrome | 13 min, 10 de ellos de Playwright |
+| Infraestructura | `bash infra/probar.sh`: la sintaxis y ShellCheck de los scripts del despliegue, los JSON de AWS, el compose de producción, la CloudFront Function, las políticas IAM y el script de arranque de la instancia | Segundos |
+| Imágenes Docker | Construye las imágenes arm64 del backend y del servicio de IA. La del servicio de IA la arranca con `ia-servicio/scripts/comprobar_imagen.sh` y le corre la prueba de paridad con el modelo de la release, comprobado por su SHA-256. Solo en `main` las sube a ECR, y la del servicio de IA solo si pasó la comprobación | Sin medir todavía |
+| Despliegue en AWS | Solo en `main`, si pasan todos los anteriores y están las 5 variables de AWS del repositorio: actualiza la instancia, publica la página, invalida CloudFront y comprueba el sitio. Sin las variables, se salta | Sin medir todavía |
 | Aviso de fallas | Solo en `main`: abre, comenta o cierra el issue de cada job | Segundos |
 
 - **Si un job falla en `main`:**

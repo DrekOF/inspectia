@@ -1,10 +1,10 @@
 <!--
 Nombre: arquitectura.md
-Descripción: Resumen de la arquitectura del sistema y del software de InspectIA (D-16, D-18, D-21, D-23, D-25, D-40 y D-44 a D-48). Detalle en 02_Analisis_Diseno/InspectIA_Despliegue_AWS.pdf.
+Descripción: Resumen de la arquitectura del sistema y del software de InspectIA (D-16, D-51, D-18, D-21, D-23, D-25, D-40 y D-44 a D-48). Detalle en 02_Analisis_Diseno/InspectIA_Despliegue_AWS.pdf.
 Fecha de creación: 12/10/2026
 Actualización: 24/11/2026
 Autor: Equipo InspectIA
-Versión: 1.8
+Versión: 1.9
 -->
 
 # Arquitectura de InspectIA
@@ -20,7 +20,7 @@ Versión: 1.8
 | Archivos | Amazon S3 | Fotos, reportes PDF y los 5 modelos de Julián con su comparación. En local, las fotos van a una carpeta del servidor (D-41). |
 
 - El servidor es un solo programa dividido en módulos (monolito modular). Sin microservicios.
-- Despliegue en AWS (us-east-1): CloudFront + S3 para la página web; una EC2 t4g.medium con Docker Compose (servidor, servicio de IA y PostgreSQL); S3; ECR; CloudWatch + SNS; EventBridge Scheduler; AWS Budgets. Costo estimado: ≈ US$31 al mes 24/7 o ≈ US$16 apagándola de noche.
+- Despliegue en AWS (us-east-1): CloudFront + S3 para la página web; una EC2 t4g.medium con Docker Compose (servidor, servicio de IA y PostgreSQL); S3; ECR; CloudWatch + SNS; EventBridge Scheduler; AWS Budgets; AWS WAF en la distribución, con el límite de intentos de inicio de sesión por IP (D-51). Costo estimado: ≈ US$31 al mes 24/7 o ≈ US$16 apagándola de noche, más ≈ US$6 de AWS WAF (D-51): ≈ US$37 o ≈ US$22.
 - Docker Compose y no ECS: con una sola máquina, Compose basta. Se pasaría a ECS si una máquina no alcanza o si el producto exige alta disponibilidad.
 - Las fotos se suben directo a S3 con enlaces temporales (URL prefirmadas) que genera el servidor. En local, el servidor hace las veces de S3: guarda las fotos en una carpeta y firma sus propios enlaces, que no piden sesión (D-41).
 - CI/CD con GitHub Actions: si las pruebas pasan, publica el front-end en S3 y las imágenes en ECR y actualiza la instancia por SSM; si fallan, crea un issue y avisa al equipo. Conexión a AWS por OIDC, sin claves en el repositorio.

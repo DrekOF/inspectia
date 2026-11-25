@@ -1,0 +1,12 @@
+# Nombre: csp.txt
+# Descripción: El valor exacto de la cabecera Content-Security-Policy que agrega CloudFront a la página (D-31, D-16):
+#              la página sube (connect-src) y ve (img-src) las fotos con los enlaces prefirmados del bucket de
+#              archivos, cuyo host para us-east-1 es <bucket>.s3.amazonaws.com (lo comprueba AlmacenEnS3Test con el
+#              firmador del AWS SDK). Se copia la última línea, la que no empieza por «#», cambiando <cuenta> por el ID
+#              de la cuenta de AWS, en la política de cabeceras de respuesta de CloudFront (Security headers >
+#              Content security policy, con «Origin override» marcado).
+# Fecha de creación: 24/11/2026
+# Actualización: 24/11/2026
+# Autor: Equipo InspectIA
+# Versión: 1.0
+default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://inspectia-archivos-<cuenta>.s3.amazonaws.com; connect-src 'self' https://inspectia-archivos-<cuenta>.s3.amazonaws.com; font-src 'self' data:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'

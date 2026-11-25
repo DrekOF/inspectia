@@ -4,7 +4,7 @@
 # Fecha de creación: 13/10/2026
 # Actualización: 24/11/2026
 # Autor: Equipo InspectIA
-# Versión: 1.5
+# Versión: 1.6
 
 spring:
   application:
@@ -50,11 +50,16 @@ inspectia:
     # aquí. Sin ella, el servidor no arranca.
     clave: ${INSPECTIA_JWT_CLAVE:}
   archivos:
-    # Dónde van las fotos de las muestras (D-41). Por ahora, en una carpeta del servidor: es el almacén de siempre
-    # (almacen: carpeta). Con «s3», que llega con el despliegue, no se cargan la carpeta ni sus enlaces firmados.
+    # Dónde van las fotos y los reportes (D-41, D-16). Sin decir el almacén, en una carpeta del servidor: es el de
+    # desarrollo y de las pruebas (almacen: carpeta). En AWS, INSPECTIA_ARCHIVOS_ALMACEN=s3 (el perfil produccion no
+    # arranca sin él): entonces no se cargan la carpeta ni sus enlaces firmados. El almacén no se escribe aquí.
     # La carpeta sale de INSPECTIA_FOTOS_CARPETA (en local, de infra/.env). Sin ella, o vacía, es
     # <carpeta del usuario>/.inspectia/fotos. Va completa y fuera del repositorio; las pruebas usan una temporal.
     carpeta: ${INSPECTIA_FOTOS_CARPETA:}
+    # Con S3: el bucket (inspectia-archivos-<cuenta>) y su región (us-east-1). Las credenciales son las del rol de la
+    # instancia, nunca claves en un archivo.
+    bucket: ${INSPECTIA_ARCHIVOS_BUCKET:}
+    region: ${AWS_REGION:}
   analisis:
     # Parámetros del análisis, que fija el equipo y no la empresa (RF-09). Se validan al arrancar: con uno que falta o
     # que no sirve, el servidor no arranca. Cada muestra copia el umbral y el máximo de dudosos que usó.

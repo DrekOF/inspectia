@@ -1,15 +1,18 @@
 # Nombre: ci.yml
-# Descripción: Integración continua de InspectIA (RP-18 y RP-19). En cada PR hacia main, en cada push a main y a
-#              mano, compila y prueba el generador, el backend, el frontend y el servicio de IA (con el modelo real
-#              de la release de Julián, comprobado por su SHA-256), y corre las pruebas de punta a punta
-#              (Playwright y Selenium) en el entorno aislado; Selenium, sin Edge, que se prueba en Windows. Si un job
-#              falla en main, abre un issue asignado a quien hizo el push, o comenta en el que ya está abierto por esa
-#              falla; cuando el job vuelve a pasar en main, lo cierra. Stryker no corre aquí: tarda mucho y se corre a
-#              mano.
+# Descripción: Integración y despliegue continuos de InspectIA (RP-18, RP-19, D-16). En cada PR hacia main, en cada
+#              push a main y a mano, compila y prueba el generador, el backend, el frontend, el servicio de IA (con el
+#              modelo real de la release de Julián, comprobado por su SHA-256) y la infraestructura; construye las
+#              imágenes Docker arm64 del backend y del servicio de IA, y la del servicio de IA la arranca y le corre
+#              la prueba de paridad antes de subirla; y corre las pruebas de punta a punta (Playwright y Selenium) en
+#              el entorno aislado; Selenium, sin Edge, que se prueba en Windows. En main, con las variables de AWS del
+#              repositorio, sube las imágenes a ECR y, si todo pasa, despliega: actualiza la instancia por SSM,
+#              publica la página en S3 e invalida CloudFront. Si un job falla en main, abre un issue asignado a quien
+#              hizo el push, o comenta en el que ya está abierto por esa falla; cuando el job vuelve a pasar en main,
+#              lo cierra. Stryker no corre aquí: tarda mucho y se corre a mano.
 # Fecha de creación: 04/11/2026
 # Actualización: 24/11/2026
 # Autor: Equipo InspectIA
-# Versión: 1.1
+# Versión: 1.2
 
 name: CI
 
@@ -138,6 +141,101 @@ jobs:
         working-directory: ia-servicio
         run: python -m pytest -rs
 
+  infra:
+    name: Infraestructura
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: frontend/.node-version
+      # Sin red y sin construir imágenes: scripts, JSON de AWS, compose de producción, CloudFront Function e IAM.
+      - name: Pruebas de la infraestructura
+        run: bash infra/probar.sh
+
+  imagenes:
+    name: Imágenes Docker (${{ matrix.servicio }})
+    # Runners arm64, como la EC2 t4g (Graviton): la imagen se construye nativa, sin emular. Son gratis en
+    # repositorios públicos.
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        servicio: [backend, ia-servicio]
+    env:
+      # En main, con las variables de AWS, las imágenes se suben a ECR con la etiqueta del commit; en un PR solo se
+      # construyen. Subirlas no despliega nada: eso lo hace el job «despliegue», cuando todos los demás pasan.
+      PUBLICAR: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.AWS_CUENTA != '' && vars.AWS_ROL_GITHUB != '' }}
+      IMAGEN: ${{ vars.AWS_CUENTA || '000000000000' }}.dkr.ecr.us-east-1.amazonaws.com/inspectia/${{ matrix.servicio }}:${{ github.sha }}
+    steps:
+      - uses: actions/checkout@v7
+      # Los dos servicios ya tienen Dockerfile; si un servicio de la matriz todavía no lo tiene, su lado se salta.
+      - name: ¿Tiene Dockerfile?
+        id: dockerfile
+        env:
+          SERVICIO: ${{ matrix.servicio }}
+        run: |
+          if [ -f "$SERVICIO/Dockerfile" ]; then
+            echo 'existe=true' >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::$SERVICIO/Dockerfile no existe todavía: su imagen no se construye."
+            echo 'existe=false' >> "$GITHUB_OUTPUT"
+          fi
+      - uses: docker/setup-buildx-action@v4
+        if: steps.dockerfile.outputs.existe == 'true'
+      - name: Credenciales de AWS (OIDC, sin claves)
+        if: steps.dockerfile.outputs.existe == 'true' && env.PUBLICAR == 'true'
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_ROL_GITHUB }}
+          aws-region: us-east-1
+      - name: Sesión en ECR
+        if: steps.dockerfile.outputs.existe == 'true' && env.PUBLICAR == 'true'
+        uses: aws-actions/amazon-ecr-login@v2
+      # El backend se construye y, en main, se sube en un solo paso. La imagen del servicio de IA se construye sin
+      # subirla y queda en el Docker del runner («load»), se arranca y se comprueba (importaciones y paridad con
+      # inferencia.py de Julián), y solo si pasa se sube a ECR en main: una imagen que no pasa nunca llega a ECR. La
+      # subida vuelve a construir con la caché de gha, así que sale en segundos.
+      - name: Construir para arm64 (y subir a ECR en main, el backend)
+        if: steps.dockerfile.outputs.existe == 'true'
+        uses: docker/build-push-action@v7
+        with:
+          context: ${{ matrix.servicio }}
+          platforms: linux/arm64
+          push: ${{ env.PUBLICAR == 'true' && matrix.servicio != 'ia-servicio' }}
+          load: ${{ matrix.servicio == 'ia-servicio' }}
+          provenance: false
+          tags: ${{ env.IMAGEN }}
+          cache-from: type=gha,scope=${{ matrix.servicio }}-arm64
+          cache-to: type=gha,mode=max,scope=${{ matrix.servicio }}-arm64
+      - name: Comprobar la imagen del servicio de IA en arm64 (arranca, importa y clasifica como inferencia.py)
+        if: steps.dockerfile.outputs.existe == 'true' && matrix.servicio == 'ia-servicio'
+        env:
+          # El mismo modelo del job «ia-servicio» (D-40), comprobado por su SHA-256.
+          MODELO_URL: https://github.com/JulianSilvaMorales/Proyecto_IA-Cacao-Beans-/releases/download/modelos-v1.0/inspectia_EfficientNet-B0_v1.0_savedmodel.zip
+          MODELO_SHA256: eb9a64394c51fdff8fc16e01fff71e3b3693bc36e43cafb0ddbb34ca5b765bfb
+        run: |
+          mkdir -p "$RUNNER_TEMP/modelo"
+          archivo="$RUNNER_TEMP/modelo/${MODELO_URL##*/}"
+          curl -fsSL --retry 3 -o "$archivo" "$MODELO_URL"
+          echo "$MODELO_SHA256  $archivo" | sha256sum --check --strict
+          bash ia-servicio/scripts/comprobar_imagen.sh "$IMAGEN" "$archivo"
+      - name: Subir a ECR la imagen comprobada del servicio de IA (en main)
+        if: steps.dockerfile.outputs.existe == 'true' && matrix.servicio == 'ia-servicio' && env.PUBLICAR == 'true'
+        uses: docker/build-push-action@v7
+        with:
+          context: ${{ matrix.servicio }}
+          platforms: linux/arm64
+          push: true
+          provenance: false
+          tags: ${{ env.IMAGEN }}
+          cache-from: type=gha,scope=${{ matrix.servicio }}-arm64
+
   punta-a-punta:
     name: De punta a punta
     # Empieza solo si los otros pasan: así no se gastan sus minutos cuando ya falló algo más barato.
@@ -210,9 +308,97 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
+  despliegue:
+    name: Despliegue en AWS
+    # Solo si todo lo demás pasó, en main (con un push o a mano) y con las variables de AWS del repositorio: mientras
+    # falten, el job se salta y la CI sigue en verde (ver infra/README.md).
+    needs: [generador, backend, frontend, ia-servicio, infra, imagenes, punta-a-punta]
+    if: >-
+      github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+      && vars.AWS_CUENTA != '' && vars.AWS_ROL_GITHUB != '' && vars.CLOUDFRONT_DISTRIBUCION != ''
+      && vars.EC2_INSTANCIA != '' && vars.INSPECTIA_URL != ''
+    runs-on: ubuntu-24.04
+    # Compilar la página, encender la instancia, esperar su agente de SSM (hasta 10 min), el comando (hasta 35 min) y
+    # la invalidación de CloudFront (hasta 10 min): el primer despliegue baja la imagen de TensorFlow.
+    timeout-minutes: 60
+    # Un despliegue a la vez y en orden: el siguiente espera al que está corriendo, no lo corta a mitad.
+    concurrency:
+      group: despliegue-produccion
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_CUENTA: ${{ vars.AWS_CUENTA }}
+      CLOUDFRONT_DISTRIBUCION: ${{ vars.CLOUDFRONT_DISTRIBUCION }}
+      EC2_INSTANCIA: ${{ vars.EC2_INSTANCIA }}
+      INSPECTIA_URL: ${{ vars.INSPECTIA_URL }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: frontend/.node-version
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Compilar la página
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+      - name: Credenciales de AWS (OIDC, sin claves)
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_ROL_GITHUB }}
+          aws-region: us-east-1
+      # Primero el servidor: si la versión nueva no queda sana, actualizar.sh vuelve sola a la anterior, el job falla y la
+      # página nueva no se publica. Si la anterior tampoco arranca (por ejemplo, tras una migración), el registro lo dice.
+      - name: Actualizar la instancia por SSM
+        run: bash infra/aws/actualizar-instancia.sh "$EC2_INSTANCIA" "$GITHUB_SHA"
+      # Los archivos de assets/ llevan su hash en el nombre: caché de un año. Los viejos se dejan, por si una pestaña
+      # abierta con la versión anterior todavía los pide. index.html va al final y sin caché.
+      - name: Publicar la página en S3
+        run: |
+          bucket="s3://inspectia-web-$AWS_CUENTA"
+          aws s3 sync frontend/dist/assets "$bucket/assets" --only-show-errors \
+            --cache-control 'public, max-age=31536000, immutable'
+          aws s3 sync frontend/dist "$bucket" --only-show-errors --delete \
+            --exclude 'assets/*' --exclude index.html \
+            --cache-control 'public, max-age=31536000'
+          aws s3 cp frontend/dist/index.html "$bucket/index.html" --only-show-errors \
+            --cache-control 'no-cache' --content-type 'text/html; charset=utf-8'
+      - name: Invalidar CloudFront
+        run: |
+          invalidacion=$(aws cloudfront create-invalidation --distribution-id "$CLOUDFRONT_DISTRIBUCION" \
+            --paths '/*' --query Invalidation.Id --output text)
+          echo "Invalidación $invalidacion"
+          aws cloudfront wait invalidation-completed --distribution-id "$CLOUDFRONT_DISTRIBUCION" --id "$invalidacion"
+      # Prueba de humo por CloudFront: la página, una ruta de React (la CloudFront Function) y la API (401 sin sesión).
+      - name: Comprobar el sitio
+        run: |
+          url="${INSPECTIA_URL%/}"
+          revisar() {
+            local ruta=$1 esperado=$2 codigo=''
+            for _ in 1 2 3 4 5 6; do
+              codigo=$(curl -s -o /dev/null -w '%{http_code}' "$url$ruta" || true)
+              if [ "$codigo" = "$esperado" ]; then
+                echo "$ruta: $codigo"
+                return 0
+              fi
+              sleep 10
+            done
+            echo "::error::$url$ruta respondió $codigo y se esperaba $esperado."
+            return 1
+          }
+          revisar / 200
+          revisar /lotes/1 200
+          revisar /api/v1/sesion 401
+          curl -fsS -o "$RUNNER_TEMP/ruta.html" "$url/lotes/1"
+          grep -q '<div id="app">' "$RUNNER_TEMP/ruta.html" \
+            || { echo '::error::Una ruta de React no devolvió index.html.'; exit 1; }
+
   aviso:
     name: Aviso de fallas
-    needs: [generador, backend, frontend, ia-servicio, punta-a-punta]
+    needs: [generador, backend, frontend, ia-servicio, infra, imagenes, punta-a-punta, despliegue]
     # Solo en main, también cuando algo falló; no si alguien canceló la corrida.
     if: ${{ !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-24.04
@@ -233,10 +419,12 @@ jobs:
       - name: Abrir, comentar o cerrar el issue de cada job
         run: |
           # Cada job, con el nombre que se ve en GitHub. Hay un issue por job: así una falla repetida es la misma.
-          declare -A NOMBRES=([generador]='Generador' [backend]='Backend' [frontend]='Frontend' [ia-servicio]='Servicio de IA' [punta-a-punta]='De punta a punta')
+          declare -A NOMBRES=([generador]='Generador' [backend]='Backend' [frontend]='Frontend'
+            [ia-servicio]='Servicio de IA' [infra]='Infraestructura' [imagenes]='Imágenes Docker'
+            [punta-a-punta]='De punta a punta' [despliegue]='Despliegue en AWS')
           commit="${COMMIT:0:7} «${MENSAJE%%$'\n'*}»"
           gh label create ci --color B60205 --description 'Falla de la integración continua' --force
-          for job in generador backend frontend ia-servicio punta-a-punta; do
+          for job in generador backend frontend ia-servicio infra imagenes punta-a-punta despliegue; do
             resultado=$(jq -r --arg job "$job" '.[$job].result' <<< "$RESULTADOS")
             titulo="La CI falla en $RAMA: ${NOMBRES[$job]}"
             abierto=$(gh issue list --state open --label ci --limit 100 --json number,title \
@@ -268,6 +456,7 @@ jobs:
                   echo "${NOMBRES[$job]}: issue #$abierto cerrado."
                 fi
                 ;;
-              # skipped: el job no corrió, porque falló uno anterior; su issue queda como estaba.
+              # skipped: el job no corrió, porque falló uno anterior (o, el despliegue, porque faltan las variables
+              # de AWS o es un PR); su issue queda como estaba.
             esac
           done
