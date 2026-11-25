@@ -3,11 +3,12 @@
  * Descripción: Pruebas de la pantalla Iniciar sesión (RF-01): entrar con cada rol, los mensajes del backend
  *              con datos errados o con una cuenta desactivada, la contraseña de más de 72 bytes, los campos
  *              obligatorios, los errores sin conexión (RNF-06), Acerca de sin sesión (RNF-08) y el idioma y
- *              el tema (RP-08, RP-11), y que entrar no deja el error «Maximum update depth exceeded».
+ *              el tema (RP-08, RP-11), y entrar escribiendo tecla por tecla. El error «Maximum update depth
+ *              exceeded» que deja Selenium no se reproduce en jsdom: lo revisa la prueba de Selenium de RF-01 C1.
  * Fecha de creación: 20/10/2026
- * Actualización: 24/11/2026
+ * Actualización: 25/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 import { cleanup, screen, within } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
@@ -64,7 +65,9 @@ describe('Iniciar sesión', () => {
     expect(leerSesion()?.usuario).toEqual(persona);
   });
 
-  it('RF-01 · escribir el correo y la contraseña tecla por tecla y entrar no deja el error «Maximum update depth exceeded» en la consola', async () => {
+  // Nunca estuvo en rojo: jsdom no reproduce el error que ve Selenium. Queda como revisión de que escribir tecla por
+  // tecla no lo provoque aquí; la que lo detecta es la de Selenium de RF-01 C1.
+  it('RF-01 · entrar escribiendo tecla por tecla, en jsdom, que no reproduce el «Maximum update depth exceeded» de Selenium', async () => {
     const errores = vi.spyOn(console, 'error');
     const persona = USUARIOS.ADMIN_EMPRESA;
     servidor.use(http.post('/api/v1/sesion', () => HttpResponse.json(respuestaDeSesion(persona))));

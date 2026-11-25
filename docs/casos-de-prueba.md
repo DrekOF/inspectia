@@ -4,7 +4,7 @@ Descripción: Casos de prueba de InspectIA por ficha y criterio de aceptación, 
              tienen prueba (RP-13). Archivo generado por generador/casos_de_prueba.py: no se edita a mano;
              sale de specs/fichas.json y de las marcas de las pruebas.
 Fecha de creación: 12/10/2026
-Actualización: 24/11/2026
+Actualización: 25/11/2026
 Autor: Equipo InspectIA (generado por generador/casos_de_prueba.py v1.3)
 Versión: 1.3
 -->
@@ -84,7 +84,7 @@ Otras pruebas de RF-01, que no cubren un criterio:
 - [`menu.test.js`](../frontend/src/navegacion/menu.test.js) · un rol que la app no conoce no ve funciones, solo «Mi cuenta»
 - [`menu.test.js`](../frontend/src/navegacion/menu.test.js) · «Mi cuenta» tiene Cambiar contraseña, Acerca de y Cerrar sesión, para todos los roles
 - [`IniciarSesion.test.jsx`](../frontend/src/paginas/IniciarSesion.test.jsx) · con una sesión abierta, Iniciar sesión lleva al inicio de su rol
-- [`IniciarSesion.test.jsx`](../frontend/src/paginas/IniciarSesion.test.jsx) · escribir el correo y la contraseña tecla por tecla y entrar no deja el error «Maximum update depth exceeded» en la consola
+- [`IniciarSesion.test.jsx`](../frontend/src/paginas/IniciarSesion.test.jsx) · entrar escribiendo tecla por tecla, en jsdom, que no reproduce el «Maximum update depth exceeded» de Selenium
 - [`IniciarSesion.test.jsx`](../frontend/src/paginas/IniciarSesion.test.jsx) · la contraseña se puede mostrar y volver a ocultar
 - [`IniciarSesion.test.jsx`](../frontend/src/paginas/IniciarSesion.test.jsx) · sin datos no envía nada y marca los dos campos como obligatorios
 - [`IniciarSesion.test.jsx`](../frontend/src/paginas/IniciarSesion.test.jsx) · sin sesión, la app abre Iniciar sesión, con el correo y la contraseña listos para el navegador
