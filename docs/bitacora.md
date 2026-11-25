@@ -4,7 +4,7 @@ Descripción: Registro paso a paso de cómo se construyó InspectIA, para la sus
 Fecha de creación: 12/10/2026
 Actualización: 24/11/2026
 Autor: Equipo InspectIA
-Versión: 1.29
+Versión: 1.30
 -->
 
 # Bitácora de construcción (RP-24)
@@ -2135,341 +2135,398 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
       su costo; la guía, al presupuesto del paso 1.
     - **Sin cambios en el código:** el JavaDoc de `EncabezadosDeCloudFront` sigue hablando del encabezado secreto para
       cuando se use la IP; se deja como está.
-  - **Decisiones pequeñas:**
-    - **Swagger UI y `/v3/api-docs` quedan cerrados en producción:** CloudFront solo pasa `/api/*` a la instancia, la
-      CSP de la página no dejaría correr Swagger UI y no hace falta publicar el mapa de la API. La documentación sigue
-      en el PC de desarrollo. Queda en la nota de D-16.
-    - **Los enlaces temporales son solo de fotos,** con la carpeta y con S3. Un reporte se descarga por el backend,
-      con la sesión.
-    - **`guardar` con una llave que ya existe es un error del servidor (500),** no un 409: la llave la arma el
-      servidor al azar. Así no hizo falta un mensaje nuevo en `mensajes*.properties`.
-    - **La región sale de `AWS_REGION` y es obligatoria;** no se usa la cadena de regiones del SDK, que buscaría en
-      los metadatos de la instancia.
-    - **El mensaje de arranque del perfil `produccion` va solo en español,** como los demás mensajes de arranque: no
-      es un texto de la API.
-    - **Los secretos llegan como archivos** (`secrets:` de compose) y no con `env_file`: así no quedan en la
-      configuración del contenedor en el disco.
-    - **`restart: on-failure`** y no `unless-stopped`: al encender, Docker no debe levantar los contenedores antes de
-      que systemd lea los secretos de SSM.
-    - **El despliegue también corre a mano** (desde Actions, sobre `main`), para el primer despliegue sin un commit
-      nuevo.
-    - **Las imágenes se suben a ECR en paralelo a las pruebas,** para ganar tiempo; producción solo se toca cuando
-      todo pasó.
-    - **La CI enciende la instancia si está apagada,** para no dejar la página nueva con el servidor viejo; el
-      horario la vuelve a apagar.
-    - **Primero el servidor y después la página,** que no se publica si la instancia no queda sana.
-    - **La caché de la página:** `index.html` sin caché y `assets/` con caché de un año, inmutable; los assets viejos
-      se dejan, por si una pestaña abierta todavía los pide.
-    - **La vuelta a la versión anterior espera 600 s,** no 900 como la nueva, para que las dos esperas quepan en los
-      35 minutos del comando de SSM. El job de despliegue espera hasta 60 minutos.
-    - **`actualizar.sh` deja activo el servicio `inspectia`** de systemd al terminar un despliegue de la CI, para que
-      `systemctl status` no confunda. Sabe si lo corre el servicio por su cgroup, no por `INVOCATION_ID`, que también
-      hereda lo que corre el agente de SSM.
-    - **`/api/*` usa la política de solicitudes al origen `AllViewerAndCloudFrontHeaders-2022-06`:** pasa
-      `Authorization` y el `Host` de CloudFront, y agrega la IP y el protocolo del cliente.
-    - **Los JSON de AWS no llevan header RP-10,** porque la consola los pide tal cual: su header es la tabla «Header de
-      los JSON de AWS» de `infra/README.md`. Es una excepción a RP-10.
-    - **El rol de la instancia usa la política administrada de Session Manager.** Riesgo aceptado: deja leer cualquier
-      parámetro de SSM. El rol no puede borrar en `respaldos/`.
-    - **ShellCheck en la CI revisa solo los scripts del despliegue,** no los de `infra/bd`, que no se revisaron.
-    - **La guía propone apagar la instancia de 22:00 a 7:00, de lunes a viernes.** Hay que quitar el apagado el jueves
-      26/11 y durante la prueba de estrés.
-    - **Las pruebas de `infra/` no entran en `docs/casos-de-prueba.md`:** `casos_de_prueba.py` no lee `infra/` y sus
-      marcas son de D-16, no de un criterio. Las corre el job «Infraestructura».
-  - **Queda fuera:**
-    - **El primer despliegue real:** lo hace Cristhian en la consola, con la guía de `infra/README.md`. Las 5
-      variables de GitHub se ponen solo cuando estén los modelos en S3 (paso 14) y el PR del servicio de IA en `main`
-      (paso 15): sin él no hay imagen de `ia-servicio` ni el clasificador `servicio`, y el backend no arranca con el
-      perfil `produccion`.
-    - **El encabezado secreto de origen,** para que nadie llegue a la instancia por otra distribución sin pasar por
-      el WAF de D-51: es un cambio en el código, que D-51 deja fuera.
-    - **RNF-03 C3** dice que las fotos y los reportes en S3 solo se abren con enlaces temporales, pero el reporte se
-      descarga por el backend con la sesión. Cambiar el texto del criterio cambia una ficha: queda para decidirlo con
-      Cristhian, con el PR del PDF (D-50). Al revisar los PR, Cristhian decidió ajustar el texto: las fotos se
-      abren con enlaces temporales de la empresa dueña, y los reportes solo se descargan por la API, con la sesión de
-      esa empresa. El cambio de la ficha no entra en esta unión.
-    - **Unir `AlmacenEnCarpeta` con el PR del PDF:** los dos implementan `guardar`; el choque se resuelve al unirlos.
-    - **Una foto que nunca se confirma queda huérfana en `fotos/`:** se puede resolver más adelante con una regla de
-      ciclo de vida de S3.
-  - **Problemas encontrados:**
-    - **Dos pruebas de `PerfilDeProduccionTest` fallaban** porque esperaban la excepción envuelta en otra, y la
-      comprobación la lanza sola: corre antes de crear cualquier bean. Se ajustó la prueba.
-    - **La prueba de humo de la imagen,** hecha antes de unir el adaptador de S3, cargaba la carpeta de D-41 y no
-      arrancaba: la carpeta de inicio del usuario de la imagen (`/aplicacion`) no es escribible. Con S3 la carpeta no
-      se carga; la prueba se repitió con `INSPECTIA_FOTOS_CARPETA=/tmp/fotos` y arrancó sana en unos 8 s.
-    - **ShellCheck, actionlint y PyYAML no estaban en este PC:** ShellCheck se corrió en Docker en la revisión, y el
-      YAML de `ci.yml` se leyó con el lector de `docker compose config`.
-  - **Resultado:**
-    - **Backend,** solo las pruebas unitarias de lo que cambió, como pidió Cristhian: las 8 clases nuevas o tocadas y
-      `VerificacionDeClasesTest`, 37 de 37; en la revisión, 35 de 35; después de las correcciones,
-      `EncabezadosDeCloudFrontTest` y `PerfilDeProduccionTest`, 8 de 8. `./mvnw verify` y las de punta a punta las
-      corre la CI.
-    - **Infraestructura:** `bash infra/probar.sh`, 33 de 33, también después de las correcciones. ShellCheck v0.10.0
-      con `--severity=warning`, sin advertencias.
-    - **La imagen del backend** se construyó para amd64 y arrancó sana contra un PostgreSQL temporal: Flyway aplicó
-      `V1`, corre con el UID 10001 y los secretos no aparecen en la configuración del contenedor. Después se borró
-      todo.
-    - **Casos de prueba:** 1330 pruebas (eran 1301) y 45 criterios sin prueba, como antes. Pasan
-      `casos_de_prueba.py comprobar` y `generar.py comprobar`.
-    - **Nada se probó contra AWS:** no se creó ni se llamó a nada de AWS.
-    - **Después de la unión y de WAF:** `bash infra/probar.sh`, 33 de 33; el compose de producción con
-      `ejemplo.env` (`config -q`) pasa; el YAML de `ci.yml` se leyó con el lector de `docker compose config` (como
-      extensión `x-ci`) y trae los 9 jobs con los `needs` de arriba, y los scripts del aviso y de la comprobación de
-      la imagen pasan `bash -n`; las pruebas del generador, 125 de 125; `casos_de_prueba.py comprobar` (1491
-      pruebas, 28 criterios sin prueba) y `generar.py comprobar` (63 archivos) pasan. No se corrió ninguna suite
-      pesada ni se construyó ninguna imagen.
+- Decisiones pequeñas:
+  - **Swagger UI y `/v3/api-docs` quedan cerrados en producción:** CloudFront solo pasa `/api/*` a la instancia, la
+    CSP de la página no dejaría correr Swagger UI y no hace falta publicar el mapa de la API. La documentación sigue
+    en el PC de desarrollo. Queda en la nota de D-16.
+  - **Los enlaces temporales son solo de fotos,** con la carpeta y con S3. Un reporte se descarga por el backend,
+    con la sesión.
+  - **`guardar` con una llave que ya existe es un error del servidor (500),** no un 409: la llave la arma el
+    servidor al azar. Así no hizo falta un mensaje nuevo en `mensajes*.properties`.
+  - **La región sale de `AWS_REGION` y es obligatoria;** no se usa la cadena de regiones del SDK, que buscaría en
+    los metadatos de la instancia.
+  - **El mensaje de arranque del perfil `produccion` va solo en español,** como los demás mensajes de arranque: no
+    es un texto de la API.
+  - **Los secretos llegan como archivos** (`secrets:` de compose) y no con `env_file`: así no quedan en la
+    configuración del contenedor en el disco.
+  - **`restart: on-failure`** y no `unless-stopped`: al encender, Docker no debe levantar los contenedores antes de
+    que systemd lea los secretos de SSM.
+  - **El despliegue también corre a mano** (desde Actions, sobre `main`), para el primer despliegue sin un commit
+    nuevo.
+  - **Las imágenes se suben a ECR en paralelo a las pruebas,** para ganar tiempo; producción solo se toca cuando
+    todo pasó.
+  - **La CI enciende la instancia si está apagada,** para no dejar la página nueva con el servidor viejo; el
+    horario la vuelve a apagar.
+  - **Primero el servidor y después la página,** que no se publica si la instancia no queda sana.
+  - **La caché de la página:** `index.html` sin caché y `assets/` con caché de un año, inmutable; los assets viejos
+    se dejan, por si una pestaña abierta todavía los pide.
+  - **La vuelta a la versión anterior espera 600 s,** no 900 como la nueva, para que las dos esperas quepan en los
+    35 minutos del comando de SSM. El job de despliegue espera hasta 60 minutos.
+  - **`actualizar.sh` deja activo el servicio `inspectia`** de systemd al terminar un despliegue de la CI, para que
+    `systemctl status` no confunda. Sabe si lo corre el servicio por su cgroup, no por `INVOCATION_ID`, que también
+    hereda lo que corre el agente de SSM.
+  - **`/api/*` usa la política de solicitudes al origen `AllViewerAndCloudFrontHeaders-2022-06`:** pasa
+    `Authorization` y el `Host` de CloudFront, y agrega la IP y el protocolo del cliente.
+  - **Los JSON de AWS no llevan header RP-10,** porque la consola los pide tal cual: su header es la tabla «Header de
+    los JSON de AWS» de `infra/README.md`. Es una excepción a RP-10.
+  - **El rol de la instancia usa la política administrada de Session Manager.** Riesgo aceptado: deja leer cualquier
+    parámetro de SSM. El rol no puede borrar en `respaldos/`.
+  - **ShellCheck en la CI revisa solo los scripts del despliegue,** no los de `infra/bd`, que no se revisaron.
+  - **La guía propone apagar la instancia de 22:00 a 7:00, de lunes a viernes.** Hay que quitar el apagado el jueves
+    26/11 y durante la prueba de estrés.
+  - **Las pruebas de `infra/` no entran en `docs/casos-de-prueba.md`:** `casos_de_prueba.py` no lee `infra/` y sus
+    marcas son de D-16, no de un criterio. Las corre el job «Infraestructura».
+- **Queda fuera:**
+  - **El primer despliegue real:** lo hace Cristhian en la consola, con la guía de `infra/README.md`. Las 5
+    variables de GitHub se ponen solo cuando estén los modelos en S3 (paso 14) y el PR del servicio de IA en `main`
+    (paso 15): sin él no hay imagen de `ia-servicio` ni el clasificador `servicio`, y el backend no arranca con el
+    perfil `produccion`.
+  - **El encabezado secreto de origen,** para que nadie llegue a la instancia por otra distribución sin pasar por
+    el WAF de D-51: es un cambio en el código, que D-51 deja fuera.
+  - **RNF-03 C3** dice que las fotos y los reportes en S3 solo se abren con enlaces temporales, pero el reporte se
+    descarga por el backend con la sesión. Cambiar el texto del criterio cambia una ficha: queda para decidirlo con
+    Cristhian, con el PR del PDF (D-50). Al revisar los PR, Cristhian decidió ajustar el texto: las fotos se
+    abren con enlaces temporales de la empresa dueña, y los reportes solo se descargan por la API, con la sesión de
+    esa empresa. El cambio de la ficha no entra en esta unión.
+  - **Unir `AlmacenEnCarpeta` con el PR del PDF:** los dos implementan `guardar`; el choque se resuelve al unirlos.
+  - **Una foto que nunca se confirma queda huérfana en `fotos/`:** se puede resolver más adelante con una regla de
+    ciclo de vida de S3.
+- **Problemas encontrados:**
+  - **Dos pruebas de `PerfilDeProduccionTest` fallaban** porque esperaban la excepción envuelta en otra, y la
+    comprobación la lanza sola: corre antes de crear cualquier bean. Se ajustó la prueba.
+  - **La prueba de humo de la imagen,** hecha antes de unir el adaptador de S3, cargaba la carpeta de D-41 y no
+    arrancaba: la carpeta de inicio del usuario de la imagen (`/aplicacion`) no es escribible. Con S3 la carpeta no
+    se carga; la prueba se repitió con `INSPECTIA_FOTOS_CARPETA=/tmp/fotos` y arrancó sana en unos 8 s.
+  - **ShellCheck, actionlint y PyYAML no estaban en este PC:** ShellCheck se corrió en Docker en la revisión, y el
+    YAML de `ci.yml` se leyó con el lector de `docker compose config`.
+- **Resultado:**
+  - **Backend,** solo las pruebas unitarias de lo que cambió, como pidió Cristhian: las 8 clases nuevas o tocadas y
+    `VerificacionDeClasesTest`, 37 de 37; en la revisión, 35 de 35; después de las correcciones,
+    `EncabezadosDeCloudFrontTest` y `PerfilDeProduccionTest`, 8 de 8. `./mvnw verify` y las de punta a punta las
+    corre la CI.
+  - **Infraestructura:** `bash infra/probar.sh`, 33 de 33, también después de las correcciones. ShellCheck v0.10.0
+    con `--severity=warning`, sin advertencias.
+  - **La imagen del backend** se construyó para amd64 y arrancó sana contra un PostgreSQL temporal: Flyway aplicó
+    `V1`, corre con el UID 10001 y los secretos no aparecen en la configuración del contenedor. Después se borró
+    todo.
+  - **Casos de prueba:** 1330 pruebas (eran 1301) y 45 criterios sin prueba, como antes. Pasan
+    `casos_de_prueba.py comprobar` y `generar.py comprobar`.
+  - **Nada se probó contra AWS:** no se creó ni se llamó a nada de AWS.
+  - **Después de la unión y de WAF:** `bash infra/probar.sh`, 33 de 33; el compose de producción con
+    `ejemplo.env` (`config -q`) pasa; el YAML de `ci.yml` se leyó con el lector de `docker compose config` (como
+    extensión `x-ci`) y trae los 9 jobs con los `needs` de arriba, y los scripts del aviso y de la comprobación de
+    la imagen pasan `bash -n`; las pruebas del generador, 125 de 125; `casos_de_prueba.py comprobar` (1491
+    pruebas, 28 criterios sin prueba) y `generar.py comprobar` (63 archivos) pasan. No se corrió ninguna suite
+    pesada ni se construyó ninguna imagen.
 - Por qué: Cristhian pidió que el jueves 26/11 todo esté desplegado en AWS y funcionando, como en el diagrama de D-16.
-  Este PR es el código de ese despliegue: lo que corre en la instancia, lo que se pega en la consola y la CI que
-  despliega sola cuando las pruebas pasan (RP-18, RP-19). Los recursos de AWS los crea Cristhian en la consola.
+Este PR es el código de ese despliegue: lo que corre en la instancia, lo que se pega en la consola y la CI que
+despliega sola cuando las pruebas pasan (RP-18, RP-19). Los recursos de AWS los crea Cristhian en la consola.
 - Cómo se pidió:
-  - **El 24/11/2026,** Cristhian cambió el plan: «Cambio de plan: el jueves 26/11 todo tiene que estar desplegado en
-    AWS y funcionando, como en el diagrama de arquitectura (D-16, 02_Analisis_Diseno/InspectIA_Despliegue_AWS.pdf).
-    Nada a medias.» Pidió trabajar en tres frentes a la vez, «cada uno en su rama, con worktrees y agentes aparte»: el
-    servicio de IA con el modelo de Julián; el despliegue; y las funciones que faltan, el PDF (RF-15), las
-    estadísticas (RF-16) y la pantalla del modelo (RF-17), con la prueba de estrés (RNF-01 y RNF-02) contra AWS al
-    final.
-  - **Sobre este frente:** «los recursos de AWS los creo yo en la consola, en paralelo, con una guía aparte. No
-    escribas Terraform ni CloudFormation, ni crees nada en AWS. Tu parte es el código».
-  - **Sobre las pruebas:** «en mi PC corre solo las pruebas rápidas de lo que cambias; las de punta a punta, que las
-    corra la CI. Nunca corras dos suites pesadas a la vez. La revisión antes de cada PR, con un solo revisor.»
-  - **Cómo se trabajó:** Claude Code repartió el frente en dos agentes, cada uno en su worktree: el backend para AWS
-    (rama `trabajo/despliegue-backend`) y la infraestructura y la CI (esta rama), con las pruebas antes del código.
-    Las dos pruebas con Docker (la imagen y la prueba de humo) usaron un candado para no correr junto a otra suite
-    pesada. Después unió las dos ramas.
-  - **La revisión antes del PR,** con un solo revisor, como pidió Cristhian, sin cambiar nada. No encontró defectos de
-    gravedad alta; encontró 3 de gravedad media y 8 de gravedad baja. Otro agente corrigió 10 en 9 commits (`8b3d762`
-    a `c6e2c38`):
-    - un despliegue que fallaba dejaba el sitio caído con la versión rota y `.env` apuntando a ella, y la CI y la guía
-      decían lo contrario: ahora vuelve sola a la anterior y solo anota la nueva cuando quedó sana;
-    - la guía ponía las variables de GitHub antes de subir los modelos, y el primer despliegue habría fallado; ahora
-      van después, y solo con el PR del servicio de IA en `main`;
-    - el JavaDoc del filtro y la guía pedían políticas de origen distintas, y con la de la guía el `Location` de
-      `POST /api/v1/empresas` salía con el DNS de la instancia: se unificó en `AllViewerAndCloudFrontHeaders-2022-06`;
-    - el JavaDoc decía que solo nuestra CloudFront llega a la instancia, y no es así: se corrigió, y la guía anota el
-      encabezado secreto de origen para P-17;
-    - el heap del 70 % dejaba poco margen fuera de él en 1 GB: baja al 60 %;
-    - los JSON de AWS no tenían su header: una tabla en `infra/README.md`;
-    - la copia diaria no dejaba registro si fallaba antes de leer la cuenta;
-    - el job de despliegue podía pasar de sus 45 minutos en el primer despliegue: sube a 60, y el comando de SSM a 35;
-    - la guía mandaba crear un grupo de registros que ya crea el agente de CloudWatch, y el servicio `inspectia`
-      quedaba inactivo después de un despliegue de la CI.
+- **El 24/11/2026,** Cristhian cambió el plan: «Cambio de plan: el jueves 26/11 todo tiene que estar desplegado en
+  AWS y funcionando, como en el diagrama de arquitectura (D-16, 02_Analisis_Diseno/InspectIA_Despliegue_AWS.pdf).
+  Nada a medias.» Pidió trabajar en tres frentes a la vez, «cada uno en su rama, con worktrees y agentes aparte»: el
+  servicio de IA con el modelo de Julián; el despliegue; y las funciones que faltan, el PDF (RF-15), las
+  estadísticas (RF-16) y la pantalla del modelo (RF-17), con la prueba de estrés (RNF-01 y RNF-02) contra AWS al
+  final.
+- **Sobre este frente:** «los recursos de AWS los creo yo en la consola, en paralelo, con una guía aparte. No
+  escribas Terraform ni CloudFormation, ni crees nada en AWS. Tu parte es el código».
+- **Sobre las pruebas:** «en mi PC corre solo las pruebas rápidas de lo que cambias; las de punta a punta, que las
+  corra la CI. Nunca corras dos suites pesadas a la vez. La revisión antes de cada PR, con un solo revisor.»
+- **Cómo se trabajó:** Claude Code repartió el frente en dos agentes, cada uno en su worktree: el backend para AWS
+  (rama `trabajo/despliegue-backend`) y la infraestructura y la CI (esta rama), con las pruebas antes del código.
+  Las dos pruebas con Docker (la imagen y la prueba de humo) usaron un candado para no correr junto a otra suite
+  pesada. Después unió las dos ramas.
+- **La revisión antes del PR,** con un solo revisor, como pidió Cristhian, sin cambiar nada. No encontró defectos de
+  gravedad alta; encontró 3 de gravedad media y 8 de gravedad baja. Otro agente corrigió 10 en 9 commits (`8b3d762`
+  a `c6e2c38`):
+  - un despliegue que fallaba dejaba el sitio caído con la versión rota y `.env` apuntando a ella, y la CI y la guía
+    decían lo contrario: ahora vuelve sola a la anterior y solo anota la nueva cuando quedó sana;
+  - la guía ponía las variables de GitHub antes de subir los modelos, y el primer despliegue habría fallado; ahora
+    van después, y solo con el PR del servicio de IA en `main`;
+  - el JavaDoc del filtro y la guía pedían políticas de origen distintas, y con la de la guía el `Location` de
+    `POST /api/v1/empresas` salía con el DNS de la instancia: se unificó en `AllViewerAndCloudFrontHeaders-2022-06`;
+  - el JavaDoc decía que solo nuestra CloudFront llega a la instancia, y no es así: se corrigió, y la guía anota el
+    encabezado secreto de origen para P-17;
+  - el heap del 70 % dejaba poco margen fuera de él en 1 GB: baja al 60 %;
+  - los JSON de AWS no tenían su header: una tabla en `infra/README.md`;
+  - la copia diaria no dejaba registro si fallaba antes de leer la cuenta;
+  - el job de despliegue podía pasar de sus 45 minutos en el primer despliegue: sube a 60, y el comando de SSM a 35;
+  - la guía mandaba crear un grupo de registros que ya crea el agente de CloudWatch, y el servicio `inspectia`
+    quedaba inactivo después de un despliegue de la CI.
 
-    El hallazgo 8, RNF-03 C3, no es un error del código: queda en «Queda fuera». El 3 (la dependencia del PR del
-    servicio de IA) se resolvió en la guía y en «Queda fuera».
-  - **Al revisar los PR, el 24/11/2026,** Cristhian aprobó la unión: «Revisé los PR #19, #22, #20 y #21 y están
-    bien. Fusiónalos en ese orden a medida que cada uno quede con todos sus jobs en verde, con los dos cambios de CI
-    que propones al unir el #22 con el #20.» Sobre P-17 respondió: «va para el jueves, con una regla rate-based de
-    AWS WAF en la distribución, sobre POST /api/v1/sesion, sin cambios en el código. Agrégala a la guía de
-    infra/README.md (quita el «WAF: no lo actives») y regístrala como decisión que resuelve P-17, con su costo. La
-    hago yo en la consola.» Sobre D-09 con granos pequeños, que queda como está para el jueves y se decide con P-12.
-    Claude Code resolvió los choques de la unión, los dos cambios de CI y lo de WAF en un worktree aparte, sin push.
+  El hallazgo 8, RNF-03 C3, no es un error del código: queda en «Queda fuera». El 3 (la dependencia del PR del
+  servicio de IA) se resolvió en la guía y en «Queda fuera».
+- **Al revisar los PR, el 24/11/2026,** Cristhian aprobó la unión: «Revisé los PR #19, #22, #20 y #21 y están
+  bien. Fusiónalos en ese orden a medida que cada uno quede con todos sus jobs en verde, con los dos cambios de CI
+  que propones al unir el #22 con el #20.» Sobre P-17 respondió: «va para el jueves, con una regla rate-based de
+  AWS WAF en la distribución, sobre POST /api/v1/sesion, sin cambios en el código. Agrégala a la guía de
+  infra/README.md (quita el «WAF: no lo actives») y regístrala como decisión que resuelve P-17, con su costo. La
+  hago yo en la consola.» Sobre D-09 con granos pequeños, que queda como está para el jueves y se decide con P-12.
+  Claude Code resolvió los choques de la unión, los dos cambios de CI y lo de WAF en un worktree aparte, sin push.
 - Archivos o PR: la rama `feature/D-16-despliegue-aws` y su PR hacia `main`.
 
 ## 24/11/2026 · RF-15, RF-16 y RF-17: el reporte PDF, las estadísticas y el modelo de IA
 
 - Quién: Cristhian Sánchez (`DrekOF`), con Claude Code.
 - Qué se hizo:
-  - **El PR del frente C, en la rama `feature/RF-15-16-17-reporte-estadisticas-modelo`** (desde `56014b1`). Las tres
-    funciones se escribieron a la vez, cada una en su worktree, y se unieron en esta rama:
-    1. **RF-15, el reporte PDF:** `72e5c2a` las pruebas en rojo (el armado con PDFBox, el caso de uso, el endpoint,
-       el botón y la descarga de punta a punta), `49a4982` el reporte con Apache PDFBox y Roboto embebida, un archivo
-       por idioma, y `GET /api/v1/lotes/{id}/reporte`, y `ed08458` «Descargar PDF» en el resultado del lote.
-    2. **RF-16, las estadísticas** (rama `trabajo/estadisticas`, unida en `acae445`): `29c4fb3` las pruebas del
-       cálculo y de la API en rojo, `131770e` el módulo por capas con `GET /api/v1/estadisticas`, `dd3977a` las
-       pruebas de la pantalla en rojo, `c237df8` la pantalla, `59e7240` las pruebas de punta a punta y `f8ea330`
-       «Ver estadísticas» con el mismo periodo, que las vuelve a pedir.
-    3. **RF-17, el modelo de IA** (rama `trabajo/modelo`, unida en `71a9a3c`): `4a16f72` las pruebas del backend en
-       rojo, `9e2227f` la API, `c6b7f97` las pruebas del frontend y de punta a punta en rojo, `2d2d6d5` la pantalla,
-       `4cfcef1` las pruebas de accesibilidad y de celular que la visitan y `855185b` Stryker sobre su lógica.
-    4. **Las correcciones de la revisión**, de `750035c` a `da046a2`: 13 commits; los que cambian el código van
-       después de sus pruebas en rojo.
-    5. Esta entrada de la bitácora, D-50, las fichas, los README y los casos de prueba.
-  - **El reporte PDF (RF-15):** en un lote analizado, «Descargar PDF» en el resultado, para los dos roles, también
-    mientras se toma la segunda muestra, y un ícono de PDF en cada lote analizado del historial, como en el
-    prototipo. El PDF trae la empresa con su NIT, el código, la finca y las fechas del lote; el porcentaje corregido
-    con su rango probable (D-43), los granos sanos y no sanos y lo que contó el modelo (D-39); la categoría probable
-    con la nota de la prueba de corte (D-10), la recomendación, la sugerencia con su límite (D-47) y el aviso de
-    confianza baja; y cada muestra con su analista, su modelo y sus fotos con los granos marcados como en la página
-    (RF-11, D-42). Es tamaño carta, con Roboto embebida, y las fechas van en hora de Colombia.
-    - **Un PDF por idioma (D-50):** la primera descarga arma el de español y el de inglés a la vez y los guarda;
-      `lote.reporte_ruta` guarda la base y los archivos son `<base>-es.pdf` y `<base>-en.pdf`, sin cambiar `V1`. Las
-      siguientes descargas entregan los mismos bytes, aunque la empresa cambie sus rangos o su nombre (C4).
-    - **La segunda muestra (C5):** al guardar su resultado, el lote olvida la ruta y, después de confirmar la
-      transacción, se borran los dos archivos anteriores (`ReporteDescartado` y `BorrarReportesDescartados`, como
-      `ArchivoReemplazado` con las fotos). Si la transacción de una descarga se deshace, se borran los recién armados.
-    - **Por el backend, con la sesión:** el PDF no tiene enlace temporal. Un lote de otra empresa responde 404
-      (RNF-03 C1); uno pendiente, 409; un idioma que no es `es` ni `en`, 400. RNF-03 C3 hablaba de enlaces temporales
-      también para los reportes: después de revisar el PR, Cristhian le dio el texto nuevo (ver abajo).
-    - **El puerto nuevo `GeneradorDeReporte`** y el caso de uso `DescargarReporte`, en el núcleo hexagonal del
-      análisis; el adaptador `adaptadores/pdf/`. `AlmacenDeArchivos` gana `guardar(llave, contenido, tipo)`, y la
-      carpeta de D-41 guarda también los reportes, pero solo firma enlaces de fotos.
-  - **Las estadísticas (RF-16):** la pantalla «Estadísticas» de la administradora de empresa, con el periodo (por
-    defecto, los últimos 12 meses), los lotes analizados, el promedio de granos sanos, los lotes por categoría, la
-    evolución por mes y el promedio por finca o proveedor; cada gráfica va con su tabla y, sin lotes, un mensaje en
-    su lugar. El módulo `estadistica.lotes` va por capas, a mano (D-21), y solo lee la tabla `lote` de la empresa de
-    la sesión. Las fincas se unen sin distinguir mayúsculas, tildes ni espacios, como las sugerencias de RF-04: lo
-    decidió Cristhian el 23/11/2026, y ahora lo dicen las restricciones de RF-04 y RF-16, que decían lo contrario.
-  - **El modelo de IA (RF-17):** la pantalla «Modelo de IA» de la administradora de empresa, con el modelo en uso y
-    su F1, su precisión y su recall macro, la matriz de confusión en una tabla, la tabla comparativa de los modelos
-    (D-18, D-48) y la confianza promedio de los análisis de la empresa, de todos o de un periodo opcional. El módulo
-    `estadistica.modelo` va por capas, a mano, con `GET /api/v1/modelo`.
-  - **Las fichas:** RF-15, RF-16 y RF-17 pasan a «Implementado» (D-29): `casos_de_prueba.py comprobar` confirma que
-    todos sus criterios tienen prueba. Sus restricciones suman lo que hace el código y la ficha no decía (RF-15 de la
-    5 a la 8, RF-16 de la 4 a la 6 y RF-17 la 5 y la 6); RF-04 cambia el final de su restricción 3 y RF-16 su
-    restricción 3, por la decisión de las fincas; RNF-03 suma sus observaciones y, después de la revisión del PR, el texto nuevo de C3.
-  - **Los README:** el principal suma Apache PDFBox 3.0.8 y Roboto (SIL OFL 1.1) a la tabla de versiones, y qué
-    hacen el reporte PDF, las estadísticas y el modelo de IA; el del frontend, `src/estadistica/` y `src/modelo/`,
-    lo nuevo de `src/lote/`, las rutas que ya no están pendientes y las ayudas nuevas de punta a punta.
-  - **Decisiones pequeñas,** tomadas con el prototipo y las fichas:
-    - **El reporte PDF:**
-      - **La librería:** Apache PDFBox 3.0.8, con licencia Apache 2.0, como Spring, y que lee el texto de sus propios
-        PDF, con lo que las pruebas comparan las cifras con las de la página. OpenPDF tiene licencia LGPL o MPL y
-        extrae peor el texto.
-      - **La letra:** Roboto, la del prototipo, sacada del paquete `@fontsource/roboto` 5.3.0 que ya usaba la página,
-        sin descargar nada. Un carácter que no tiene, como un emoji, sale como «?».
-      - **El botón** dice «Descargar PDF», como el prototipo y el proceso de la ficha; en el PC va junto al título, y
-        en el celular, a todo el ancho, antes de «Nuevo lote».
-      - **El ícono del historial** va junto a «Ver», de 40 px en la tabla y de 44 px en la tarjeta del celular, con el
-        nombre «Descargar el PDF del lote {código}». Mientras baja queda ocupado y se anuncia en una región
-        `aria-live`, sin otro `role="status"` que choque con el del total.
-      - **Tamaño carta,** el de las impresoras de Colombia; el pie dice «(hora de Colombia)» y «Página n de m».
-      - **La sugerencia** sale sin botón, y **el aviso de confianza baja** usa el título de RF-09 C4 con una frase
-        general, porque el porcentaje máximo de dudosos se copia en cada muestra.
-      - **La recomendación** va como la escribió la empresa, también en el PDF en inglés, como en la página.
-      - **Las fotos** se reducen a unos 1000 px antes de entrar al PDF: cada PDF de ejemplo pesa unos 170 KB. Una foto
-        que no se puede leer no impide el reporte: dice «La foto no está disponible.».
-      - **El idioma:** sin `idioma`, el endpoint usa `Accept-Language`; la página pide el suyo.
-      - **El nombre del archivo:** `InspectIA-<código>-es.pdf`; lo que no se puede escribir en un nombre, como `/` o un
-        espacio, va como `_`.
-      - **Si falta un solo idioma,** se rehace solo ese en la misma base y se conserva el otro, para que C4 se siga
-        cumpliendo; si faltan los dos, se rehacen con otra base.
-    - **Las estadísticas:**
-      - **El estilo:** el prototipo no tiene esta pantalla; sigue el del historial, con tarjetas, tablas y un solo
-        color de serie (el primario). La gráfica por mes es SVG, sin librerías: columnas en el PC y barras en el
-        celular, oculta a los lectores de pantalla porque su tabla dice lo mismo.
-      - **El periodo:** los últimos 12 meses por defecto (del día 1 del mes de hace 11 meses hasta hoy); en la
-        pantalla las dos fechas son obligatorias y en la API, opcionales. Se interpreta con `FiltrosDelHistorial`,
-        así los días de Colombia son los del historial.
-      - **El promedio** es la media de los porcentajes de los lotes, con 1 decimal y la mitad hacia arriba.
-      - **Las fincas** van de mayor a menor promedio y, si empatan, primero la de más lotes y después por nombre. Cada
-        una se muestra con la forma más usada en el periodo y, si empatan, con la del resultado más reciente.
-      - **Los meses del medio sin lotes** salen en la tabla con «Sin lotes» y sin columna en la gráfica.
-      - **Las categorías** llevan una columna «% de los lotes» y la nota «La categoría es probable: la oficial se
-        confirma con la prueba de corte.».
-      - **Los textos nuevos:** «Desde» y «Hasta» (en el historial es «Resultado desde»), «Ver estadísticas» y «No hay
-        lotes analizados en este periodo. Elige otro periodo para ver sus estadísticas.».
-      - **Lo interno:** el subpaquete `estadistica.lotes`, `JdbcClient` en lugar de JPA, y el campo `sinLotes` en la
-        respuesta, para C2.
-    - **El modelo de IA:**
-      - **El periodo opcional de la confianza,** que dicen las entradas de la ficha y no tenía criterio: «Desde» y
-        «Hasta» cuentan por la fecha en que terminó cada muestra, no por la del resultado del lote, en días de
-        Colombia y con las dos incluidas. Sin fechas, cuenta todos los análisis; «Todos los análisis» quita el periodo.
-        `PeriodoDeConsulta` valida el periodo igual en las estadísticas y en el modelo, y `MarcarErroresDelPeriodo`
-        marca los errores del backend en su campo en las dos pantallas.
-      - **Las métricas** van con 2 decimales, como las guarda la base, en el formato de cada idioma; una que el
-        modelo no tiene, como las del clasificador falso, va con «—».
-      - **La tabla comparativa** va del mayor F1 macro al menor, con el chip «En uso», con un chulo, en el modelo en
-        uso; en el celular, una tarjeta por modelo.
-      - **Sin modelo en uso** la pantalla lo dice, sin matriz: el del clasificador falso no tiene métricas y la base
-        no lo deja en uso (D-48).
-  - **Queda fuera:**
-    - **Unir los tres frentes:** el frente B también agrega `guardar(llave, contenido, tipo)` en `AlmacenEnCarpeta`,
-      con su propia validación de llaves (`LlavesDeArchivos`); al unir, queda uno solo que no pise un archivo, y los
-      enlaces, solo para fotos. Si el frente A construye a mano `GuardarAnalisis` (que ahora recibe un
-      `ApplicationEventPublisher`) o `MetricasDelModeloServicio` (que recibe `ConfianzaDeLosAnalisisRepositorio`) en
-      sus pruebas, no compila hasta ajustarlas.
-    - **Una foto PNG con su orientación en el bloque `eXIf`** no se gira en el PDF; solo se gira el EXIF de los JPG.
-    - **La descripción de `lote.reporte_ruta`** en `specs/entidades/lote.json` y en `specs/modelo-datos.md` sigue
-      diciendo «llave en S3»: cambiar `lote.json` cambia el header de `V1` (P-16). D-50 dice que guarda la base.
-    - **Nadie miró todavía las pantallas nuevas en un navegador:** las de punta a punta, con axe y a 360 px, las
-      corre la CI.
-    - **La prueba de estrés (RNF-01 y RNF-02) contra AWS,** al final, con los tres frentes desplegados.
-  - **Después de la revisión de Cristhian:**
-    - **RNF-03 C3, con su texto nuevo** (`specs/fichas.json` 1.24, RNF-03 1.3): «Las fotos en S3 solo se abren con
-      enlaces temporales generados para la empresa dueña, y los reportes solo se descargan por la API, con la sesión
-      de esa empresa.» Sus pruebas siguen siendo las mismas.
-    - **La unión con `main`,** con el servicio de IA (#22) y el despliegue (#20) ya fusionados. El choque más grande
-      fue `guardar(llave, contenido, tipo)`, que trajeron los dos: queda uno solo en `AlmacenEnCarpeta` 1.5, que nunca
-      pisa un archivo, y una sola revisión de las llaves, la de `LlavesDeArchivos` del #20; el patrón de las llaves
-      de los reportes de este PR se borró. Las fotos siguen siendo las únicas con enlaces firmados. De las pruebas de
-      la carpeta quedan las de este PR y la del #20 que comprueba que guardar con el tipo no pisa un archivo.
-      `GuardarAnalisis` junta la revisión de las fotos en la cola (#22) con el reporte descartado de la muestra 2.
-      Los textos, los README, D-50 y D-51, y las entradas de la bitácora quedan de los dos lados.
-    - **Los dos ajustes de D-51** en `infra/README.md` 1.17 y en D-51: el presupuesto `inspectia-mensual` es de
-      US$40, con avisos al 80 % (US$32) y al 100 % del gasto real, creado con *Customize (advanced)*, porque la
-      plantilla trae sus propios avisos (85 % y 100 %); y antes de la prueba de estrés la guía ya no ofrece pasar la
-      regla a Count: la prueba inicia sesión una vez por usuario y reusa el token.
-  - **Problemas encontrados:**
-    - **Apache PDFBox no lee WOFF,** y el paquete de la página solo trae Roboto en WOFF: se pasó a TTF descomprimiendo
-      sus tablas, sin cambiarlas.
-    - **Las marcas de las pruebas solo admiten un criterio:** C1, C2 y C4 de RF-16 van en pruebas separadas.
-    - **Al unir las ramas** se juntaron `Rutas.jsx` (las pantallas del análisis, la del modelo y las de las
-      estadísticas), los bloques de los textos en `es.js`, `en.js` y los `.properties`, y `Marco.test.jsx`: su prueba
-      de las secciones pendientes se quedó sin secciones y se borró.
-    - **Las pruebas en rojo del periodo de RF-17** no compilaban (`36e6697`): el análisis con instante se llamaba
-      distinto y la verificación usaba el repositorio que no era.
-  - **Resultado,** sobre `da046a2`, el último commit con código. Por el plazo, solo se corrieron en el PC las pruebas
-    rápidas de lo que cambió, y una sola suite pesada a la vez:
-    - **Backend:** `./mvnw test` completo, 314 pruebas, con el reporte (`ed08458`). Después de las correcciones:
-      `AlmacenEnCarpetaTest` 8, `DescargarReporteTest` 11, `MetricasDelModeloServicioTest` 7,
-      `CalculoDeEstadisticasTest` 10, `GuardarAnalisisTest` 13, `BorrarReportesDescartadosTest` 2,
-      `ConfiguracionDelAlmacenEnCarpetaTest` 2 y `VerificacionDeClasesTest` 1. Integración con PostgreSQL:
-      `ReporteDelLoteIT` 8, `EstadisticasIT` 12 y `MetricasDelModeloIT` 12.
-    - **Frontend:** Vitest de `src/modelo`, `src/estadistica`, `src/i18n`, `src/api`, `Historial.test.jsx` y
-      `ReporteEnElHistorial.test.jsx` (124 pruebas en 10 archivos), más `DescargarReporte.test.jsx` y
-      `ResultadoDelLote.test.jsx`; ESLint de los archivos cambiados.
-    - **Para la CI:** `./mvnw verify` completo, `npm test`, el build, Playwright y Selenium. Las pruebas nuevas de
-      punta a punta (`reporte.spec.js`, `estadisticas.spec.js` y `modelo.spec.js`) no se corrieron en el PC.
-    - **Generador:** 123 pruebas y `generar.py comprobar`.
-    - **Casos de prueba:** 1443 pruebas y 33 criterios sin prueba (eran 45). Pasan `casos_de_prueba.py comprobar` y
-      `generar.py comprobar`, con RF-15, RF-16 y RF-17 en «Implementado».
+- **El PR del frente C, en la rama `feature/RF-15-16-17-reporte-estadisticas-modelo`** (desde `56014b1`). Las tres
+  funciones se escribieron a la vez, cada una en su worktree, y se unieron en esta rama:
+  1. **RF-15, el reporte PDF:** `72e5c2a` las pruebas en rojo (el armado con PDFBox, el caso de uso, el endpoint,
+     el botón y la descarga de punta a punta), `49a4982` el reporte con Apache PDFBox y Roboto embebida, un archivo
+     por idioma, y `GET /api/v1/lotes/{id}/reporte`, y `ed08458` «Descargar PDF» en el resultado del lote.
+  2. **RF-16, las estadísticas** (rama `trabajo/estadisticas`, unida en `acae445`): `29c4fb3` las pruebas del
+     cálculo y de la API en rojo, `131770e` el módulo por capas con `GET /api/v1/estadisticas`, `dd3977a` las
+     pruebas de la pantalla en rojo, `c237df8` la pantalla, `59e7240` las pruebas de punta a punta y `f8ea330`
+     «Ver estadísticas» con el mismo periodo, que las vuelve a pedir.
+  3. **RF-17, el modelo de IA** (rama `trabajo/modelo`, unida en `71a9a3c`): `4a16f72` las pruebas del backend en
+     rojo, `9e2227f` la API, `c6b7f97` las pruebas del frontend y de punta a punta en rojo, `2d2d6d5` la pantalla,
+     `4cfcef1` las pruebas de accesibilidad y de celular que la visitan y `855185b` Stryker sobre su lógica.
+  4. **Las correcciones de la revisión**, de `750035c` a `da046a2`: 13 commits; los que cambian el código van
+     después de sus pruebas en rojo.
+  5. Esta entrada de la bitácora, D-50, las fichas, los README y los casos de prueba.
+- **El reporte PDF (RF-15):** en un lote analizado, «Descargar PDF» en el resultado, para los dos roles, también
+  mientras se toma la segunda muestra, y un ícono de PDF en cada lote analizado del historial, como en el
+  prototipo. El PDF trae la empresa con su NIT, el código, la finca y las fechas del lote; el porcentaje corregido
+  con su rango probable (D-43), los granos sanos y no sanos y lo que contó el modelo (D-39); la categoría probable
+  con la nota de la prueba de corte (D-10), la recomendación, la sugerencia con su límite (D-47) y el aviso de
+  confianza baja; y cada muestra con su analista, su modelo y sus fotos con los granos marcados como en la página
+  (RF-11, D-42). Es tamaño carta, con Roboto embebida, y las fechas van en hora de Colombia.
+  - **Un PDF por idioma (D-50):** la primera descarga arma el de español y el de inglés a la vez y los guarda;
+    `lote.reporte_ruta` guarda la base y los archivos son `<base>-es.pdf` y `<base>-en.pdf`, sin cambiar `V1`. Las
+    siguientes descargas entregan los mismos bytes, aunque la empresa cambie sus rangos o su nombre (C4).
+  - **La segunda muestra (C5):** al guardar su resultado, el lote olvida la ruta y, después de confirmar la
+    transacción, se borran los dos archivos anteriores (`ReporteDescartado` y `BorrarReportesDescartados`, como
+    `ArchivoReemplazado` con las fotos). Si la transacción de una descarga se deshace, se borran los recién armados.
+  - **Por el backend, con la sesión:** el PDF no tiene enlace temporal. Un lote de otra empresa responde 404
+    (RNF-03 C1); uno pendiente, 409; un idioma que no es `es` ni `en`, 400. RNF-03 C3 hablaba de enlaces temporales
+    también para los reportes: después de revisar el PR, Cristhian le dio el texto nuevo (ver abajo).
+  - **El puerto nuevo `GeneradorDeReporte`** y el caso de uso `DescargarReporte`, en el núcleo hexagonal del
+    análisis; el adaptador `adaptadores/pdf/`. `AlmacenDeArchivos` gana `guardar(llave, contenido, tipo)`, y la
+    carpeta de D-41 guarda también los reportes, pero solo firma enlaces de fotos.
+- **Las estadísticas (RF-16):** la pantalla «Estadísticas» de la administradora de empresa, con el periodo (por
+  defecto, los últimos 12 meses), los lotes analizados, el promedio de granos sanos, los lotes por categoría, la
+  evolución por mes y el promedio por finca o proveedor; cada gráfica va con su tabla y, sin lotes, un mensaje en
+  su lugar. El módulo `estadistica.lotes` va por capas, a mano (D-21), y solo lee la tabla `lote` de la empresa de
+  la sesión. Las fincas se unen sin distinguir mayúsculas, tildes ni espacios, como las sugerencias de RF-04: lo
+  decidió Cristhian el 23/11/2026, y ahora lo dicen las restricciones de RF-04 y RF-16, que decían lo contrario.
+- **El modelo de IA (RF-17):** la pantalla «Modelo de IA» de la administradora de empresa, con el modelo en uso y
+  su F1, su precisión y su recall macro, la matriz de confusión en una tabla, la tabla comparativa de los modelos
+  (D-18, D-48) y la confianza promedio de los análisis de la empresa, de todos o de un periodo opcional. El módulo
+  `estadistica.modelo` va por capas, a mano, con `GET /api/v1/modelo`.
+- **Las fichas:** RF-15, RF-16 y RF-17 pasan a «Implementado» (D-29): `casos_de_prueba.py comprobar` confirma que
+  todos sus criterios tienen prueba. Sus restricciones suman lo que hace el código y la ficha no decía (RF-15 de la
+  5 a la 8, RF-16 de la 4 a la 6 y RF-17 la 5 y la 6); RF-04 cambia el final de su restricción 3 y RF-16 su
+  restricción 3, por la decisión de las fincas; RNF-03 suma sus observaciones y, después de la revisión del PR, el texto nuevo de C3.
+- **Los README:** el principal suma Apache PDFBox 3.0.8 y Roboto (SIL OFL 1.1) a la tabla de versiones, y qué
+  hacen el reporte PDF, las estadísticas y el modelo de IA; el del frontend, `src/estadistica/` y `src/modelo/`,
+  lo nuevo de `src/lote/`, las rutas que ya no están pendientes y las ayudas nuevas de punta a punta.
+- **Decisiones pequeñas,** tomadas con el prototipo y las fichas:
+  - **El reporte PDF:**
+    - **La librería:** Apache PDFBox 3.0.8, con licencia Apache 2.0, como Spring, y que lee el texto de sus propios
+      PDF, con lo que las pruebas comparan las cifras con las de la página. OpenPDF tiene licencia LGPL o MPL y
+      extrae peor el texto.
+    - **La letra:** Roboto, la del prototipo, sacada del paquete `@fontsource/roboto` 5.3.0 que ya usaba la página,
+      sin descargar nada. Un carácter que no tiene, como un emoji, sale como «?».
+    - **El botón** dice «Descargar PDF», como el prototipo y el proceso de la ficha; en el PC va junto al título, y
+      en el celular, a todo el ancho, antes de «Nuevo lote».
+    - **El ícono del historial** va junto a «Ver», de 40 px en la tabla y de 44 px en la tarjeta del celular, con el
+      nombre «Descargar el PDF del lote {código}». Mientras baja queda ocupado y se anuncia en una región
+      `aria-live`, sin otro `role="status"` que choque con el del total.
+    - **Tamaño carta,** el de las impresoras de Colombia; el pie dice «(hora de Colombia)» y «Página n de m».
+    - **La sugerencia** sale sin botón, y **el aviso de confianza baja** usa el título de RF-09 C4 con una frase
+      general, porque el porcentaje máximo de dudosos se copia en cada muestra.
+    - **La recomendación** va como la escribió la empresa, también en el PDF en inglés, como en la página.
+    - **Las fotos** se reducen a unos 1000 px antes de entrar al PDF: cada PDF de ejemplo pesa unos 170 KB. Una foto
+      que no se puede leer no impide el reporte: dice «La foto no está disponible.».
+    - **El idioma:** sin `idioma`, el endpoint usa `Accept-Language`; la página pide el suyo.
+    - **El nombre del archivo:** `InspectIA-<código>-es.pdf`; lo que no se puede escribir en un nombre, como `/` o un
+      espacio, va como `_`.
+    - **Si falta un solo idioma,** se rehace solo ese en la misma base y se conserva el otro, para que C4 se siga
+      cumpliendo; si faltan los dos, se rehacen con otra base.
+  - **Las estadísticas:**
+    - **El estilo:** el prototipo no tiene esta pantalla; sigue el del historial, con tarjetas, tablas y un solo
+      color de serie (el primario). La gráfica por mes es SVG, sin librerías: columnas en el PC y barras en el
+      celular, oculta a los lectores de pantalla porque su tabla dice lo mismo.
+    - **El periodo:** los últimos 12 meses por defecto (del día 1 del mes de hace 11 meses hasta hoy); en la
+      pantalla las dos fechas son obligatorias y en la API, opcionales. Se interpreta con `FiltrosDelHistorial`,
+      así los días de Colombia son los del historial.
+    - **El promedio** es la media de los porcentajes de los lotes, con 1 decimal y la mitad hacia arriba.
+    - **Las fincas** van de mayor a menor promedio y, si empatan, primero la de más lotes y después por nombre. Cada
+      una se muestra con la forma más usada en el periodo y, si empatan, con la del resultado más reciente.
+    - **Los meses del medio sin lotes** salen en la tabla con «Sin lotes» y sin columna en la gráfica.
+    - **Las categorías** llevan una columna «% de los lotes» y la nota «La categoría es probable: la oficial se
+      confirma con la prueba de corte.».
+    - **Los textos nuevos:** «Desde» y «Hasta» (en el historial es «Resultado desde»), «Ver estadísticas» y «No hay
+      lotes analizados en este periodo. Elige otro periodo para ver sus estadísticas.».
+    - **Lo interno:** el subpaquete `estadistica.lotes`, `JdbcClient` en lugar de JPA, y el campo `sinLotes` en la
+      respuesta, para C2.
+  - **El modelo de IA:**
+    - **El periodo opcional de la confianza,** que dicen las entradas de la ficha y no tenía criterio: «Desde» y
+      «Hasta» cuentan por la fecha en que terminó cada muestra, no por la del resultado del lote, en días de
+      Colombia y con las dos incluidas. Sin fechas, cuenta todos los análisis; «Todos los análisis» quita el periodo.
+      `PeriodoDeConsulta` valida el periodo igual en las estadísticas y en el modelo, y `MarcarErroresDelPeriodo`
+      marca los errores del backend en su campo en las dos pantallas.
+    - **Las métricas** van con 2 decimales, como las guarda la base, en el formato de cada idioma; una que el
+      modelo no tiene, como las del clasificador falso, va con «—».
+    - **La tabla comparativa** va del mayor F1 macro al menor, con el chip «En uso», con un chulo, en el modelo en
+      uso; en el celular, una tarjeta por modelo.
+    - **Sin modelo en uso** la pantalla lo dice, sin matriz: el del clasificador falso no tiene métricas y la base
+      no lo deja en uso (D-48).
+- **Queda fuera:**
+  - **Unir los tres frentes:** el frente B también agrega `guardar(llave, contenido, tipo)` en `AlmacenEnCarpeta`,
+    con su propia validación de llaves (`LlavesDeArchivos`); al unir, queda uno solo que no pise un archivo, y los
+    enlaces, solo para fotos. Si el frente A construye a mano `GuardarAnalisis` (que ahora recibe un
+    `ApplicationEventPublisher`) o `MetricasDelModeloServicio` (que recibe `ConfianzaDeLosAnalisisRepositorio`) en
+    sus pruebas, no compila hasta ajustarlas.
+  - **Una foto PNG con su orientación en el bloque `eXIf`** no se gira en el PDF; solo se gira el EXIF de los JPG.
+  - **La descripción de `lote.reporte_ruta`** en `specs/entidades/lote.json` y en `specs/modelo-datos.md` sigue
+    diciendo «llave en S3»: cambiar `lote.json` cambia el header de `V1` (P-16). D-50 dice que guarda la base.
+  - **Nadie miró todavía las pantallas nuevas en un navegador:** las de punta a punta, con axe y a 360 px, las
+    corre la CI.
+  - **La prueba de estrés (RNF-01 y RNF-02) contra AWS,** al final, con los tres frentes desplegados.
+- **Después de la revisión de Cristhian:**
+  - **RNF-03 C3, con su texto nuevo** (`specs/fichas.json` 1.24, RNF-03 1.3): «Las fotos en S3 solo se abren con
+    enlaces temporales generados para la empresa dueña, y los reportes solo se descargan por la API, con la sesión
+    de esa empresa.» Sus pruebas siguen siendo las mismas.
+  - **La unión con `main`,** con el servicio de IA (#22) y el despliegue (#20) ya fusionados. El choque más grande
+    fue `guardar(llave, contenido, tipo)`, que trajeron los dos: queda uno solo en `AlmacenEnCarpeta` 1.5, que nunca
+    pisa un archivo, y una sola revisión de las llaves, la de `LlavesDeArchivos` del #20; el patrón de las llaves
+    de los reportes de este PR se borró. Las fotos siguen siendo las únicas con enlaces firmados. De las pruebas de
+    la carpeta quedan las de este PR y la del #20 que comprueba que guardar con el tipo no pisa un archivo.
+    `GuardarAnalisis` junta la revisión de las fotos en la cola (#22) con el reporte descartado de la muestra 2.
+    Los textos, los README, D-50 y D-51, y las entradas de la bitácora quedan de los dos lados.
+  - **Los dos ajustes de D-51** en `infra/README.md` 1.17 y en D-51: el presupuesto `inspectia-mensual` es de
+    US$40, con avisos al 80 % (US$32) y al 100 % del gasto real, creado con *Customize (advanced)*, porque la
+    plantilla trae sus propios avisos (85 % y 100 %); y antes de la prueba de estrés la guía ya no ofrece pasar la
+    regla a Count: la prueba inicia sesión una vez por usuario y reusa el token.
+- **Problemas encontrados:**
+  - **Apache PDFBox no lee WOFF,** y el paquete de la página solo trae Roboto en WOFF: se pasó a TTF descomprimiendo
+    sus tablas, sin cambiarlas.
+  - **Las marcas de las pruebas solo admiten un criterio:** C1, C2 y C4 de RF-16 van en pruebas separadas.
+  - **Al unir las ramas** se juntaron `Rutas.jsx` (las pantallas del análisis, la del modelo y las de las
+    estadísticas), los bloques de los textos en `es.js`, `en.js` y los `.properties`, y `Marco.test.jsx`: su prueba
+    de las secciones pendientes se quedó sin secciones y se borró.
+  - **Las pruebas en rojo del periodo de RF-17** no compilaban (`36e6697`): el análisis con instante se llamaba
+    distinto y la verificación usaba el repositorio que no era.
+- **Resultado,** sobre `da046a2`, el último commit con código. Por el plazo, solo se corrieron en el PC las pruebas
+  rápidas de lo que cambió, y una sola suite pesada a la vez:
+  - **Backend:** `./mvnw test` completo, 314 pruebas, con el reporte (`ed08458`). Después de las correcciones:
+    `AlmacenEnCarpetaTest` 8, `DescargarReporteTest` 11, `MetricasDelModeloServicioTest` 7,
+    `CalculoDeEstadisticasTest` 10, `GuardarAnalisisTest` 13, `BorrarReportesDescartadosTest` 2,
+    `ConfiguracionDelAlmacenEnCarpetaTest` 2 y `VerificacionDeClasesTest` 1. Integración con PostgreSQL:
+    `ReporteDelLoteIT` 8, `EstadisticasIT` 12 y `MetricasDelModeloIT` 12.
+  - **Frontend:** Vitest de `src/modelo`, `src/estadistica`, `src/i18n`, `src/api`, `Historial.test.jsx` y
+    `ReporteEnElHistorial.test.jsx` (124 pruebas en 10 archivos), más `DescargarReporte.test.jsx` y
+    `ResultadoDelLote.test.jsx`; ESLint de los archivos cambiados.
+  - **Para la CI:** `./mvnw verify` completo, `npm test`, el build, Playwright y Selenium. Las pruebas nuevas de
+    punta a punta (`reporte.spec.js`, `estadisticas.spec.js` y `modelo.spec.js`) no se corrieron en el PC.
+  - **Generador:** 123 pruebas y `generar.py comprobar`.
+  - **Casos de prueba:** 1443 pruebas y 33 criterios sin prueba (eran 45). Pasan `casos_de_prueba.py comprobar` y
+    `generar.py comprobar`, con RF-15, RF-16 y RF-17 en «Implementado».
 - Por qué: el reporte, las estadísticas y las métricas del modelo eran las funciones que le faltaban a la versión 1,
-  y el jueves 26/11 todo tiene que estar desplegado en AWS. El PDF es el soporte que la empresa archiva o comparte con
-  sus compradores (D-15); las estadísticas muestran la tendencia de la calidad por finca y por mes, y la pantalla del
-  modelo dice qué tan confiable es antes de usar sus resultados (D-14).
+y el jueves 26/11 todo tiene que estar desplegado en AWS. El PDF es el soporte que la empresa archiva o comparte con
+sus compradores (D-15); las estadísticas muestran la tendencia de la calidad por finca y por mes, y la pantalla del
+modelo dice qué tan confiable es antes de usar sus resultados (D-14).
 - Cómo se pidió:
-  - **El 24/11/2026,** Cristhian cambió el plan: «Cambio de plan: el jueves 26/11 todo tiene que estar desplegado en
-    AWS y funcionando, como en el diagrama de arquitectura (D-16, 02_Analisis_Diseno/InspectIA_Despliegue_AWS.pdf).
-    Nada a medias.» Pidió trabajar «en tres frentes a la vez, cada uno en su rama, con worktrees y agentes aparte»:
-    el servicio de IA con el modelo de Julián, el código del despliegue (los recursos de AWS los crea él en la
-    consola: «No escribas Terraform ni CloudFormation, ni crees nada en AWS») y, el tercero, este PR: «Las funciones
-    que faltan: el PDF (RF-15), las estadísticas (RF-16) y la pantalla del modelo (RF-17). Al final, la prueba de
-    estrés (RNF-01 y RNF-02) contra AWS.» Y para el tiempo: «en mi PC corre solo las pruebas rápidas de lo que
-    cambias; las de punta a punta, que las corra la CI. Nunca corras dos suites pesadas a la vez. La revisión antes
-    de cada PR, con un solo revisor.»
-  - **Las decisiones de antes:** el PDF por idioma, sin cambiar `V1` («Uno por idioma»), y unir «Paraíso» y
-    «Paraiso» en Java, como las sugerencias, sin tocar `V1`, las tomó Cristhian el 23/11/2026; esta última quedó en
-    «Queda fuera» del PR 1 y ahora entra en las fichas.
-  - **La forma de trabajo** es la del 22/11/2026: una sola parada por PR, las decisiones pequeñas anotadas aquí y en
-    el PR. Claude Code repartió el frente en tres agentes, uno por función, cada uno en su worktree y con sus pruebas
-    antes del código; el del reporte trabajó en la rama del PR, y los de las estadísticas y el modelo, en
-    `trabajo/estadisticas` y `trabajo/modelo`, que después se unieron. El del modelo no dejó informe: su parte se
-    toma de sus commits.
-  - **La revisión antes del PR,** con un solo revisor, como pidió Cristhian, leyó todo el PR sin cambiar nada y corrió
-    las pruebas rápidas y las de integración de las tres funciones. Encontró 8 hallazgos:
-    1. las pruebas de RF-16 C4 unían las tildes, que la ficha excluía; se resolvió con la decisión de Cristhian del
-       23/11/2026: C4 prueba «La Esperanza» y «la esperanza », y las tildes van en su propia prueba, sin criterio;
-    2. `docs/casos-de-prueba.md` no estaba al día, lo que hace el commit de la documentación;
-    3. `AlmacenEnCarpeta` dejaba firmar un enlace de vista para un reporte: ahora solo firma enlaces de fotos;
-    4. faltaba descargar el PDF desde el historial, como dicen la descripción de RF-15 y el prototipo: el ícono;
-    5. RNF-03 C3 habla de enlaces temporales y el PDF se baja por el backend: anotado en D-50 y en RNF-03;
-    6. dos marcas no comprobaban su criterio tal como está escrito: la del botón en el celular deja de ser RF-15 C3,
-       que cubre `GeneradorDeReporteEnPdfTest`, y la de las tildes deja de ser RF-16 C4;
-    7. RF-17 no tenía el periodo opcional de la confianza: ahora lo tiene, en la API y en la pantalla;
-    8. a un reporte al que le faltaba un solo idioma se le rehacían los dos, y el otro cambiaba: ahora se rehace solo
-       el que falta.
+- **El 24/11/2026,** Cristhian cambió el plan: «Cambio de plan: el jueves 26/11 todo tiene que estar desplegado en
+  AWS y funcionando, como en el diagrama de arquitectura (D-16, 02_Analisis_Diseno/InspectIA_Despliegue_AWS.pdf).
+  Nada a medias.» Pidió trabajar «en tres frentes a la vez, cada uno en su rama, con worktrees y agentes aparte»:
+  el servicio de IA con el modelo de Julián, el código del despliegue (los recursos de AWS los crea él en la
+  consola: «No escribas Terraform ni CloudFormation, ni crees nada en AWS») y, el tercero, este PR: «Las funciones
+  que faltan: el PDF (RF-15), las estadísticas (RF-16) y la pantalla del modelo (RF-17). Al final, la prueba de
+  estrés (RNF-01 y RNF-02) contra AWS.» Y para el tiempo: «en mi PC corre solo las pruebas rápidas de lo que
+  cambias; las de punta a punta, que las corra la CI. Nunca corras dos suites pesadas a la vez. La revisión antes
+  de cada PR, con un solo revisor.»
+- **Las decisiones de antes:** el PDF por idioma, sin cambiar `V1` («Uno por idioma»), y unir «Paraíso» y
+  «Paraiso» en Java, como las sugerencias, sin tocar `V1`, las tomó Cristhian el 23/11/2026; esta última quedó en
+  «Queda fuera» del PR 1 y ahora entra en las fichas.
+- **La forma de trabajo** es la del 22/11/2026: una sola parada por PR, las decisiones pequeñas anotadas aquí y en
+  el PR. Claude Code repartió el frente en tres agentes, uno por función, cada uno en su worktree y con sus pruebas
+  antes del código; el del reporte trabajó en la rama del PR, y los de las estadísticas y el modelo, en
+  `trabajo/estadisticas` y `trabajo/modelo`, que después se unieron. El del modelo no dejó informe: su parte se
+  toma de sus commits.
+- **La revisión antes del PR,** con un solo revisor, como pidió Cristhian, leyó todo el PR sin cambiar nada y corrió
+  las pruebas rápidas y las de integración de las tres funciones. Encontró 8 hallazgos:
+  1. las pruebas de RF-16 C4 unían las tildes, que la ficha excluía; se resolvió con la decisión de Cristhian del
+     23/11/2026: C4 prueba «La Esperanza» y «la esperanza », y las tildes van en su propia prueba, sin criterio;
+  2. `docs/casos-de-prueba.md` no estaba al día, lo que hace el commit de la documentación;
+  3. `AlmacenEnCarpeta` dejaba firmar un enlace de vista para un reporte: ahora solo firma enlaces de fotos;
+  4. faltaba descargar el PDF desde el historial, como dicen la descripción de RF-15 y el prototipo: el ícono;
+  5. RNF-03 C3 habla de enlaces temporales y el PDF se baja por el backend: anotado en D-50 y en RNF-03;
+  6. dos marcas no comprobaban su criterio tal como está escrito: la del botón en el celular deja de ser RF-15 C3,
+     que cubre `GeneradorDeReporteEnPdfTest`, y la de las tildes deja de ser RF-16 C4;
+  7. RF-17 no tenía el periodo opcional de la confianza: ahora lo tiene, en la API y en la pantalla;
+  8. a un reporte al que le faltaba un solo idioma se le rehacían los dos, y el otro cambiaba: ahora se rehace solo
+     el que falta.
 
-    Otro agente corrigió el 1 (solo las pruebas), el 3, el 4, el 6, el 7 y el 8, con sus pruebas en rojo antes del
-    código; el 2 y el 5 son de este commit.
-  - **Después de revisar los PR #19, #22, #20 y #21,** Cristhian escribió: «Revisé los PR #19, #22, #20 y #21 y están
-    bien. Fusiónalos en ese orden a medida que cada uno quede con todos sus jobs en verde». Sobre RNF-03 C3 dio el
-    texto nuevo: «las fotos se abren con enlaces temporales de la empresa dueña, y los reportes solo se descargan por
-    la API, con la sesión de esa empresa». Y sobre D-51 (el WAF del #20): «De acuerdo con D-51. Dos ajustes: 1. En la
-    guía, el presupuesto pasa a US$40 con avisos al 80 % y al 100 %: con WAF el costo normal es de unos US$22 al mes
-    y, con US$25, el aviso del 80 % saltaría todos los meses. 2. En la prueba de estrés, inicia sesión una vez y reusa
-    el token; no pases la regla de WAF a Count.» Como el #20 ya estaba en verde, se fusionó, y los dos ajustes
-    entraron aquí, que de todas formas tenía que unirse con `main`.
+  Otro agente corrigió el 1 (solo las pruebas), el 3, el 4, el 6, el 7 y el 8, con sus pruebas en rojo antes del
+  código; el 2 y el 5 son de este commit.
+- **Después de revisar los PR #19, #22, #20 y #21,** Cristhian escribió: «Revisé los PR #19, #22, #20 y #21 y están
+  bien. Fusiónalos en ese orden a medida que cada uno quede con todos sus jobs en verde». Sobre RNF-03 C3 dio el
+  texto nuevo: «las fotos se abren con enlaces temporales de la empresa dueña, y los reportes solo se descargan por
+  la API, con la sesión de esa empresa». Y sobre D-51 (el WAF del #20): «De acuerdo con D-51. Dos ajustes: 1. En la
+  guía, el presupuesto pasa a US$40 con avisos al 80 % y al 100 %: con WAF el costo normal es de unos US$22 al mes
+  y, con US$25, el aviso del 80 % saltaría todos los meses. 2. En la prueba de estrés, inicia sesión una vez y reusa
+  el token; no pases la regla de WAF a Count.» Como el #20 ya estaba en verde, se fusionó, y los dos ajustes
+  entraron aquí, que de todas formas tenía que unirse con `main`.
 - Archivos o PR: la rama `feature/RF-15-16-17-reporte-estadisticas-modelo` y su PR hacia `main`.
+
+## 24/11/2026 · RP-23, RNF-06 y RF-01: los tres arreglos pequeños del final del módulo
+
+- Quién: Cristhian Sánchez (`DrekOF`), con Claude Code.
+- Qué se hizo:
+- **En la rama `feature/arreglos-generados-y-sesion`** (desde `5ca4b11`), los tres arreglos que quedaron para «el PR
+  pequeño del final del módulo» (PR 3a y 3b):
+  1. **El tope de la página en los listados generados:** `bed993b` las pruebas en rojo y `f1e647a` el arreglo. Los
+     listados de empresas y usuarios limitaban el tamaño (1 a 100) pero no el número de la página: con una muy
+     grande, la fila donde empieza la página no cabe en un `int` y respondían 500, como el historial antes de
+     `c9d6fc0`. La plantilla `controlador.java.j2` 1.4 limita la página de 0 a `Pagina.PAGINA_MAXIMA`, con
+     `validacion.maximo` en español y en inglés, y la prueba generada de cada entidad con listado
+     (`api_generada.java.j2` 1.3) revisa la última página y el tamaño máximo permitidos, la página siguiente, la
+     negativa, el tamaño 0 y el 101 (prueba de límite). Se cambió en el generador, que pasa a la 1.11, y se
+     regeneró: cambian los dos controladores, sus pruebas generadas y el header de lo demás. `V1` no cambia.
+  2. **La caja de la tabla de las pantallas generadas con el teclado:** `e501976` la prueba en rojo y `723d34d` el
+     arreglo. En `crud/PantallaDeRegistros.jsx`, que es código compartido escrito a mano (lo generado solo lo usa),
+     la caja que desplaza la tabla a los lados es ahora una región con `tabIndex` 0 y el nombre de la lista, como la
+     del historial (RNF-06 C4, WCAG 2.1.1).
+  3. **«Maximum update depth exceeded» al entrar:** `cbc8081`. No se encontró la causa (ver «Problemas
+     encontrados»). La prueba de Selenium de RF-01 C1 ahora revisa la consola del navegador después de entrar, y
+     una de Vitest escribe tecla por tecla y revisa `console.error`.
+  4. Esta entrada y `docs/casos-de-prueba.md`, al día.
+- Por qué: los tres quedaron anotados en «Queda fuera» de los PR 3a y 3b para hacerlos juntos al final del módulo de
+análisis, y Cristhian los pidió para esta noche, mientras sube los modelos y pone las variables de AWS.
+- Cómo se pidió: Cristhian escribió el 24/11/2026: «Bien. Cuando el #21 quede en `main`, mientras yo subo los modelos
+y pongo las variables, sigue esta noche con esto, en los PR que veas: […] 2. **Los tres arreglos pequeños:** el tope
+de página en los listados generados, la tabla de las pantallas generadas con el teclado y el «Maximum update depth
+exceeded» de «Iniciar sesión».» El punto 1 de su mensaje (los criterios sin prueba) va en otro PR.
+- Decisiones pequeñas:
+  - la prueba de límite generada lleva la ficha de su entidad (RF-02 en empresas, RF-03 en usuarios), como las
+    demás pruebas generadas de validaciones; no cubre un criterio, así que no lleva «C<n>»;
+  - el generador pasa a la 1.11 por el cambio de plantilla, como en las versiones anteriores, aunque eso cambie el
+    header de todos los archivos generados;
+  - la revisión de la consola va en la prueba de Selenium de RF-01 C1, que es la que entra con el teclado, en un
+    commit aparte, para quitarlo fácil si hace falta.
+- Queda fuera:
+  - la causa del «Maximum update depth exceeded»: la dirá la CI con la nueva revisión de la consola.
+- Problemas encontrados:
+  - **El error de React no se reprodujo fuera de Selenium.** Se probó en Vitest (jsdom) escribiendo tecla por tecla y
+    entrando, en PC y en celular, y en Chromium (el navegador de Claude Code) con la página compilada como la compila el
+    entorno de Selenium (con `NODE_ENV=test`, que deja React en modo de desarrollo: por eso el error sale con su texto
+    completo), con una API simulada en Python, escribiendo con teclas una por una, en PC y en celular, también justo
+    al cargar: ninguna vez apareció. Se leyeron `IniciarSesion.jsx`, `CampoDeTexto`, `CampoContrasena`,
+    `EnfocarPrimerError`, `Preferencias`, `ProveedorDeSesion`, `Rutas`, `Inicio` y los efectos de Formik 2.4.9,
+    `InputBase` y `FormControl` de Material UI 9.5 y `useTranslation` de react-i18next 17.1, sin un efecto que se
+    llame a sí mismo. Las consolas guardadas en `reports/selenium` muestran que salta en los primeros 300 ms, antes de
+    terminar de entrar, también en las pruebas de RF-10, que entran igual.
+  - **Las fuentes del servidor de desarrollo respondían 403** en el worktree, porque `node_modules` es un enlace a la
+    copia principal y queda fuera de lo que Vite deja servir. No afecta a la app ni a las pruebas.
+- Resultado de las pruebas (en este PC solo las rápidas de lo cambiado; las de punta a punta las corre la CI):
+  - Generador: 126 pruebas de pytest; `generar.py comprobar` al día (63 archivos).
+  - Backend: las 135 de `EmpresaApiGeneradaIT` y `UsuarioApiGeneradaIT` (Testcontainers).
+  - Frontend: 171 pruebas de Vitest de `crud/` y `generated/`, y las 17 de `IniciarSesion.test.jsx`; ESLint en lo
+    cambiado.
+  - Casos de prueba: 1636 pruebas y 16 criterios sin prueba; pasan `casos_de_prueba.py comprobar`.
+- Archivos o PR: la rama `feature/arreglos-generados-y-sesion` y su PR hacia `main`.
 
 ## Plantilla para nuevas entradas
 
