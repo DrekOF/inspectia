@@ -4,9 +4,9 @@
  *              comparte con el backend no van aquí: salen de sus archivos .properties
  *              (herramientas/textos-del-backend.js). Los marcadores van entre llaves, como en el backend.
  * Fecha de creación: 20/10/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.7
+ * Versión: 1.8
  */
 
 /** Textos en inglés, por clave. Tiene las mismas claves que es.js (i18n.test.js lo revisa). */
@@ -180,8 +180,29 @@ export default {
   'historial.continuarLote': 'Continue lot {codigo}',
   'historial.ver': 'View',
   'historial.verLote': 'View lot {codigo}',
+  // The history filters (RF-14 C2), with the prototype texts
+  'historial.filtros': 'History filters',
+  'historial.mostrarFiltros': 'Filters',
+  'historial.desde': 'Result from',
+  'historial.hasta': 'To',
+  'historial.ayudaFechas': 'Pending lots do not have a result date yet.',
+  'historial.usuario': 'User',
+  'historial.ejemploCodigo': 'L-0142',
+  'historial.todos': 'All',
+  'historial.todas': 'All',
+  'historial.usuariosSinCargar': 'The list of users could not be loaded: reload the page to filter by who registered the lot.',
+  'historial.usuarioElegido': 'Selected user',
+  'historial.aplicarFiltros': 'Apply filters',
+  'historial.limpiar': 'Clear',
+  'historial.limpiarFiltros': 'Clear filters',
+  'historial.sinCoincidencias': 'No lot matches the filters.',
+  'historial.encontrados_one': '{count} lot found',
+  'historial.encontrados_many': '{count} lots found',
+  'historial.encontrados_other': '{count} lots found',
   'fotos.titulo': 'Sample photos',
+  'fotos.tituloDeLaMuestra': 'Photos of sample {numero}',
   'fotos.descripcion': 'Lot {codigo} · {origen}. Upload 2 or 3 photos; if you leave now, the lot stays pending and you can resume it from the History.',
+  'fotos.descripcionDeOtraMuestra': 'Sample {numero} of lot {codigo} · {origen}. Upload 2 or 3 photos of another sample of the same lot; if you leave now, you can resume it from the lot result.',
   'fotos.descripcionSinSubir': 'Lot {codigo} · {origen}.',
   'fotos.verElResultado': 'See the result',
   'fotos.tusFotos': 'Your photos',
@@ -211,12 +232,14 @@ export default {
 
   // Waiting for the analysis, on the result page (RNF-01 C4, RNF-02 C3)
   'espera.titulo': 'Sample analysis',
+  'espera.tituloDeLaMuestra': 'Analysis of sample {numero}',
   'espera.avance': 'Analysis progress',
   'espera.EN_ESPERA': 'Your analysis is queued: it starts as soon as the one ahead of it finishes.',
   'espera.EN_PROCESO': 'Analyzing the sample…',
   'espera.tarda': 'It is taking longer than usual. You can wait here or go back to the History: the result is saved.',
   'espera.irAlHistorial': 'Go to the History',
   'espera.fallo': 'The sample analysis did not finish: the sample is pending again.',
+  'espera.falloDeLaMuestra': 'The analysis of sample {numero} did not finish: the sample is pending again.',
   'espera.falloQueHacer': 'Check the photos and press “Analyze the sample” again.',
   'espera.falloAdmin': 'An end user of your company can check the photos and send it again.',
   'espera.volverALasFotos': 'Back to the photos',
@@ -237,8 +260,15 @@ export default {
   'resultado.marcados': '{sanos} of {total} marked as healthy',
   'resultado.corrige': 'The percentage corrects the known errors of the model.',
   'resultado.nota': 'It is a probable category: the official one is confirmed with the cut test.',
-  'resultado.sugerencia': 'The result is less than 1 point away from a category limit.',
-  'resultado.sugerenciaDetalle': 'It is worth analyzing another sample of the same lot to confirm it: the result will add up the beans of both samples.',
+  // The suggestion of another sample (D-24, D-25, D-47), with the prototype texts
+  'resultado.sugerenciaNombre': 'Suggestion',
+  'resultado.sugerencia': 'The result was {puntos} points from the {categoria} limit ({limite} %).',
+  'resultado.sugerenciaEnElLimite': 'The result was right at the {categoria} limit ({limite} %).',
+  'resultado.sugerenciaDetalle': 'Analyze a second sample of the same lot to confirm it. The result will add up the beans of both samples.',
+  'resultado.sugerenciaDetalleAdmin': 'An end user of your company can analyze a second sample of the same lot to confirm it.',
+  'resultado.analizarOtraMuestra': 'Analyze another sample',
+  'resultado.continuarLaMuestra': 'Continue sample {numero}',
+  'resultado.cambiara': 'This result will change when sample {numero} finishes: it will add up the beans of both.',
   'resultado.fotosMarcadas': 'Marked photos',
   'resultado.muestra': 'Sample {numero}',
   'resultado.analizadaPor': 'Analyzed by {nombre}',
@@ -249,7 +279,9 @@ export default {
   'resultado.granosDeLaPestana_many': '{count} beans',
   'resultado.granosDeLaPestana_other': '{count} beans',
   'resultado.imagen': 'Photo {numero} of the sample, with its beans marked',
+  'resultado.imagenDeLaMuestra': 'Photo {numero} of sample {muestra}, with its beans marked',
   'resultado.granosDeLaFoto': 'Beans of photo {numero}',
+  'resultado.granosDeLaFotoDeLaMuestra': 'Beans of photo {numero} of sample {muestra}',
   'resultado.grano.SANO': 'Bean {numero}: healthy',
   'resultado.grano.NO_SANO': 'Bean {numero}: not healthy',
   'resultado.granoDudoso': '{grano}, uncertain',

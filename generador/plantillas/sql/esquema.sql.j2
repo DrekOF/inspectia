@@ -1,17 +1,19 @@
 {#
   Nombre: esquema.sql.j2
-  Descripción: Plantilla del script de creación de las tablas (migración V1 de Flyway, RP-15).
+  Descripción: Plantilla del script de creación de las tablas (migración V1 de Flyway, RP-15). El header de V1
+               lleva la versión de esta plantilla, que el generador lee de la línea «Versión:» de este comentario,
+               y no la del generador (D-49).
   Fecha de creación: 13/10/2026
-  Actualización: 13/10/2026
+  Actualización: 24/11/2026
   Autor: Equipo InspectIA
-  Versión: 1.0
+  Versión: 2.0
 #}
 -- Nombre: V1__esquema_inicial.sql
 -- Descripción: Crea las tablas de InspectIA desde specs/entidades (RP-15). Archivo generado por
 --              generador/ (RP-23): no se edita a mano; se cambia el JSON o la plantilla y se regenera.
 -- Fecha de creación: {{ header.fecha_creacion }}
 -- Actualización: {{ header.actualizacion }}
--- Autor: Equipo InspectIA (generado por generador/ v{{ version }})
+-- Autor: Equipo InspectIA (generado por generador/ con la plantilla sql/esquema.sql.j2 v{{ version }})
 -- Versión: {{ version }}
 -- Entidades: {{ header.versiones }}
 

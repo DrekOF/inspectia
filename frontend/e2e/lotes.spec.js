@@ -3,15 +3,16 @@
  * Descripción: Pruebas de punta a punta de los lotes (RF-04, RF-14, RNF-03): registrar un lote en la pantalla y
  *              verlo pendiente en el historial, el código repetido, la fecha posterior a hoy o de hace más de un
  *              año, las sugerencias de finca o proveedor sin tildes, con el alto de los demás campos y sin el botón
- *              «Clear», el historial sin lotes de otra empresa y sus páginas de 20.
+ *              «Clear», el historial sin lotes de otra empresa y sus páginas de 20. El estado del lote se busca en su
+ *              fila: la lista «Estado» de los filtros del historial también dice «Pendiente de análisis».
  * Fecha de creación: 22/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 import { randomUUID } from 'node:crypto';
 import {
-  crearEmpresaConUsuarioFinal, expect, iniciarSesion, RECEPCION, registrarLotes, test,
+  crearEmpresaConUsuarioFinal, expect, iniciarSesion, loteDelHistorial, RECEPCION, registrarLotes, test,
 } from './ayudas.js';
 import { diaAnterior, diaEnColombia, haceUnAnioEnColombia } from './fechas.js';
 
@@ -54,7 +55,7 @@ test('RF-04 · C1 · con datos válidos el lote queda registrado, la pantalla pa
   await expect(page.getByRole('region', { name: 'Guía de captura' })).toBeVisible();
   await page.goto('/historial');
   await expect(page.getByText(codigo, { exact: true })).toBeVisible();
-  await expect(page.getByText('Pendiente de análisis')).toBeVisible();
+  await expect(loteDelHistorial(page, codigo).getByText('Pendiente de análisis')).toBeVisible();
 });
 
 test('RF-04 · C2 · si el código ya existe en la empresa, la pantalla lo avisa y no registra el lote (de punta a punta)', async ({ page, request }) => {

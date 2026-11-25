@@ -5,11 +5,12 @@
  *              barra de avance con su nombre (RNF-01 C4). No dice la posición en la cola, que es de todas las empresas
  *              (RNF-03). A los 15 segundos, el máximo de RNF-01 C2, avisa que tarda más de lo normal y que el
  *              resultado queda guardado. Al mostrarse lleva el foco a su título (RNF-06 C4). Si la consulta del avance
- *              falla varias veces, lo dice con «Reintentar».
+ *              falla varias veces, lo dice con «Reintentar». La de la segunda muestra lleva su número en el título
+ *              (D-25).
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 import Autorenew from '@mui/icons-material/Autorenew';
 import Schedule from '@mui/icons-material/Schedule';
@@ -37,9 +38,10 @@ export const TARDA_MAS_DE = 15_000;
  * @param {'EN_ESPERA'|'EN_PROCESO'} props.estado el estado de la muestra
  * @param {Error|null} props.error el error con el que se dejó de consultar el avance, si se dejó
  * @param {() => void} props.alReintentar se llama con «Reintentar», para consultar otra vez
+ * @param {number} [props.muestra] el número de la muestra; desde la segunda, el título lo dice
  * @returns {import('react').ReactElement} el panel
  */
-export function EsperaDelAnalisis({ estado, error, alReintentar }) {
+export function EsperaDelAnalisis({ estado, error, alReintentar, muestra = 1 }) {
   const { t } = useTranslation();
   const esPc = useEsPc();
   const idDelTitulo = useId();
@@ -66,7 +68,7 @@ export function EsperaDelAnalisis({ estado, error, alReintentar }) {
       bgcolor: 'background.paper',
     })}>
       <Typography variant="h2" id={idDelTitulo} ref={titulo} tabIndex={-1} sx={{ outline: 'none' }}>
-        {t('espera.titulo')}
+        {muestra > 1 ? t('espera.tituloDeLaMuestra', { numero: muestra }) : t('espera.titulo')}
       </Typography>
       {error ? (
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1.5, alignSelf: 'stretch' }}>

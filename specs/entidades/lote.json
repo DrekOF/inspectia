@@ -3,18 +3,18 @@
     "nombre": "lote.json",
     "descripcion": "Entidad lote: los lotes de cacao que analiza cada empresa, con su resultado. Entrada del generador (RP-23); formato en specs/entidades/README.md.",
     "fecha_creacion": "13/10/2026",
-    "actualizacion": "23/11/2026",
+    "actualizacion": "24/11/2026",
     "autor": "Equipo InspectIA",
-    "version": "1.1"
+    "version": "1.2"
   },
   "entidad": "lote",
   "clase": "Lote",
-  "descripcion": "Lote de cacao que la empresa analiza. Guarda el resultado del lote: con 2 muestras, el de la suma de sus granos (D-25). Lo maneja el módulo analisis del backend, escrito a mano (D-21).",
+  "descripcion": "Lote de cacao que la empresa analiza. Guarda el resultado del lote: con 2 muestras, el de la suma de sus granos (D-25). Si sugiere otra muestra, guarda el límite cercano y su categoría para el aviso (D-47). Lo maneja el módulo analisis del backend, escrito a mano (D-21).",
   "etiquetas": {
     "es": { "singular": "Lote", "plural": "Lotes" },
     "en": { "singular": "Lot", "plural": "Lots" }
   },
-  "fichas": ["RF-04", "RF-10", "RF-12", "RF-14", "RF-15", "RF-16", "D-25"],
+  "fichas": ["RF-04", "RF-10", "RF-12", "RF-14", "RF-15", "RF-16", "D-25", "D-47"],
   "crud": false,
   "por_empresa": "si",
   "atributos": [
@@ -124,6 +124,24 @@
       "fichas": ["RF-12", "D-24", "D-25"]
     },
     {
+      "nombre": "limite_sugerencia",
+      "tipo": "decimal",
+      "precision": 4,
+      "escala": 1,
+      "obligatorio": false,
+      "validaciones": { "min": 0, "max": 100 },
+      "etiquetas": { "es": "Límite cercano (% de granos sanos)", "en": "Nearby limit (% healthy beans)" },
+      "fichas": ["RF-12", "D-24", "D-47"]
+    },
+    {
+      "nombre": "categoria_del_limite",
+      "tipo": "lista",
+      "valores_de": "rango_recomendacion.categoria",
+      "obligatorio": false,
+      "etiquetas": { "es": "Categoría del límite cercano", "en": "Category of the nearby limit" },
+      "fichas": ["RF-12", "RF-13", "D-47"]
+    },
+    {
       "nombre": "aviso_confianza_baja",
       "tipo": "booleano",
       "obligatorio": false,
@@ -160,9 +178,15 @@
   "checks": [
     {
       "nombre": "lote_resultado_segun_estado",
-      "sql": "(estado = 'PENDIENTE' AND num_nonnulls(porcentaje_sanos, margen, categoria, recomendacion, sugerir_otra_muestra, aviso_confianza_baja, fecha_resultado, reporte_ruta) = 0) OR (estado = 'ANALIZADO' AND num_nonnulls(porcentaje_sanos, margen, categoria, recomendacion, sugerir_otra_muestra, aviso_confianza_baja, fecha_resultado) = 7)",
+      "sql": "(estado = 'PENDIENTE' AND num_nonnulls(porcentaje_sanos, margen, categoria, recomendacion, sugerir_otra_muestra, aviso_confianza_baja, fecha_resultado, reporte_ruta, limite_sugerencia, categoria_del_limite) = 0) OR (estado = 'ANALIZADO' AND num_nonnulls(porcentaje_sanos, margen, categoria, recomendacion, sugerir_otra_muestra, aviso_confianza_baja, fecha_resultado) = 7)",
       "descripcion": "Un lote pendiente no tiene resultado; uno analizado lo tiene completo (el PDF es opcional).",
       "fichas": ["RF-12", "D-25"]
+    },
+    {
+      "nombre": "lote_sugerencia_con_su_limite",
+      "sql": "(sugerir_otra_muestra IS TRUE AND num_nonnulls(limite_sugerencia, categoria_del_limite) = 2 AND limite_sugerencia > 0 AND categoria_del_limite <> 'FUERA_DE_NORMA') OR (sugerir_otra_muestra IS NOT TRUE AND num_nonnulls(limite_sugerencia, categoria_del_limite) = 0)",
+      "descripcion": "Un lote que sugiere otra muestra guarda el límite cercano y su categoría, que no es Fuera de norma (RF-12 restricción 6); sin sugerencia, no guarda ninguno (D-47).",
+      "fichas": ["RF-12", "D-24", "D-47"]
     }
   ],
   "indices": [

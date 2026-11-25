@@ -3,9 +3,9 @@
  * Descripción: Pruebas unitarias de la firma de los enlaces de la carpeta de las fotos (D-41): el vencimiento, lo que
  *              ata la firma y la clave.
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis.adaptadores.carpeta;
 
@@ -22,7 +22,7 @@ class FirmaDeEnlacesTest {
 
     private static final Instant AHORA = Instant.parse("2026-11-23T15:00:00Z");
     private static final String LLAVE = "0199f0a0-0000-7000-8000-000000000001/0199f0a0-0000-7000-8000-000000000002/"
-            + "0199f0a0-0000-7000-8000-000000000003.jpg";
+            + "m1-0199f0a0-0000-7000-8000-000000000003.jpg";
     private static final String JPG = "image/jpeg";
 
     private final RelojDePrueba reloj = new RelojDePrueba(AHORA);

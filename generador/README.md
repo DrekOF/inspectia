@@ -2,9 +2,9 @@
 Nombre: README.md (generador)
 Descripción: Qué hace el generador de InspectIA (RP-23), cómo se usa y cómo se prueba.
 Fecha de creación: 12/10/2026
-Actualización: 02/11/2026
+Actualización: 24/11/2026
 Autor: Equipo InspectIA
-Versión: 1.11
+Versión: 1.12
 -->
 
 # generador
@@ -15,7 +15,7 @@ Scripts de Python 3.13 que leen las entidades de `specs/entidades/*.json` (forma
 
 | De | Archivos | Qué es |
 |---|---|---|
-| Todas las entidades | `backend/src/generated/resources/db/migration/V1__esquema_inicial.sql` | Las 8 tablas, con restricciones, índices, triggers y comentarios. Flyway la aplica al arrancar el backend (RP-15) |
+| Todas las entidades | `backend/src/generated/resources/db/migration/V1__esquema_inicial.sql` | Las 9 tablas, con restricciones, índices, triggers y comentarios. Flyway la aplica al arrancar el backend (RP-15). Su header lleva la versión de la plantilla `sql/esquema.sql.j2`, no la del generador (D-49) |
 | Todas las entidades | `backend/src/generated/resources/i18n/generado.properties` y `generado_en.properties` | Etiquetas, valores de las listas y mensajes en español y en inglés (RP-11) |
 | Las entidades con CRUD | `backend/src/generated/java/.../<modulo>/` | Entidad JPA, con `@DynamicUpdate` (D-36), repositorio, un `enum` por lista y los valores iniciales. Un atributo con `solo_lo_cambian_las_reglas` sale en la entidad sin que JPA lo escriba |
 | Las entidades de `alcance.json` | `backend/src/generated/java/.../<modulo>/` | API REST: servicio, controlador, reglas de acceso por ruta, solicitudes, respuesta, mapeador y la interfaz de las reglas |

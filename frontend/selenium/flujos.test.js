@@ -3,14 +3,15 @@
  * Descripción: Pruebas con Selenium de los flujos principales (RP-14): entrar con el menú del rol, los datos
  *              errados, cambiar la contraseña, registrar una empresa, crear un usuario que entra, guardar unos
  *              rangos propios y restaurar los de D-10, registrar un lote que pasa a las fotos y queda pendiente
- *              en el historial, subir dos fotos y volver a ellas con «Continuar», y analizar la muestra y ver su
- *              resultado, en Chrome y en Edge, en tamaño de PC y de celular (RNF-05). Con INSPECTIA_E2E_SIN_EDGE=1
- *              salta Edge, como en la CI. Cada prueba empieza sin sesión. Si una falla, guarda su captura y la
- *              consola del navegador en reports/selenium.
+ *              en el historial, subir dos fotos y volver a ellas con «Continuar», analizar la muestra y ver su
+ *              resultado, y analizar la segunda muestra desde el aviso de la sugerencia y ver la suma de las dos, en
+ *              Chrome y en Edge, en tamaño de PC y de celular (RNF-05). Con INSPECTIA_E2E_SIN_EDGE=1 salta Edge, como
+ *              en la CI. Cada prueba empieza sin sesión. Si una falla, guarda su captura y la consola del navegador en
+ *              reports/selenium.
  * Fecha de creación: 20/10/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.7
+ * Versión: 1.8
  */
 import { randomUUID } from 'node:crypto';
 import { rmSync, writeFileSync } from 'node:fs';
@@ -19,7 +20,7 @@ import { join } from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { Key } from 'selenium-webdriver';
 import {
-  abrirNavegador, APP, archivoDeLaFoto, boton, Browser, By, campo, campoDelGrupo, CELULAR, CONTRASENA, crearEmpresa,
+  abrirNavegador, analizarPorLaApi, APP, archivoDeLaFoto, boton, Browser, By, campo, campoDelGrupo, CELULAR, CONTRASENA, crearEmpresa,
   crearUsuario, datos, descartarConsola, desactivarUsuario, empresaNueva, entrar, escribirEn, esperar, esperarQueEntre,
   esperarTexto, guardarFalla, registrarLote, sinSesion,
 } from './ayudas.js';
@@ -306,6 +307,50 @@ describe.each(COMBINACIONES)('%s en %s', (_, navegador, __, celular) => {
       await esperarTexto(driver, '90,6');
       await esperarTexto(driver, '87 de 100 marcados como sanos');
       await esperarTexto(driver, 'Rango probable: entre 83,1 y 98,1 %');
+      expect(await driver.getCurrentUrl()).toBe(`${APP}/lotes/${lote.id}`);
+    } finally {
+      fotos.forEach((ruta) => rmSync(ruta, { force: true }));
+      await driver.executeScript('localStorage.clear()');
+      await desactivarUsuario(luis.id);
+    }
+  });
+
+  it('RF-14 · C6 · el usuario final pulsa «Analizar otra muestra» en el resultado que la sugiere, sube dos fotos de la muestra 2, la analiza y ve la suma de las dos: 172 de 200 dan 88,3 % (Selenium)', async () => {
+    const luis = await crearUsuario();
+    // Solo crear a Luis va antes del try: si falla la preparación, como el análisis por la API, el finally borra las
+    // fotos que alcanzaron a escribirse y lo desactiva, así la empresa de prueba no llega a los 25 activos (RF-03).
+    let fotos = [];
+    try {
+      const lote = await registrarLote(luis, `S-${randomUUID().slice(0, 8)}`, diaEnColombia(-7));
+      // La muestra 1, por la API: 87 de 100 sanos, 90,6 %, a 0,6 puntos de 90. La 2, en la pantalla: 8 + 7 no sanos.
+      await analizarPorLaApi(luis, lote.id, [106, 107]);
+      fotos = [108, 107].map((ancho) => {
+        const ruta = join(tmpdir(), `inspectia-selenium-${randomUUID().slice(0, 8)}-${ancho}.png`);
+        writeFileSync(ruta, png({ ancho, alto: 100 }));
+        return ruta;
+      });
+      await entrar(driver, luis);
+      await esperarTexto(driver, 'Hola, Luis');
+      await driver.get(`${APP}/lotes/${lote.id}`);
+      await esperarTexto(driver, 'El resultado quedó a 0,6 puntos del límite de Estándar (90 %).');
+      await (await boton(driver, 'Analizar otra muestra')).click();
+
+      await esperar(driver, By.xpath("//h1[normalize-space()='Fotos de la muestra 2']"));
+      for (const [indice, ruta] of fotos.entries()) {
+        await (await archivoDeLaFoto(driver, indice + 1)).sendKeys(ruta);
+        await esperar(driver, By.css(`img[alt="Foto ${indice + 1} de la muestra"]`));
+      }
+      await (await boton(driver, 'Analizar la muestra')).click();
+
+      await esperar(driver, By.xpath(`//h1[normalize-space()='Resultado del lote ${lote.codigo}']`));
+      // La cifra grande lleva un espacio sin corte antes de «%», que normalize-space de XPath no cambia: se busca sin él.
+      await esperarTexto(driver, '88,3');
+      await esperarTexto(driver, '172 de 200 marcados como sanos');
+      await esperar(driver, By.xpath("//h3[normalize-space()='Muestra 1']"));
+      await esperar(driver, By.xpath("//h3[normalize-space()='Muestra 2']"));
+      await esperarTexto(driver, '87 de 100 marcados como sanos');
+      await esperarTexto(driver, '85 de 100 marcados como sanos');
+      expect(await driver.findElements(By.xpath("//a[normalize-space()='Analizar otra muestra']"))).toHaveLength(0);
       expect(await driver.getCurrentUrl()).toBe(`${APP}/lotes/${lote.id}`);
     } finally {
       fotos.forEach((ruta) => rmSync(ruta, { force: true }));

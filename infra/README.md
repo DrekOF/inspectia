@@ -2,9 +2,9 @@
 Nombre: README.md (infra)
 Descripción: Qué va en la carpeta infra/ de InspectIA, cómo reiniciar la base local, dónde quedan las fotos en tu PC, cómo crear el administrador de la plataforma y restablecer su contraseña, cómo probar la sesión, los lotes y las fotos en local y cómo usan infra/ las pruebas de punta a punta y la demostración de otra temática.
 Fecha de creación: 12/10/2026
-Actualización: 23/11/2026
+Actualización: 24/11/2026
 Autor: Equipo InspectIA
-Versión: 1.13
+Versión: 1.14
 -->
 
 # infra
@@ -32,7 +32,7 @@ La EC2 t4g es ARM (Graviton), así que toda imagen debe funcionar en amd64 y en 
 
 Desde la raíz del repositorio, la base se enciende con `docker compose -f infra/docker-compose.yml up -d` y se apaga con `docker compose -f infra/docker-compose.yml down`. Los demás comandos están en la sección Comandos de `CLAUDE.md`.
 
-Si cambia `V1__esquema_inicial.sql`, quien ya tenga la base local debe reiniciarla: Flyway no arranca si una migración ya aplicada cambió (P-16), aunque sea solo su header. Pasó cuando RF-03 agregó la columna `usuario.sesiones_desde`, cuando RF-13 subió el generador a la 1.6, cuando P-18 la cambió por `usuario.version_sesion` (D-35), cuando la pantalla de usuarios (RF-03) lo subió a la 1.9, cuando la de rangos (RF-13) lo subió a la 1.10 y cuando el resultado del lote (RF-10) agregó los recall de cada clase del modelo, el margen del lote y el índice de la cola de análisis; con la 1.6, la 1.9 y la 1.10 solo cambió el header. Esto borra los datos locales:
+Si cambia `V1__esquema_inicial.sql`, quien ya tenga la base local debe reiniciarla: Flyway no arranca si una migración ya aplicada cambió (P-16), aunque sea solo su header. Pasó cuando RF-03 agregó la columna `usuario.sesiones_desde`, cuando RF-13 subió el generador a la 1.6, cuando P-18 la cambió por `usuario.version_sesion` (D-35), cuando la pantalla de usuarios (RF-03) lo subió a la 1.9, cuando la de rangos (RF-13) lo subió a la 1.10 y cuando el resultado del lote (RF-10) agregó los recall de cada clase del modelo, el margen del lote y el índice de la cola de análisis, y cuando la segunda muestra (PR 3b) dejó lista la `V1` del resto del módulo de análisis: por qué volvió una muestra a pendiente (D-44), la tabla `region_pegada` de los granos pegados (D-45), cuántos granos encontró la revisión de cada foto (D-46), el límite de la sugerencia con su categoría (D-47), la precisión y la matriz de confusión del modelo (D-48) y la versión de su plantilla en el header (D-49); con la 1.6, la 1.9 y la 1.10 solo cambió el header. Esto borra los datos locales:
 
 1. `docker compose -f infra/docker-compose.yml down -v`
 2. `docker compose -f infra/docker-compose.yml up -d`
@@ -125,14 +125,15 @@ El administrador de la plataforma recibe 403 en esas rutas, porque no tiene empr
 Para los lotes (RF-04 y RF-14), con el administrador de esa empresa crea un usuario final con `POST /api/v1/usuarios` e inicia sesión con él. Ahí:
 
 - `POST /api/v1/lotes` con `codigo`, `fechaRecepcion` (aaaa-mm-dd, no posterior a hoy en Colombia ni de hace más de un año), `origen` y `observaciones` registra un lote pendiente de análisis. Un código que ya existe en la empresa responde 409.
-- `GET /api/v1/lotes?pagina=0&tamano=20` trae el historial de la empresa, del último movimiento al más antiguo, y `GET /api/v1/lotes/{id}`, un lote.
+- `GET /api/v1/lotes?pagina=0&tamano=20` trae el historial de la empresa, del último movimiento al más antiguo, y `GET /api/v1/lotes/{id}`, un lote. El historial acepta los filtros de RF-14 C2, solos o combinados: `desde` y `hasta` (aaaa-mm-dd, la fecha del resultado en días de Colombia, con las dos incluidas), `estado` (`PENDIENTE` o `ANALIZADO`), `categoria` (`PREMIUM`, `ESTANDAR`, `CORRIENTE` o `FUERA_DE_NORMA`), `codigo` (se busca dentro del código, sin distinguir mayúsculas) y `usuario` (el `id` de quien registró el lote). Un «hasta» anterior a «desde» responde 400.
+- `GET /api/v1/lotes/registradores` trae el `id` y el nombre de quienes registraron lotes de la empresa, también los desactivados, para el filtro «Usuario».
 - `GET /api/v1/lotes/origenes?texto=paraiso` sugiere las fincas y los proveedores que ya usó la empresa.
 
 El administrador de empresa también ve el historial y cada lote, pero no registra lotes: recibe 403. Un lote de otra empresa responde 404, como si no existiera (RNF-03).
 
 Para las fotos de un lote pendiente (RF-05), con el mismo usuario final y el `id` del lote, en tres pasos, como la página:
 
-1. `POST /api/v1/lotes/{id}/fotos/1/subida` con `tipo` (`image/jpeg` o `image/png`) y `tamanoBytes` (el tamaño exacto del archivo, de hasta 10.485.760). Responde 201 con la `llave` y la `url` firmada para subirla.
+1. `POST /api/v1/lotes/{id}/fotos/1/subida` con `muestra` (1, o 2 para la segunda muestra), `tipo` (`image/jpeg` o `image/png`) y `tamanoBytes` (el tamaño exacto del archivo, de hasta 10.485.760). Responde 201 con la `llave` y la `url` firmada para subirla. Si `muestra` no es la que recibe las fotos del lote en ese momento, responde 409, y lo mismo al confirmar una llave pedida para otra muestra (D-25).
 2. Sube el archivo a esa `url` con `PUT`, sin el token y con el mismo `Content-Type`. Swagger no sube archivos así; desde la carpeta de la foto, en Git Bash: `curl -X PUT --data-binary "@foto.jpg" -H "Content-Type: image/jpeg" "http://localhost:8080<url>"`. En PowerShell es igual, con `curl.exe` en vez de `curl`. El archivo y la `url` van entre comillas: sin ellas, PowerShell lee `@foto` como una variable y `&` como otro comando. Responde 200.
 3. `PUT /api/v1/lotes/{id}/fotos/1` con la `llave`: confirma la foto, que queda «Cargada», y responde con su enlace de vista (`vista.url`). Ese enlace es relativo: se abre en el navegador con `http://localhost:8080` delante.
 
@@ -140,10 +141,12 @@ Para las fotos de un lote pendiente (RF-05), con el mismo usuario final y el `id
 
 Para analizar la muestra (RF-10 a RF-12), con 2 o 3 fotos confirmadas:
 
-1. `POST /api/v1/lotes/{id}/analisis` la envía: responde 202 con la muestra EN_ESPERA. Con menos de 2 fotos responde 400 en `fotos`, y con el lote ya analizado, 409. Solo lo usa el usuario final.
+1. `POST /api/v1/lotes/{id}/analisis` la envía: responde 202 con la muestra EN_ESPERA. Con menos de 2 fotos responde 400 en `fotos`, y con el lote ya analizado, 409, salvo la segunda muestra (ver abajo). Solo lo usa el usuario final.
 2. `GET /api/v1/lotes/{id}/analisis` dice en qué va: EN_ESPERA, EN_PROCESO o TERMINADA. `fallo` es verdadero si el análisis no terminó y la muestra volvió a quedar pendiente.
-3. `GET /api/v1/lotes/{id}/resultado` trae el resultado guardado: el porcentaje corregido, su margen, la categoría, la recomendación y si sugiere otra muestra, y cada muestra con sus fotos y sus granos (sin la confianza). Lo ven el usuario final y el administrador de empresa.
+3. `GET /api/v1/lotes/{id}/resultado` trae el resultado guardado: el porcentaje corregido, su margen, la categoría, la recomendación y si sugiere otra muestra, con el límite más cercano y su categoría (`limiteSugerencia` y `categoriaDelLimite`, D-47), y cada muestra con sus fotos y sus granos (sin la confianza). Lo ven el usuario final y el administrador de empresa.
 
-Mientras no esté el servicio de IA (PR 4), los granos los da un clasificador falso, que registra su modelo (`clasificador-falso` 1.0) al arrancar el backend. Es predecible, para poder probar cada caso con la foto que se sube: da 50 granos por foto, son no sanos tantos como el ancho de la foto módulo 50, y dudosos tantos como el alto módulo 50. Dos fotos de 106 × 100 y 107 × 100 px dan 87 de 100 sanos: 90,6 %, Estándar, con sugerencia de otra muestra. Con `INSPECTIA_IA_FALSO_DEMORA` (por ejemplo `INSPECTIA_IA_FALSO_DEMORA=3s` en `infra/.env`) tarda más, para ver la espera en la página.
+Si el resultado sugiere otra muestra (D-24), el usuario final analiza la segunda con los mismos tres pasos de las fotos y los mismos de arriba: la primera foto confirmada crea la muestra 2, sin tocar la 1, y `GET …/fotos` trae las de la 2. El lote sigue analizado con el resultado de la 1 hasta que la 2 termina; entonces el resultado se recalcula con los granos de las dos y ya no sugiere otra (D-25). Un lote sin sugerencia, o con sus 2 muestras, responde 409 a las fotos y al envío.
+
+Mientras no esté el servicio de IA (PR 4), los granos los da un clasificador falso, que registra su modelo (`clasificador-falso` 1.0) al arrancar el backend. Es predecible, para poder probar cada caso con la foto que se sube: da 50 granos por foto, son no sanos tantos como el ancho de la foto módulo 50, y dudosos tantos como el alto módulo 50. Dos fotos de 106 × 100 y 107 × 100 px dan 87 de 100 sanos: 90,6 %, Estándar, con sugerencia de otra muestra, a 0,6 puntos del límite de Estándar (90 %). Una segunda muestra con 108 × 100 y 107 × 100 px suma 172 de 200: 88,3 %, Corriente. Con `INSPECTIA_IA_FALSO_DEMORA` (por ejemplo `INSPECTIA_IA_FALSO_DEMORA=3s` en `infra/.env`) tarda más, para ver la espera en la página.
 
 Para cambiar tu propia contraseña (RF-18), abre `PUT /api/v1/sesion/contrasena` con `contrasenaActual` y `contrasenaNueva`. La respuesta 200 trae un token nuevo, que vence a la misma hora que el anterior: pégalo en «Authorize», porque el anterior y los de tus demás sesiones responden 401 «Tu contraseña cambió». Una contraseña actual errada responde 400 y cuenta para el bloqueo; desde el quinto fallo seguido responde 429 hasta que termine.

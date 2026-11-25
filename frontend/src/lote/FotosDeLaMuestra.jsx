@@ -6,11 +6,15 @@
  *              fotos a la vez. Si el lote no existe o es de otra empresa, lo dice con el mensaje del backend (RNF-03);
  *              si no llegó por otra causa, ofrece «Reintentar»; y si ya no está pendiente, dice dónde ver su resultado.
  *              Si su muestra ya se envió y está en espera o en proceso, lleva al resultado del lote, donde se ve la
- *              espera (RNF-02 C3).
+ *              espera (RNF-02 C3). Un lote analizado que sugiere otra muestra recibe las fotos de la muestra 2, con su
+ *              título y su subtítulo, y se retoma con las que ya tiene (D-25, RF-14 C6); uno sin la sugerencia, o con
+ *              dos muestras, no recibe otra (RF-12 C8). Cada foto se sube para la muestra que la página espera, la
+ *              que dice su título; si el lote cambió mientras la página estaba abierta, el backend la rechaza y la
+ *              casilla lo dice (D-25).
  * Fecha de creación: 22/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.2
+ * Versión: 1.3
  */
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -28,6 +32,12 @@ import { PasosDelAnalisis } from './PasosDelAnalisis.jsx';
 import { EN_CURSO } from './resultado.js';
 import { TusFotos } from './TusFotos.jsx';
 import { useFotosDelLote } from './useFotosDelLote.js';
+
+/** El número de la primera muestra de un lote. */
+const PRIMERA_MUESTRA = 1;
+
+/** El número de la otra muestra de un lote: como máximo tiene 2 (D-25). */
+const SEGUNDA_MUESTRA = 2;
 
 /**
  * Las fotos de la muestra de un lote.
@@ -67,15 +77,28 @@ function FotosDelLote({ loteId }) {
   const cargando = respuesta.recarga !== recargas;
   const { lote, error } = cargando ? { lote: null, error: null } : respuesta;
   const pendiente = lote?.estado === 'PENDIENTE';
+  // Un lote analizado solo recibe otra muestra si su resultado la sugiere: con 2 muestras ya no la sugiere (D-25).
+  const otraMuestra = lote?.estado === 'ANALIZADO' && lote.sugerirOtraMuestra === true;
+  const recibeFotos = pendiente || otraMuestra;
+  // La muestra que la página espera que reciba las fotos: la que dice su título, según el lote que cargó. Va en cada
+  // enlace, y si el lote cambió mientras la página estaba abierta, el backend lo rechaza (D-25). No sale de la lista de
+  // fotos: esa se vuelve a pedir sin el lote (por ejemplo, tras el 400 de «Analizar la muestra») y podría traer ya la
+  // muestra 2 bajo el título de la 1.
+  const muestraEsperada = otraMuestra ? SEGUNDA_MUESTRA : PRIMERA_MUESTRA;
   let descripcion;
   if (lote) {
-    descripcion = t(pendiente ? 'fotos.descripcion' : 'fotos.descripcionSinSubir',
-      { codigo: lote.codigo, origen: lote.origen });
+    const datos = { codigo: lote.codigo, origen: lote.origen, numero: SEGUNDA_MUESTRA };
+    if (otraMuestra) {
+      descripcion = t('fotos.descripcionDeOtraMuestra', datos);
+    } else {
+      descripcion = t(pendiente ? 'fotos.descripcion' : 'fotos.descripcionSinSubir', datos);
+    }
   }
   return (
     <>
-      {(!lote || pendiente) && <PasosDelAnalisis actual={2} />}
-      <TituloDePagina titulo={t('fotos.titulo')} descripcion={descripcion} refDelTitulo={titulo} />
+      {(!lote || recibeFotos) && <PasosDelAnalisis actual={2} />}
+      <TituloDePagina titulo={otraMuestra ? t('fotos.tituloDeLaMuestra', { numero: SEGUNDA_MUESTRA }) : t('fotos.titulo')}
+        descripcion={descripcion} refDelTitulo={titulo} />
       {cargando && (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
           <CircularProgress aria-label={t('crud.cargando')} />
@@ -88,17 +111,17 @@ function FotosDelLote({ loteId }) {
           {error.estado !== 404 && <Button variant="outlined" onClick={reintentar}>{t('crud.reintentar')}</Button>}
         </Box>
       )}
-      {/* Un lote que ya no está pendiente no recibe fotos: el backend las rechazaría. */}
-      {lote && !pendiente && (
+      {/* Un lote que no está pendiente ni sugiere otra muestra no recibe fotos: el backend las rechazaría (RF-12 C8). */}
+      {lote && !recibeFotos && (
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1.5 }}>
           <Aviso tipo="info" titulo={t('foto.lote_no_pendiente')} />
           <Button component={Link} to={`/lotes/${lote.id}`} variant="outlined">{t('fotos.verElResultado')}</Button>
         </Box>
       )}
-      {pendiente && (
+      {recibeFotos && (
         <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', gap: 3 }}>
           <GuiaDeCaptura />
-          <TusFotos loteId={lote.id} fotos={fotos} />
+          <TusFotos loteId={lote.id} muestra={muestraEsperada} fotos={fotos} />
         </Box>
       )}
     </>

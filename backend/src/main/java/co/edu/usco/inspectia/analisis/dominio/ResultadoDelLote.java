@@ -1,11 +1,12 @@
 /*
  * Nombre: ResultadoDelLote.java
  * Descripción: El resultado de un lote con sus 1 o 2 muestras terminadas: porcentaje corregido y su margen, contado,
- *              categoría, recomendación, sugerencia y aviso de confianza baja (RF-10, RF-12, D-25).
+ *              categoría, recomendación, sugerencia con su límite y la categoría del límite, y aviso de confianza baja
+ *              (RF-10, RF-12, D-25, D-47).
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis.dominio;
 
@@ -15,8 +16,9 @@ import java.util.Objects;
 
 /**
  * El resultado de un lote (RF-10, RF-12), que se guarda con el lote: si después cambian los rangos o los parámetros,
- * no cambia (RF-13 C3). Con 2 muestras sale de la suma de sus granos, no sugiere otra muestra, y lleva el aviso de
- * confianza baja si alguna de las dos lo tiene (D-25, RF-09 C6).
+ * no cambia, tampoco el aviso de la sugerencia (RF-13 C3, D-47). Con 2 muestras sale de la suma de sus granos, no
+ * sugiere otra muestra ni lleva límite, y lleva el aviso de confianza baja si alguna de las dos lo tiene (D-25,
+ * RF-09 C6).
  *
  * @param porcentajeSanos el porcentaje corregido (D-39), con un decimal
  * @param margen su margen, en puntos y con un decimal (P-19)
@@ -26,11 +28,13 @@ import java.util.Objects;
  * @param categoria el código de la categoría probable
  * @param recomendacion el texto de la recomendación de su rango
  * @param sugerirOtraMuestra si se sugiere analizar otra muestra (D-24)
+ * @param limiteSugerencia el límite más cercano por el que se sugiere otra muestra, o {@code null} (D-47)
+ * @param categoriaDelLimite el código de la categoría de ese límite, o {@code null} (D-47)
  * @param avisoConfianzaBaja si alguna muestra salió con el aviso de confianza baja (RF-09)
  */
 public record ResultadoDelLote(BigDecimal porcentajeSanos, BigDecimal margen, BigDecimal porcentajeContado,
         int totalGranos, int granosSanos, String categoria, String recomendacion, boolean sugerirOtraMuestra,
-        boolean avisoConfianzaBaja) {
+        BigDecimal limiteSugerencia, String categoriaDelLimite, boolean avisoConfianzaBaja) {
 
     /**
      * Calcula el resultado de un lote.
@@ -55,6 +59,7 @@ public record ResultadoDelLote(BigDecimal porcentajeSanos, BigDecimal margen, Bi
         boolean aviso = muestras.stream().anyMatch(ConteoDeMuestra::avisoConfianzaBaja);
         return new ResultadoDelLote(porcentaje.getCorregido(), porcentaje.getMargen(), porcentaje.getContado(),
                 porcentaje.getTotalGranos(), porcentaje.getGranosSanos(), recomendacion.categoria(),
-                recomendacion.texto(), recomendacion.sugerirOtraMuestra(), aviso);
+                recomendacion.texto(), recomendacion.sugerirOtraMuestra(), recomendacion.limiteSugerencia(),
+                recomendacion.categoriaDelLimite(), aviso);
     }
 }

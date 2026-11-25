@@ -1,11 +1,12 @@
 /*
  * Nombre: EnviarMuestra.java
  * Descripción: Caso de uso de «Analizar la muestra»: envía a la cola la muestra en curso de un lote, con 2 o 3 fotos, y
- *              despierta a la cola cuando se confirma (RF-05 C2, RNF-02 C3).
+ *              despierta a la cola cuando se confirma; también la muestra 2 de un lote analizado que sugiere otra
+ *              muestra (RF-05 C2, RF-12 C8, RF-14 C6, RNF-02 C3, D-25).
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis.aplicacion;
 
@@ -34,7 +35,11 @@ import org.springframework.transaction.annotation.Transactional;
  *   <li>Con una pendiente de 2 o 3 fotos: queda «en espera», con la fecha de envío y con quien la envía como quien la
  *       analizó. Cuando la transacción se confirma, el evento {@link MuestraEnviada} despierta a la cola.</li>
  *   <li>Ya «en espera» o «en proceso»: responde su avance sin cambiar nada, así un reintento es seguro.</li>
- *   <li>Un lote analizado no se vuelve a analizar: 409. La segunda muestra (D-25) llega en otro PR.</li>
+ *   <li>Un lote analizado que sugiere otra muestra (D-24) solo envía su muestra 2, con las mismas reglas: sin la 2, o
+ *       con menos de 2 fotos en ella, 400 en {@code fotos} (D-25). El lote sigue analizado con el resultado de la 1
+ *       hasta que la 2 termina.</li>
+ *   <li>Un lote analizado sin sugerencia, o con sus 2 muestras terminadas, no se vuelve a analizar: 409
+ *       {@code analisis.lote_analizado} (RF-12 C8).</li>
  * </ul>
  */
 @Service
@@ -62,24 +67,30 @@ public class EnviarMuestra {
     }
 
     /**
-     * Envía a analizar la muestra en curso del lote.
+     * Envía a analizar la muestra en curso del lote: la 1, o la 2 de un lote que sugiere otra muestra.
      *
      * @param empresaId la empresa de la sesión
      * @param usuarioId el usuario de la sesión, que queda como quien analizó la muestra
      * @param loteId el lote
      * @return el avance de la muestra: «en espera», o el que ya tenía si se había enviado
      * @throws NoEncontradoExcepcion si el lote no existe o es de otra empresa (404, RNF-03 C1)
-     * @throws ConflictoExcepcion si el lote ya tiene su resultado (409)
-     * @throws ReglaIncumplidaExcepcion si la muestra no tiene al menos 2 fotos (400 en {@code fotos}, RF-05 C2)
+     * @throws ConflictoExcepcion si el lote ya tiene su resultado y no admite otra muestra (409, RF-12 C8)
+     * @throws ReglaIncumplidaExcepcion si la muestra no tiene al menos 2 fotos, o si el lote sugiere otra muestra y la
+     *     2 todavía no existe (400 en {@code fotos}, RF-05 C2)
      */
     @Transactional
     public AvanceDelAnalisis enviar(UUID empresaId, UUID usuarioId, UUID loteId) {
         EstadoDeLote estado = lotes.estadoParaActualizar(empresaId, loteId)
                 .orElseThrow(() -> new NoEncontradoExcepcion("lote " + loteId));
-        if (estado != EstadoDeLote.PENDIENTE) {
+        boolean analizado = estado != EstadoDeLote.PENDIENTE;
+        if (analizado && !lotes.sugiereOtraMuestra(empresaId, loteId)) {
             throw new ConflictoExcepcion("analisis.lote_analizado");
         }
         MuestraEnCurso muestra = muestras.muestraEnCurso(empresaId, loteId).orElseThrow(EnviarMuestra::faltanFotos);
+        if (analizado && muestra.numero() == 1) {
+            // La muestra en curso sigue siendo la 1, ya terminada: la 2 todavía no tiene fotos (D-25).
+            throw faltanFotos();
+        }
         if (muestra.estado() == EstadoDeMuestra.EN_ESPERA || muestra.estado() == EstadoDeMuestra.EN_PROCESO) {
             return muestras.avance(empresaId, loteId).orElseThrow();
         }

@@ -2,11 +2,12 @@
  * Nombre: GuardarAnalisisTest.java
  * Descripción: Pruebas unitarias del caso de uso que guarda el análisis de una muestra, con Mockito: el lote bloqueado
  *              primero, la muestra terminada con sus conteos y su modelo, los granos, las fotos aprobadas y el
- *              resultado con los rangos vigentes; y los casos que no guardan nada (RF-10, RF-12, RF-13 C2, RNF-02).
+ *              resultado con los rangos vigentes y el límite de la sugerencia; la muestra 2, que recalcula el lote
+ *              con la suma de las dos; y los casos que no guardan nada (RF-10, RF-12, RF-13 C2, D-25, D-47, RNF-02).
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis.aplicacion;
 
@@ -50,6 +51,7 @@ class GuardarAnalisisTest {
     private static final UUID EMPRESA = UUID.fromString("0199f0a0-0000-7000-8000-000000000001");
     private static final UUID LOTE = UUID.fromString("0199f0a0-0000-7000-8000-000000000002");
     private static final UUID MUESTRA = UUID.fromString("0199f0a0-0000-7000-8000-000000000005");
+    private static final UUID MUESTRA_2 = UUID.fromString("0199f0a0-0000-7000-8000-000000000015");
     private static final UUID FOTO_1 = UUID.fromString("0199f0a0-0000-7000-8000-000000000011");
     private static final UUID FOTO_2 = UUID.fromString("0199f0a0-0000-7000-8000-000000000012");
     private static final UUID MODELO = UUID.fromString("0199f0a0-0000-7000-8000-000000000020");
@@ -107,7 +109,7 @@ class GuardarAnalisisTest {
     }
 
     @Test
-    @DisplayName("RF-10 · C6 · con 87 sanos de 100, termina la muestra con sus conteos, su modelo y la copia de los parámetros, guarda sus granos, aprueba sus fotos y deja el lote con 90,6 % y margen 7,5")
+    @DisplayName("RF-10 · C6 · con 87 sanos de 100, termina la muestra con sus conteos, su modelo y la copia de los parámetros, guarda sus granos, aprueba sus fotos y deja el lote con 90,6 %, margen 7,5 y la sugerencia por el límite de Estándar")
     void guardaElAnalisis() {
         when(muestras.conteosTerminados(EMPRESA, LOTE)).thenReturn(List.of(new ConteoDeMuestra(87, 100, EFFICIENTNET)));
 
@@ -125,8 +127,8 @@ class GuardarAnalisisTest {
         orden.verify(muestras).conteosTerminados(EMPRESA, LOTE);
         orden.verify(rangos).vigentes(EMPRESA);
         orden.verify(lotes).guardarResultado(EMPRESA, LOTE, new ResultadoDelLote(new BigDecimal("90.6"),
-                new BigDecimal("7.5"), new BigDecimal("87.0"), 100, 87, "ESTANDAR", "Venta estándar", true, false),
-                FIN);
+                new BigDecimal("7.5"), new BigDecimal("87.0"), 100, 87, "ESTANDAR", "Venta estándar", true,
+                new BigDecimal("90.0"), "ESTANDAR", false), FIN);
         assertThat(guardados.getValue()).hasSize(100);
         assertThat(guardados.getValue().get(0)).isEqualTo(new GranoDeFoto(FOTO_1, 0, 0, 5, 8, ClaseDeGrano.NO_SANO,
                 new BigDecimal("90.50")));
@@ -151,6 +153,35 @@ class GuardarAnalisisTest {
         assertThat(resultado.getValue().categoria()).isEqualTo("CORRIENTE");
         assertThat(resultado.getValue().recomendacion()).isEqualTo("Seleccionar");
         assertThat(resultado.getValue().sugerirOtraMuestra()).isTrue();
+        assertThat(resultado.getValue().limiteSugerencia()).as("el límite de Estándar de la empresa")
+                .isEqualByComparingTo("91.0");
+        assertThat(resultado.getValue().categoriaDelLimite()).isEqualTo("ESTANDAR");
+    }
+
+    @Test
+    @DisplayName("D-25 · al terminar la muestra 2 de un lote ya analizado, aprueba solo sus fotos y guarda el resultado de la suma de las dos con los rangos vigentes: 174 de 200, 90,6 %, sin sugerencia ni límite (D-47)")
+    void laMuestraDosRecalculaElLote() {
+        MuestraTomada segunda = new MuestraTomada(MUESTRA_2, EMPRESA, LOTE, 2, 0, INICIO);
+        when(lotes.estadoParaActualizar(EMPRESA, LOTE)).thenReturn(Optional.of(EstadoDeLote.ANALIZADO));
+        when(muestras.fotos(EMPRESA, MUESTRA_2)).thenReturn(List.of(
+                new FotoGuardada(FOTO_1, 1, "llave-1", FormatoDeFoto.JPG, 3, EstadoDeFoto.CARGADA),
+                new FotoGuardada(FOTO_2, 2, "llave-2", FormatoDeFoto.JPG, 3, EstadoDeFoto.CARGADA)));
+        when(muestras.conteosTerminados(EMPRESA, LOTE)).thenReturn(List.of(new ConteoDeMuestra(87, 100, EFFICIENTNET),
+                new ConteoDeMuestra(87, 100, EFFICIENTNET)));
+
+        GuardarAnalisis.Desenlace desenlace = guardar.guardar(segunda, new Clasificacion(FALSO, granos(100, 13, 0)));
+
+        assertThat(desenlace).isEqualTo(GuardarAnalisis.Desenlace.TERMINADA);
+        InOrder orden = inOrder(lotes, muestras, rangos);
+        orden.verify(lotes).estadoParaActualizar(EMPRESA, LOTE);
+        orden.verify(muestras).terminar(segunda, new TerminoDeMuestra(MODELO, 100, 87, false, new BigDecimal("60"),
+                new BigDecimal("10"), FIN));
+        orden.verify(muestras).aprobarFotos(EMPRESA, MUESTRA_2);
+        orden.verify(rangos).vigentes(EMPRESA);
+        orden.verify(lotes).guardarResultado(EMPRESA, LOTE, new ResultadoDelLote(new BigDecimal("90.6"),
+                new BigDecimal("5.3"), new BigDecimal("87.0"), 200, 174, "ESTANDAR", "Venta estándar", false, null,
+                null, false), FIN);
+        verify(muestras, never()).aprobarFotos(EMPRESA, MUESTRA);
     }
 
     @Test

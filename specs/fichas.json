@@ -3,9 +3,9 @@
     "nombre": "fichas.json",
     "descripcion": "Fichas de los requerimientos funcionales (formato largo) y no funcionales (formato corto) de InspectIA. Fuente única para las secciones 5 y 6 del documento de requerimientos y, más adelante, para el listado de casos de prueba (RP-13).",
     "fecha_creacion": "12/10/2026",
-    "actualizacion": "23/11/2026",
+    "actualizacion": "24/11/2026",
     "autor": "Equipo InspectIA",
-    "version": "1.21"
+    "version": "1.22"
   },
   "rf": [
     {
@@ -170,8 +170,8 @@
         ]
       },
       "rnf": "RNF-02 (capacidad), RNF-03 (datos separados por empresa) y RNF-04 (autenticación y permisos).",
-      "estado": "Aprobado",
-      "observaciones": "CRUD generado desde el JSON de la entidad usuario (RP-23, D-21), más la regla del límite de 25. La parte del historial de C6 (sus análisis siguen en el historial) se prueba con RF-14."
+      "estado": "Implementado",
+      "observaciones": "CRUD generado desde el JSON de la entidad usuario (RP-23, D-21), más la regla del límite de 25. La parte del historial de C6 (sus análisis siguen en el historial) se prueba con RF-14. Pasó a «Implementado» con el PR de la segunda muestra y los filtros del historial (24/11/2026), que trajo la prueba de esa parte de C6: los lotes de un usuario desactivado siguen en el historial y él sigue en el filtro «Usuario»."
     },
     {
       "encabezado": "Registrar un lote",
@@ -221,7 +221,7 @@
       "encabezado": "Tomar o subir las fotos de la muestra",
       "titulo": "Tomar o subir las fotos de la muestra del lote, con guía de captura",
       "codigo": "RF-05",
-      "version": "1.3",
+      "version": "1.4",
       "fuente": "D-08 (captura del lote), D-23 y D-26 (tamaño de la muestra) y D-25 (segunda muestra).",
       "descripcion": "El usuario toma con la cámara del celular, o sube desde el PC, 2 o 3 fotos de cada muestra del lote, siguiendo una guía de captura. Un lote tiene una muestra, o dos si la app sugiere otra (D-25).",
       "justificacion": "La calidad de las fotos define la calidad del resultado; la guía evita fotos que no sirven.",
@@ -232,7 +232,8 @@
           "Granos enteros sobre papel blanco, separados entre sí, con luz difusa y fotos tomadas desde arriba (D-08).",
           "Fotos en JPG o PNG, de hasta 10 MB cada una.",
           "Las fotos suben directo a S3 con un enlace temporal (D-16; detalle en el documento de arquitectura). Mientras no hay despliegue en AWS, y en las pruebas, una carpeta del servidor hace las veces de S3, con enlaces temporales que firma el mismo servidor (D-41).",
-          "Una foto rechazada (RF-06, RF-07) o reemplazada (RF-09) se borra de la base de datos y de S3."
+          "Una foto rechazada (RF-06, RF-07) o reemplazada (RF-09) se borra de la base de datos y de S3.",
+          "Cada foto dice a qué muestra va (D-25): la página la manda al pedir el enlace, y el enlace la guarda. Si el lote cambió mientras la página estaba abierta, por ejemplo porque otro usuario analizó la muestra, la foto no se guarda y se pide recargar la página con «El lote cambió mientras tenías abierta esta página: recárgala para ver qué muestra recibe las fotos.»."
         ]
       },
       "prioridad": "Alta",
@@ -267,7 +268,7 @@
       "encabezado": "Validar la nitidez y la luz de cada foto",
       "titulo": "Validar la calidad de cada foto (nitidez y luz) y pedir repetirla si no sirve",
       "codigo": "RF-06",
-      "version": "1.0",
+      "version": "1.1",
       "fuente": "Proceso propuesto (TO-BE), paso de revisión de las fotos.",
       "descripcion": "Antes de analizar, el sistema revisa que cada foto tenga nitidez y luz suficientes. Si una foto no sirve, explica por qué y pide repetirla.",
       "justificacion": "Una foto borrosa u oscura hace que la separación y la clasificación fallen, y el resultado sale equivocado.",
@@ -275,7 +276,9 @@
       "restricciones": {
         "b": [
           "La revisión la hace el servicio de IA con OpenCV.",
-          "Los umbrales de nitidez y de luz se ajustan con la prueba de fotos reales (P-12)."
+          "Los umbrales de nitidez y de luz se ajustan con la prueba de fotos reales (P-12).",
+          "La revisión va en dos tiempos (D-46): al confirmar cada foto, el servidor le pide al servicio de IA la revisión rápida (nitidez, luz, granos pegados y cuántos granos tiene), y la foto queda «Aprobada» o «Por repetir», con su motivo, en ese momento. La clasificación (RF-08) sigue en la cola, al analizar la muestra.",
+          "Si el servicio de IA no responde al subir la foto, la foto queda «Cargada» y se revisa en la cola, antes de clasificarla. Esa revisión no cuenta en el tiempo de RNF-01, que empieza al enviar las fotos."
         ]
       },
       "prioridad": "Media",
@@ -308,7 +311,7 @@
       "encabezado": "Separar y recortar los granos",
       "titulo": "Separar y recortar los granos de cada foto, con control de granos pegados",
       "codigo": "RF-07",
-      "version": "1.0",
+      "version": "1.1",
       "fuente": "D-08 (captura y análisis del lote) y D-09 (control de granos pegados).",
       "descripcion": "El servicio de IA encuentra cada grano en las fotos aprobadas, revisa que no haya granos pegados y recorta cada grano para clasificarlo.",
       "justificacion": "El modelo clasifica granos sueltos; así la empresa no tiene que fotografiar grano por grano.",
@@ -318,7 +321,10 @@
           "Usa el script de OpenCV que, con las fotos del dataset, encontró el grano correcto en el 99,8 % de los casos (ver Componentes de la solución).",
           "Los recortes se hacen igual que los del entrenamiento, para que el modelo los reconozca (D-08).",
           "Granos pegados: una región con un área de al menos el doble de la mediana de los granos de esa foto (D-09).",
-          "La muestra debe tener al menos 100 granos válidos entre todas las fotos (D-23)."
+          "La muestra debe tener al menos 100 granos válidos entre todas las fotos (D-23).",
+          "Las regiones de granos pegados se guardan con su foto, para mostrar dónde están mientras la foto está «Por repetir» (C2), y se borran con ella (D-45).",
+          "Las posiciones de los granos y de las regiones van en píxeles de la foto ya girada según su orientación EXIF, que es como la muestra el navegador (C5, D-45).",
+          "Si entre todas las fotos hay menos de 100 granos válidos, la muestra vuelve a pendiente con el motivo «Menos de 100 granos» (D-44), y la página pide agregar una foto o repetir una con más granos (C3). Cada foto guarda cuántos granos encontró la revisión rápida (D-46)."
         ]
       },
       "prioridad": "Alta",
@@ -355,7 +361,7 @@
       "encabezado": "Clasificar cada grano con el modelo de IA",
       "titulo": "Clasificar cada grano como sano o no sano con el modelo de IA",
       "codigo": "RF-08",
-      "version": "1.1",
+      "version": "1.2",
       "fuente": "Problema general del sector cacaotero (D-19) y pauta del docente sobre los modelos de IA (RP-25).",
       "descripcion": "El servicio de IA clasifica cada grano recortado en RF-07 como sano o no sano con el modelo elegido (D-18) y le devuelve a la API la posición, la clase y la confianza de cada grano. El modelo elegido es EfficientNet-B0 v1.0, de la release `modelos-v1.0` de Julián, en formato SavedModel de TensorFlow (D-40).",
       "justificacion": "Es el núcleo de InspectIA: reemplaza la evaluación manual, que depende de la experiencia de una persona, por un criterio uniforme. Sin esta clasificación no se puede calcular el porcentaje de granos sanos del lote (RF-10).",
@@ -372,7 +378,9 @@
           "El modelo llega entrenado y la app no lo reentrena (D-03).",
           "Corre sin GPU, en la instancia t4g.medium (D-16).",
           "Un grano es no sano si el modelo le da 0,5 o más de probabilidad de no sano: es el umbral con el que Julián midió el modelo (RNF-07).",
-          "EfficientNet-B0 clasifica 100 granos en unos 1,9 s: 19 ms por grano con 2 hilos de CPU, una estimación de Julián para la t4g.medium que se confirma al desplegar (D-16). Julián aplicó D-18 con un límite de 4 s por 100 granos, para que el análisis completo quepa en RNF-01 (P-01)."
+          "EfficientNet-B0 clasifica 100 granos en unos 1,9 s: 19 ms por grano con 2 hilos de CPU, una estimación de Julián para la t4g.medium que se confirma al desplegar (D-16). Julián aplicó D-18 con un límite de 4 s por 100 granos, para que el análisis completo quepa en RNF-01 (P-01).",
+          "Si el servicio de IA no responde en la cola, la muestra vuelve a pendiente, sin resultado, con el motivo «Sin respuesta del servicio de IA» (D-44), y la página lo dice (C6).",
+          "Solo puede estar en uso un modelo con todas sus métricas y un F1 macro de 65 % o más: la base lo exige (C4, RNF-07, P-02, D-48)."
         ]
       },
       "prioridad": "Alta",
@@ -409,7 +417,7 @@
       "encabezado": "Pedir otra foto si la IA duda",
       "titulo": "Pedir una foto más clara o más fotos cuando la confianza del modelo es baja",
       "codigo": "RF-09",
-      "version": "1.2",
+      "version": "1.3",
       "fuente": "Proceso propuesto (TO-BE).",
       "descripcion": "Si el modelo clasifica demasiados granos con confianza baja, el sistema pide repetir la foto con más granos dudosos antes de dar el resultado.",
       "justificacion": "Un resultado con muchos granos dudosos no es confiable para decidir qué hacer con el lote.",
@@ -420,7 +428,8 @@
           "La foto nueva reemplaza a la anterior, que se borra (RF-05): se mantienen 2 o 3 fotos y al menos 100 granos (D-23, D-26).",
           "Se permiten como máximo 2 repeticiones por muestra; si los granos dudosos siguen pasando del 10 %, el sistema da el resultado con un aviso de confianza baja.",
           "El 10 % y el umbral de confianza baja son parámetros del sistema que fija el equipo (P-15); el administrador de empresa no los cambia. Se configuran en el servidor y cada muestra guarda una copia de los valores que usó.",
-          "Si alguna muestra del lote tiene el aviso de confianza baja, el resultado del lote también lo muestra (D-25)."
+          "Si alguna muestra del lote tiene el aviso de confianza baja, el resultado del lote también lo muestra (D-25).",
+          "Las 2 repeticiones son solo las que pide esta ficha por granos dudosos: una foto rechazada al subirla (RF-06, RF-07) o reemplazada por el usuario antes de enviar la muestra (RF-05 C5) no cuenta."
         ]
       },
       "prioridad": "Media",
@@ -559,7 +568,7 @@
       "encabezado": "Generar la recomendación",
       "titulo": "Generar la recomendación según los rangos de la empresa",
       "codigo": "RF-12",
-      "version": "1.3",
+      "version": "1.4",
       "fuente": "D-10, D-24 y D-25 (criterios de la recomendación), D-39 (porcentaje corregido) y anexo A.3.",
       "descripcion": "Según el porcentaje corregido de granos sanos (RF-10, D-39) y los rangos de la empresa, el sistema asigna una categoría probable y una acción sugerida.",
       "justificacion": "Convierte el porcentaje en una decisión: vender, seleccionar a mano o revisar el proceso.",
@@ -571,7 +580,9 @@
           "La categoría se presenta como probable: la oficial se confirma con la prueba de corte (D-10).",
           "Si el porcentaje queda a menos de 1 punto de un límite de la empresa (por defecto, 96, 90 u 82 %), se sugiere analizar otra muestra (D-24).",
           "Un lote tiene como máximo 2 muestras: la segunda solo se habilita cuando la app la sugiere, y con 2 muestras ya no se sugiere otra (D-25).",
-          "Para sugerir otra muestra cuentan los límites de Premium o Especial, Estándar y Corriente; el 0 de Fuera de norma no."
+          "Para sugerir otra muestra cuentan los límites de Premium o Especial, Estándar y Corriente; el 0 de Fuera de norma no.",
+          "El aviso de la sugerencia dice a cuántos puntos quedó el resultado y de qué límite, como el prototipo: «El resultado quedó a 0,9 puntos del límite de Estándar (90 %).»; justo en el límite, a 0,0 puntos, dice «El resultado quedó justo en el límite de Estándar (90 %).». Los puntos van siempre con un decimal, y el límite, sin decimal si es entero: «(90 %)», pero «(90,5 %)». Si dos límites quedan a menos de 1 punto, cuenta el más cercano y, en empate, el más alto. El lote guarda ese límite y su categoría con el resultado, así el aviso no cambia si la empresa cambia sus rangos (RF-13 C3, D-47).",
+          "La segunda muestra se pide con «Analizar otra muestra», en el aviso de la sugerencia del resultado del lote, que es el detalle del historial (RF-14 C6), y solo la pide el usuario final (RF-14). Mientras la segunda muestra espera o se analiza, el lote sigue «Analizado» con el resultado de la primera, y la página del resultado muestra arriba la espera de la segunda y debajo ese resultado, con el aviso «Este resultado cambiará cuando termine la muestra 2: sumará los granos de las dos.». Al terminar, el resultado se recalcula con la suma de las dos y los rangos vigentes, y ya no sugiere otra (D-25)."
         ]
       },
       "prioridad": "Alta",
@@ -606,8 +617,8 @@
         ]
       },
       "rnf": "RNF-07 (F1-score mínimo).",
-      "estado": "Aprobado",
-      "observaciones": "Es una regla del núcleo hexagonal del módulo de análisis (D-21). El margen de 1 punto para sugerir otra muestra se revisa en P-19."
+      "estado": "Implementado",
+      "observaciones": "Es una regla del núcleo hexagonal del módulo de análisis (D-21). El margen de 1 punto para sugerir otra muestra se revisa en P-19. Pasó a «Implementado» con el PR de la segunda muestra (24/11/2026), que trajo C8 y el aviso con el límite más cercano (D-47), con el clasificador falso: la recomendación no depende de quién clasifica los granos, y el servicio de IA real llega con RF-08."
     },
     {
       "encabezado": "Configurar los rangos de la empresa",
@@ -650,14 +661,14 @@
         ]
       },
       "rnf": "RNF-03 (datos separados por empresa) y RNF-04 (autenticación y permisos).",
-      "estado": "Aprobado",
-      "observaciones": "Pantalla generada desde el JSON de la entidad rango (RP-23), más la validación del orden de los límites."
+      "estado": "Implementado",
+      "observaciones": "Pantalla generada desde el JSON de la entidad rango (RP-23), más la validación del orden de los límites. Pasó a «Implementado» con el PR de la segunda muestra (24/11/2026): sus criterios ya tenían prueba, y el resultado de la segunda muestra usa los rangos vigentes al terminarla (C2)."
     },
     {
       "encabezado": "Consultar el historial de lotes",
       "titulo": "Consultar el historial de lotes evaluados",
       "codigo": "RF-14",
-      "version": "1.3",
+      "version": "1.4",
       "fuente": "Levantamiento inicial: trazabilidad de los lotes evaluados.",
       "descripcion": "El usuario consulta los lotes de su empresa, analizados o pendientes, con filtros, y abre el detalle de cada uno.",
       "justificacion": "Da trazabilidad: qué se analizó, cuándo, quién lo hizo y con qué resultado.",
@@ -667,7 +678,11 @@
           "Solo se ven los lotes de la propia empresa (RNF-03).",
           "La lista se muestra por páginas de 20 lotes.",
           "La lista va del último movimiento de cada lote al más antiguo: la fecha del resultado si el lote ya se analizó, o la de registro si está pendiente. Cada lote trae la fecha del resultado, que es la que muestra la columna «Fecha del resultado» del prototipo.",
-          "«Continuar» un lote pendiente desde la captura de fotos (RF-05) y analizar la segunda muestra (D-25) son solo del usuario final, como la página de las fotos. El administrador de empresa ve el lote pendiente sin esa acción. Se aparta del prototipo, que la mostraba en el historial del administrador."
+          "«Continuar» un lote pendiente desde la captura de fotos (RF-05) y analizar la segunda muestra (D-25) son solo del usuario final, como la página de las fotos. El administrador de empresa ve el lote pendiente sin esa acción. Se aparta del prototipo, que la mostraba en el historial del administrador.",
+          "Filtros (C2), solos o combinados: la fecha del resultado, desde y hasta, en días de Colombia y con las dos fechas incluidas (un lote pendiente no tiene fecha del resultado, así que no sale al filtrar por fecha; si «Hasta» es anterior a «Resultado desde», la búsqueda se rechaza con «La fecha «Hasta» no puede ser anterior a «Resultado desde».»); el estado; la categoría; el código del lote, de hasta 30 caracteres, que se busca dentro del código sin distinguir mayúsculas ni los espacios del inicio y del final; y el usuario, que es quien registró el lote, como la columna «Registrado por» del prototipo. Las fechas van de los años 0001 a 9999; una fuera de ese rango responde «El valor no es válido.».",
+          "La lista del filtro «Usuario» sale de `GET /api/v1/lotes/registradores`, para los dos roles de empresa: trae solo el identificador y el nombre de quienes registraron lotes de la empresa, también los desactivados, ordenados por nombre sin distinguir tildes ni mayúsculas, y sin sus correos (RNF-03). Filtrar por un usuario de otra empresa da la lista vacía.",
+          "Un lote con otra muestra sugerida lleva en la lista la marca «Sugiere otra muestra», como el prototipo, hasta que termina la segunda.",
+          "Los filtros y la página van en la dirección de la página, así «Atrás» y un enlace copiado los conservan; un valor de la dirección que no sirve se ignora, también un usuario que no está en la lista «Usuario» o una página mayor que la que acepta la API. Una página que ya no existe, por ejemplo al volver con «Atrás» cuando quedan menos lotes, lleva a la última. Si la lista «Usuario» no llegó, el campo muestra «Usuario elegido» cuando la dirección filtra por alguien. Si ningún lote cumple los filtros, la lista lo dice y ofrece «Limpiar filtros». En el celular, los filtros van detrás del botón «Filtros», abierto si la dirección trae alguno."
         ]
       },
       "prioridad": "Alta",
@@ -698,8 +713,8 @@
         ]
       },
       "rnf": "RNF-02 (capacidad) y RNF-03 (datos separados por empresa).",
-      "estado": "Aprobado",
-      "observaciones": ""
+      "estado": "Implementado",
+      "observaciones": "Pasó a «Implementado» con el PR de la segunda muestra y los filtros del historial (24/11/2026), que trajo C2 y C6."
     },
     {
       "encabezado": "Descargar el reporte en PDF",
@@ -791,7 +806,7 @@
       "encabezado": "Consultar las métricas del modelo",
       "titulo": "Consultar las métricas del modelo",
       "codigo": "RF-17",
-      "version": "1.1",
+      "version": "1.2",
       "fuente": "D-14: métricas del modelo para el administrador de empresa.",
       "descripcion": "El administrador de la empresa ve las métricas del modelo en uso, medidas en el conjunto de prueba (F1-score macro, precisión y recall), y la confianza promedio de los análisis de su empresa.",
       "justificacion": "Permite saber qué tan confiable es el modelo antes de usar sus resultados en decisiones importantes.",
@@ -799,7 +814,9 @@
       "restricciones": {
         "b": [
           "Las métricas de prueba son las del modelo en uso, tomadas de la comparación de los 5 modelos (D-18).",
-          "El usuario final no ve métricas técnicas (sección 1, Usuarios)."
+          "El usuario final no ve métricas técnicas (sección 1, Usuarios).",
+          "Además del F1 macro, la precisión y el recall macro, muestra la precisión y el recall de cada clase y la matriz de confusión del conjunto de prueba (RNF-07 C2), que guarda la tabla modelo (D-48).",
+          "Solo puede estar en uso un modelo con todas sus métricas y un F1 macro de 65 % o más (P-02): la base lo exige."
         ]
       },
       "prioridad": "Baja",

@@ -3,18 +3,18 @@
     "nombre": "muestra.json",
     "descripcion": "Entidad muestra: cada muestra de un lote, con sus conteos, su modelo y la copia de los parámetros. Entrada del generador (RP-23); formato en specs/entidades/README.md.",
     "fecha_creacion": "13/10/2026",
-    "actualizacion": "23/11/2026",
+    "actualizacion": "24/11/2026",
     "autor": "Equipo InspectIA",
-    "version": "1.1"
+    "version": "1.2"
   },
   "entidad": "muestra",
   "clase": "Muestra",
-  "descripcion": "Muestra de un lote: 2 o 3 fotos con 100 granos o más (D-23, D-26). Un lote tiene como máximo 2 muestras, y la segunda solo existe si la app la sugirió (D-25). La maneja el módulo analisis del backend, escrito a mano (D-21).",
+  "descripcion": "Muestra de un lote: 2 o 3 fotos con 100 granos o más (D-23, D-26). Un lote tiene como máximo 2 muestras, y la segunda solo existe si la app la sugirió (D-25). Si la cola la devuelve a pendiente por tener menos de 100 granos o porque el servicio de IA no respondió, guarda el motivo (D-44). El campo repeticiones cuenta solo las fotos que RF-09 pidió repetir por granos dudosos; una foto rechazada al subirla (RF-06, RF-07) o reemplazada por el usuario no cuenta. La maneja el módulo analisis del backend, escrito a mano (D-21).",
   "etiquetas": {
     "es": { "singular": "Muestra", "plural": "Muestras" },
     "en": { "singular": "Sample", "plural": "Samples" }
   },
-  "fichas": ["RF-05", "RF-07", "RF-08", "RF-09", "RF-10", "RNF-01", "RNF-02", "D-25", "D-26"],
+  "fichas": ["RF-05", "RF-07", "RF-08", "RF-09", "RF-10", "RNF-01", "RNF-02", "D-25", "D-26", "D-44"],
   "crud": false,
   "por_empresa": "si",
   "atributos": [
@@ -57,6 +57,17 @@
       "fichas": ["RF-12", "RF-14", "RNF-02"]
     },
     {
+      "nombre": "motivo_devolucion",
+      "tipo": "lista",
+      "obligatorio": false,
+      "valores": [
+        { "codigo": "POCOS_GRANOS", "etiquetas": { "es": "Menos de 100 granos", "en": "Fewer than 100 beans" } },
+        { "codigo": "SIN_RESPUESTA_DE_LA_IA", "etiquetas": { "es": "Sin respuesta del servicio de IA", "en": "No response from the AI service" } }
+      ],
+      "etiquetas": { "es": "Motivo de la devolución", "en": "Reason it was returned" },
+      "fichas": ["RF-07", "RF-08", "D-44"]
+    },
+    {
       "nombre": "modelo_id",
       "tipo": "referencia",
       "referencia": { "entidad": "modelo", "al_borrar": "restringir" },
@@ -93,7 +104,7 @@
       "obligatorio": true,
       "por_defecto": 0,
       "validaciones": { "min": 0, "max": 2 },
-      "etiquetas": { "es": "Repeticiones de foto", "en": "Photo retakes" },
+      "etiquetas": { "es": "Repeticiones por granos dudosos", "en": "Retakes for uncertain beans" },
       "fichas": ["RF-09"]
     },
     {
@@ -162,6 +173,12 @@
       "sql": "granos_sanos IS NULL OR granos_sanos <= total_granos",
       "descripcion": "Los granos sanos no pueden ser más que el total.",
       "fichas": ["RF-10"]
+    },
+    {
+      "nombre": "muestra_motivo_solo_si_devuelta",
+      "sql": "motivo_devolucion IS NULL OR (estado = 'PENDIENTE' AND fecha_envio IS NOT NULL)",
+      "descripcion": "Solo una muestra que volvió a pendiente después de enviarse tiene motivo de devolución (D-44).",
+      "fichas": ["RF-07", "RF-08", "D-44"]
     }
   ],
   "indices": [

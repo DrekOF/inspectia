@@ -5,24 +5,32 @@
  *              rechazan antes de subir, la subida por el enlace firmado sin el token y con el tipo firmado, el
  *              reemplazo, el reintento, que solo confirma si el archivo ya llegó, el foco al reintentar, una casilla
  *              que no sube dos fotos a la vez, retomar el lote con sus fotos, los pasos, un lote que ya no está
- *              pendiente y uno de otra empresa (RNF-03, RNF-04, RNF-05, RNF-06, D-41).
+ *              pendiente y uno de otra empresa (RNF-03, RNF-04, RNF-05, RNF-06, D-41). La muestra 2 (D-25, RF-14 C6):
+ *              un lote analizado que sugiere otra muestra recibe sus fotos, con su título y su subtítulo, y se retoma
+ *              con las que ya tiene; uno sin sugerencia o con dos muestras no las recibe (RF-12 C8). Cada enlace se
+ *              pide para la muestra que espera la página, la 1 o la 2, y si el lote cambió mientras la página estaba
+ *              abierta, la casilla muestra el mensaje del backend, al pedir el enlace o al confirmar.
  * Fecha de creación: 10/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.3
+ * Versión: 1.4
  */
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { abrirApp, conSesion, USUARIOS } from '../pruebas/ayudas.jsx';
 import {
-  archivo, archivoLento, conFotos, conSubidas, ENLACE_NO_VALIDO, fotoCargada,
+  archivo, archivoLento, conFotos, conSubidas, ENLACE_NO_VALIDO, fotoCargada, MUESTRA_CAMBIO,
 } from '../pruebas/fotos.js';
-import { LOTE_ANALIZADO, LOTE_PENDIENTE } from '../pruebas/lotes.js';
+import { LOTE_ANALIZADO, LOTE_CON_SUGERENCIA, LOTE_PENDIENTE } from '../pruebas/lotes.js';
 import { anchoDePantalla } from '../pruebas/preparacion.js';
 import { problema, servidor } from '../pruebas/servidor.js';
 
 const RUTA = `/lotes/${LOTE_PENDIENTE.id}/fotos`;
+const RUTA_DE_LA_MUESTRA_2 = `/lotes/${LOTE_CON_SUGERENCIA.id}/fotos`;
+const DESCRIPCION_DE_LA_MUESTRA_2 = 'Muestra 2 del lote L-0141 · El Recreo. Sube 2 o 3 fotos de otra muestra del mismo '
+  + 'lote; si sales ahora, la retomas desde el resultado del lote.';
+const NO_PENDIENTE = 'Este lote ya no está pendiente de análisis: sus fotos no se pueden cambiar.';
 const FORMATO_NO_PERMITIDO = 'La foto debe ser JPG o PNG: elige una foto en uno de esos formatos.';
 const DEMASIADO_GRANDE =
   'La foto pesa más de 10 MB: tómala de nuevo con la resolución normal de la cámara o elige otra.';
@@ -162,7 +170,7 @@ describe('Fotos de la muestra', () => {
     expect(within(primera).getByText('Cargada')).toBeInTheDocument();
     expect(within(primera).getByRole('button', { name: 'Reemplazar' })).toBeInTheDocument();
     expect(screen.getByText('Foto 1 cargada.')).toBeInTheDocument();
-    expect(anotado.pedidas).toEqual([{ numero: 1, tipo: 'image/jpeg', tamanoBytes: 2048 }]);
+    expect(anotado.pedidas).toEqual([{ numero: 1, tipo: 'image/jpeg', tamanoBytes: 2048, muestra: 1 }]);
     expect(anotado.subidas).toEqual([expect.objectContaining({ autorizacion: null, tipo: 'image/jpeg', bytes: 2048 })]);
     expect(anotado.confirmadas).toEqual([{ numero: 1, llave: expect.stringMatching(/foto-1-1\.jpg$/) }]);
   });
@@ -174,7 +182,7 @@ describe('Fotos de la muestra', () => {
     await elegir(2, archivo('IMG_0001', '', 512, 'image/jpeg'));
 
     expect(await within(await casilla(2)).findByText('Cargada')).toBeInTheDocument();
-    expect(anotado.pedidas).toEqual([{ numero: 2, tipo: 'image/jpeg', tamanoBytes: 512 }]);
+    expect(anotado.pedidas).toEqual([{ numero: 2, tipo: 'image/jpeg', tamanoBytes: 512, muestra: 1 }]);
     expect(anotado.subidas).toEqual([expect.objectContaining({ tipo: 'image/jpeg', bytes: 512 })]);
   });
 
@@ -185,7 +193,7 @@ describe('Fotos de la muestra', () => {
     await elegir(1, archivo('captura.jpg', 'image/jpeg', 256, 'image/png'));
 
     expect(await within(await casilla(1)).findByText('Cargada')).toBeInTheDocument();
-    expect(anotado.pedidas).toEqual([{ numero: 1, tipo: 'image/png', tamanoBytes: 256 }]);
+    expect(anotado.pedidas).toEqual([{ numero: 1, tipo: 'image/png', tamanoBytes: 256, muestra: 1 }]);
     expect(anotado.subidas).toEqual([expect.objectContaining({ tipo: 'image/png', idioma: 'es' })]);
     expect(anotado.confirmadas).toEqual([{ numero: 1, llave: expect.stringMatching(/\.png$/) }]);
   });
@@ -219,7 +227,7 @@ describe('Fotos de la muestra', () => {
     await elegir(2, archivo('justa.jpg', 'image/jpeg', 10_485_760));
 
     expect(await within(await casilla(2)).findByText('Cargada')).toBeInTheDocument();
-    expect(anotado.pedidas).toEqual([{ numero: 2, tipo: 'image/jpeg', tamanoBytes: 10_485_760 }]);
+    expect(anotado.pedidas).toEqual([{ numero: 2, tipo: 'image/jpeg', tamanoBytes: 10_485_760, muestra: 1 }]);
     expect(anotado.subidas[0].bytes).toBe(10_485_760);
   });
 
@@ -343,7 +351,7 @@ describe('Fotos de la muestra', () => {
     lenta.soltar();
 
     expect(await within(primera).findByText('Cargada')).toBeInTheDocument();
-    expect(anotado.pedidas).toEqual([{ numero: 1, tipo: 'image/jpeg', tamanoBytes: 300 }]);
+    expect(anotado.pedidas).toEqual([{ numero: 1, tipo: 'image/jpeg', tamanoBytes: 300, muestra: 1 }]);
   });
 
   it('RNF-06 · un rechazo repetido se vuelve a anunciar: cada intento muestra su aviso de nuevo', async () => {
@@ -442,5 +450,179 @@ describe('Fotos de la muestra', () => {
 
     expect(await screen.findByRole('heading', { name: 'Sin permiso' })).toBeInTheDocument();
     expect(screen.queryByRole('group', { name: 'Foto 1' })).not.toBeInTheDocument();
+  });
+
+  describe('la muestra 2', () => {
+    beforeEach(() => {
+      servidor.use(http.get(`/api/v1/lotes/${LOTE_CON_SUGERENCIA.id}`, () => HttpResponse.json(LOTE_CON_SUGERENCIA)));
+      // Sin la muestra 2 todavía, el lote no tiene muestra en curso que reciba fotos (D-25).
+      conFotos(LOTE_CON_SUGERENCIA.id, []);
+    });
+
+    it('RF-14 · C6 · un lote analizado que sugiere otra muestra recibe sus fotos: «Fotos de la muestra 2», su subtítulo, los pasos, la guía y las 3 casillas vacías', async () => {
+      abrirApp(RUTA_DE_LA_MUESTRA_2);
+
+      expect(await screen.findByRole('heading', { level: 1, name: 'Fotos de la muestra 2' })).toBeInTheDocument();
+      expect(await screen.findByText(DESCRIPCION_DE_LA_MUESTRA_2)).toBeInTheDocument();
+      const pasos = screen.getByRole('list', { name: 'Pasos del análisis' });
+      expect(within(pasos).getByText('Fotos de la muestra').closest('li')).toHaveAttribute('aria-current', 'step');
+      expect(screen.getByRole('region', { name: 'Guía de captura' })).toBeInTheDocument();
+      for (const numero of [1, 2, 3]) {
+        expect(within(await casilla(numero)).getByRole('button', { name: 'Elegir archivo' })).toBeInTheDocument();
+      }
+      expect(screen.queryByText(NO_PENDIENTE)).not.toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: 'Ver el resultado' })).not.toBeInTheDocument();
+    });
+
+    it('RF-14 · C6 · la muestra 2 sube sus fotos como la primera: la foto se sube, se confirma con su número y se ve en su casilla', async () => {
+      const anotado = conSubidas(LOTE_CON_SUGERENCIA.id, { muestra: 2 });
+      abrirApp(RUTA_DE_LA_MUESTRA_2);
+
+      await elegir(1, archivo('granos.jpg', 'image/jpeg', 2048));
+
+      const primera = await casilla(1);
+      expect(await within(primera).findByText('Cargada')).toBeInTheDocument();
+      expect(within(primera).getByRole('img', { name: 'Foto 1 de la muestra' }))
+        .toHaveAttribute('src', expect.stringMatching(/foto-1-1\.jpg/));
+      expect(anotado.pedidas).toEqual([{ numero: 1, tipo: 'image/jpeg', tamanoBytes: 2048, muestra: 2 }]);
+      expect(anotado.confirmadas).toEqual([{ numero: 1, llave: expect.stringMatching(/foto-1-1\.jpg$/) }]);
+    });
+
+    it('RF-14 · C6 · al retomar la muestra 2, la página muestra las fotos que ya tiene y deja subir las que faltan', async () => {
+      conFotos(LOTE_CON_SUGERENCIA.id, [fotoCargada(1)], { muestra: 2 });
+      abrirApp(RUTA_DE_LA_MUESTRA_2);
+
+      expect(await screen.findByRole('heading', { level: 1, name: 'Fotos de la muestra 2' })).toBeInTheDocument();
+      const primera = await casilla(1);
+      expect(await within(primera).findByRole('img', { name: 'Foto 1 de la muestra' })).toBeInTheDocument();
+      expect(within(primera).getByRole('button', { name: 'Reemplazar' })).toBeInTheDocument();
+      expect(within(await casilla(2)).getByRole('button', { name: 'Elegir archivo' })).toBeInTheDocument();
+    });
+
+    it('RF-12 · C8 · un lote analizado sin sugerencia no recibe otra muestra: la página de las fotos no tiene casillas ni archivos, y lleva a su resultado', async () => {
+      servidor.use(http.get(`/api/v1/lotes/${LOTE_ANALIZADO.id}`, () => HttpResponse.json(LOTE_ANALIZADO)));
+      conFotos(LOTE_ANALIZADO.id, [fotoCargada(1), fotoCargada(2)], { muestra: 1, estado: 'TERMINADA' });
+      abrirApp(`/lotes/${LOTE_ANALIZADO.id}/fotos`);
+
+      expect(await screen.findByRole('link', { name: 'Ver el resultado' })).toHaveAttribute('href', `/lotes/${LOTE_ANALIZADO.id}`);
+      expect(screen.queryByRole('heading', { name: 'Fotos de la muestra 2' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('group', { name: 'Foto 1' })).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Archivo de la foto 1')).not.toBeInTheDocument();
+      expect(screen.queryByRole('region', { name: 'Guía de captura' })).not.toBeInTheDocument();
+    });
+
+    it('RF-12 · C8 · un lote con dos muestras no recibe una tercera: la página de las fotos no tiene casillas ni archivos, y lleva a su resultado', async () => {
+      const conDosMuestras = {
+        ...LOTE_CON_SUGERENCIA, porcentajeSanos: 89.5, categoria: 'CORRIENTE', sugerirOtraMuestra: false,
+      };
+      servidor.use(http.get(`/api/v1/lotes/${LOTE_CON_SUGERENCIA.id}`, () => HttpResponse.json(conDosMuestras)));
+      conFotos(LOTE_CON_SUGERENCIA.id, [fotoCargada(1), fotoCargada(2)], { muestra: 2, estado: 'TERMINADA' });
+      abrirApp(RUTA_DE_LA_MUESTRA_2);
+
+      expect(await screen.findByRole('link', { name: 'Ver el resultado' }))
+        .toHaveAttribute('href', `/lotes/${LOTE_CON_SUGERENCIA.id}`);
+      expect(screen.queryByRole('group', { name: 'Foto 1' })).not.toBeInTheDocument();
+      expect(screen.queryByLabelText('Archivo de la foto 1')).not.toBeInTheDocument();
+      expect(screen.queryByRole('region', { name: 'Guía de captura' })).not.toBeInTheDocument();
+    });
+  });
+
+  describe('la muestra que recibe las fotos', () => {
+    it('D-25 · la página de un lote pendiente pide cada enlace para la muestra 1, también al retomarlo con sus fotos, y la llave confirmada es de la muestra 1', async () => {
+      conFotos(LOTE_PENDIENTE.id, [fotoCargada(1)], { muestra: 1 });
+      const anotado = conSubidas(LOTE_PENDIENTE.id);
+      abrirApp(RUTA);
+      await within(await casilla(1)).findByRole('img', { name: 'Foto 1 de la muestra' });
+
+      await elegir(2, archivo('granos.jpg', 'image/jpeg', 1024));
+
+      expect(await within(await casilla(2)).findByText('Cargada')).toBeInTheDocument();
+      expect(anotado.pedidas).toEqual([{ numero: 2, tipo: 'image/jpeg', tamanoBytes: 1024, muestra: 1 }]);
+      expect(anotado.confirmadas).toEqual([{ numero: 2, llave: expect.stringMatching(/\/m1-[^/]+\.jpg$/) }]);
+    });
+
+    it('D-25 · la página de la muestra 2 pide cada enlace para la muestra 2: la primera foto, que la crea, y las siguientes', async () => {
+      servidor.use(http.get(`/api/v1/lotes/${LOTE_CON_SUGERENCIA.id}`, () => HttpResponse.json(LOTE_CON_SUGERENCIA)));
+      conFotos(LOTE_CON_SUGERENCIA.id, []);
+      const anotado = conSubidas(LOTE_CON_SUGERENCIA.id, { muestra: 2 });
+      abrirApp(RUTA_DE_LA_MUESTRA_2);
+      expect(await screen.findByRole('heading', { level: 1, name: 'Fotos de la muestra 2' })).toBeInTheDocument();
+
+      await elegir(1, archivo('primera.jpg', 'image/jpeg', 300));
+      expect(await within(await casilla(1)).findByText('Cargada')).toBeInTheDocument();
+      await elegir(2, archivo('segunda.png', 'image/png', 400));
+      expect(await within(await casilla(2)).findByText('Cargada')).toBeInTheDocument();
+
+      expect(anotado.pedidas.map(({ numero, muestra }) => ({ numero, muestra })))
+        .toEqual([{ numero: 1, muestra: 2 }, { numero: 2, muestra: 2 }]);
+      expect(anotado.confirmadas.map(({ llave }) => llave))
+        .toEqual([expect.stringMatching(/\/m2-[^/]+\.jpg$/), expect.stringMatching(/\/m2-[^/]+\.png$/)]);
+    });
+
+    it('D-25 · al retomar la muestra 2, que ya existe, la página pide el enlace para la muestra 2', async () => {
+      servidor.use(http.get(`/api/v1/lotes/${LOTE_CON_SUGERENCIA.id}`, () => HttpResponse.json(LOTE_CON_SUGERENCIA)));
+      conFotos(LOTE_CON_SUGERENCIA.id, [fotoCargada(1)], { muestra: 2 });
+      const anotado = conSubidas(LOTE_CON_SUGERENCIA.id, { muestra: 2 });
+      abrirApp(RUTA_DE_LA_MUESTRA_2);
+      await within(await casilla(1)).findByRole('img', { name: 'Foto 1 de la muestra' });
+
+      await elegir(2, archivo('granos.jpg', 'image/jpeg', 2048));
+
+      expect(await within(await casilla(2)).findByText('Cargada')).toBeInTheDocument();
+      expect(anotado.pedidas).toEqual([{ numero: 2, tipo: 'image/jpeg', tamanoBytes: 2048, muestra: 2 }]);
+    });
+
+    it('D-25 · si el lote cambió mientras la página estaba abierta y ya recibe las fotos otra muestra, la casilla muestra el mensaje del backend, sin «Reintentar», y no sube ni confirma la foto', async () => {
+      // La página cree que el lote sigue pendiente, con las fotos 1 y 2 de la muestra 1; otro usuario ya lo analizó.
+      conFotos(LOTE_PENDIENTE.id, [fotoCargada(1), fotoCargada(2)], { muestra: 1 });
+      const anotado = conSubidas(LOTE_PENDIENTE.id, { muestra: 2 });
+      abrirApp(RUTA);
+      const segunda = await casilla(2);
+      await within(segunda).findByRole('img', { name: 'Foto 2 de la muestra' });
+
+      await elegir(2, archivo('otra.jpg', 'image/jpeg'));
+
+      expect(await within(segunda).findByRole('alert')).toHaveTextContent(MUESTRA_CAMBIO);
+      expect(within(segunda).queryByRole('button', { name: 'Reintentar' })).not.toBeInTheDocument();
+      expect(within(segunda).getByRole('img', { name: 'Foto 2 de la muestra' }))
+        .toHaveAttribute('src', expect.stringContaining('foto-2.jpg'));
+      expect(anotado.pedidas).toEqual([expect.objectContaining({ numero: 2, muestra: 1 })]);
+      expect(anotado.subidas).toEqual([]);
+      expect(anotado.confirmadas).toEqual([]);
+    });
+
+    it('D-25 · la página pide los enlaces para la muestra que dice su título, aunque su lista de fotos, pedida otra vez, ya traiga la muestra 2: la página de un lote pendiente sigue pidiendo la 1 y el backend la rechaza', async () => {
+      // La página tiene el lote pendiente; mientras tanto otro usuario lo analizó y alguien empezó la muestra 2, que es
+      // la que ahora responde la lista de fotos.
+      conFotos(LOTE_PENDIENTE.id, [fotoCargada(1)], { muestra: 2 });
+      const anotado = conSubidas(LOTE_PENDIENTE.id, { muestra: 2 });
+      abrirApp(RUTA);
+      expect(await screen.findByRole('heading', { level: 1, name: 'Fotos de la muestra' })).toBeInTheDocument();
+      const segunda = await casilla(2);
+
+      await elegir(2, archivo('granos.jpg', 'image/jpeg'));
+
+      expect(await within(segunda).findByRole('alert')).toHaveTextContent(MUESTRA_CAMBIO);
+      expect(anotado.pedidas).toEqual([expect.objectContaining({ numero: 2, muestra: 1 })]);
+      expect(anotado.confirmadas).toEqual([]);
+    });
+
+    it('D-25 · si el lote cambió entre pedir el enlace y confirmar la foto, la confirmación responde 409 y la casilla muestra su mensaje, sin «Reintentar»', async () => {
+      let soltar;
+      const anotado = conSubidas(LOTE_PENDIENTE.id, { espera: new Promise((resolver) => { soltar = resolver; }) });
+      abrirApp(RUTA);
+      const primera = await casilla(1);
+
+      await elegir(1, archivo('granos.jpg', 'image/jpeg'));
+      await within(primera).findByRole('progressbar', { name: 'Subiendo la foto 1…' });
+      // Mientras la foto sube, otro usuario envía la muestra 1, la cola la analiza y el lote sugiere otra.
+      anotado.muestra = 2;
+      soltar();
+
+      expect(await within(primera).findByRole('alert')).toHaveTextContent(MUESTRA_CAMBIO);
+      expect(within(primera).queryByRole('button', { name: 'Reintentar' })).not.toBeInTheDocument();
+      expect(within(primera).queryByRole('img')).not.toBeInTheDocument();
+      expect(anotado.confirmadas).toEqual([{ numero: 1, llave: expect.stringMatching(/\/m1-[^/]+\.jpg$/) }]);
+    });
   });
 });

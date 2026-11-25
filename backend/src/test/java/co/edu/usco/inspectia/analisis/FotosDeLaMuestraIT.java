@@ -2,21 +2,23 @@
  * Nombre: FotosDeLaMuestraIT.java
  * Descripción: Pruebas de integración de las fotos de la muestra de un lote (RF-05, RF-14 C5): la primera foto crea
  *              la muestra, hasta 3 fotos, JPG o PNG de hasta 10 MB, el reemplazo que borra la anterior, la
- *              confirmación de una foto que no llegó y retomar el lote con sus fotos.
+ *              confirmación de una foto que no llegó, retomar el lote con sus fotos, un lote analizado que no recibe
+ *              fotos (RF-12), y la muestra que espera la página, de 1 a 2 (D-25).
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 package co.edu.usco.inspectia.analisis;
 
 import static co.edu.usco.inspectia.analisis.ApiFotos.DEMASIADO_GRANDE;
 import static co.edu.usco.inspectia.analisis.ApiFotos.FORMATO_NO_PERMITIDO;
 import static co.edu.usco.inspectia.analisis.ApiFotos.JPG;
-import static co.edu.usco.inspectia.analisis.ApiFotos.LOTE_NO_PENDIENTE;
 import static co.edu.usco.inspectia.analisis.ApiFotos.MAXIMO_DE_BYTES;
+import static co.edu.usco.inspectia.analisis.ApiFotos.MUESTRA_CAMBIO;
 import static co.edu.usco.inspectia.analisis.ApiFotos.NO_LLEGO;
 import static co.edu.usco.inspectia.analisis.ApiFotos.PNG;
+import static co.edu.usco.inspectia.analisis.ApiFotos.SIN_OTRA_MUESTRA;
 import static co.edu.usco.inspectia.analisis.ApiFotos.conTamano;
 import static co.edu.usco.inspectia.analisis.ApiFotos.jpg;
 import static co.edu.usco.inspectia.analisis.ApiFotos.pdf;
@@ -217,7 +219,7 @@ class FotosDeLaMuestraIT {
     @DisplayName("RF-05 · una llave de este lote sin la forma de un UUID, como 36 guiones, responde 400 en la llave y no 500")
     void llaveMalFormada() {
         String llave = jdbc.queryForObject("SELECT empresa_id FROM lote WHERE id = ?", UUID.class, lote) + "/" + lote
-                + "/" + "-".repeat(36) + ".jpg";
+                + "/m1-" + "-".repeat(36) + ".jpg";
 
         MvcTestResult resultado = fotos.confirmar(token, lote, 1, llave);
 
@@ -239,8 +241,8 @@ class FotosDeLaMuestraIT {
     }
 
     @Test
-    @DisplayName("RF-05 · no se suben fotos a un lote que ya no está pendiente de análisis: responde 409 con el motivo")
-    void soloLotesPendientes() {
+    @DisplayName("RF-12 · pedir el enlace de una foto de un lote que ya está analizado, sin ninguna muestra, responde 409 porque no admite otra muestra")
+    void loteAnalizadoSinMuestraNoRecibeFotos() {
         jdbc.update("UPDATE lote SET estado = 'ANALIZADO', porcentaje_sanos = 93.0, margen = 5.7, "
                 + "categoria = 'ESTANDAR', recomendacion = 'Apto para la venta', sugerir_otra_muestra = false, "
                 + "aviso_confianza_baja = false, "
@@ -249,8 +251,29 @@ class FotosDeLaMuestraIT {
         MvcTestResult resultado = fotos.pedirSubida(token, lote, 1, JPG, 1_000);
 
         assertThat(resultado).hasStatus(HttpStatus.CONFLICT);
-        assertThat(json(resultado)).containsEntry("detail", LOTE_NO_PENDIENTE);
-        assertThat(contarFotos()).isZero();
+        assertThat(json(resultado)).containsEntry("detail", SIN_OTRA_MUESTRA);
+    }
+
+    @Test
+    @DisplayName("D-25 · la muestra que espera la página es obligatoria y va de 1 a 2: sin ella, con 0 y con 3 pedir el enlace responde 400 en «muestra»; con 1 da el enlace y con 2, en un lote pendiente, responde 409 porque el lote cambió (prueba de límite)")
+    void laMuestraEsperadaDeUnoADos() {
+        MvcTestResult sinMuestra = fotos.deLaMuestra(null).pedirSubida(token, lote, 1, JPG, 1_000);
+        MvcTestResult cero = fotos.deLaMuestra(0).pedirSubida(token, lote, 1, JPG, 1_000);
+        MvcTestResult tres = fotos.deLaMuestra(3).pedirSubida(token, lote, 1, JPG, 1_000);
+        MvcTestResult uno = fotos.deLaMuestra(1).pedirSubida(token, lote, 1, JPG, 1_000);
+        MvcTestResult dos = fotos.deLaMuestra(2).pedirSubida(token, lote, 1, JPG, 1_000);
+
+        assertThat(sinMuestra).hasStatus(HttpStatus.BAD_REQUEST);
+        assertThat(errores(sinMuestra)).containsExactly(error("muestra", ApiLotes.OBLIGATORIO));
+        assertThat(cero).hasStatus(HttpStatus.BAD_REQUEST);
+        assertThat(errores(cero)).containsExactly(error("muestra", "Debe ser mayor o igual a 1."));
+        assertThat(tres).hasStatus(HttpStatus.BAD_REQUEST);
+        assertThat(errores(tres)).containsExactly(error("muestra", "Debe ser menor o igual a 2."));
+        assertThat(uno).hasStatus(HttpStatus.CREATED);
+        assertThat((String) json(uno).get("llave")).contains("/" + lote + "/m1-");
+        assertThat(dos).hasStatus(HttpStatus.CONFLICT);
+        assertThat(json(dos)).containsEntry("detail", MUESTRA_CAMBIO);
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM muestra", Integer.class)).isZero();
     }
 
     @Test

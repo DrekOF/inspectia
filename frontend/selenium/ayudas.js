@@ -2,14 +2,15 @@
  * Nombre: ayudas.js (selenium)
  * Descripción: Ayudas de las pruebas con Selenium (RP-14): abrir Chrome o Edge en tamaño de PC o de celular,
  *              buscar campos por su etiqueta, también dentro de un grupo, y botones por su texto, escribir en
- *              un campo en lugar de lo que tenía, crear usuarios, empresas y lotes propios por la API, encontrar el
- *              selector oculto de una foto, esperar a que el menú del celular termine de entrar, dejar el navegador
- *              sin sesión antes de cada prueba y, si una prueba falla, guardar una captura de la pantalla y la
- *              consola del navegador en reports/selenium, que no se sube al repositorio.
+ *              un campo en lugar de lo que tenía, crear usuarios, empresas y lotes propios por la API, subir las fotos
+ *              de una muestra, para la muestra que las recibe (D-25), y analizarla por la API, encontrar el selector
+ *              oculto de una foto, esperar a que el menú del celular termine de entrar, dejar el navegador sin sesión
+ *              antes de cada prueba y, si una prueba falla, guardar una captura de la pantalla y la consola del
+ *              navegador en reports/selenium, que no se sube al repositorio.
  * Fecha de creación: 20/10/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.5
+ * Versión: 1.6
  */
 import { randomUUID } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -20,6 +21,7 @@ import { Browser, Builder, By, Key, logging, until } from 'selenium-webdriver';
 import chrome from 'selenium-webdriver/chrome.js';
 import edge from 'selenium-webdriver/edge.js';
 import { datos, empresaNueva } from '../e2e/entorno/datos.js';
+import { png } from '../e2e/imagenes.js';
 
 /** Dirección de la app compilada que sirve el entorno aislado (e2e/entorno). */
 export const APP = process.env.INSPECTIA_E2E_URL ?? 'http://localhost:4173';
@@ -235,6 +237,54 @@ export async function registrarLote(persona, codigo, fechaRecepcion) {
     throw new Error(`No se pudo registrar el lote de prueba: ${respuesta.status}`);
   }
   return respuesta.json();
+}
+
+/**
+ * Sube por la API las fotos de una muestra de un lote, como la página (D-41), y la analiza: pide el enlace de cada
+ * foto para la muestra que debe recibirla, la sube sin el token y la confirma, envía la muestra y espera a que esa
+ * muestra termine (RF-05, RF-10). Como la página, dice qué muestra espera: si la que recibe las fotos es otra, el
+ * backend responde 409 y la ayuda falla (D-25). El clasificador falso da 50 granos por foto, y son no sanos tantos como
+ * el ancho módulo 50: con 106 y 107, 87 de 100 sanos, que corregido da 90,6 % (Estándar, con la sugerencia de otra
+ * muestra).
+ *
+ * @param {{ correo: string, contrasena: string }} persona el usuario final
+ * @param {string} loteId el lote, pendiente o con la sugerencia de otra muestra
+ * @param {number[]} anchos el ancho de cada foto, de 100 px de alto
+ * @param {{ muestra?: number }} [opciones] la muestra que recibe las fotos: la 1, por defecto, en un lote pendiente,
+ *   o la 2 en uno analizado que la sugiere
+ */
+export async function analizarPorLaApi(persona, loteId, anchos, { muestra = 1 } = {}) {
+  const token = await tokenDe(persona);
+  for (const [indice, ancho] of anchos.entries()) {
+    const numero = indice + 1;
+    const archivo = png({ ancho, alto: 100 });
+    const pedido = await pedir('POST', `/lotes/${loteId}/fotos/${numero}/subida`,
+      { tipo: 'image/png', tamanoBytes: archivo.length, muestra }, token);
+    if (pedido.status !== 201) {
+      throw new Error(`No se pudo pedir el enlace de la foto ${numero}: ${pedido.status}`);
+    }
+    const enlace = await pedido.json();
+    // El enlace es relativo a la página con la carpeta local (D-41).
+    const subida = await fetch(new URL(enlace.url, APP), { method: enlace.metodo, headers: enlace.encabezados, body: archivo });
+    const confirmada = subida.ok ? await pedir('PUT', `/lotes/${loteId}/fotos/${numero}`, { llave: enlace.llave }, token) : null;
+    if (confirmada?.status !== 200) {
+      throw new Error(`No se pudo subir la foto ${numero}: ${subida.status} y ${confirmada?.status}`);
+    }
+  }
+  const envio = await pedir('POST', `/lotes/${loteId}/analisis`, null, token);
+  if (envio.status !== 202) {
+    throw new Error(`No se pudo enviar la muestra: ${envio.status}`);
+  }
+  const limite = Date.now() + ESPERA * 2;
+  while (Date.now() < limite) {
+    const avance = await (await pedir('GET', `/lotes/${loteId}/analisis`, null, token)).json();
+    // El avance es el de la muestra en curso: se espera el de esa muestra, así la 1 terminada no pasa por la 2.
+    if (avance.muestra === muestra && avance.estado === 'TERMINADA') {
+      return;
+    }
+    await new Promise((resolver) => { setTimeout(resolver, 250); });
+  }
+  throw new Error(`El análisis de la muestra ${muestra} del lote ${loteId} no terminó en ${(ESPERA * 2) / 1000} s`);
 }
 
 /**

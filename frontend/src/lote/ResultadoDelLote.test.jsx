@@ -1,27 +1,31 @@
 /*
  * Nombre: ResultadoDelLote.test.jsx
- * Descripción: Pruebas de la pantalla Resultado del lote (RF-10, RF-11, RF-12, RF-14 C3): la cifra guardada con su
- *              rango probable, recortado en los dos extremos, en español y en inglés (D-43); los granos que contó el
- *              modelo con la frase de la corrección; la categoría probable; la sugerencia de otra muestra; las fotos
- *              marcadas, con el color y el símbolo de cada clase, la marca de los dudosos, el globo con la clase al
- *              pasar el cursor, al tocar y con el teclado, sin la confianza; las pestañas; la vista de la
- *              administradora; el celular; la espera del análisis, su avance y su final (RNF-01 C4, RNF-02 C3), y los
- *              errores (RNF-03, RNF-04, RNF-06).
+ * Descripción: Pruebas de la pantalla Resultado del lote (RF-10, RF-11, RF-12, RF-14 C3 y C6): la cifra guardada con
+ *              su rango probable, recortado en los dos extremos, en español y en inglés (D-43); los granos que contó el
+ *              modelo con la frase de la corrección; la categoría probable; el aviso de la sugerencia con los puntos y
+ *              el límite guardado (D-47), justo en el límite, con decimal y de otra categoría, con «Analizar otra
+ *              muestra» o «Continuar la muestra 2» solo para el usuario final; un lote sin sugerencia o con dos
+ *              muestras, que no admite otra (RF-12 C8); la muestra 2 en espera, con el resultado actual debajo, al
+ *              terminar y devuelta; las cifras de cada muestra y sus nombres accesibles; las fotos marcadas, con el
+ *              color y el símbolo de cada clase, la marca de los dudosos, el globo con la clase al pasar el cursor, al
+ *              tocar y con el teclado, sin la confianza; las pestañas; la vista de la administradora; el celular; la
+ *              espera del análisis, su avance y su final (RNF-01 C4, RNF-02 C3), y los errores (RNF-03, RNF-04, RNF-06).
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { http } from 'msw';
+import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import i18n from '../i18n/i18n.js';
 import { abrirApp, conSesion, USUARIOS } from '../pruebas/ayudas.jsx';
+import { conFotos } from '../pruebas/fotos.js';
 import { LOTE_PENDIENTE } from '../pruebas/lotes.js';
 import { anchoDePantalla } from '../pruebas/preparacion.js';
 import {
   avance, cargarImagen, conAvance, conResultado, granosDeFoto, fotoMarcada, RECOMENDACION_ESTANDAR, resultadoAnalizado,
-  resultadoPendiente,
+  resultadoConDosMuestras, resultadoConSegundaMuestra, resultadoPendiente,
 } from '../pruebas/resultados.js';
 import { problema, servidor } from '../pruebas/servidor.js';
 import { marcasDeFoto } from '../tema/tokens.js';
@@ -33,6 +37,21 @@ const RUTA = `/lotes/${LOTE}`;
 const EN_ESPERA = 'Tu análisis está en espera: empieza apenas termine el que va antes.';
 const EN_PROCESO = 'Analizando la muestra…';
 const LISTO = 'Listo: este es el resultado del lote L-0143.';
+/** El detalle del aviso de la sugerencia para el usuario final, del prototipo (D-47). */
+const DETALLE_DE_LA_SUGERENCIA =
+  'Analiza una segunda muestra del mismo lote para confirmarlo. El resultado sumará los granos de las dos muestras.';
+/** El detalle del aviso para la administradora, que no analiza muestras (RF-14, restricción 4). */
+const DETALLE_PARA_LA_ADMINISTRADORA =
+  'Un usuario final de tu empresa puede analizar una segunda muestra del mismo lote para confirmarlo.';
+/** El aviso bajo la espera de la muestra 2: el resultado que se ve es el de la muestra 1. */
+const CAMBIARA = 'Este resultado cambiará cuando termine la muestra 2: sumará los granos de las dos.';
+/** El aviso de una muestra 2 que volvió de la cola sin resultado. */
+const FALLO_DE_LA_MUESTRA_2 = 'El análisis de la muestra 2 no terminó: la muestra volvió a quedar pendiente.';
+/** El lote del ejemplo ya analizado, con la sugerencia, como lo responde GET /api/v1/lotes/{id}. */
+const LOTE_CON_EL_RESULTADO = {
+  ...LOTE_PENDIENTE, estado: 'ANALIZADO', porcentajeSanos: 90.6, categoria: 'ESTANDAR', sugerirOtraMuestra: true,
+  fechaResultado: '2026-11-23T16:42:03Z',
+};
 
 /**
  * La imagen de una foto marcada, cargada como si el navegador la hubiera traído, con su tamaño original.
@@ -183,25 +202,98 @@ describe('Resultado del lote', () => {
         .toBeInTheDocument();
     });
 
-    it('RF-12 · si el lote sugiere otra muestra, un aviso informativo que no interrumpe lo dice, todavía sin el botón para analizarla', async () => {
+    it('D-47 · el aviso de la sugerencia dice a cuántos puntos quedó el resultado y de qué límite, con el detalle del prototipo, sin interrumpir, entre el resumen y las fotos', async () => {
       conResultado(LOTE, resultadoAnalizado());
       abrirApp(RUTA);
 
-      await screen.findByRole('region', { name: 'Resumen del resultado' });
-      const aviso = screen.getAllByRole('status').find((uno) => uno.textContent.includes('menos de 1 punto'));
-      expect(aviso).toHaveTextContent('El resultado quedó a menos de 1 punto del límite de una categoría.');
-      expect(aviso).toHaveTextContent('el resultado sumará los granos de las dos muestras.');
+      const aviso = await screen.findByRole('region', { name: 'Sugerencia' });
+      expect(aviso).toHaveTextContent('El resultado quedó a 0,6 puntos del límite de Estándar (90 %).');
+      expect(aviso).toHaveTextContent(DETALLE_DE_LA_SUGERENCIA);
+      expect(screen.queryByText(/menos de 1 punto/)).not.toBeInTheDocument();
       expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-      expect(screen.queryByRole('link', { name: /otra muestra/ })).not.toBeInTheDocument();
-      expect(screen.queryByRole('button', { name: /otra muestra/ })).not.toBeInTheDocument();
+      const resumen = screen.getByRole('region', { name: 'Resumen del resultado' });
+      expect(resumen.compareDocumentPosition(aviso)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+      expect(aviso.compareDocumentPosition(screen.getByRole('region', { name: 'Fotos marcadas' })))
+        .toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     });
 
-    it('RF-12 · un lote que no sugiere otra muestra no tiene el aviso', async () => {
+    it('D-47 · con el resultado justo en el límite, el aviso dice «quedó justo en el límite», sin «0,0 puntos» (prueba de límite)', async () => {
+      conResultado(LOTE, resultadoAnalizado({ porcentajeSanos: 90.0 }));
+      abrirApp(RUTA);
+
+      const aviso = await screen.findByRole('region', { name: 'Sugerencia' });
+      expect(aviso).toHaveTextContent('El resultado quedó justo en el límite de Estándar (90 %).');
+      expect(aviso).not.toHaveTextContent(/0,0 puntos/);
+    });
+
+    it('D-47 · el límite de la empresa con decimal se escribe con su decimal, «(90,5 %)», y los puntos siempre con uno', async () => {
+      conResultado(LOTE, resultadoAnalizado({ porcentajeSanos: 91.0, limiteSugerencia: 90.5 }));
+      abrirApp(RUTA);
+
+      expect(await screen.findByRole('region', { name: 'Sugerencia' }))
+        .toHaveTextContent('El resultado quedó a 0,5 puntos del límite de Estándar (90,5 %).');
+    });
+
+    it('D-47 · el límite cercano puede ser de otra categoría que la del lote: con 95,1 %, Estándar, el aviso habla del límite de Premium o Especial (96 %)', async () => {
+      conResultado(LOTE, resultadoAnalizado({
+        porcentajeSanos: 95.1, margen: 7.0, granosSanos: 89, limiteSugerencia: 96.0, categoriaDelLimite: 'PREMIUM',
+      }));
+      abrirApp(RUTA);
+
+      const aviso = await screen.findByRole('region', { name: 'Sugerencia' });
+      expect(aviso).toHaveTextContent('El resultado quedó a 0,9 puntos del límite de Premium o Especial (96 %).');
+      expect(within(screen.getByRole('region', { name: 'Resumen del resultado' })).getByText('Estándar')).toBeInTheDocument();
+    });
+
+    it('D-47 · en inglés, el aviso lleva el punto decimal y la categoría en inglés, y el botón dice «Analyze another sample»', async () => {
+      await i18n.changeLanguage('en');
+      conResultado(LOTE, resultadoAnalizado());
+      abrirApp(RUTA);
+
+      expect(await screen.findByText('The result was 0.6 points from the Standard limit (90 %).')).toBeInTheDocument();
+      expect(screen.getByRole('link', { name: 'Analyze another sample' })).toHaveAttribute('href', `${RUTA}/fotos`);
+    });
+
+    it('RF-14 · C6 · desde el detalle de un lote con otra muestra sugerida, el usuario final pulsa «Analizar otra muestra» y llega a las fotos de la muestra 2, con las casillas vacías', async () => {
+      conResultado(LOTE, resultadoAnalizado());
+      servidor.use(http.get(`/api/v1/lotes/${LOTE}`, () => HttpResponse.json(LOTE_CON_EL_RESULTADO)));
+      conFotos(LOTE, []);
+      const { usuario } = abrirApp(RUTA);
+
+      const aviso = await screen.findByRole('region', { name: 'Sugerencia' });
+      const analizar = within(aviso).getByRole('link', { name: 'Analizar otra muestra' });
+      expect(analizar).toHaveAttribute('href', `${RUTA}/fotos`);
+      expect(within(aviso).queryByRole('link', { name: 'Continuar la muestra 2' })).not.toBeInTheDocument();
+      await usuario.click(analizar);
+
+      expect(await screen.findByRole('heading', { level: 1, name: 'Fotos de la muestra 2' })).toBeInTheDocument();
+      expect(window.location.pathname).toBe(`${RUTA}/fotos`);
+      for (const nombre of ['Foto 1', 'Foto 2', 'Foto 3 (opcional)']) {
+        expect(within(await screen.findByRole('group', { name: nombre })).getByRole('button', { name: 'Elegir archivo' }))
+          .toBeInTheDocument();
+      }
+    });
+
+    it('RF-14 · C6 · si la muestra 2 ya se empezó y no se ha enviado, el aviso ofrece «Continuar la muestra 2», que la retoma desde sus fotos', async () => {
+      conResultado(LOTE, resultadoConSegundaMuestra('PENDIENTE'));
+      abrirApp(RUTA);
+
+      const aviso = await screen.findByRole('region', { name: 'Sugerencia' });
+      expect(within(aviso).getByRole('link', { name: 'Continuar la muestra 2' })).toHaveAttribute('href', `${RUTA}/fotos`);
+      expect(within(aviso).queryByRole('link', { name: 'Analizar otra muestra' })).not.toBeInTheDocument();
+      expect(within(screen.getByRole('region', { name: 'Resumen del resultado' })).getByText('90,6 %')).toBeInTheDocument();
+      expect(screen.queryByRole('region', { name: /^Análisis de la muestra/ })).not.toBeInTheDocument();
+    });
+
+    it('RF-12 · C8 · un lote analizado sin sugerencia no tiene el aviso ni ofrece «Analizar otra muestra»: no admite otra muestra', async () => {
       conResultado(LOTE, resultadoAnalizado({ porcentajeSanos: 93.0, sugerirOtraMuestra: false }));
       abrirApp(RUTA);
 
       await screen.findByRole('region', { name: 'Resumen del resultado' });
-      expect(screen.queryByText(/menos de 1 punto/)).not.toBeInTheDocument();
+      expect(screen.queryByRole('region', { name: 'Sugerencia' })).not.toBeInTheDocument();
+      expect(screen.queryByText(/puntos del límite|justo en el límite/)).not.toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: /Analizar otra muestra|Continuar la muestra/ })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /otra muestra/ })).not.toBeInTheDocument();
     });
 
     it('RF-11 · C1 · cada grano de la foto aparece marcado en su lugar: el sano con el borde verde y el no sano con el rojo', async () => {
@@ -425,6 +517,174 @@ describe('Resultado del lote', () => {
     expect(screen.queryByRole('list', { name: 'Pasos del análisis' })).not.toBeInTheDocument();
     expect(within(screen.getByRole('main')).queryByRole('link')).not.toBeInTheDocument();
     expect(within(screen.getByRole('main')).queryByRole('button', { name: /otra muestra|Analizar/ })).not.toBeInTheDocument();
+  });
+
+  it('RF-14 · a la administradora, el aviso de la sugerencia le dice lo mismo sin el botón: un usuario final de su empresa puede analizar la segunda muestra', async () => {
+    conSesion(USUARIOS.ADMIN_EMPRESA);
+    conResultado(LOTE, resultadoAnalizado());
+    abrirApp(RUTA);
+
+    const aviso = await screen.findByRole('region', { name: 'Sugerencia' });
+    expect(aviso).toHaveTextContent('El resultado quedó a 0,6 puntos del límite de Estándar (90 %).');
+    expect(aviso).toHaveTextContent(DETALLE_PARA_LA_ADMINISTRADORA);
+    expect(aviso).not.toHaveTextContent(DETALLE_DE_LA_SUGERENCIA);
+    expect(within(aviso).queryByRole('link')).not.toBeInTheDocument();
+    expect(within(aviso).queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('RF-14 · a la administradora, una muestra 2 empezada tampoco le ofrece «Continuar la muestra 2»', async () => {
+    conSesion(USUARIOS.ADMIN_EMPRESA);
+    conResultado(LOTE, resultadoConSegundaMuestra('PENDIENTE'));
+    abrirApp(RUTA);
+
+    const aviso = await screen.findByRole('region', { name: 'Sugerencia' });
+    expect(aviso).toHaveTextContent(DETALLE_PARA_LA_ADMINISTRADORA);
+    expect(within(screen.getByRole('main')).queryByRole('link')).not.toBeInTheDocument();
+  });
+
+  describe('segunda muestra', () => {
+    beforeEach(() => conSesion(USUARIOS.USUARIO_FINAL));
+
+    it('RF-14 · C6 · con la muestra 2 en espera, arriba se ve su espera y debajo el resultado actual, con el aviso de que cambiará y sin la sugerencia', async () => {
+      conResultado(LOTE, resultadoConSegundaMuestra('EN_ESPERA'));
+      conAvance(LOTE, [avance('EN_ESPERA', { muestra: 2 })]);
+      abrirApp(RUTA);
+
+      const espera = await screen.findByRole('region', { name: /^Análisis de la muestra/ });
+      expect(within(espera).getByText(EN_ESPERA)).toBeInTheDocument();
+      expect(within(espera).getByRole('progressbar', { name: 'Avance del análisis' })).toBeInTheDocument();
+      const resumen = screen.getByRole('region', { name: 'Resumen del resultado' });
+      expect(within(resumen).getByText('90,6 %')).toBeInTheDocument();
+      expect(within(resumen).getByText('87 de 100 marcados como sanos')).toBeInTheDocument();
+      expect(espera.compareDocumentPosition(resumen) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(espera.compareDocumentPosition(screen.getByText(CAMBIARA)) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(screen.queryByRole('region', { name: 'Sugerencia' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: /Analizar otra muestra|Continuar la muestra/ })).not.toBeInTheDocument();
+    });
+
+    it('RF-14 · C6 · con la muestra 2 en proceso también se ven la espera y, debajo, el resultado actual con el aviso de que cambiará', async () => {
+      conResultado(LOTE, resultadoConSegundaMuestra('EN_PROCESO'));
+      conAvance(LOTE, [avance('EN_PROCESO', { muestra: 2 })]);
+      abrirApp(RUTA);
+
+      const espera = await screen.findByRole('region', { name: /^Análisis de la muestra/ });
+      expect(within(espera).getByText(EN_PROCESO)).toBeInTheDocument();
+      expect(within(screen.getByRole('region', { name: 'Resumen del resultado' })).getByText('90,6 %')).toBeInTheDocument();
+      expect(screen.getByText(CAMBIARA)).toBeInTheDocument();
+    });
+
+    it('RF-14 · C6 · cuando termina la muestra 2, la página pide otra vez el resultado y muestra el de la suma, sin la espera ni la sugerencia, con el foco en el título', async () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'], shouldAdvanceTime: true });
+      const resultado = conResultado(LOTE,
+        (vez) => (vez === 1 ? resultadoConSegundaMuestra('EN_PROCESO') : resultadoConDosMuestras()));
+      const consultas = conAvance(LOTE, [avance('EN_PROCESO', { muestra: 2 }), avance('TERMINADA', { muestra: 2 })]);
+      abrirApp(RUTA);
+      await screen.findByRole('region', { name: /^Análisis de la muestra/ });
+
+      await siguienteConsulta(consultas, 1);
+      await siguienteConsulta(consultas, 2);
+
+      expect(await screen.findByText('89,5 %')).toBeInTheDocument();
+      await waitFor(() => expect(screen.getByRole('heading', { level: 1, name: 'Resultado del lote L-0143' })).toHaveFocus());
+      expect(anuncioDeLaPagina()).toHaveTextContent(LISTO);
+      const resumen = screen.getByRole('region', { name: 'Resumen del resultado' });
+      expect(within(resumen).getByText('Corriente')).toBeInTheDocument();
+      expect(within(resumen).getByText('173 de 200 marcados como sanos')).toBeInTheDocument();
+      expect(screen.queryByRole('region', { name: /^Análisis de la muestra/ })).not.toBeInTheDocument();
+      expect(screen.queryByText(CAMBIARA)).not.toBeInTheDocument();
+      expect(screen.queryByRole('region', { name: 'Sugerencia' })).not.toBeInTheDocument();
+      expect(resultado.veces).toBe(2);
+      await avanzar(3000);
+      expect(consultas.veces).toBe(2);
+    });
+
+    it('RNF-06 · C3 · si la muestra 2 volvió a quedar pendiente sin resultado, la página muestra el resultado actual y el aviso de error con «Volver a las fotos»', async () => {
+      conResultado(LOTE, resultadoConSegundaMuestra('PENDIENTE', { fechaEnvio: '2026-11-23T17:10:00Z' }));
+      abrirApp(RUTA);
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(FALLO_DE_LA_MUESTRA_2);
+      expect(screen.getByRole('link', { name: 'Volver a las fotos' })).toHaveAttribute('href', `${RUTA}/fotos`);
+      expect(within(screen.getByRole('region', { name: 'Resumen del resultado' })).getByText('90,6 %')).toBeInTheDocument();
+      expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
+    });
+
+    it('RNF-06 · C3 · si la muestra 2 vuelve de la cola sin resultado mientras se espera, la página deja de consultar y muestra el resultado actual con el aviso de error', async () => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'], shouldAdvanceTime: true });
+      conResultado(LOTE, resultadoConSegundaMuestra('EN_PROCESO'));
+      const consultas = conAvance(LOTE, [avance('PENDIENTE', { fallo: true, muestra: 2 })]);
+      abrirApp(RUTA);
+      await screen.findByRole('region', { name: /^Análisis de la muestra/ });
+
+      await siguienteConsulta(consultas, 1);
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(FALLO_DE_LA_MUESTRA_2);
+      expect(screen.getByRole('link', { name: 'Volver a las fotos' })).toHaveAttribute('href', `${RUTA}/fotos`);
+      expect(screen.getByRole('region', { name: 'Resumen del resultado' })).toBeInTheDocument();
+      expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
+      await avanzar(3000);
+      expect(consultas.veces).toBe(1);
+    });
+
+    it('RNF-06 · C3 · a la administradora, la muestra 2 que no terminó se lo dice junto al resultado actual, sin llevarla a las fotos', async () => {
+      conSesion(USUARIOS.ADMIN_EMPRESA);
+      conResultado(LOTE, resultadoConSegundaMuestra('PENDIENTE', { fechaEnvio: '2026-11-23T17:10:00Z' }));
+      abrirApp(RUTA);
+
+      const aviso = await screen.findByRole('alert');
+      expect(aviso).toHaveTextContent(FALLO_DE_LA_MUESTRA_2);
+      expect(aviso).toHaveTextContent('Un usuario final de tu empresa puede revisar las fotos y enviarla de nuevo.');
+      expect(screen.queryByRole('link', { name: 'Volver a las fotos' })).not.toBeInTheDocument();
+      expect(screen.getByRole('region', { name: 'Resumen del resultado' })).toBeInTheDocument();
+    });
+
+    it('RF-14 · C3 · con dos muestras, el detalle muestra el resultado de la suma y, en «Fotos marcadas», cada muestra con su título y sus cifras', async () => {
+      conResultado(LOTE, resultadoConDosMuestras());
+      abrirApp(RUTA);
+
+      const resumen = await screen.findByRole('region', { name: 'Resumen del resultado' });
+      expect(within(resumen).getByText('89,5 %')).toBeInTheDocument();
+      expect(within(resumen).getByText('Rango probable: entre 84,1 y 94,9 %')).toBeInTheDocument();
+      expect(within(resumen).getByText('Corriente')).toBeInTheDocument();
+      expect(within(resumen).getByText('173 de 200 marcados como sanos')).toBeInTheDocument();
+      const fotos = screen.getByRole('region', { name: 'Fotos marcadas' });
+      const orden = [
+        within(fotos).getByRole('heading', { level: 3, name: 'Muestra 1' }),
+        within(fotos).getByText(/87 de 100 marcados como sanos/),
+        within(fotos).getByRole('heading', { level: 3, name: 'Muestra 2' }),
+        within(fotos).getByText(/86 de 100 marcados como sanos/),
+      ];
+      orden.slice(1).forEach((elemento, indice) => {
+        expect(orden[indice].compareDocumentPosition(elemento) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      });
+      expect(within(fotos).getByRole('tablist', { name: 'Fotos de la muestra 1' })).toBeInTheDocument();
+      expect(within(fotos).getByRole('tablist', { name: 'Fotos de la muestra 2' })).toBeInTheDocument();
+    });
+
+    it('RNF-06 · con dos muestras, el nombre de cada foto y de sus granos dice de qué muestra son, para que no se repitan', async () => {
+      conResultado(LOTE, resultadoConDosMuestras());
+      abrirApp(RUTA);
+
+      const primera = await screen.findByRole('img', { name: 'Foto 1 de la muestra 1, con sus granos marcados' });
+      const segunda = screen.getByRole('img', { name: 'Foto 1 de la muestra 2, con sus granos marcados' });
+      expect(segunda).toHaveAttribute('src', expect.stringContaining('muestra-2/foto-1.jpg'));
+      cargarImagen(primera);
+      cargarImagen(segunda);
+
+      expect(within(await screen.findByRole('group', { name: 'Granos de la foto 1 de la muestra 1' }))
+        .getAllByTestId('CloseIcon')).toHaveLength(6);
+      expect(within(await screen.findByRole('group', { name: 'Granos de la foto 1 de la muestra 2' }))
+        .getAllByTestId('CloseIcon')).toHaveLength(7);
+      expect(screen.queryByRole('img', { name: 'Foto 1 de la muestra, con sus granos marcados' })).not.toBeInTheDocument();
+    });
+
+    it('RF-12 · C8 · un lote con dos muestras ya no sugiere otra, aunque quede a 0,5 puntos de 90: no tiene el aviso ni ofrece «Analizar otra muestra»', async () => {
+      conResultado(LOTE, resultadoConDosMuestras());
+      abrirApp(RUTA);
+
+      await screen.findByRole('region', { name: 'Resumen del resultado' });
+      expect(screen.queryByRole('region', { name: 'Sugerencia' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('link', { name: /Analizar otra muestra|Continuar la muestra/ })).not.toBeInTheDocument();
+    });
   });
 
   it('RNF-03 · si el lote no existe o es de otra empresa, la página lo dice con el mensaje del backend, sin «Reintentar»', async () => {

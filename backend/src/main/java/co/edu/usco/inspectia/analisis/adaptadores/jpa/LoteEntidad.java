@@ -1,11 +1,11 @@
 /*
  * Nombre: LoteEntidad.java
  * Descripción: Entidad JPA de la tabla lote (specs/entidades/lote.json), del módulo de análisis (RF-04, RF-10,
- *              RF-12, RF-14), con el margen del porcentaje (P-19).
+ *              RF-12, RF-14), con el margen del porcentaje (P-19) y el límite de la sugerencia con su categoría (D-47).
  * Fecha de creación: 10/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.2
+ * Versión: 1.3
  */
 package co.edu.usco.inspectia.analisis.adaptadores.jpa;
 
@@ -102,6 +102,17 @@ public class LoteEntidad {
     @Column(name = "sugerir_otra_muestra")
     private Boolean sugerirOtraMuestra;
 
+    /**
+     * El límite más cercano por el que se sugiere otra muestra, con 1 decimal, tal cual estaba en los rangos de la
+     * empresa; vacío sin sugerencia (D-47). Lo exige el CHECK {@code lote_sugerencia_con_su_limite}.
+     */
+    @Column(name = "limite_sugerencia", precision = 4, scale = 1)
+    private BigDecimal limiteSugerencia;
+
+    /** La categoría de ese límite, que puede ser otra que la del lote; vacía sin sugerencia (D-47). */
+    @Column(name = "categoria_del_limite", length = 30)
+    private String categoriaDelLimite;
+
     /** Si alguna muestra tiene el aviso de confianza baja; vacío mientras está pendiente (RF-09). */
     @Column(name = "aviso_confianza_baja")
     private Boolean avisoConfianzaBaja;
@@ -110,7 +121,10 @@ public class LoteEntidad {
     @Column(name = "fecha_resultado")
     private OffsetDateTime fechaResultado;
 
-    /** Llave del PDF del lote en el almacenamiento; vacía hasta la primera descarga (RF-15). */
+    /**
+     * Llave del PDF del lote en el almacenamiento; vacía hasta la primera descarga (RF-15), y otra vez vacía cuando el
+     * resultado se recalcula con la muestra 2 (D-25).
+     */
     @Column(name = "reporte_ruta", length = 255)
     private String reporteRuta;
 

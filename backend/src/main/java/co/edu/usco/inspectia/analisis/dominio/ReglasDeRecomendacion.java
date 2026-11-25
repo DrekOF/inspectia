@@ -1,11 +1,12 @@
 /*
  * Nombre: ReglasDeRecomendacion.java
- * Descripción: Las reglas de la recomendación del lote: la categoría probable según los rangos de la empresa y cuándo
- *              se sugiere analizar otra muestra (RF-12, D-24, D-25).
+ * Descripción: Las reglas de la recomendación del lote: la categoría probable según los rangos de la empresa, cuándo
+ *              se sugiere analizar otra muestra y por qué límite, el más cercano y en empate el más alto (RF-12, D-24,
+ *              D-25, D-47).
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis.dominio;
 
@@ -23,6 +24,9 @@ import java.util.Objects;
  *   <li><b>Sugerir otra muestra</b> (D-24): solo con 1 muestra (D-25), si el porcentaje queda a menos de
  *       {@code puntos} de algún límite de la empresa. Cuentan los límites de Premium, Estándar y Corriente; el 0 de
  *       Fuera de norma no (restricción 6). «A menos de» es estricto: con 1 punto, 90,9 sugiere y 91,0 no (C3).</li>
+ *   <li><b>El límite de la sugerencia</b> (D-47): de los límites que cuentan, el más cercano al porcentaje y, si dos
+ *       quedan a la misma distancia, el más alto, sin importar el orden de la lista. Su categoría puede ser otra que la
+ *       del lote: con Premium desde 97,5, 97,0 % es Estándar y sugiere por el límite de Premium.</li>
  * </ul>
  */
 public final class ReglasDeRecomendacion {
@@ -40,7 +44,7 @@ public final class ReglasDeRecomendacion {
      * @param rangos los rangos vigentes de la empresa (RF-13)
      * @param muestras cuántas muestras terminadas tiene el lote: 1 o 2
      * @param puntos a cuántos puntos de un límite se sugiere otra muestra (D-24)
-     * @return la categoría, su texto y si se sugiere otra muestra
+     * @return la categoría, su texto, si se sugiere otra muestra y, si se sugiere, el límite y su categoría
      * @throws IllegalArgumentException si las muestras no son 1 o 2, o si ningún rango cubre el porcentaje
      */
     public static Recomendacion recomendar(BigDecimal porcentaje, List<RangoDeCategoria> rangos, int muestras,
@@ -55,10 +59,24 @@ public final class ReglasDeRecomendacion {
                 .filter(candidato -> candidato.limiteInferior().compareTo(porcentaje) <= 0)
                 .max(Comparator.comparing(RangoDeCategoria::limiteInferior))
                 .orElseThrow(() -> new IllegalArgumentException("Ningún rango de la empresa cubre " + porcentaje));
-        boolean sugerir = muestras == 1 && rangos.stream()
-                .map(RangoDeCategoria::limiteInferior)
-                .filter(limite -> limite.signum() > 0)
-                .anyMatch(limite -> porcentaje.subtract(limite).abs().compareTo(puntos) < 0);
-        return new Recomendacion(rango.categoria(), rango.recomendacion(), sugerir);
+        Recomendacion sinSugerencia = new Recomendacion(rango.categoria(), rango.recomendacion(), false, null, null);
+        if (muestras == MAXIMO_DE_MUESTRAS) {
+            return sinSugerencia;
+        }
+        Comparator<RangoDeCategoria> masCercanoYMasAlto = Comparator
+                .comparing((RangoDeCategoria candidato) -> distancia(porcentaje, candidato))
+                .thenComparing(RangoDeCategoria::limiteInferior, Comparator.reverseOrder());
+        return rangos.stream()
+                .filter(candidato -> candidato.limiteInferior().signum() > 0)
+                .filter(candidato -> distancia(porcentaje, candidato).compareTo(puntos) < 0)
+                .min(masCercanoYMasAlto)
+                .map(limite -> new Recomendacion(rango.categoria(), rango.recomendacion(), true,
+                        limite.limiteInferior(), limite.categoria()))
+                .orElse(sinSugerencia);
+    }
+
+    /** A cuántos puntos queda el porcentaje del límite inferior del rango, hacia arriba o hacia abajo. */
+    private static BigDecimal distancia(BigDecimal porcentaje, RangoDeCategoria rango) {
+        return porcentaje.subtract(rango.limiteInferior()).abs();
     }
 }

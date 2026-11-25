@@ -2,9 +2,9 @@
 Nombre: README.md (specs/entidades)
 Descripción: Qué hay en specs/entidades/ y formato de los JSON de entidades que lee el generador (RP-23).
 Fecha de creación: 12/10/2026
-Actualización: 02/11/2026
+Actualización: 24/11/2026
 Autor: Equipo InspectIA
-Versión: 1.14
+Versión: 1.15
 -->
 
 # specs/entidades
@@ -20,6 +20,7 @@ Un archivo JSON por cada tabla de la base de datos. Es la entrada de `generador/
 | `muestra.json` | muestra | No | Módulo `analisis` |
 | `foto.json` | foto | No | Módulo `analisis` |
 | `grano.json` | grano | No | Módulo `analisis` |
+| `region_pegada.json` | region_pegada | No | Módulo `analisis` (RF-07, D-45) |
 | `modelo.json` | modelo | No | Módulo `analisis` y estadísticas (RF-17) |
 
 ## Qué genera el generador

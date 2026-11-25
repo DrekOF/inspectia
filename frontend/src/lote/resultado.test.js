@@ -3,14 +3,17 @@
  * Descripción: Pruebas de lo que la página del resultado decide sin dibujar nada: el rango probable recortado a
  *              0–100 %, con un extremo recortado sin decimales (D-43), contado en décimas para no arrastrar errores de
  *              coma flotante; la muestra en curso, y qué mostrar de un lote según su estado y el de su muestra
- *              (RNF-01 C4, RNF-02 C3).
+ *              (RNF-01 C4, RNF-02 C3), también con la segunda muestra en espera, sin enviar, devuelta o terminada
+ *              (D-25, RF-14 C6).
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 import { describe, expect, it } from 'vitest';
-import { avance, resultadoAnalizado, resultadoPendiente } from '../pruebas/resultados.js';
+import {
+  avance, resultadoAnalizado, resultadoConDosMuestras, resultadoConSegundaMuestra, resultadoPendiente,
+} from '../pruebas/resultados.js';
 import { muestraEnCurso, rangoProbable, textosDelRango, vistaDelLote } from './resultado.js';
 
 describe('Rango probable del porcentaje', () => {
@@ -71,5 +74,24 @@ describe('Qué muestra la página de un lote', () => {
     expect(vistaDelLote(resultadoPendiente(null), null)).toBe('sinResultado');
     expect(vistaDelLote(resultadoPendiente('PENDIENTE'), null)).toBe('sinResultado');
     expect(vistaDelLote(resultadoPendiente('EN_ESPERA'), avance('PENDIENTE'))).toBe('sinResultado');
+  });
+
+  it('RF-14 · con el lote analizado y la muestra 2 en espera o en proceso, la página muestra la espera con el resultado actual, según el resultado o según el último avance', () => {
+    expect(vistaDelLote(resultadoConSegundaMuestra('EN_ESPERA'), null)).toBe('esperaConResultado');
+    expect(vistaDelLote(resultadoConSegundaMuestra('EN_PROCESO'), null)).toBe('esperaConResultado');
+    expect(vistaDelLote(resultadoConSegundaMuestra('EN_ESPERA'), avance('EN_PROCESO', { muestra: 2 })))
+      .toBe('esperaConResultado');
+  });
+
+  it('RF-14 · con la muestra 2 todavía sin enviar, o con las dos muestras terminadas, la página muestra el resultado', () => {
+    expect(vistaDelLote(resultadoConSegundaMuestra('PENDIENTE'), null)).toBe('resultado');
+    expect(vistaDelLote(resultadoConDosMuestras(), null)).toBe('resultado');
+  });
+
+  it('RNF-06 · C3 · una muestra 2 que volvió a quedar pendiente después de enviarse muestra el resultado actual con el aviso de que no terminó', () => {
+    expect(vistaDelLote(resultadoConSegundaMuestra('PENDIENTE', { fechaEnvio: '2026-11-23T17:10:00Z' }), null))
+      .toBe('resultadoConFallo');
+    expect(vistaDelLote(resultadoConSegundaMuestra('EN_PROCESO'), avance('PENDIENTE', { fallo: true, muestra: 2 })))
+      .toBe('resultadoConFallo');
   });
 });

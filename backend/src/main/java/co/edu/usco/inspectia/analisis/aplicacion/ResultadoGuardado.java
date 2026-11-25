@@ -1,11 +1,11 @@
 /*
  * Nombre: ResultadoGuardado.java
- * Descripción: El resultado de un lote como está guardado: sus datos y las cifras de su resultado, vacías mientras está
- *              pendiente (RF-10, RF-12, RF-14 C3).
+ * Descripción: El resultado de un lote como está guardado: sus datos y las cifras de su resultado, con el límite de la
+ *              sugerencia y su categoría, vacías mientras está pendiente (RF-10, RF-12, RF-14 C3, D-47).
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis.aplicacion;
 
@@ -30,9 +30,12 @@ import java.util.UUID;
  * @param categoria la categoría probable, o {@code null}
  * @param recomendacion el texto de la recomendación, o {@code null}
  * @param sugerirOtraMuestra si se sugiere otra muestra, o {@code null}
+ * @param limiteSugerencia el límite por el que se sugiere otra muestra, o {@code null} si no se sugiere (D-47)
+ * @param categoriaDelLimite el código de la categoría de ese límite, o {@code null} si no se sugiere (D-47)
  * @param avisoConfianzaBaja si lleva el aviso de confianza baja, o {@code null}
  */
 public record ResultadoGuardado(UUID id, String codigo, LocalDate fechaRecepcion, String origen, EstadoDeLote estado,
         OffsetDateTime fechaResultado, BigDecimal porcentajeSanos, BigDecimal margen, String categoria,
-        String recomendacion, Boolean sugerirOtraMuestra, Boolean avisoConfianzaBaja) {
+        String recomendacion, Boolean sugerirOtraMuestra, BigDecimal limiteSugerencia, String categoriaDelLimite,
+        Boolean avisoConfianzaBaja) {
 }

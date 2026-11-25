@@ -2,15 +2,16 @@
  * Nombre: EsquemaIT.java
  * Descripción: Pruebas del esquema que genera el generador (V1__esquema_inicial.sql) en PostgreSQL 18.
  * Fecha de creación: 13/10/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.2
+ * Versión: 1.3
  */
 package co.edu.usco.inspectia;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -36,8 +37,8 @@ class EsquemaIT {
     private JdbcTemplate jdbc;
 
     @Test
-    @DisplayName("RP-15 · Flyway crea las 8 tablas del modelo de datos")
-    void creaLasOchoTablas() {
+    @DisplayName("RP-15 · Flyway crea las 9 tablas del modelo de datos")
+    void creaLasNueveTablas() {
         List<String> tablas = jdbc.queryForList("""
                 SELECT table_name FROM information_schema.tables
                 WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
@@ -45,7 +46,7 @@ class EsquemaIT {
                 ORDER BY table_name""", String.class);
 
         assertThat(tablas).containsExactly("empresa", "foto", "grano", "lote", "modelo", "muestra",
-                "rango_recomendacion", "usuario");
+                "rango_recomendacion", "region_pegada", "usuario");
     }
 
     @Test
@@ -92,13 +93,54 @@ class EsquemaIT {
     @Test
     @DisplayName("D-18 · solo un modelo puede estar en uso")
     void unSoloModeloEnUso() {
-        jdbc.update("INSERT INTO modelo (nombre, version, recall_sano, recall_no_sano, en_uso) "
-                + "VALUES ('EfficientNet-B0', '1.0', 91.20, 53.40, true)");
+        ModeloDeLaComparacion.EFFICIENTNET_B0.insertar(jdbc, true);
 
-        assertThatThrownBy(() -> jdbc.update("INSERT INTO modelo (nombre, version, recall_sano, recall_no_sano, "
-                + "en_uso) VALUES ('ResNet-50', '1.0', 87.40, 52.10, true)"))
+        assertThatThrownBy(() -> ModeloDeLaComparacion.RESNET_50.insertar(jdbc, true))
                 .isInstanceOf(DataIntegrityViolationException.class)
                 .hasMessageContaining("modelo_en_uso_unico");
+    }
+
+    @Test
+    @DisplayName("P-02 · la base no deja poner en uso un modelo con F1 macro menor que 65, como MobileNetV3-L (63,80)")
+    void modeloEnUsoConElF1Minimo() {
+        UUID mobilenet = ModeloDeLaComparacion.MOBILENET_V3_L.insertar(jdbc, false);
+
+        assertThatThrownBy(() -> jdbc.update("UPDATE modelo SET en_uso = true WHERE id = ?", mobilenet))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("modelo_en_uso_con_f1_minimo");
+    }
+
+    @Test
+    @DisplayName("P-02 · un modelo en uso necesita un F1 macro de 65 o más: 65,00 sirve y 64,99 no (prueba de límite)")
+    void modeloEnUsoConElF1JustoEnElLimite() {
+        UUID modelo = ModeloDeLaComparacion.EFFICIENTNET_B0.insertar(jdbc, true);
+
+        int conSesentaYCinco = jdbc.update("UPDATE modelo SET f1_macro = 65.00 WHERE id = ?", modelo);
+
+        assertThat(conSesentaYCinco).as("65,00 sirve").isEqualTo(1);
+        assertThatThrownBy(() -> jdbc.update("UPDATE modelo SET f1_macro = 64.99 WHERE id = ?", modelo))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("modelo_en_uso_con_f1_minimo");
+    }
+
+    @Test
+    @DisplayName("D-48 · la base no deja en uso un modelo sin sus métricas, como el clasificador falso")
+    void modeloEnUsoConSusMetricas() {
+        assertThatThrownBy(() -> jdbc.update("INSERT INTO modelo (nombre, version, recall_sano, recall_no_sano, "
+                + "en_uso) VALUES ('sin-metricas', '1.0', 91.20, 53.40, true)"))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("modelo_en_uso_con_f1_minimo");
+    }
+
+    @Test
+    @DisplayName("D-48 · la base rechaza un modelo con las métricas macro y sin la precisión de cada clase ni la matriz de confusión: van las 11 o ninguna")
+    void modeloConSusOnceMetricasONinguna() {
+        assertThatThrownBy(() -> jdbc.update("""
+                INSERT INTO modelo (nombre, version, tipo, f1_macro, precision_macro, recall_macro, recall_sano,
+                    recall_no_sano, tiempo_por_grano_ms)
+                VALUES ('sin-matriz', '1.0', 'CNN', 73.50, 75.20, 72.31, 91.20, 53.40, 19.00)"""))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("modelo_datos_completos");
     }
 
     @Test
@@ -133,6 +175,111 @@ class EsquemaIT {
     }
 
     @Test
+    @DisplayName("D-47 · un lote que sugiere otra muestra guarda el límite cercano y su categoría: sin ellos, la base lo rechaza")
+    void sugerenciaConSuLimite() {
+        UUID empresa = crearEmpresa("900123456-8");
+        UUID lote = crearLote(empresa, crearUsuario(empresa, "ana@a.co"), "L-001");
+
+        assertThatThrownBy(() -> analizar(lote, true, null, null))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("lote_sugerencia_con_su_limite");
+    }
+
+    @Test
+    @DisplayName("D-47 · un lote sin sugerencia no guarda límite: si deja de sugerir otra muestra y conserva el límite, la base lo rechaza")
+    void limiteSoloConSugerencia() {
+        UUID empresa = crearEmpresa("900123456-8");
+        UUID lote = crearLote(empresa, crearUsuario(empresa, "ana@a.co"), "L-001");
+        analizar(lote, true, new BigDecimal("90.0"), "ESTANDAR");
+
+        assertThatThrownBy(() -> jdbc.update("UPDATE lote SET sugerir_otra_muestra = false WHERE id = ?", lote))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("lote_sugerencia_con_su_limite");
+    }
+
+    @Test
+    @DisplayName("D-47 · el límite de Fuera de norma nunca cuenta para la sugerencia: la base rechaza un límite de 0, aunque traiga otra categoría")
+    void limiteCeroNoCuenta() {
+        UUID empresa = crearEmpresa("900123456-8");
+        UUID lote = crearLote(empresa, crearUsuario(empresa, "ana@a.co"), "L-001");
+
+        assertThatThrownBy(() -> analizar(lote, true, new BigDecimal("0.0"), "CORRIENTE"))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("lote_sugerencia_con_su_limite");
+    }
+
+    @Test
+    @DisplayName("D-47 · el límite de Fuera de norma nunca cuenta para la sugerencia: la base rechaza la categoría Fuera de norma, aunque traiga un límite mayor que 0")
+    void categoriaFueraDeNormaNoCuenta() {
+        UUID empresa = crearEmpresa("900123456-8");
+        UUID lote = crearLote(empresa, crearUsuario(empresa, "ana@a.co"), "L-001");
+
+        assertThatThrownBy(() -> analizar(lote, true, new BigDecimal("82.0"), "FUERA_DE_NORMA"))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("lote_sugerencia_con_su_limite");
+    }
+
+    @Test
+    @DisplayName("D-44 · solo una muestra que volvió a pendiente después de enviarse tiene motivo de devolución: al enviarla de nuevo sin borrarlo, la base lo rechaza")
+    void motivoSoloSiLaMuestraVolvio() {
+        UUID empresa = crearEmpresa("900123456-8");
+        UUID usuario = crearUsuario(empresa, "ana@a.co");
+        UUID muestra = crearMuestra(empresa, crearLote(empresa, usuario, "L-001"), usuario);
+        jdbc.update("UPDATE muestra SET fecha_envio = now(), motivo_devolucion = 'POCOS_GRANOS' WHERE id = ?", muestra);
+
+        assertThatThrownBy(() -> jdbc.update("UPDATE muestra SET estado = 'EN_ESPERA' WHERE id = ?", muestra))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("muestra_motivo_solo_si_devuelta");
+    }
+
+    @Test
+    @DisplayName("D-44 · una muestra pendiente que no se ha enviado no puede tener motivo de devolución")
+    void sinEnviarNoTieneMotivo() {
+        UUID empresa = crearEmpresa("900123456-8");
+        UUID usuario = crearUsuario(empresa, "ana@a.co");
+        UUID muestra = crearMuestra(empresa, crearLote(empresa, usuario, "L-001"), usuario);
+        assertThat(jdbc.queryForMap("SELECT estado, fecha_envio FROM muestra WHERE id = ?", muestra))
+                .as("pendiente y sin enviar").containsEntry("estado", "PENDIENTE").containsEntry("fecha_envio", null);
+
+        assertThatThrownBy(() -> jdbc.update("UPDATE muestra SET motivo_devolucion = 'POCOS_GRANOS' WHERE id = ?",
+                muestra))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("muestra_motivo_solo_si_devuelta");
+    }
+
+    @Test
+    @DisplayName("D-46 · una foto que el servicio de IA todavía no revisó, «Cargada», no tiene conteo de granos")
+    void conteoSoloEnUnaFotoRevisada() {
+        UUID empresa = crearEmpresa("900123456-8");
+        UUID usuario = crearUsuario(empresa, "ana@a.co");
+        UUID muestra = crearMuestra(empresa, crearLote(empresa, usuario, "L-001"), usuario);
+        crearFoto(empresa, muestra, 1, "APROBADA", null, 52);
+
+        assertThatThrownBy(() -> crearFoto(empresa, muestra, 2, "CARGADA", null, 48))
+                .isInstanceOf(DataIntegrityViolationException.class)
+                .hasMessageContaining("foto_granos_solo_si_revisada");
+    }
+
+    @Test
+    @DisplayName("D-45 · borrar una foto borra sus regiones de granos pegados")
+    void regionesSeBorranConSuFoto() {
+        UUID empresa = crearEmpresa("900123456-8");
+        UUID usuario = crearUsuario(empresa, "ana@a.co");
+        UUID muestra = crearMuestra(empresa, crearLote(empresa, usuario, "L-001"), usuario);
+        UUID foto = crearFoto(empresa, muestra, 1, "POR_REPETIR", "GRANOS_PEGADOS", 47);
+        UUID otra = crearFoto(empresa, muestra, 2, "POR_REPETIR", "GRANOS_PEGADOS", 50);
+        for (UUID cual : List.of(foto, foto, otra)) {
+            jdbc.update("""
+                    INSERT INTO region_pegada (empresa_id, foto_id, x, y, ancho, alto)
+                    VALUES (?, ?, 120, 80, 64, 40)""", empresa, cual);
+        }
+
+        jdbc.update("DELETE FROM foto WHERE id = ?", foto);
+
+        assertThat(jdbc.queryForList("SELECT foto_id FROM region_pegada", UUID.class)).containsExactly(otra);
+    }
+
+    @Test
     @DisplayName("RP-15 · el trigger mantiene fecha_actualizacion aunque un script intente cambiarla")
     void triggerMantieneLaFechaDeActualizacion() {
         UUID empresa = crearEmpresa("900123456-8");
@@ -162,5 +309,29 @@ class EsquemaIT {
                 INSERT INTO lote (empresa_id, codigo, fecha_recepcion, origen, usuario_id)
                 VALUES (?, ?, current_date, 'Finca La Esperanza', ?) RETURNING id""",
                 UUID.class, empresa, codigo, usuario);
+    }
+
+    /** Deja el lote analizado con 90,6 % Estándar y, si se pide, con la sugerencia y su límite. */
+    private void analizar(UUID lote, boolean sugerir, BigDecimal limite, String categoriaDelLimite) {
+        jdbc.update("""
+                UPDATE lote SET estado = 'ANALIZADO', porcentaje_sanos = 90.6, margen = 7.1, categoria = 'ESTANDAR',
+                    recomendacion = 'Apto', sugerir_otra_muestra = ?, limite_sugerencia = ?,
+                    categoria_del_limite = ?, aviso_confianza_baja = false, fecha_resultado = now()
+                WHERE id = ?""", sugerir, limite, categoriaDelLimite, lote);
+    }
+
+    private UUID crearMuestra(UUID empresa, UUID lote, UUID usuario) {
+        return jdbc.queryForObject("""
+                INSERT INTO muestra (empresa_id, lote_id, numero, usuario_id) VALUES (?, ?, 1, ?) RETURNING id""",
+                UUID.class, empresa, lote, usuario);
+    }
+
+    private UUID crearFoto(UUID empresa, UUID muestra, int numero, String estado, String motivo, int granos) {
+        return jdbc.queryForObject("""
+                INSERT INTO foto (empresa_id, muestra_id, numero, ruta, formato, tamano_bytes, estado, motivo,
+                    granos_encontrados)
+                VALUES (?, ?, ?, ?, 'JPG', 2048, ?, ?, ?) RETURNING id""",
+                UUID.class, empresa, muestra, numero, "fotos/" + muestra + "/" + numero + ".jpg", estado, motivo,
+                granos);
     }
 }

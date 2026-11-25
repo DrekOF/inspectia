@@ -6,11 +6,12 @@
  *              tamaño original de la foto, así siguen al grano en el PC y en el celular (C5). Al pasar el cursor, al
  *              tocar un grano o al llegarle con el teclado, un globo dice su clase, sin la confianza (C4), y Escape lo
  *              cierra. La foto es una sola parada de Tab: las flechas pasan de un grano a otro en orden de lectura, e
- *              Inicio y Fin van al primero y al último (RNF-06 C4). Si la imagen no carga, avisa una vez.
+ *              Inicio y Fin van al primero y al último (RNF-06 C4). Si la imagen no carga, avisa una vez. Con dos
+ *              muestras, el nombre de la foto y el de sus granos dicen de qué muestra son, para que no se repitan.
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 import Check from '@mui/icons-material/Check';
 import Close from '@mui/icons-material/Close';
@@ -98,9 +99,10 @@ function estiloDelGlobo(esPc) {
  * @param {import('../api/analisis.js').FotoMarcada} props.foto la foto, con su enlace de vista y sus granos
  * @param {() => void} props.alFallarLaVista se llama si la imagen no carga, como cuando su enlace venció
  * @param {() => void} [props.alCargarLaVista] se llama cuando la imagen carga
+ * @param {number|null} [props.muestra] el número de su muestra, si el lote tiene más de una: va en los nombres
  * @returns {import('react').ReactElement} la foto
  */
-export function FotoMarcada({ foto, alFallarLaVista, alCargarLaVista }) {
+export function FotoMarcada({ foto, alFallarLaVista, alCargarLaVista, muestra = null }) {
   const { t } = useTranslation();
   const esPc = useEsPc();
   const idDeLaAyuda = useId();
@@ -112,6 +114,12 @@ export function FotoMarcada({ foto, alFallarLaVista, alCargarLaVista }) {
   const botones = useRef([]);
   const granos = useMemo(() => enOrdenDeLectura(foto.granos), [foto.granos]);
   const conFoco = Math.min(activo, granos.length - 1);
+  const nombres = muestra
+    ? {
+      imagen: t('resultado.imagenDeLaMuestra', { numero: foto.numero, muestra }),
+      granos: t('resultado.granosDeLaFotoDeLaMuestra', { numero: foto.numero, muestra }),
+    }
+    : { imagen: t('resultado.imagen', { numero: foto.numero }), granos: t('resultado.granosDeLaFoto', { numero: foto.numero }) };
 
   /**
    * Guarda el tamaño original de la foto cuando carga.
@@ -159,12 +167,12 @@ export function FotoMarcada({ foto, alFallarLaVista, alCargarLaVista }) {
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: esPc ? 2 : 1.5 }}>
       <ClickAwayListener onClickAway={() => setAbierto(null)}>
         <Box sx={{ position: 'relative' }}>
-          <Box component="img" src={foto.vista.url} alt={t('resultado.imagen', { numero: foto.numero })}
+          <Box component="img" src={foto.vista.url} alt={nombres.imagen}
             onLoad={alCargar} onError={alFallarLaVista} decoding="async" sx={{
               display: 'block', width: '100%', height: 'auto', borderRadius: esPc ? '8px' : '6px', bgcolor: 'action.hover',
             }} />
           {tamano && granos.length > 0 && (
-            <Box role="group" aria-label={t('resultado.granosDeLaFoto', { numero: foto.numero })}
+            <Box role="group" aria-label={nombres.granos}
               aria-describedby={idDeLaAyuda} sx={{ position: 'absolute', inset: 0 }}>
               {granos.map((grano, indice) => {
                 const { color, Icono } = MARCAS[grano.clase];

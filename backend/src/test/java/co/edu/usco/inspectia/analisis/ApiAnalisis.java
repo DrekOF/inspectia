@@ -1,11 +1,11 @@
 /*
  * Nombre: ApiAnalisis.java
  * Descripción: Llamadas a la API del análisis de un lote y sus mensajes, para las pruebas: enviar la muestra, ver el
- *              avance y ver el resultado (RF-05 C2, RF-10, RF-11, RF-12, RNF-02 C3).
+ *              avance y ver el resultado, también de la muestra 2 (RF-05 C2, RF-10, RF-11, RF-12, RF-14 C6, RNF-02 C3).
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis;
 
@@ -23,14 +23,16 @@ import org.springframework.test.web.servlet.assertj.MvcTestResult;
 /**
  * Llamadas a la API del análisis de un lote ({@code /api/v1/lotes/{id}/analisis} y {@code /resultado}).
  *
- * <p>Contrato que fijan estas pruebas (PR 3a):
+ * <p>Contrato que fijan estas pruebas (PR 3a y 3b):
  * <ul>
- *   <li>{@code POST …/analisis} («Analizar la muestra», solo el usuario final) responde 202 con el avance. Sin muestra o
- *       con menos de 2 fotos, 400 en {@code fotos}; con el lote analizado, 409.</li>
+ *   <li>{@code POST …/analisis} («Analizar la muestra», solo el usuario final) responde 202 con el avance. Sin
+ *       muestra o con menos de 2 fotos, 400 en {@code fotos}; con el lote analizado, 409, salvo la muestra 2 de un
+ *       lote que sugiere otra muestra (D-25).</li>
  *   <li>{@code GET …/analisis} responde {@code muestra}, {@code estado}, {@code fechaEnvio}, {@code fechaInicio},
  *       {@code fechaFin} y {@code fallo}.</li>
- *   <li>{@code GET …/resultado} responde {@code lote}, con su resultado guardado, y {@code muestras}, cada una con sus
- *       fotos y sus granos {@code x}, {@code y}, {@code ancho}, {@code alto}, {@code clase} y {@code dudoso}, sin la
+ *   <li>{@code GET …/resultado} responde {@code lote}, con su resultado guardado y, si sugiere otra muestra, el
+ *       {@code limiteSugerencia} y su {@code categoriaDelLimite} (D-47), y {@code muestras}, cada una con sus fotos
+ *       y sus granos {@code x}, {@code y}, {@code ancho}, {@code alto}, {@code clase} y {@code dudoso}, sin la
  *       confianza.</li>
  * </ul>
  */

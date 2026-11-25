@@ -5,11 +5,15 @@
  *              estado, el porcentaje de granos sanos, la categoría probable y quién lo registró. En el PC van en
  *              una tabla y en el celular, en tarjetas (RNF-05), por páginas de 20. Los dos roles abren el detalle de
  *              un lote analizado con «Ver» (RF-14 C3); el usuario final retoma un lote pendiente con «Continuar»
- *              (RF-14 C5), y la administradora no.
+ *              (RF-14 C5), y la administradora no. Un lote que sugiere otra muestra lleva el chip «Sugiere otra
+ *              muestra» junto a su estado (D-25). Los filtros (RF-14 C2) y la página van en la dirección, así se
+ *              conservan al volver con «Atrás» o al recargar; una página que ya no existe lleva a la última. El total
+ *              se anuncia a los lectores de pantalla con cada respuesta, también si no cambia, y si ningún lote cumple
+ *              los filtros, lo dice y ofrece quitarlos.
  * Fecha de creación: 22/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.3
+ * Versión: 1.4
  */
 import Add from '@mui/icons-material/Add';
 import Check from '@mui/icons-material/Check';
@@ -25,11 +29,11 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Typography from '@mui/material/Typography';
 import usePagination from '@mui/material/usePagination';
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useEffectEvent, useId, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router';
-import { textoDelError } from '../api/errores.js';
-import { historialDeLotes } from '../api/lotes.js';
+import { Link, useSearchParams } from 'react-router';
+import { erroresPorCampo, textoDelError } from '../api/errores.js';
+import { historialDeLotes, NOMBRES_DE_LOS_FILTROS } from '../api/lotes.js';
 import { Aviso } from '../componentes/Aviso.jsx';
 import { ChipDeEstado } from '../componentes/ChipDeEstado.jsx';
 import { OCULTO_A_LA_VISTA } from '../componentes/ocultoALaVista.js';
@@ -41,6 +45,8 @@ import { ROLES } from '../navegacion/menu.js';
 import { useSesion } from '../sesion/contexto.js';
 import { letra, medidas } from '../tema/tokens.js';
 import { diaEnColombia } from './fechas.js';
+import { FiltrosDelHistorial } from './FiltrosDelHistorial.jsx';
+import { direccionDe, hayFiltros, leerDireccion } from './filtros.js';
 
 /** Lo que muestra una celda sin dato, como el resultado de un lote pendiente. */
 const SIN_DATO = '—';
@@ -91,15 +97,25 @@ const COLUMNAS = [
 
 /**
  * El estado de un lote, como en el prototipo: pendiente, en ámbar y con un reloj; analizado, en verde y con un
- * chulo. El ícono acompaña al color, así el color no es la única señal (RNF-06).
+ * chulo. El ícono acompaña al color, así el color no es la única señal (RNF-06). Si el lote sugiere otra muestra,
+ * lleva al lado el chip «Sugiere otra muestra», en el tono de información y sin ícono, como en el prototipo: su texto
+ * ya lo dice (D-25). Si no caben, los chips bajan a otra línea.
  *
  * @param {{ lote: import('../api/lotes.js').Lote, texto: string }} props el lote y el texto de su estado
  * @returns {import('react').ReactElement} el estado
  */
 function Estado({ lote, texto }) {
+  const { t } = useTranslation();
   const analizado = lote.estado === 'ANALIZADO';
   const Icono = analizado ? Check : Schedule;
-  return <ChipDeEstado texto={texto} tono={analizado ? 'exito' : 'advertencia'} icono={<Icono />} />;
+  return (
+    <Box sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px' }}>
+      <ChipDeEstado texto={texto} tono={analizado ? 'exito' : 'advertencia'} icono={<Icono />} />
+      {lote.sugerirOtraMuestra === true && (
+        <ChipDeEstado texto={t('lote.sugerir_otra_muestra.etiqueta')} tono="informacion" />
+      )}
+    </Box>
+  );
 }
 
 /**
@@ -200,7 +216,7 @@ function Tarjetas({ lotes, region, registra }) {
           <Box component="li" key={lote.id} sx={(theme) => ({
             ...recuadro(theme), p: 2, display: 'flex', flexDirection: 'column', gap: 0.75,
           })}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
               <Typography sx={{ fontWeight: 500 }}>{datos.codigo}</Typography>
               <Estado lote={lote} texto={datos.estado} />
             </Box>
@@ -290,33 +306,103 @@ export default function Historial() {
   const { t, i18n } = useTranslation();
   const { sesion, pedir } = useSesion();
   const esPc = useEsPc();
-  const [pagina, setPagina] = useState(0);
+  const titulo = useRef(null);
+  // Los filtros y la página viven en la dirección: «Atrás» desde «Ver», recargar o volver a entrar los conservan.
+  const [parametros, setParametros] = useSearchParams();
+  const leidos = useMemo(() => leerDireccion(parametros), [parametros]);
+  // Los filtros y la página como se aplican: la misma dirección escrita de otra forma, como con un usuario en
+  // mayúsculas o un valor que se ignora, da los mismos, y no vuelve a pedir la lista.
+  const aplicados = direccionDe(leidos.filtros, leidos.pagina).toString();
+  const { filtros, pagina } = useMemo(() => leerDireccion(new URLSearchParams(aplicados)), [aplicados]);
   const [recargas, setRecargas] = useState(0);
   const [respuesta, setRespuesta] = useState({ pedido: null, datos: null, error: null });
   const region = idiomaDe(i18n.language).region;
 
-  const pedido = `${pagina}|${recargas}`;
+  const pedido = `${aplicados}|${recargas}`;
   useEffect(() => {
     let vigente = true;
-    historialDeLotes(pedir, pagina)
+    historialDeLotes(pedir, pagina, filtros)
       .then((datos) => vigente && setRespuesta({ pedido, datos, error: null }))
       .catch((error) => vigente && setRespuesta({ pedido, datos: null, error }));
     return () => {
       vigente = false;
     };
-  }, [pedir, pagina, pedido]);
+  }, [pedir, pagina, filtros, pedido]);
 
   // Mientras llega otra página, sigue la anterior a la vista.
   const cargando = respuesta.pedido !== pedido;
   const { datos, error } = respuesta;
   const total = datos?.totalElementos ?? 0;
+  const conFiltros = hayFiltros(filtros);
+  // Un filtro que el backend rechazó se marca en su campo: pedir la lista otra vez daría el mismo error.
+  const errorDeLosFiltros = Boolean(error && erroresPorCampo(error, NOMBRES_DE_LOS_FILTROS));
   // Solo el usuario final registra lotes (RF-04) y los retoma (RF-14 C5); la administradora solo consulta.
   const registra = sesion.usuario.rol === ROLES.USUARIO_FINAL;
 
+  // Una página de la dirección que ya no existe, como al volver con «Atrás» cuando quedan menos lotes, lleva a la
+  // última, sin dejar otra entrada en el historial del navegador. Solo con la respuesta del pedido vigente: mientras
+  // llega otra, la que se ve puede ser de otros filtros o de otra página.
+  const ultima = !cargando && datos && datos.totalPaginas > 0 && pagina >= datos.totalPaginas
+    ? datos.totalPaginas - 1 : null;
+  const irALaUltima = useEffectEvent((otra) => setParametros(direccionDe(filtros, otra), { replace: true }));
+  useEffect(() => {
+    if (ultima !== null) {
+      irALaUltima(ultima);
+    }
+  }, [ultima]);
+
+  /**
+   * Aplica unos filtros desde la primera página. Si son los mismos que ya se ven, en la primera página, pide la lista
+   * otra vez; si la dirección los decía de otra forma, como un usuario en mayúsculas o un valor que se ignoró, la deja
+   * escrita como se aplican, sin otra entrada en el historial del navegador.
+   *
+   * @param {import('../api/lotes.js').FiltrosDelHistorial} nuevos los filtros
+   */
+  function aplicar(nuevos) {
+    const siguiente = direccionDe(nuevos, 0);
+    if (siguiente.toString() !== aplicados) {
+      setParametros(siguiente);
+      return;
+    }
+    setRecargas((veces) => veces + 1);
+    if (siguiente.toString() !== parametros.toString()) {
+      setParametros(siguiente, { replace: true });
+    }
+  }
+
+  /**
+   * Quita de la dirección el usuario que no está en la lista «Usuario», desde la primera página, porque cambió el
+   * filtro, y sin dejar otra entrada en el historial del navegador (RF-14).
+   */
+  function ignorarUsuario() {
+    setParametros(direccionDe({ ...filtros, usuario: '' }, 0), { replace: true });
+  }
+
+  /** Quita todos los filtros y vuelve a la primera página. */
+  function limpiar() {
+    if (parametros.toString() !== '') {
+      setParametros(new URLSearchParams());
+    }
+  }
+
+  /** «Limpiar filtros», de la lista sin coincidencias: el botón desaparece, así que el foco va al título (RNF-06 C4). */
+  function limpiarDesdeLaLista() {
+    titulo.current?.focus();
+    limpiar();
+  }
+
   return (
     <>
-      <TituloDePagina titulo={t('historial.titulo')}
+      <TituloDePagina refDelTitulo={titulo} titulo={t('historial.titulo')}
         descripcion={t('historial.subtitulo', { empresa: sesion.usuario.empresa?.nombre })} />
+      <FiltrosDelHistorial filtros={filtros} error={error} alAplicar={aplicar} alLimpiar={limpiar}
+        alIgnorarUsuario={ignorarUsuario} />
+      {/* El total, para los lectores de pantalla: al aplicar un filtro dice cuántos lotes quedan (WCAG 4.1.3). Queda
+          vacío mientras llega la lista, así cada respuesta cambia su texto y se anuncia, también si el total no
+          cambió. */}
+      <Box role="status" sx={OCULTO_A_LA_VISTA}>
+        {datos && !cargando ? t('historial.encontrados', { count: total }) : ''}
+      </Box>
       {cargando && !datos && (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
           <CircularProgress aria-label={t('crud.cargando')} />
@@ -325,13 +411,18 @@ export default function Historial() {
       {!cargando && error && (
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1.5 }}>
           <Aviso tipo="error" titulo={textoDelError(error, t)} />
-          <Button variant="outlined" onClick={() => setRecargas((veces) => veces + 1)}>{t('crud.reintentar')}</Button>
+          {!errorDeLosFiltros && (
+            <Button variant="outlined" onClick={() => setRecargas((veces) => veces + 1)}>{t('crud.reintentar')}</Button>
+          )}
         </Box>
       )}
       {datos && total === 0 && (
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
-          <Typography>{t('historial.vacia')}</Typography>
-          {registra && (
+          <Typography>{t(conFiltros ? 'historial.sinCoincidencias' : 'historial.vacia')}</Typography>
+          {conFiltros && (
+            <Button variant="outlined" onClick={limpiarDesdeLaLista}>{t('historial.limpiarFiltros')}</Button>
+          )}
+          {!conFiltros && registra && (
             <Button component={Link} to="/lotes/nuevo" variant="contained" startIcon={<Add />}>
               {t('menu.nuevoLote')}
             </Button>
@@ -343,7 +434,8 @@ export default function Historial() {
           {esPc
             ? <Tabla lotes={datos.contenido} region={region} registra={registra} />
             : <Tarjetas lotes={datos.contenido} region={region} registra={registra} />}
-          <Paginas total={total} paginas={datos.totalPaginas} pagina={pagina} alCambiar={setPagina} />
+          <Paginas total={total} paginas={datos.totalPaginas} pagina={pagina}
+            alCambiar={(otra) => setParametros(direccionDe(filtros, otra))} />
         </>
       )}
     </>

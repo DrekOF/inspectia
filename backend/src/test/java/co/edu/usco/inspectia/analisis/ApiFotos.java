@@ -2,11 +2,12 @@
  * Nombre: ApiFotos.java
  * Descripción: Llamadas a la API de las fotos de un lote y a sus enlaces firmados, sus mensajes, y fotos JPG y PNG
  *              hechas en la misma prueba, también de un tamaño dado para el clasificador falso, para las pruebas
- *              (RF-05, RF-14 C5, RNF-03, RNF-04, D-41).
+ *              (RF-05, RF-14 C5, RNF-03, RNF-04, D-41), el mensaje de un lote que no admite otra muestra (RF-12 C8), y la
+ *              muestra que espera la página, con la llave que la lleva y el mensaje de un lote que cambió (D-25).
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 package co.edu.usco.inspectia.analisis;
 
@@ -35,20 +36,31 @@ import org.springframework.test.web.servlet.assertj.MvcTestResult;
  *
  * <p>Contrato que fijan estas pruebas (RF-05, RF-14 C5, D-41). La página sigue el mismo flujo que con S3:
  * <ol>
- *   <li>Pide el enlace de subida de la foto N (de 1 a 3) con {@code POST .../fotos/{N}/subida}, con {@code tipo}
- *       ({@code image/jpeg} o {@code image/png}) y {@code tamanoBytes} (de 1 a 10.485.760). Responde 201 con la
- *       {@code llave} del archivo y el enlace: {@code url}, relativa a la página; {@code metodo}, {@code PUT};
- *       {@code encabezados}, con el {@code Content-Type} que hay que enviar, y {@code vence}.</li>
+ *   <li>Pide el enlace de subida de la foto N (de 1 a 3) con {@code POST .../fotos/{N}/subida}, con {@code muestra}
+ *       (la que espera la página, 1 o 2), {@code tipo} ({@code image/jpeg} o {@code image/png}) y {@code tamanoBytes}
+ *       (de 1 a 10.485.760). Responde 201 con la {@code llave} del archivo,
+ *       {@code <empresa>/<lote>/m<muestra>-<uuid>.<jpg|png>}, y el enlace: {@code url}, relativa a la página;
+ *       {@code metodo}, {@code PUT}; {@code encabezados}, con el {@code Content-Type} que hay que enviar, y
+ *       {@code vence}. Si la muestra que recibe las fotos no es la que espera la página, responde 409 con
+ *       {@link #MUESTRA_CAMBIO}.</li>
  *   <li>Sube los bytes con {@code PUT} a ese enlace, sin el token y con el tipo y el tamaño que pidió. Responde 200.
  *       Sin firma, con una firma que no coincide o vencida, 403; con una llave que ya se subió, 409.</li>
  *   <li>Confirma la foto con {@code PUT .../fotos/{N}} y la {@code llave}. Responde 200 con la foto:
  *       {@code numero}, {@code formato} ({@code JPG} o {@code PNG}), {@code tamanoBytes}, {@code estado}
  *       ({@code CARGADA} hasta que la revise el servicio de IA) y {@code vista}, el enlace para verla
- *       ({@code url} y {@code vence}).</li>
+ *       ({@code url} y {@code vence}). Si la muestra de la llave ya no es la que recibe las fotos, responde 409 con
+ *       {@link #MUESTRA_CAMBIO} y no guarda nada.</li>
  * </ol>
  * La lista de la muestra en curso ({@code GET .../fotos}) responde {@code muestra} (su número, o vacío si todavía
  * no tiene fotos), {@code estado} y {@code fotos}, cada una con un enlace de vista nuevo. Solo el usuario final usa
  * estas rutas, siempre con lotes de su empresa: los de otra responden 404, como si no existieran (RNF-03).
+ *
+ * <p>Un lote analizado que sugiere otra muestra recibe las fotos de la muestra 2 (D-25): mientras no tiene ninguna, la
+ * lista va vacía y sin número, y la primera foto confirmada la crea. Un lote analizado sin sugerencia, o con sus 2
+ * muestras, responde 409 con {@link #SIN_OTRA_MUESTRA}; una muestra enviada, 409 con {@link #LOTE_NO_PENDIENTE}.
+ *
+ * <p>Las llamadas mandan la muestra 1, la de un lote pendiente; {@link #deLaMuestra(Integer)} da las mismas llamadas
+ * para otra muestra, como la 2.
  */
 final class ApiFotos {
 
@@ -63,15 +75,37 @@ final class ApiFotos {
     static final String NO_LLEGO = "La foto no llegó completa: súbela de nuevo.";
     static final String LOTE_NO_PENDIENTE =
             "Este lote ya no está pendiente de análisis: sus fotos no se pueden cambiar.";
+    static final String SIN_OTRA_MUESTRA = "Este lote ya tiene su resultado y no admite otra muestra: solo se analiza "
+            + "otra cuando el resultado la sugiere, y como máximo 2.";
     static final String ENLACE_NO_VALIDO = "El enlace de la foto venció o no es válido: vuelve a intentarlo.";
     static final String YA_SUBIDA = "Ese enlace ya se usó: pide uno nuevo para subir otra foto.";
+    static final String MUESTRA_CAMBIO = "El lote cambió mientras tenías abierta esta página: recárgala para ver qué "
+            + "muestra recibe las fotos.";
 
     private final ApiSesion api;
     private final MockMvcTester mvc;
+    private final Integer muestra;
 
+    /** Las llamadas para la muestra 1, la de un lote pendiente. */
     ApiFotos(ApiSesion api, MockMvcTester mvc) {
+        this(api, mvc, 1);
+    }
+
+    private ApiFotos(ApiSesion api, MockMvcTester mvc, Integer muestra) {
         this.api = api;
         this.mvc = mvc;
+        this.muestra = muestra;
+    }
+
+    /**
+     * Las mismas llamadas, con otra muestra esperada al pedir el enlace (D-25).
+     *
+     * @param muestra la muestra que espera la página: la 2 para la segunda muestra; un valor fuera de 1 a 2, o
+     *     {@code null} para no mandarla, sirve para probar la validación
+     * @return las llamadas para esa muestra
+     */
+    ApiFotos deLaMuestra(Integer muestra) {
+        return new ApiFotos(api, mvc, muestra);
     }
 
     /** La ruta de las fotos de un lote. */
@@ -79,12 +113,26 @@ final class ApiFotos {
         return ApiLotes.RUTA + "/" + lote + "/fotos";
     }
 
+    /**
+     * Una llave nueva con la forma que arma el backend, {@code <empresa>/<lote>/m<muestra>-<uuid>.<extension>}, para
+     * confirmar una foto que no se pidió o para dejar un archivo a mano en la carpeta.
+     *
+     * @param extension {@code jpg} o {@code png}
+     */
+    static String llave(UUID empresa, UUID lote, int muestra, String extension) {
+        return empresa + "/" + lote + "/m" + muestra + "-" + UUID.randomUUID() + "." + extension;
+    }
+
     MvcTestResult listar(String token, UUID lote) {
         return api.enviar(HttpMethod.GET, ruta(lote), null, token);
     }
 
+    /** Pide el enlace de subida, con la muestra de estas llamadas si no es {@code null}. */
     MvcTestResult pedirSubida(String token, UUID lote, int numero, String tipo, long bytes) {
         Map<String, Object> datos = new LinkedHashMap<>();
+        if (muestra != null) {
+            datos.put("muestra", muestra);
+        }
         datos.put("tipo", tipo);
         datos.put("tamanoBytes", bytes);
         return api.enviar(HttpMethod.POST, ruta(lote) + "/" + numero + "/subida", datos, token);

@@ -3,18 +3,18 @@
     "nombre": "grano.json",
     "descripcion": "Entidad grano: cada grano encontrado en una foto, con su posición, su clase y la confianza del modelo. Entrada del generador (RP-23); formato en specs/entidades/README.md.",
     "fecha_creacion": "13/10/2026",
-    "actualizacion": "13/10/2026",
+    "actualizacion": "24/11/2026",
     "autor": "Equipo InspectIA",
-    "version": "1.0"
+    "version": "1.1"
   },
   "entidad": "grano",
   "clase": "Grano",
-  "descripcion": "Grano encontrado en una foto. La posición es un rectángulo sin rotación, en píxeles de la foto original. Un grano es dudoso si su confianza es menor que el umbral copiado en su muestra (RF-09); eso no se guarda. Lo maneja el módulo analisis del backend, escrito a mano (D-21).",
+  "descripcion": "Grano encontrado en una foto. La posición es un rectángulo sin rotación, en píxeles de la foto original ya girada según su orientación EXIF, que es como la muestra el navegador (D-45). Un grano es dudoso si su confianza es menor que el umbral copiado en su muestra (RF-09); eso no se guarda. Lo maneja el módulo analisis del backend, escrito a mano (D-21).",
   "etiquetas": {
     "es": { "singular": "Grano", "plural": "Granos" },
     "en": { "singular": "Bean", "plural": "Beans" }
   },
-  "fichas": ["RF-07", "RF-08", "RF-09", "RF-11", "RF-17"],
+  "fichas": ["RF-07", "RF-08", "RF-09", "RF-11", "RF-17", "D-45"],
   "crud": false,
   "por_empresa": "si",
   "atributos": [

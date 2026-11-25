@@ -1,12 +1,13 @@
 /*
  * Nombre: fotos.js (api)
  * Descripción: Las peticiones de las fotos de la muestra de un lote (RF-05, RF-14 C5): la lista de las fotos, el
- *              enlace para subir una, la subida al enlace y la confirmación (D-41). La subida no usa el cliente de la
- *              API: va directo al enlace firmado y sin el token de la sesión, como irá a S3.
+ *              enlace para subir una, que dice para qué muestra se pide (D-25), la subida al enlace y la confirmación
+ *              (D-41). La subida no usa el cliente de la API: va directo al enlace firmado y sin el token de la sesión,
+ *              como irá a S3.
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 import { ErrorDeApi } from './cliente.js';
 
@@ -47,21 +48,25 @@ export function fotosDelLote(pedir, loteId) {
 
 /**
  * Pide el enlace para subir una foto (POST /api/v1/lotes/{id}/fotos/{numero}/subida). El backend revisa el lote, el
- * número, el tipo y el tamaño antes de firmarlo.
+ * número, la muestra, el tipo y el tamaño antes de firmarlo. La muestra es la que la página espera que reciba la foto:
+ * si el lote cambió y ahora la recibe otra, como cuando la muestra 1 terminó mientras la página seguía abierta, el
+ * backend responde 409 y no da el enlace (D-25). La llave del enlace lleva esa muestra, y la confirmación la revisa.
  *
  * @param {import('./cliente.js').Pedir} pedir la función del cliente de la API
  * @param {string} loteId el lote
  * @param {number} numero el número de la foto, de 1 a 3
- * @param {{ tipo: string, tamanoBytes: number }} archivo el tipo de la foto, como image/jpeg, y cuánto pesa
+ * @param {{ tipo: string, tamanoBytes: number, muestra: number }} archivo el tipo de la foto, como image/jpeg, cuánto
+ *   pesa y el número de la muestra que la recibe, 1 o 2
  * @returns {Promise<EnlaceTemporal & { llave: string }>} el enlace, con la llave con la que se confirma
  */
-export function pedirSubida(pedir, loteId, numero, { tipo, tamanoBytes }) {
-  return pedir('POST', `/lotes/${encodeURIComponent(loteId)}/fotos/${numero}/subida`, { tipo, tamanoBytes });
+export function pedirSubida(pedir, loteId, numero, { tipo, tamanoBytes, muestra }) {
+  return pedir('POST', `/lotes/${encodeURIComponent(loteId)}/fotos/${numero}/subida`, { tipo, tamanoBytes, muestra });
 }
 
 /**
  * Confirma una foto ya subida (PUT /api/v1/lotes/{id}/fotos/{numero}): el backend revisa el archivo y la guarda;
- * si reemplaza otra, la anterior se borra (RF-05 C5).
+ * si reemplaza otra, la anterior se borra (RF-05 C5). Si la muestra de la llave ya no es la que recibe las fotos,
+ * responde 409 y no guarda nada (D-25).
  *
  * @param {import('./cliente.js').Pedir} pedir la función del cliente de la API
  * @param {string} loteId el lote

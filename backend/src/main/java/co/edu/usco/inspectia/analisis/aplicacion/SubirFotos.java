@@ -2,11 +2,13 @@
  * Nombre: SubirFotos.java
  * Descripción: Caso de uso de subir las fotos de la muestra de un lote (RF-05): pedir el enlace de subida de una
  *              foto, después de revisar su tipo y su tamaño, y confirmarla cuando el archivo llegó, con la primera
- *              foto que crea la muestra y el reemplazo que borra la anterior.
+ *              foto que crea la muestra y el reemplazo que borra la anterior; también las de la muestra 2 de un lote
+ *              analizado que sugiere otra muestra, sin tocar la 1 (RF-12 C8, RF-14 C6, D-25); la muestra que espera la
+ *              página, que va en la llave, responde 409 si el lote cambió mientras tanto.
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis.aplicacion;
 
@@ -37,7 +39,24 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>La primera foto confirmada crea la muestra 1, pendiente y con quien la subió. Una foto nueva con el número de
  * otra la reemplaza: la anterior se borra de la base en la misma transacción y del almacén cuando la transacción se
- * confirma (RF-05 C5).
+ * confirma (RF-05 C5). Solo se reemplazan fotos de la muestra que recibe las fotos, que siempre está pendiente.
+ *
+ * <p>Qué lote recibe fotos y en qué muestra:
+ * <ul>
+ *   <li>Un lote pendiente, sin muestra o con su muestra pendiente: la 1.</li>
+ *   <li>Un lote analizado que sugiere otra muestra (D-24) y cuya muestra en curso es la 1, terminada: la primera foto
+ *       confirmada crea la muestra 2, pendiente y con quien la subió, y la 1 no se toca (D-25). Con la 2 pendiente,
+ *       la 2.</li>
+ *   <li>Una muestra enviada, en espera o en proceso, ya no recibe fotos: 409 {@code foto.lote_no_pendiente}.</li>
+ *   <li>Un lote analizado sin sugerencia, o con sus 2 muestras terminadas, no admite otra muestra: 409
+ *       {@code analisis.sin_otra_muestra} (RF-12 C8).</li>
+ * </ul>
+ *
+ * <p>La página dice qué muestra espera al pedir el enlace, y la llave la lleva hasta la confirmación
+ * ({@code <empresa>/<lote>/m<muestra>-<uuid>.<jpg|png>}). Si la muestra que recibe las fotos ya es otra, porque el lote
+ * cambió mientras la página estaba abierta (otra persona envió la muestra 1 y la cola la analizó, por ejemplo),
+ * responde 409 {@code foto.muestra_cambio}: así una foto pedida para la muestra 1 no crea la muestra 2 ni sus granos
+ * se cuentan dos veces en la suma (D-25).
  */
 @Service
 public class SubirFotos {
@@ -49,11 +68,12 @@ public class SubirFotos {
     private static final String FORMA_DE_UUID = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
 
     /**
-     * Las llaves que arma este caso de uso: {@code <empresa>/<lote>/<uuid>.<jpg|png>}. Es la misma forma que acepta el
-     * almacén: una llave con otra forma responde 400 en la llave, y no llega al almacén.
+     * Las llaves que arma este caso de uso: {@code <empresa>/<lote>/m<muestra>-<uuid>.<jpg|png>}, con la muestra 1 o 2
+     * para la que se pidió el enlace. Es la misma forma que acepta el almacén: una llave con otra forma, como la de
+     * antes sin la muestra, responde 400 en la llave, y no llega al almacén.
      */
     private static final Pattern LLAVE = Pattern.compile(
-            "^(" + FORMA_DE_UUID + ")/(" + FORMA_DE_UUID + ")/" + FORMA_DE_UUID + "\\.(jpg|png)$");
+            "^(" + FORMA_DE_UUID + ")/(" + FORMA_DE_UUID + ")/m([12])-" + FORMA_DE_UUID + "\\.(jpg|png)$");
 
     private final RepositorioDeLotes lotes;
     private final RepositorioDeMuestras muestras;
@@ -80,32 +100,39 @@ public class SubirFotos {
     }
 
     /**
-     * El enlace para subir la foto {@code numero} de la muestra en curso. Antes revisa el lote y el archivo.
+     * El enlace para subir la foto {@code numero} de la muestra que recibe las fotos. Antes revisa el lote, que la
+     * muestra que espera la página sea esa y el archivo. La llave lleva el número de la muestra, para revisarlo otra
+     * vez al confirmar.
      *
      * @param empresaId la empresa de la sesión
      * @param loteId el lote
+     * @param muestra la muestra que espera la página: 1, o 2 para la segunda (D-25)
      * @param numero el número de la foto, de 1 a 3
      * @param tipo el tipo del archivo, como {@code image/jpeg}
      * @param bytes cuánto pesa
      * @return la llave del archivo y el enlace para subirlo
      * @throws NoEncontradoExcepcion si el lote no existe o es de otra empresa (404, RNF-03 C1)
-     * @throws ConflictoExcepcion si el lote o su muestra ya no están pendientes (409)
+     * @throws ConflictoExcepcion si la muestra ya se envió, si el lote ya tiene su resultado y no admite otra muestra
+     *     (409, RF-12 C8), o si la muestra que recibe las fotos no es la que espera la página (409, D-25)
      * @throws ReglaIncumplidaExcepcion si el número no va de 1 a 3 (RF-05 C2), o si el archivo no es JPG ni PNG o pesa
      *     más de 10 MB (400, RF-05 C3)
      */
     @Transactional(readOnly = true)
-    public SubidaDeFoto pedirSubida(UUID empresaId, UUID loteId, int numero, String tipo, long bytes) {
+    public SubidaDeFoto pedirSubida(UUID empresaId, UUID loteId, int muestra, int numero, String tipo, long bytes) {
         revisarNumero(numero);
-        revisarQueSigaPendiente(empresaId, loteId, lotes.estado(empresaId, loteId));
+        MuestraQueRecibe destino = muestraQueRecibe(empresaId, loteId, lotes.estado(empresaId, loteId));
+        revisarQueSeaLaQueRecibe(destino, muestra);
         FormatoDeFoto formato = revisarArchivo(tipo, bytes);
-        String llave = empresaId + "/" + loteId + "/" + UUID.randomUUID() + "." + formato.getExtension();
+        String llave = empresaId + "/" + loteId + "/m" + destino.numero() + "-" + UUID.randomUUID() + "."
+                + formato.getExtension();
         return new SubidaDeFoto(llave, almacen.enlaceDeSubida(llave, formato.getTipo(), bytes, VIGENCIA_DE_SUBIDA));
     }
 
     /**
-     * Confirma la foto {@code numero} de la muestra en curso cuando su archivo ya llegó al almacén. Revisa cuánto pesa
-     * y sus primeros bytes, y solo entonces la guarda, cargada. Confirmar dos veces la misma llave responde la misma
-     * foto, así un reintento es seguro.
+     * Confirma la foto {@code numero} de la muestra que recibe las fotos cuando su archivo ya llegó al almacén. Revisa
+     * que la muestra de la llave siga siendo la que recibe las fotos, cuánto pesa el archivo y sus primeros bytes, y
+     * solo entonces la guarda, cargada. Confirmar dos veces la misma llave responde la misma foto, así un reintento es
+     * seguro.
      *
      * @param empresaId la empresa de la sesión
      * @param usuarioId el usuario de la sesión
@@ -114,18 +141,23 @@ public class SubirFotos {
      * @param llave la llave que dio el enlace de subida
      * @return la foto, con su enlace para verla
      * @throws NoEncontradoExcepcion si el lote no existe o es de otra empresa (404, RNF-03 C1)
-     * @throws ConflictoExcepcion si el lote o su muestra ya no están pendientes (409)
+     * @throws ConflictoExcepcion si la muestra ya se envió, si el lote ya tiene su resultado y no admite otra muestra
+     *     (409, RF-12 C8), o si la llave se pidió para otra muestra que la que recibe las fotos (409, D-25)
      * @throws ReglaIncumplidaExcepcion si el número no va de 1 a 3, o si la llave no es de este lote, el archivo no
      *     llegó o no es JPG ni PNG (400)
      */
     @Transactional
     public VistaDeFoto confirmar(UUID empresaId, UUID usuarioId, UUID loteId, int numero, String llave) {
         revisarNumero(numero);
-        revisarQueSigaPendiente(empresaId, loteId, lotes.estadoParaActualizar(empresaId, loteId));
-        FormatoDeFoto formato = formatoDeLaLlave(llave, empresaId, loteId);
-        Optional<MuestraEnCurso> enCurso = muestras.muestraEnCurso(empresaId, loteId);
-        if (enCurso.isPresent()) {
-            Optional<FotoGuardada> misma = muestras.foto(empresaId, enCurso.get().id(), numero)
+        MuestraQueRecibe destino = muestraQueRecibe(empresaId, loteId, lotes.estadoParaActualizar(empresaId, loteId));
+        LlaveDeFoto deLaLlave = leerLlave(llave, empresaId, loteId);
+        // Una llave pedida para otra muestra no se guarda: el lote cambió desde que se pidió el enlace (D-25).
+        revisarQueSeaLaQueRecibe(destino, deLaLlave.muestra());
+        FormatoDeFoto formato = deLaLlave.formato();
+        // Solo se busca y se reemplaza en la muestra que recibe las fotos: nunca en la 1 ya terminada (D-25).
+        Optional<MuestraEnCurso> recibe = Optional.ofNullable(destino.existente());
+        if (recibe.isPresent()) {
+            Optional<FotoGuardada> misma = muestras.foto(empresaId, recibe.get().id(), numero)
                     .filter(foto -> foto.llave().equals(llave));
             if (misma.isPresent()) {
                 return vistas.de(misma.get());
@@ -133,7 +165,8 @@ public class SubirFotos {
         }
         ArchivoGuardado archivo = almacen.describir(llave).orElseThrow(() -> enLaLlave("foto.no_llego"));
         revisarContenido(formato, archivo);
-        MuestraEnCurso muestra = enCurso.orElseGet(() -> muestras.crear(empresaId, loteId, 1, usuarioId));
+        MuestraEnCurso muestra = recibe.orElseGet(() -> muestras.crear(empresaId, loteId, destino.numero(),
+                usuarioId));
         muestras.foto(empresaId, muestra.id(), numero).ifPresent(anterior -> {
             muestras.borrarFoto(empresaId, anterior.id());
             eventos.publishEvent(new ArchivoReemplazado(anterior.llave()));
@@ -151,14 +184,46 @@ public class SubirFotos {
         }
     }
 
-    /** Solo un lote pendiente, con su muestra en curso pendiente o sin muestra, recibe fotos (RF-05). */
-    private void revisarQueSigaPendiente(UUID empresaId, UUID loteId, Optional<EstadoDeLote> estado) {
+    /**
+     * La muestra que recibe las fotos del lote: la que ya existe y está pendiente, o la que va a crear la primera foto
+     * confirmada.
+     *
+     * @param existente la muestra pendiente que recibe las fotos, o {@code null} si la crea la primera foto
+     * @param numero el número de esa muestra: 1, o 2 para la segunda (D-25)
+     */
+    private record MuestraQueRecibe(MuestraEnCurso existente, int numero) {
+    }
+
+    /**
+     * A qué muestra van las fotos del lote (ver la descripción de la clase). Con el lote analizado, la muestra en curso
+     * es la de número más alto: la 1 terminada mientras no existe la 2.
+     *
+     * @throws NoEncontradoExcepcion si el lote no existe o es de otra empresa
+     * @throws ConflictoExcepcion si la muestra ya se envió, o si el lote no admite otra muestra
+     */
+    private MuestraQueRecibe muestraQueRecibe(UUID empresaId, UUID loteId, Optional<EstadoDeLote> estado) {
         EstadoDeLote estadoDelLote = estado.orElseThrow(() -> new NoEncontradoExcepcion("lote " + loteId));
-        boolean muestraPendiente = muestras.muestraEnCurso(empresaId, loteId)
-                .map(muestra -> muestra.estado() == EstadoDeMuestra.PENDIENTE).orElse(true);
-        if (estadoDelLote != EstadoDeLote.PENDIENTE || !muestraPendiente) {
+        Optional<MuestraEnCurso> enCurso = muestras.muestraEnCurso(empresaId, loteId);
+        if (estadoDelLote == EstadoDeLote.PENDIENTE) {
+            if (enCurso.isPresent() && enCurso.get().estado() != EstadoDeMuestra.PENDIENTE) {
+                throw new ConflictoExcepcion("foto.lote_no_pendiente");
+            }
+            return new MuestraQueRecibe(enCurso.orElse(null), 1);
+        }
+        if (!lotes.sugiereOtraMuestra(empresaId, loteId) || enCurso.isEmpty()) {
+            throw new ConflictoExcepcion("analisis.sin_otra_muestra");
+        }
+        MuestraEnCurso muestra = enCurso.get();
+        if (muestra.estado() == EstadoDeMuestra.EN_ESPERA || muestra.estado() == EstadoDeMuestra.EN_PROCESO) {
             throw new ConflictoExcepcion("foto.lote_no_pendiente");
         }
+        if (muestra.numero() == 1 && muestra.estado() == EstadoDeMuestra.TERMINADA) {
+            return new MuestraQueRecibe(null, 2);
+        }
+        if (muestra.numero() == 2 && muestra.estado() == EstadoDeMuestra.PENDIENTE) {
+            return new MuestraQueRecibe(muestra, 2);
+        }
+        throw new ConflictoExcepcion("analisis.sin_otra_muestra");
     }
 
     private static FormatoDeFoto revisarArchivo(String tipo, long bytes) {
@@ -187,14 +252,41 @@ public class SubirFotos {
         }
     }
 
-    /** El formato de una llave que armó este caso de uso para el mismo lote y la misma empresa (RNF-03). */
-    private static FormatoDeFoto formatoDeLaLlave(String llave, UUID empresaId, UUID loteId) {
+    /**
+     * Lo que dice una llave que armó este caso de uso.
+     *
+     * @param muestra la muestra para la que se pidió el enlace: 1 o 2
+     * @param formato el formato de la foto, por su extensión
+     */
+    private record LlaveDeFoto(int muestra, FormatoDeFoto formato) {
+    }
+
+    /**
+     * La muestra y el formato de una llave que armó este caso de uso para el mismo lote y la misma empresa (RNF-03).
+     *
+     * @throws ReglaIncumplidaExcepcion si la llave no tiene esa forma o es de otro lote (400 en la llave)
+     */
+    private static LlaveDeFoto leerLlave(String llave, UUID empresaId, UUID loteId) {
         Matcher partes = llave == null ? null : LLAVE.matcher(llave);
         if (partes == null || !partes.matches() || !partes.group(1).equals(empresaId.toString())
                 || !partes.group(2).equals(loteId.toString())) {
             throw enLaLlave("error.valor_invalido");
         }
-        return FormatoDeFoto.deExtension(partes.group(3)).orElseThrow(() -> enLaLlave("error.valor_invalido"));
+        FormatoDeFoto formato = FormatoDeFoto.deExtension(partes.group(4))
+                .orElseThrow(() -> enLaLlave("error.valor_invalido"));
+        return new LlaveDeFoto(Integer.parseInt(partes.group(3)), formato);
+    }
+
+    /**
+     * La muestra que espera la página, o la de la llave, tiene que ser la que recibe las fotos en este momento. Si no,
+     * el lote cambió mientras la página estaba abierta: responde 409 sin dar el enlace ni guardar nada (D-25).
+     *
+     * @throws ConflictoExcepcion si es otra muestra (409 {@code foto.muestra_cambio})
+     */
+    private static void revisarQueSeaLaQueRecibe(MuestraQueRecibe destino, int muestra) {
+        if (muestra != destino.numero()) {
+            throw new ConflictoExcepcion("foto.muestra_cambio");
+        }
     }
 
     private static ReglaIncumplidaExcepcion enLaLlave(String clave) {

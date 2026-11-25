@@ -2,12 +2,13 @@
  * Nombre: ResultadoDelAnalisisIT.java
  * Descripción: Pruebas de integración del resultado del análisis: el corregido y su margen guardados con el lote, la
  *              muestra con sus conteos y su modelo, los recall del modelo de la muestra, los rangos de la empresa, el
- *              detalle sin recalcular para los dos roles y los granos sin la confianza (RF-10 C6 y C13, RF-11 C4,
- *              RF-12 C9, RF-13 C2, RF-14 C3).
+ *              detalle sin recalcular para los dos roles, los granos sin la confianza y el límite de la sugerencia con
+ *              su categoría (RF-10 C6 y C13, RF-11 C4, RF-12 C9, RF-13 C2 y C3, RF-14 C3, D-47). Los modelos en uso
+ *              llevan sus 11 métricas (P-02, D-48).
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.2
  */
 package co.edu.usco.inspectia.analisis;
 
@@ -18,6 +19,7 @@ import static co.edu.usco.inspectia.analisis.ApiAnalisis.muestras;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import co.edu.usco.inspectia.ConfiguracionContenedores;
+import co.edu.usco.inspectia.ModeloDeLaComparacion;
 import co.edu.usco.inspectia.PruebaIntegracion;
 import co.edu.usco.inspectia.analisis.aplicacion.AtenderCola;
 import co.edu.usco.inspectia.analisis.aplicacion.ModeloUsado;
@@ -40,7 +42,8 @@ import org.springframework.test.web.servlet.assertj.MvcTestResult;
 /**
  * El resultado del análisis (RF-10 a RF-12). En Cacaos del Huila, Luis Gómez analiza el lote L-0143 de La Esperanza y
  * Ana Pérez, la administradora, lo consulta. Las fotos de 106 × 100 y 107 × 100 dan, con el clasificador falso, 87 de
- * 100 sanos: 90,6 % corregido con EfficientNet-B0, Estándar, con sugerencia de otra muestra.
+ * 100 sanos: 90,6 % corregido con EfficientNet-B0, Estándar, con sugerencia de otra muestra por el límite de Estándar
+ * (90 %), que el lote guarda con su categoría (D-47).
  */
 @PruebaIntegracion
 class ResultadoDelAnalisisIT {
@@ -49,6 +52,7 @@ class ResultadoDelAnalisisIT {
     private static final String ANA = "admin@cacaos.test";
     private static final int[] SEIS_NO_SANOS = {106, 100};
     private static final int[] SIETE_NO_SANOS = {107, 100};
+    private static final int[] SANAS = {100, 100};
     private static final String TEXTO_ESTANDAR =
             "Apto para venta estándar. Retirar a mano los granos defectuosos podría subirlo de categoría.";
 
@@ -115,11 +119,13 @@ class ResultadoDelAnalisisIT {
         analizar(lote, SEIS_NO_SANOS, SIETE_NO_SANOS);
 
         Map<String, Object> delLote = jdbc.queryForMap("SELECT estado, porcentaje_sanos, margen, categoria, "
-                + "recomendacion, sugerir_otra_muestra, aviso_confianza_baja FROM lote WHERE id = ?", lote);
+                + "recomendacion, sugerir_otra_muestra, limite_sugerencia, categoria_del_limite, aviso_confianza_baja "
+                + "FROM lote WHERE id = ?", lote);
         assertThat(delLote).containsEntry("estado", "ANALIZADO")
                 .containsEntry("porcentaje_sanos", new BigDecimal("90.6")).containsEntry("margen", new BigDecimal("7.5"))
                 .containsEntry("categoria", "ESTANDAR").containsEntry("recomendacion", TEXTO_ESTANDAR)
-                .containsEntry("sugerir_otra_muestra", true).containsEntry("aviso_confianza_baja", false);
+                .containsEntry("sugerir_otra_muestra", true).containsEntry("limite_sugerencia", new BigDecimal("90.0"))
+                .containsEntry("categoria_del_limite", "ESTANDAR").containsEntry("aviso_confianza_baja", false);
         UUID modeloFalso = jdbc.queryForObject("SELECT id FROM modelo WHERE nombre = 'clasificador-falso' "
                 + "AND version = '1.0'", UUID.class);
         Map<String, Object> muestra = jdbc.queryForMap("SELECT estado, total_granos, granos_sanos, modelo_id, "
@@ -152,7 +158,8 @@ class ResultadoDelAnalisisIT {
                 .containsEntry("origen", "La Esperanza").containsEntry("estado", "ANALIZADO")
                 .containsEntry("porcentajeSanos", 90.6).containsEntry("margen", 7.5)
                 .containsEntry("categoria", "ESTANDAR").containsEntry("recomendacion", TEXTO_ESTANDAR)
-                .containsEntry("sugerirOtraMuestra", true).containsEntry("avisoConfianzaBaja", false)
+                .containsEntry("sugerirOtraMuestra", true).containsEntry("limiteSugerencia", 90.0)
+                .containsEntry("categoriaDelLimite", "ESTANDAR").containsEntry("avisoConfianzaBaja", false)
                 .containsEntry("totalGranos", 100).containsEntry("granosSanos", 87)
                 .containsEntry("porcentajeContado", 87.0);
         assertThat(delLote.get("fechaResultado")).isNotNull();
@@ -198,27 +205,26 @@ class ResultadoDelAnalisisIT {
     @Test
     @DisplayName("RF-10 · C13 · la corrección usa los recall del modelo que analizó la muestra: con ResNet-50, 87 de 100 dan 99,0 %, y si cambia el modelo en uso el lote conserva su porcentaje")
     void recallDelModeloDeLaMuestra() {
-        UUID resnet = jdbc.queryForObject("INSERT INTO modelo (nombre, version, recall_sano, recall_no_sano, en_uso) "
-                + "VALUES ('ResNet-50', '1.0', 87.40, 52.10, true) RETURNING id", UUID.class);
-        clasificador.conModelo(new ModeloUsado("ResNet-50", "1.0"));
+        UUID resnet = ModeloDeLaComparacion.RESNET_50.insertar(jdbc, true);
+        clasificador.conModelo(new ModeloUsado(ModeloDeLaComparacion.RESNET_50.nombre(), "1.0"));
         analizar(lote, SEIS_NO_SANOS, SIETE_NO_SANOS);
 
         jdbc.update("UPDATE modelo SET en_uso = false WHERE id = ?", resnet);
-        jdbc.update("INSERT INTO modelo (nombre, version, recall_sano, recall_no_sano, en_uso) "
-                + "VALUES ('EfficientNet-B0', '1.0', 91.20, 53.40, true)");
+        ModeloDeLaComparacion.EFFICIENTNET_B0.insertar(jdbc, true);
         Map<String, Object> resultado = analisis.resultadoOk(tokenDeLuis, lote);
 
         assertThat(jdbc.queryForObject("SELECT modelo_id FROM muestra WHERE lote_id = ?", UUID.class, lote))
                 .isEqualTo(resnet);
         assertThat(lote(resultado)).containsEntry("porcentajeSanos", 99.0).containsEntry("margen", 8.5)
                 .containsEntry("categoria", "PREMIUM").containsEntry("sugerirOtraMuestra", false)
+                .containsEntry("limiteSugerencia", null).containsEntry("categoriaDelLimite", null)
                 .containsEntry("porcentajeContado", 87.0);
         assertThat(muestras(resultado).get(0)).containsEntry("modelo", Map.of("nombre", "ResNet-50",
                 "version", "1.0"));
     }
 
     @Test
-    @DisplayName("RF-12 · C9 · si la empresa cambió sus rangos, el análisis usa los de la empresa: con Estándar desde 91 %, 90,6 % es Corriente, con su texto y con sugerencia")
+    @DisplayName("RF-12 · C9 · si la empresa cambió sus rangos, el análisis usa los de la empresa: con Estándar desde 91 %, 90,6 % es Corriente, con su texto y con sugerencia por el límite de Estándar de la empresa (91 %)")
     void rangosDeLaEmpresa() {
         cambiarLosRangos();
 
@@ -227,7 +233,8 @@ class ResultadoDelAnalisisIT {
         assertThat(lote(analisis.resultadoOk(tokenDeLuis, lote))).containsEntry("porcentajeSanos", 90.6)
                 .containsEntry("categoria", "CORRIENTE")
                 .containsEntry("recomendacion", "Selección a mano antes de vender")
-                .containsEntry("sugerirOtraMuestra", true);
+                .containsEntry("sugerirOtraMuestra", true).containsEntry("limiteSugerencia", 91.0)
+                .containsEntry("categoriaDelLimite", "ESTANDAR");
     }
 
     @Test
@@ -241,9 +248,33 @@ class ResultadoDelAnalisisIT {
         analizar(nuevo, SEIS_NO_SANOS, SIETE_NO_SANOS);
 
         assertThat(lote(analisis.resultadoOk(tokenDeLuis, nuevo))).containsEntry("categoria", "CORRIENTE")
-                .containsEntry("recomendacion", "Selección a mano antes de vender");
+                .containsEntry("recomendacion", "Selección a mano antes de vender")
+                .containsEntry("limiteSugerencia", 91.0).containsEntry("categoriaDelLimite", "ESTANDAR");
         assertThat(lote(analisis.resultadoOk(tokenDeLuis, anterior))).containsEntry("categoria", "ESTANDAR")
-                .containsEntry("recomendacion", TEXTO_ESTANDAR).containsEntry("porcentajeSanos", 90.6);
+                .containsEntry("recomendacion", TEXTO_ESTANDAR).containsEntry("porcentajeSanos", 90.6)
+                .as("el aviso del lote anterior no cambia (RF-13 C3)")
+                .containsEntry("limiteSugerencia", 90.0).containsEntry("categoriaDelLimite", "ESTANDAR");
+    }
+
+    @Test
+    @DisplayName("D-47 · un lote que sugiere otra muestra guarda el límite más cercano y su categoría, y el resultado los responde; uno sin sugerencia no guarda ninguno")
+    void limiteDeLaSugerencia() {
+        UUID sinSugerencia = new ApiLotes(api).registrarOk(tokenDeLuis, "L-0144", "La Esperanza");
+        analizar(lote, SEIS_NO_SANOS, SIETE_NO_SANOS);
+        analizar(sinSugerencia, SANAS, SANAS);
+
+        String consulta = "SELECT sugerir_otra_muestra, limite_sugerencia, categoria_del_limite FROM lote WHERE id = ?";
+        assertThat(jdbc.queryForMap(consulta, lote)).containsEntry("sugerir_otra_muestra", true)
+                .containsEntry("limite_sugerencia", new BigDecimal("90.0"))
+                .containsEntry("categoria_del_limite", "ESTANDAR");
+        assertThat(jdbc.queryForMap(consulta, sinSugerencia)).as("100 %, a 4 puntos de 96")
+                .containsEntry("sugerir_otra_muestra", false).containsEntry("limite_sugerencia", null)
+                .containsEntry("categoria_del_limite", null);
+        assertThat(lote(analisis.resultadoOk(tokenDeAna, lote))).containsEntry("sugerirOtraMuestra", true)
+                .containsEntry("limiteSugerencia", 90.0).containsEntry("categoriaDelLimite", "ESTANDAR");
+        assertThat(lote(analisis.resultadoOk(tokenDeAna, sinSugerencia))).containsEntry("categoria", "PREMIUM")
+                .containsEntry("sugerirOtraMuestra", false).containsEntry("limiteSugerencia", null)
+                .containsEntry("categoriaDelLimite", null);
     }
 
     @Test
@@ -255,7 +286,8 @@ class ResultadoDelAnalisisIT {
 
         assertThat(lote(resultado)).containsEntry("estado", "PENDIENTE").containsEntry("porcentajeSanos", null)
                 .containsEntry("margen", null).containsEntry("categoria", null).containsEntry("recomendacion", null)
-                .containsEntry("sugerirOtraMuestra", null).containsEntry("avisoConfianzaBaja", null)
+                .containsEntry("sugerirOtraMuestra", null).containsEntry("limiteSugerencia", null)
+                .containsEntry("categoriaDelLimite", null).containsEntry("avisoConfianzaBaja", null)
                 .containsEntry("fechaResultado", null).containsEntry("totalGranos", null)
                 .containsEntry("granosSanos", null).containsEntry("porcentajeContado", null);
         Map<String, Object> muestra = muestras(resultado).get(0);

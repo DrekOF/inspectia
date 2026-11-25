@@ -1,11 +1,11 @@
 /*
  * Nombre: ApiLotes.java
- * Descripción: Llamadas a la API de lotes y sus mensajes, para las pruebas (RF-04, RF-14, RNF-03,
- *              RNF-04).
+ * Descripción: Llamadas a la API de lotes y sus mensajes, para las pruebas: registrar, el historial con sus
+ *              filtros, el detalle y quienes registraron lotes (RF-04, RF-14, RNF-03, RNF-04).
  * Fecha de creación: 10/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 package co.edu.usco.inspectia.analisis;
 
@@ -17,6 +17,7 @@ import java.time.ZoneId;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
@@ -32,9 +33,15 @@ import org.springframework.test.web.servlet.assertj.MvcTestResult;
  *   <li>El lote trae {@code id}, {@code codigo}, {@code fechaRecepcion}, {@code origen},
  *       {@code observaciones}, {@code estado} ({@code PENDIENTE} o {@code ANALIZADO}), {@code usuario}
  *       ({@code id} y {@code nombre} de quien lo registró), {@code porcentajeSanos}, {@code categoria},
- *       {@code fechaResultado} y {@code fechaCreacion}. Mientras está pendiente, el resultado va vacío.</li>
+ *       {@code sugerirOtraMuestra}, {@code fechaResultado} y {@code fechaCreacion}. Mientras está pendiente, el
+ *       resultado va vacío.</li>
  *   <li>El historial responde una página ({@code contenido}, {@code pagina}, {@code tamano},
- *       {@code totalElementos} y {@code totalPaginas}) de 20 lotes, del más reciente al más antiguo.</li>
+ *       {@code totalElementos} y {@code totalPaginas}) de 20 lotes, del más reciente al más antiguo. Sus filtros, todos
+ *       opcionales y combinables (RF-14 C2): {@code desde} y {@code hasta} ({@code aaaa-mm-dd}, días de Colombia, las
+ *       dos fechas incluidas, sobre la fecha del resultado), {@code estado}, {@code categoria}, {@code codigo} (hasta
+ *       30 caracteres, dentro del código) y {@code usuario} (el id de quien registró el lote).</li>
+ *   <li>Quienes registraron lotes de la empresa ({@code /registradores}) responden una lista de {@code id} y
+ *       {@code nombre}, sin correos (RF-14 restricción 6).</li>
  *   <li>Las sugerencias de finca o proveedor ({@code /origenes?texto=}) responden una lista de textos.</li>
  *   <li>La empresa y el usuario salen de la sesión: un lote de otra empresa responde 404, como si no
  *       existiera (RNF-03).</li>
@@ -44,6 +51,7 @@ final class ApiLotes {
 
     static final String RUTA = "/api/v1/lotes";
     static final String ORIGENES = RUTA + "/origenes";
+    static final String REGISTRADORES = RUTA + "/registradores";
 
     /**
      * Una fecha de recepción de hace una semana en Colombia, para los lotes que no prueban la fecha. Es relativa a
@@ -59,6 +67,8 @@ final class ApiLotes {
     static final String CODIGO_REPETIDO = "Ya existe un lote con este código en la empresa.";
     static final String FECHA_FUTURA = "La fecha de recepción no puede ser posterior a hoy.";
     static final String FECHA_ANTIGUA = "La fecha de recepción no puede ser de hace más de un año.";
+    static final String HASTA_ANTES_DE_DESDE = "La fecha «Hasta» no puede ser anterior a «Resultado desde».";
+    static final String LONGITUD_DEL_CODIGO = "Puede tener como máximo 30 caracteres.";
 
     private final ApiSesion api;
 
@@ -77,6 +87,23 @@ final class ApiLotes {
     /** Una página del historial, con el tamaño de siempre. */
     MvcTestResult listar(String token, int pagina) {
         return api.enviar(HttpMethod.GET, RUTA + "?pagina=" + pagina, null, token);
+    }
+
+    /**
+     * La primera página del historial con filtros, en el orden en que se escriben. Los valores van tal cual: la
+     * llamada los codifica en la URL, así un {@code %} o un espacio llegan como se escribieron.
+     *
+     * @param filtros cada filtro con su valor, como {@code estado=ANALIZADO}
+     */
+    MvcTestResult listar(String token, Map<String, String> filtros) {
+        String consulta = filtros.entrySet().stream().map(filtro -> filtro.getKey() + "=" + filtro.getValue())
+                .collect(Collectors.joining("&"));
+        return api.enviar(HttpMethod.GET, RUTA + (consulta.isEmpty() ? "" : "?" + consulta), null, token);
+    }
+
+    /** Quienes registraron lotes de la empresa, para el filtro «Usuario» (RF-14 restricción 6). */
+    MvcTestResult registradores(String token) {
+        return api.enviar(HttpMethod.GET, REGISTRADORES, null, token);
     }
 
     MvcTestResult origenes(String token, String texto) {

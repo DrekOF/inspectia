@@ -1,11 +1,12 @@
 /*
  * Nombre: ResultadoRespuesta.java
- * Descripción: El resultado de un lote y el detalle de sus muestras como lo responde la API: las cifras guardadas, las
- *              fotos con su enlace y los granos marcados, sin la confianza (RF-10, RF-11, RF-12, RF-14 C3).
+ * Descripción: El resultado de un lote y el detalle de sus muestras como lo responde la API: las cifras guardadas, con
+ *              el límite de la sugerencia y su categoría, las fotos con su enlace y los granos marcados, sin la
+ *              confianza (RF-10, RF-11, RF-12, RF-14 C3, D-25, D-47).
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis.adaptadores.rest;
 
@@ -25,6 +26,7 @@ import java.util.UUID;
 /**
  * El resultado de un lote y el detalle de sus muestras (RF-14 C3). Las cifras son las guardadas: no se recalculan con
  * los rangos de hoy (RF-13 C3). Mientras el lote está pendiente, las del resultado van vacías y cada foto, sin granos.
+ * Mientras la muestra 2 espera o se analiza, el lote trae el resultado de la 1 y la 2 va sin conteos (D-25).
  *
  * @param lote el lote y su resultado
  * @param muestras sus muestras, por número
@@ -50,6 +52,8 @@ public record ResultadoRespuesta(
      * @param categoria la categoría probable, o vacía
      * @param recomendacion el texto de la recomendación, o vacío
      * @param sugerirOtraMuestra si se sugiere otra muestra, o vacío
+     * @param limiteSugerencia el límite por el que se sugiere otra muestra, o vacío
+     * @param categoriaDelLimite la categoría de ese límite, o vacía
      * @param avisoConfianzaBaja si lleva el aviso de confianza baja, o vacío
      * @param totalGranos el total de granos de las muestras terminadas, o vacío
      * @param granosSanos los que el modelo marcó como sanos, o vacío
@@ -79,8 +83,18 @@ public record ResultadoRespuesta(
                     example = "Apto para venta estándar. Retirar a mano los granos defectuosos podría subirlo de "
                             + "categoría.") String recomendacion,
             @Schema(description = "Si se sugiere analizar otra muestra: el porcentaje quedó a menos de 1 punto de un "
-                    + "límite de la empresa (D-24); vacío mientras está pendiente.", example = "true")
-            Boolean sugerirOtraMuestra,
+                    + "límite de la empresa, y el lote tiene una sola muestra terminada (D-24, D-25). Sigue verdadero "
+                    + "mientras se toma y se analiza la muestra 2; cuando termina, queda falso. Vacío mientras está "
+                    + "pendiente.", example = "true") Boolean sugerirOtraMuestra,
+            @Schema(description = "El límite inferior de los rangos de la empresa por el que se sugiere otra muestra: "
+                    + "el más cercano al porcentaje y, en empate, el más alto; el 0 de Fuera de norma nunca cuenta. Se "
+                    + "guarda con el resultado, así el aviso «El resultado quedó a 0,6 puntos del límite de Estándar "
+                    + "(90 %).» no cambia si la empresa cambia sus rangos (RF-13 C3, D-47). Vacío sin sugerencia.",
+                    example = "90.0") BigDecimal limiteSugerencia,
+            @Schema(description = "La categoría de ese límite, que puede ser otra que la del lote: con 95,4 %, el "
+                    + "lote es Estándar y el límite es el de PREMIUM (96). Vacía sin sugerencia (D-47).",
+                    allowableValues = {"PREMIUM", "ESTANDAR", "CORRIENTE"}, example = "ESTANDAR")
+            String categoriaDelLimite,
             @Schema(description = "Si alguna muestra salió con el aviso de confianza baja (RF-09); vacío mientras "
                     + "está pendiente.", example = "false") Boolean avisoConfianzaBaja,
             @Schema(description = "Total de granos de las muestras terminadas; vacío mientras está pendiente.",
@@ -200,8 +214,8 @@ public record ResultadoRespuesta(
         LoteDelResultado delLote = new LoteDelResultado(lote.id(), lote.codigo(), lote.fechaRecepcion(), lote.origen(),
                 lote.estado().name(), lote.fechaResultado() == null ? null : lote.fechaResultado().toInstant(),
                 lote.porcentajeSanos(), lote.margen(), lote.categoria(), lote.recomendacion(),
-                lote.sugerirOtraMuestra(), lote.avisoConfianzaBaja(), detalle.totalGranos(), detalle.granosSanos(),
-                detalle.porcentajeContado());
+                lote.sugerirOtraMuestra(), lote.limiteSugerencia(), lote.categoriaDelLimite(),
+                lote.avisoConfianzaBaja(), detalle.totalGranos(), detalle.granosSanos(), detalle.porcentajeContado());
         return new ResultadoRespuesta(delLote, detalle.muestras().stream().map(ResultadoRespuesta::muestra).toList());
     }
 
