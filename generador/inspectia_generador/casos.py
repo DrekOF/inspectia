@@ -2,9 +2,9 @@
 # Descripción: Lista de casos de prueba (RP-13): junta las marcas de las pruebas con los criterios de
 #              aceptación de specs/fichas.json y señala los criterios sin prueba.
 # Fecha de creación: 13/10/2026
-# Actualización: 20/10/2026
+# Actualización: 24/11/2026
 # Autor: Equipo InspectIA
-# Versión: 1.2
+# Versión: 1.3
 """Lista de casos de prueba (RP-13).
 
 Cada prueba dice qué cubre con una marca (ver CLAUDE.md):
@@ -33,12 +33,13 @@ from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
 from inspectia_generador.carga import cargar_codigos
 
-VERSION = '1.2'
+VERSION = '1.3'
 RUTA_DOCUMENTO = 'docs/casos-de-prueba.md'
 IMPLEMENTADO = 'Implementado'
 #: Carpetas de pruebas de Java y si lo que tienen es generado.
 CARPETAS_JAVA = (('backend/src/test/java', False), ('backend/src/test-generated/java', True))
-CARPETA_PYTHON = 'generador/pruebas'
+#: Carpetas de pruebas de Python: las del generador y las del servicio de IA (pytest en los dos).
+CARPETAS_PYTHON = ('generador/pruebas', 'ia-servicio/pruebas')
 #: Carpetas de pruebas de JavaScript del frontend, con los nombres de sus archivos de prueba.
 CARPETAS_JAVASCRIPT = (('frontend/src', ('*.test.js', '*.test.jsx')), ('frontend/herramientas', ('*.test.js',)),
                        ('frontend/e2e', ('*.spec.js',)), ('frontend/selenium', ('*.test.js',)))
@@ -379,8 +380,8 @@ def pruebas_javascript(fuente, archivo):
 
 
 def buscar_pruebas(raiz):
-    """Todas las pruebas del repositorio: las de Java del backend, las de Python del generador y las de
-    JavaScript del frontend.
+    """Todas las pruebas del repositorio: las de Java del backend, las de Python del generador y del
+    servicio de IA y las de JavaScript del frontend.
 
     Returns:
         tuple: ``(pruebas, errores)``, en orden de archivo.
@@ -393,10 +394,12 @@ def buscar_pruebas(raiz):
                                               ruta.relative_to(raiz).as_posix(), generada)
             pruebas += encontradas
             errores += malas
-    for ruta in sorted((raiz / CARPETA_PYTHON).rglob('test_*.py')):
-        encontradas, malas = pruebas_python(ruta.read_text(encoding='utf-8'), ruta.relative_to(raiz).as_posix())
-        pruebas += encontradas
-        errores += malas
+    for carpeta in CARPETAS_PYTHON:
+        for ruta in sorted((raiz / carpeta).rglob('test_*.py')):
+            encontradas, malas = pruebas_python(ruta.read_text(encoding='utf-8'),
+                                                ruta.relative_to(raiz).as_posix())
+            pruebas += encontradas
+            errores += malas
     for carpeta, patrones in CARPETAS_JAVASCRIPT:
         rutas = sorted({ruta for patron in patrones for ruta in (raiz / carpeta).rglob(patron)
                         if 'node_modules' not in ruta.parts})

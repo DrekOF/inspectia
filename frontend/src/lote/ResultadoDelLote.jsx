@@ -13,12 +13,15 @@
  *              segunda muestra, junto al resultado de la primera; si el lote no tiene resultado, lo dice. Los pasos
  *              del análisis solo se ven al llegar desde «Analizar la muestra» o mientras espera. Si el lote no existe
  *              o es de otra empresa, lo dice sin «Reintentar» (RNF-03); si no llegó por otra causa, ofrece
- *              «Reintentar». Con el lote analizado, los dos roles descargan su reporte con «Descargar PDF», junto al
- *              título en el PC y al final en el celular, como en el prototipo (RF-15).
+ *              «Reintentar». Si la muestra volvió sin resultado, el aviso dice por qué, según el servicio de IA (D-44:
+ *              una foto por repetir, menos de 100 granos o sin respuesta), y si el resultado salió con confianza baja,
+ *              lo avisa debajo del resumen y de la sugerencia (RF-09 C4 y C6). Con el lote analizado, los dos roles
+ *              descargan su reporte con «Descargar PDF», junto al título en el PC y al final en el celular, como en el
+ *              prototipo (RF-15).
  * Fecha de creación: 23/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.2
+ * Versión: 1.3
  */
 import Add from '@mui/icons-material/Add';
 import InfoOutlined from '@mui/icons-material/InfoOutlined';
@@ -39,6 +42,8 @@ import { idiomaDe } from '../i18n/i18n.js';
 import { ROLES } from '../navegacion/menu.js';
 import { useSesion } from '../sesion/contexto.js';
 import { medidas } from '../tema/tokens.js';
+import { AnalisisSinTerminar } from './AnalisisSinTerminar.jsx';
+import { AvisoDeConfianzaBaja } from './AvisoDeConfianzaBaja.jsx';
 import { EsperaDelAnalisis } from './EsperaDelAnalisis.jsx';
 import { DescargarReporte } from './DescargarReporte.jsx';
 import { diaDelCalendario, diaEnColombia, horaEnColombia } from './fechas.js';
@@ -46,6 +51,7 @@ import { FotosMarcadas } from './FotosMarcadas.jsx';
 import { PasosDelAnalisis } from './PasosDelAnalisis.jsx';
 import { EN_CURSO, muestraEnCurso, vistaDelLote } from './resultado.js';
 import { ResumenDelResultado } from './ResumenDelResultado.jsx';
+import { devolucionDeLaMuestra } from './revision.js';
 import { SugerenciaDeOtraMuestra } from './SugerenciaDeOtraMuestra.jsx';
 import { useAnalisisEnCurso } from './useAnalisisEnCurso.js';
 
@@ -87,32 +93,6 @@ function NuevoLote({ esPc }) {
       sx={{ minHeight: medidas.boton.alto, alignSelf: esPc ? 'auto' : 'stretch' }}>
       {t('menu.nuevoLote')}
     </Button>
-  );
-}
-
-/**
- * Un análisis que no terminó: la muestra volvió de la cola sin resultado y quedó pendiente otra vez (RNF-06 C3). Al
- * usuario final lo lleva a las fotos, para revisarlas y enviarla de nuevo; a la administradora le dice quién puede.
- *
- * @param {object} props las propiedades
- * @param {string} props.titulo lo que pasó
- * @param {string} props.loteId el lote
- * @param {boolean} props.esUsuarioFinal si la sesión es del usuario final, el único que sube fotos
- * @returns {import('react').ReactElement} el aviso
- */
-function AnalisisSinTerminar({ titulo, loteId, esUsuarioFinal }) {
-  const { t } = useTranslation();
-  return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 1.5 }}>
-      <Aviso tipo="error" titulo={titulo}>
-        {esUsuarioFinal ? t('espera.falloQueHacer') : t('espera.falloAdmin')}
-      </Aviso>
-      {esUsuarioFinal && (
-        <Button component={Link} to={`/lotes/${loteId}/fotos`} variant="contained">
-          {t('espera.volverALasFotos')}
-        </Button>
-      )}
-    </Box>
   );
 }
 
@@ -234,6 +214,14 @@ function ResultadoDe({ loteId, desdeElAnalisis }) {
     <EsperaDelAnalisis estado={estadoDeLaEspera} muestra={muestra?.numero} error={analisis.error}
       alReintentar={analisis.reintentar} />
   );
+  const sinTerminar = muestra && (
+    <AnalisisSinTerminar devolucion={devolucionDeLaMuestra(muestra, analisis.avance)} muestra={muestra.numero}
+      loteId={loteId} esUsuarioFinal={esUsuarioFinal} />
+  );
+  // El aviso de confianza baja va con el resultado del lote, donde se vea (RF-09 C4 y C6).
+  const confianzaBaja = lote?.avisoConfianzaBaja === true && (
+    <AvisoDeConfianzaBaja muestras={datos.muestras} region={region} />
+  );
   const fotosMarcadas = datos && (
     <FotosMarcadas muestras={datos.muestras} alFallarLaVista={vistaFallida} alCargarLaVista={vistaCargada} />
   );
@@ -270,9 +258,7 @@ function ResultadoDe({ loteId, desdeElAnalisis }) {
         </Box>
       )}
       {vista === 'espera' && espera}
-      {vista === 'fallo' && (
-        <AnalisisSinTerminar titulo={t('espera.fallo')} loteId={loteId} esUsuarioFinal={esUsuarioFinal} />
-      )}
+      {vista === 'fallo' && sinTerminar}
       {vista === 'sinResultado' && (
         <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
           <Typography>{t('resultado.sinResultado')}</Typography>
@@ -291,6 +277,7 @@ function ResultadoDe({ loteId, desdeElAnalisis }) {
             <SugerenciaDeOtraMuestra lote={lote} region={region} esUsuarioFinal={esUsuarioFinal}
               muestraEmpezada={muestraEmpezada} />
           )}
+          {confianzaBaja}
           {fotosMarcadas}
           {reporteEnCelular}
           {conAcciones && !esPc && <NuevoLote esPc={false} />}
@@ -302,6 +289,7 @@ function ResultadoDe({ loteId, desdeElAnalisis }) {
           {espera}
           <ResultadoQueCambiara numero={muestra.numero} />
           <ResumenDelResultado lote={lote} region={region} />
+          {confianzaBaja}
           {fotosMarcadas}
           {reporteEnCelular}
         </Box>
@@ -309,9 +297,9 @@ function ResultadoDe({ loteId, desdeElAnalisis }) {
       {/* La segunda muestra volvió sin resultado: el aviso arriba y el resultado de la primera debajo. */}
       {vista === 'resultadoConFallo' && (
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: esPc ? 3 : 2 }}>
-          <AnalisisSinTerminar titulo={t('espera.falloDeLaMuestra', { numero: muestra.numero })} loteId={loteId}
-            esUsuarioFinal={esUsuarioFinal} />
+          {sinTerminar}
           <ResumenDelResultado lote={lote} region={region} />
+          {confianzaBaja}
           {fotosMarcadas}
           {reporteEnCelular}
         </Box>

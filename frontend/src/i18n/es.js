@@ -6,7 +6,7 @@
  * Fecha de creación: 20/10/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.9
+ * Versión: 1.10
  */
 
 /** Textos en español, por clave. en.js tiene las mismas claves (i18n.test.js lo revisa). */
@@ -366,4 +366,47 @@ export default {
   'modeloIa.comparacionDescripcion': 'Los modelos que comparó el equipo, medidos con el mismo conjunto de prueba, del mayor F1-score macro al menor.',
   'modeloIa.tabla': 'Métricas de los modelos',
   'modeloIa.columnaModelo': 'Modelo',
+
+  // Revisión de las fotos por el servicio de IA y la muestra devuelta (frente A: RF-06, RF-07, RF-08 C6, RF-09, D-44 a D-46)
+  'fotos.aprobada': 'Foto {numero} aprobada.',
+  'fotos.porRepetir': 'Foto {numero} por repetir.',
+  'fotos.repetir': 'Repetir la foto',
+  'fotos.granosEncontrados_one': '{count} grano encontrado',
+  'fotos.granosEncontrados_many': '{count} granos encontrados',
+  'fotos.granosEncontrados_other': '{count} granos encontrados',
+  'fotos.queHacer.BORROSA': 'Foto borrosa: tómala de nuevo sin mover el celular.',
+  'fotos.queHacer.POCA_LUZ': 'Poca luz: tómala de nuevo con más luz, sin sombras fuertes.',
+  'fotos.queHacer.GRANOS_PEGADOS': 'Granos pegados: sepáralos donde está marcado y toma la foto de nuevo.',
+  'fotos.queHacer.GRANOS_DUDOSOS': 'Más del {porcentaje} % de los granos quedaron dudosos: tómala de nuevo con buena luz y el celular quieto. Repetición {repeticion} de 2.',
+  'fotos.queHacer.GRANOS_DUDOSOS_ultima': 'Más del {porcentaje} % de los granos quedaron dudosos: tómala de nuevo con buena luz y el celular quieto. Repetición 2 de 2: si siguen pasando del {porcentaje} %, el resultado saldrá con un aviso de confianza baja.',
+  'fotos.regionesPegadas_one': '{count} zona con granos pegados, marcada en la foto.',
+  'fotos.regionesPegadas_many': '{count} zonas con granos pegados, marcadas en la foto.',
+  'fotos.regionesPegadas_other': '{count} zonas con granos pegados, marcadas en la foto.',
+  'fotos.granosDudosos_one': '{count} grano dudoso, marcado con «?» en la foto.',
+  'fotos.granosDudosos_many': '{count} granos dudosos, marcados con «?» en la foto.',
+  'fotos.granosDudosos_other': '{count} granos dudosos, marcados con «?» en la foto.',
+  'fotos.totalDeGranos': 'Entre todas las fotos: {total} granos.',
+  'fotos.faltanGranos': 'Las fotos suman {total} granos y hacen falta al menos 100: agrega la foto 3 o repite una con más granos.',
+  'fotos.faltanGranosConTres': 'Las fotos suman {total} granos y hacen falta al menos 100: repite una foto con más granos.',
+  'fotos.devuelta.POCOS_GRANOS': 'La muestra volvió sin resultado: entre todas las fotos hay menos de 100 granos. Agrega la foto 3 o repite una foto con más granos.',
+  'fotos.devuelta.POCOS_GRANOSConTres': 'La muestra volvió sin resultado: entre todas las fotos hay menos de 100 granos. Repite una foto con más granos.',
+  'fotos.devuelta.SIN_RESPUESTA_DE_LA_IA': 'El servicio de IA no respondió la última vez. Pulsa otra vez «Analizar la muestra».',
+  'analizar.repiteLaFoto': 'Repite la foto {numero} para continuar.',
+  'analizar.repiteLasFotos': 'Repite las fotos {numeros} para continuar.',
+  'espera.porRepetir': 'Hay que repetir la foto {numero} de la muestra: {motivo}.',
+  'espera.porRepetirDeLaMuestra': 'Hay que repetir la foto {numero} de la muestra {muestra}: {motivo}.',
+  'espera.porRepetirVarias': 'Hay que repetir las fotos {numeros} de la muestra.',
+  'espera.porRepetirVariasDeLaMuestra': 'Hay que repetir las fotos {numeros} de la muestra {muestra}.',
+  'espera.queHacer.BORROSA': 'Tómala de nuevo sin mover el celular.',
+  'espera.queHacer.POCA_LUZ': 'Tómala de nuevo con más luz, sin sombras fuertes.',
+  'espera.queHacer.GRANOS_PEGADOS': 'Separa los granos donde está marcado y toma la foto de nuevo.',
+  'espera.queHacer.GRANOS_DUDOSOS': 'Los granos dudosos están marcados en la foto. Repetición {repeticion} de 2.',
+  'espera.devuelta.POCOS_GRANOS': 'La muestra tiene menos de 100 granos: no se calculó el resultado.',
+  'espera.devuelta.POCOS_GRANOSDeLaMuestra': 'La muestra {muestra} tiene menos de 100 granos: no se calculó el resultado.',
+  'espera.devuelta.SIN_RESPUESTA_DE_LA_IA': 'El servicio de IA no respondió: la muestra volvió a quedar pendiente, sin resultado.',
+  'espera.devuelta.SIN_RESPUESTA_DE_LA_IADeLaMuestra': 'El servicio de IA no respondió: la muestra {muestra} volvió a quedar pendiente, sin resultado.',
+  'espera.devueltaQueHacer.POCOS_GRANOS': 'Agrega la foto 3 o repite una foto con más granos, y pulsa otra vez «Analizar la muestra».',
+  'espera.devueltaQueHacer.SIN_RESPUESTA_DE_LA_IA': 'Pulsa otra vez «Analizar la muestra» en unos minutos.',
+  'resultado.confianzaBaja': 'Confianza baja: confirma con la prueba de corte.',
+  'resultado.confianzaBajaDetalle': 'Más del {porcentaje} % de los granos quedaron dudosos, aun después de repetir las fotos 2 veces.',
 };

@@ -3,9 +3,9 @@
  * Descripción: Las reglas de la confianza de los granos: cuándo un grano es dudoso, cuándo una muestra tiene demasiados
  *              dudosos y cuándo sale con el aviso de confianza baja (RF-09, RF-11, P-15).
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis.dominio;
 
@@ -22,8 +22,9 @@ import java.util.Objects;
  *   <li>Una muestra <b>pasa del máximo</b> si sus dudosos son más del {@code maximoDeDudosos} % de sus granos: con
  *       10 %, 10 de 100 no pasa y 11 sí (RF-09 C2).</li>
  *   <li>Sale con el <b>aviso de confianza baja</b> si pasa del máximo después de {@value #MAXIMO_DE_REPETICIONES}
- *       repeticiones (RF-09, restricción 3). Hasta que RF-09 llegue con el servicio de IA (PR 4), las muestras no
- *       tienen repeticiones y el aviso sale falso.</li>
+ *       repeticiones (RF-09, restricción 3).</li>
+ *   <li>Mientras no llegue a esas repeticiones, una muestra que pasa del máximo <b>pide repetir</b> una foto (RF-09
+ *       C1).</li>
  * </ul>
  *
  * @param umbral el umbral de confianza baja, en porcentaje
@@ -88,5 +89,18 @@ public record ReglasDeConfianza(BigDecimal umbral, BigDecimal maximoDeDudosos) {
      */
     public boolean aviso(int dudosos, int total, int repeticiones) {
         return repeticiones >= MAXIMO_DE_REPETICIONES && pasaDelMaximo(dudosos, total);
+    }
+
+    /**
+     * Si la muestra pide repetir una foto en lugar de terminar: pasa del máximo y todavía no gasta las repeticiones
+     * permitidas (RF-09 C1). Es lo contrario del aviso para una muestra que pasa del máximo.
+     *
+     * @param dudosos los granos dudosos
+     * @param total el total de granos
+     * @param repeticiones las repeticiones de foto que ya pidió el análisis
+     * @return {@code true} si hay que repetir una foto
+     */
+    public boolean pideRepetir(int dudosos, int total, int repeticiones) {
+        return repeticiones < MAXIMO_DE_REPETICIONES && pasaDelMaximo(dudosos, total);
     }
 }

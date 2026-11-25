@@ -1,0 +1,19 @@
+# Nombre: .dockerignore
+# Descripción: Lo que no entra al contexto de la imagen del servicio de IA: el entorno local, las pruebas y la caché.
+# Fecha de creación: 24/11/2026
+# Actualización: 24/11/2026
+# Autor: Equipo InspectIA
+# Versión: 1.0
+.venv/
+**/__pycache__/
+**/*.pyc
+.pytest_cache/
+pruebas/
+scripts/
+Dockerfile
+.dockerignore
+README.md
+requirements-dev.txt
+pytest.ini
+*.zip
+*.keras

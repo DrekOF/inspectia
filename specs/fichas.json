@@ -5,7 +5,7 @@
     "fecha_creacion": "12/10/2026",
     "actualizacion": "24/11/2026",
     "autor": "Equipo InspectIA",
-    "version": "1.24"
+    "version": "1.25"
   },
   "rf": [
     {
@@ -221,7 +221,7 @@
       "encabezado": "Tomar o subir las fotos de la muestra",
       "titulo": "Tomar o subir las fotos de la muestra del lote, con guía de captura",
       "codigo": "RF-05",
-      "version": "1.4",
+      "version": "1.5",
       "fuente": "D-08 (captura del lote), D-23 y D-26 (tamaño de la muestra) y D-25 (segunda muestra).",
       "descripcion": "El usuario toma con la cámara del celular, o sube desde el PC, 2 o 3 fotos de cada muestra del lote, siguiendo una guía de captura. Un lote tiene una muestra, o dos si la app sugiere otra (D-25).",
       "justificacion": "La calidad de las fotos define la calidad del resultado; la guía evita fotos que no sirven.",
@@ -231,7 +231,7 @@
           "La guía pide entre 100 y 150 granos por muestra, repartidos en 2 o 3 fotos (D-23). Si la muestra pasa de 150 granos, se acepta; el mínimo de 100 es obligatorio (D-26, RF-07).",
           "Granos enteros sobre papel blanco, separados entre sí, con luz difusa y fotos tomadas desde arriba (D-08).",
           "Fotos en JPG o PNG, de hasta 10 MB cada una.",
-          "Las fotos suben directo a S3 con un enlace temporal (D-16; detalle en el documento de arquitectura). Mientras no hay despliegue en AWS, y en las pruebas, una carpeta del servidor hace las veces de S3, con enlaces temporales que firma el mismo servidor (D-41).",
+          "Las fotos suben directo a S3 con un enlace temporal (D-16; detalle en el documento de arquitectura). Mientras no hay despliegue en AWS, y en las pruebas, una carpeta del servidor hace las veces de S3, con enlaces temporales que firma el mismo servidor (D-41). En AWS, el enlace de subida es un PUT prefirmado de S3 que firma el tipo, el tamaño y que la foto todavía no exista: una foto ya subida no se pisa, como en la carpeta (D-16). S3 no revisa el contenido al subirlo: el servidor revisa el formato y el tamaño al confirmar la foto. El de vista es un GET prefirmado, con las mismas vigencias: 10 minutos para subir y 15 para ver.",
           "Una foto rechazada (RF-06, RF-07) o reemplazada (RF-09) se borra de la base de datos y de S3.",
           "Cada foto dice a qué muestra va (D-25): la página la manda al pedir el enlace, y el enlace la guarda. Si el lote cambió mientras la página estaba abierta, por ejemplo porque otro usuario analizó la muestra, la foto no se guarda y se pide recargar la página con «El lote cambió mientras tenías abierta esta página: recárgala para ver qué muestra recibe las fotos.»."
         ]
@@ -268,7 +268,7 @@
       "encabezado": "Validar la nitidez y la luz de cada foto",
       "titulo": "Validar la calidad de cada foto (nitidez y luz) y pedir repetirla si no sirve",
       "codigo": "RF-06",
-      "version": "1.1",
+      "version": "1.2",
       "fuente": "Proceso propuesto (TO-BE), paso de revisión de las fotos.",
       "descripcion": "Antes de analizar, el sistema revisa que cada foto tenga nitidez y luz suficientes. Si una foto no sirve, explica por qué y pide repetirla.",
       "justificacion": "Una foto borrosa u oscura hace que la separación y la clasificación fallen, y el resultado sale equivocado.",
@@ -276,9 +276,12 @@
       "restricciones": {
         "b": [
           "La revisión la hace el servicio de IA con OpenCV.",
-          "Los umbrales de nitidez y de luz se ajustan con la prueba de fotos reales (P-12).",
+          "Los umbrales de nitidez y de luz se ajustan con la prueba de fotos reales (P-12). Mientras tanto se usan los que se fijaron con 30 fotos originales del conjunto de prueba del dataset: «Poca luz» si la mediana del brillo del papel es menor que 110 (de 0 a 255) y «Foto borrosa» si la varianza del laplaciano alrededor del borde de los granos es menor que 100. Se cambian en el servicio de IA sin tocar el código (`INSPECTIA_LUZ_MINIMA` e `INSPECTIA_NITIDEZ_MINIMA`, D-46).",
           "La revisión va en dos tiempos (D-46): al confirmar cada foto, el servidor le pide al servicio de IA la revisión rápida (nitidez, luz, granos pegados y cuántos granos tiene), y la foto queda «Aprobada» o «Por repetir», con su motivo, en ese momento. La clasificación (RF-08) sigue en la cola, al analizar la muestra.",
-          "Si el servicio de IA no responde al subir la foto, la foto queda «Cargada» y se revisa en la cola, antes de clasificarla. Esa revisión no cuenta en el tiempo de RNF-01, que empieza al enviar las fotos."
+          "Si el servicio de IA no responde al subir la foto, la foto queda «Cargada» y se revisa en la cola, antes de clasificarla. Esa revisión no cuenta en el tiempo de RNF-01, que empieza al enviar las fotos. El servidor espera la revisión 10 s; cualquier otra falla de la revisión también deja la foto «Cargada». Con el clasificador falso no hay revisión rápida y la foto queda «Cargada».",
+          "Si una foto tiene varios problemas, se repite por uno solo, en este orden: poca luz, foto borrosa y granos pegados (RF-07).",
+          "El servicio de IA lee fotos JPG o PNG de hasta 20 MB y 120 megapíxeles, ya giradas según su EXIF. Una foto que no puede leer queda «Cargada» al confirmarla y, en la cola, devuelve la muestra con el mensaje general (D-44).",
+          "Con alguna foto «Por repetir», «Analizar la muestra» no envía la muestra: el botón dice qué fotos repetir, y si la petición llega igual, el servidor responde 400 con «Repite las fotos marcadas «Por repetir» antes de analizar la muestra.» (`analisis.fotos.por_repetir`)."
         ]
       },
       "prioridad": "Media",
@@ -304,27 +307,28 @@
         ]
       },
       "rnf": "RNF-01 (tiempo de respuesta) y RNF-06 (facilidad de uso).",
-      "estado": "Aprobado",
+      "estado": "Implementado",
       "observaciones": "Los granos pegados se revisan en RF-07, durante la separación."
     },
     {
       "encabezado": "Separar y recortar los granos",
       "titulo": "Separar y recortar los granos de cada foto, con control de granos pegados",
       "codigo": "RF-07",
-      "version": "1.1",
+      "version": "1.2",
       "fuente": "D-08 (captura y análisis del lote) y D-09 (control de granos pegados).",
       "descripcion": "El servicio de IA encuentra cada grano en las fotos aprobadas, revisa que no haya granos pegados y recorta cada grano para clasificarlo.",
       "justificacion": "El modelo clasifica granos sueltos; así la empresa no tiene que fotografiar grano por grano.",
       "precondiciones": "Las fotos del lote están cargadas (RF-05) y, cuando la validación de RF-06 está disponible, aprobadas.",
       "restricciones": {
         "b": [
-          "Usa el script de OpenCV que, con las fotos del dataset, encontró el grano correcto en el 99,8 % de los casos (ver Componentes de la solución).",
+          "Usa el script de OpenCV que, con las fotos del dataset, encontró el grano correcto en el 99,8 % de los casos (ver Componentes de la solución). Cambia en cuatro cosas, porque una foto de un lote tiene unos 50 granos y no uno: la detección corre en la foto reducida a 1156 px de lado mayor, la escala de las fotos del dataset; el área mínima de una región baja de 0,0015 a 0,0003 de la imagen; se descarta como mancha lo que mide menos de 0,3 veces la mediana de la foto, y los recortes salen de la foto en su resolución completa. Con 20 fotos del conjunto de prueba, el recorte del servicio y el del script dan la misma clase en las 20.",
           "Los recortes se hacen igual que los del entrenamiento, para que el modelo los reconozca (D-08).",
-          "Granos pegados: una región con un área de al menos el doble de la mediana de los granos de esa foto (D-09).",
+          "Granos pegados: una región con un área de al menos el doble de la mediana de los granos de esa foto (D-09). El doble se puede cambiar en el servicio de IA sin tocar el código (`INSPECTIA_FACTOR_PEGADOS`). Límite conocido: dos granos más pequeños que la mediana que se tocan suman menos del doble y cuentan como un solo grano; se decide con la prueba de fotos reales (P-12).",
           "La muestra debe tener al menos 100 granos válidos entre todas las fotos (D-23).",
           "Las regiones de granos pegados se guardan con su foto, para mostrar dónde están mientras la foto está «Por repetir» (C2), y se borran con ella (D-45).",
           "Las posiciones de los granos y de las regiones van en píxeles de la foto ya girada según su orientación EXIF, que es como la muestra el navegador (C5, D-45).",
-          "Si entre todas las fotos hay menos de 100 granos válidos, la muestra vuelve a pendiente con el motivo «Menos de 100 granos» (D-44), y la página pide agregar una foto o repetir una con más granos (C3). Cada foto guarda cuántos granos encontró la revisión rápida (D-46)."
+          "Si entre todas las fotos hay menos de 100 granos válidos, la muestra vuelve a pendiente con el motivo «Menos de 100 granos» (D-44), y la página pide agregar una foto o repetir una con más granos (C3). Cada foto guarda cuántos granos encontró la revisión rápida (D-46). Cuenta solo los granos sueltos y completos: sin los cortados por el borde, sin las manchas y sin los de las regiones de granos pegados. Al terminar la muestra, cada foto queda con los granos que la cola clasificó en ella. Debajo de las fotos, la página muestra el total y avisa si no llega a 100, pero no bloquea el envío: el mínimo lo decide la cola (D-44).",
+          "Las regiones de granos pegados solo se guardan con el motivo «Granos pegados». La página las marca sobre la foto entera con un recuadro punteado, en proporción al tamaño original de la foto: la API no responde el ancho y el alto de la imagen."
         ]
       },
       "prioridad": "Alta",
@@ -354,14 +358,14 @@
         ]
       },
       "rnf": "RNF-01 (tiempo de respuesta).",
-      "estado": "Aprobado",
+      "estado": "Implementado",
       "observaciones": "Falta probarlo con fotos reales de unos 50 granos (P-12)."
     },
     {
       "encabezado": "Clasificar cada grano con el modelo de IA",
       "titulo": "Clasificar cada grano como sano o no sano con el modelo de IA",
       "codigo": "RF-08",
-      "version": "1.2",
+      "version": "1.3",
       "fuente": "Problema general del sector cacaotero (D-19) y pauta del docente sobre los modelos de IA (RP-25).",
       "descripcion": "El servicio de IA clasifica cada grano recortado en RF-07 como sano o no sano con el modelo elegido (D-18) y le devuelve a la API la posición, la clase y la confianza de cada grano. El modelo elegido es EfficientNet-B0 v1.0, de la release `modelos-v1.0` de Julián, en formato SavedModel de TensorFlow (D-40).",
       "justificacion": "Es el núcleo de InspectIA: reemplaza la evaluación manual, que depende de la experiencia de una persona, por un criterio uniforme. Sin esta clasificación no se puede calcular el porcentaje de granos sanos del lote (RF-10).",
@@ -377,10 +381,12 @@
           "El modelo mira el grano por fuera: no mide la fermentación interna (D-17).",
           "El modelo llega entrenado y la app no lo reentrena (D-03).",
           "Corre sin GPU, en la instancia t4g.medium (D-16).",
-          "Un grano es no sano si el modelo le da 0,5 o más de probabilidad de no sano: es el umbral con el que Julián midió el modelo (RNF-07).",
-          "EfficientNet-B0 clasifica 100 granos en unos 1,9 s: 19 ms por grano con 2 hilos de CPU, una estimación de Julián para la t4g.medium que se confirma al desplegar (D-16). Julián aplicó D-18 con un límite de 4 s por 100 granos, para que el análisis completo quepa en RNF-01 (P-01).",
-          "Si el servicio de IA no responde en la cola, la muestra vuelve a pendiente, sin resultado, con el motivo «Sin respuesta del servicio de IA» (D-44), y la página lo dice (C6).",
-          "Solo puede estar en uso un modelo con todas sus métricas y un F1 macro de 65 % o más: la base lo exige (C4, RNF-07, P-02, D-48)."
+          "Un grano es no sano si el modelo le da 0,5 o más de probabilidad de no sano: es el umbral con el que Julián midió el modelo (RNF-07). La confianza es la probabilidad de la clase elegida por 100, con 2 decimales: de 50 a 100.",
+          "EfficientNet-B0 clasifica 100 granos en unos 1,9 s: 19 ms por grano con 2 hilos de CPU, una estimación de Julián para la t4g.medium que se confirma al desplegar (D-16). Julián aplicó D-18 con un límite de 4 s por 100 granos, para que el análisis completo quepa en RNF-01 (P-01). El servicio de IA clasifica los recortes de a 16 y lee, revisa y clasifica a lo sumo 2 fotos o análisis a la vez, para caber en el límite de memoria de su contenedor en producción (1,5 GB): con 16, en el PC de desarrollo, usa unos 0,75 GB y clasifica 150 granos en unos 3 s con 2 hilos. Las dos cosas se cambian sin tocar el código, y la memoria y el tiempo se confirman en la t4g.medium (RNF-01 C3).",
+          "Si el servicio de IA no responde en la cola, la muestra vuelve a pendiente, sin resultado, con el motivo «Sin respuesta del servicio de IA» (D-44), y la página lo dice (C6). «No responde» es no conectar, no responder en 60 s o responder con un error 5xx; un error 4xx u otra falla devuelve la muestra con el mensaje general.",
+          "Solo puede estar en uso un modelo con todas sus métricas y un F1 macro de 65 % o más: la base lo exige (C4, RNF-07, P-02, D-48).",
+          "Antes de clasificar, cada recorte pasa por un JPG de calidad 95 y se lee con el decodificador de TensorFlow, como los recortes del entrenamiento, y se prepara como en `inferencia.py` de Julián: con el mismo recorte, el servicio da las mismas probabilidades (diferencia menor que 0,002, D-40).",
+          "El servicio de IA solo arranca si el SHA-256 del modelo coincide con el de `ia-servicio/modelos.json` (D-40). Al arrancar, el servidor registra los 5 modelos que declara el servicio, con sus métricas, y pone en uso solo el que el servicio cargó (D-48); si el servicio no responde, el servidor arranca igual y vuelve a intentarlo cada 15 s."
         ]
       },
       "prioridad": "Alta",
@@ -417,19 +423,21 @@
       "encabezado": "Pedir otra foto si la IA duda",
       "titulo": "Pedir una foto más clara o más fotos cuando la confianza del modelo es baja",
       "codigo": "RF-09",
-      "version": "1.3",
+      "version": "1.4",
       "fuente": "Proceso propuesto (TO-BE).",
       "descripcion": "Si el modelo clasifica demasiados granos con confianza baja, el sistema pide repetir la foto con más granos dudosos antes de dar el resultado.",
       "justificacion": "Un resultado con muchos granos dudosos no es confiable para decidir qué hacer con el lote.",
       "precondiciones": "Los granos de la muestra ya fueron clasificados (RF-08).",
       "restricciones": {
         "b": [
-          "Se pide repetir una foto si más del 10 % de los granos tienen confianza baja.",
+          "Se pide repetir una foto si más del 10 % de los granos tienen confianza baja. El 10 % se cuenta sobre todos los granos de la muestra, y se pide repetir la foto con más granos dudosos (en empate, la de número menor), una sola por vez (D-44).",
           "La foto nueva reemplaza a la anterior, que se borra (RF-05): se mantienen 2 o 3 fotos y al menos 100 granos (D-23, D-26).",
-          "Se permiten como máximo 2 repeticiones por muestra; si los granos dudosos siguen pasando del 10 %, el sistema da el resultado con un aviso de confianza baja.",
+          "Se permiten como máximo 2 repeticiones por muestra; si los granos dudosos siguen pasando del 10 %, el sistema da el resultado con un aviso de confianza baja. Una repetición cuenta al pedirla, no al reemplazar la foto.",
           "El 10 % y el umbral de confianza baja son parámetros del sistema que fija el equipo (P-15); el administrador de empresa no los cambia. Se configuran en el servidor y cada muestra guarda una copia de los valores que usó.",
           "Si alguna muestra del lote tiene el aviso de confianza baja, el resultado del lote también lo muestra (D-25).",
-          "Las 2 repeticiones son solo las que pide esta ficha por granos dudosos: una foto rechazada al subirla (RF-06, RF-07) o reemplazada por el usuario antes de enviar la muestra (RF-05 C5) no cuenta."
+          "Las 2 repeticiones son solo las que pide esta ficha por granos dudosos: una foto rechazada al subirla (RF-06, RF-07) o reemplazada por el usuario antes de enviar la muestra (RF-05 C5) no cuenta.",
+          "Mientras la foto está «Por repetir», el servidor guarda sus granos para mostrar cuáles son dudosos, en ámbar con «?» y sin su clase, porque todavía no hay resultado; la muestra guarda la copia del umbral y del 10 % que usó (C5). Esos granos se borran con la foto al reemplazarla (RF-05).",
+          "La regla es del dominio del servidor: corre también con el clasificador falso."
         ]
       },
       "prioridad": "Media",
@@ -459,7 +467,7 @@
         ]
       },
       "rnf": "RNF-06 (facilidad de uso) y RNF-07 (F1-score mínimo).",
-      "estado": "Aprobado",
+      "estado": "Implementado",
       "observaciones": "El 10 % y el umbral de confianza baja son valores iniciales; se fijan con los resultados del modelo en el `val` de Julián, no con la prueba (P-15)."
     },
     {

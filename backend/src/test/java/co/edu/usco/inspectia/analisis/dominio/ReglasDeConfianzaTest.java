@@ -3,9 +3,9 @@
  * Descripción: Pruebas unitarias de la confianza de los granos: el umbral de los dudosos, el máximo de dudosos de una
  *              muestra y el aviso de confianza baja, con sus límites (RF-09, RF-11, P-15).
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis.dominio;
 
@@ -49,6 +49,16 @@ class ReglasDeConfianzaTest {
         assertThat(reglas.aviso(11, 100, 1)).isFalse();
         assertThat(reglas.aviso(11, 100, 0)).as("sin repeticiones, como en el PR 3").isFalse();
         assertThat(reglas.aviso(10, 100, 2)).isFalse();
+    }
+
+    @Test
+    @DisplayName("RF-09 · C1 · con más del 10 % de dudosos pide repetir una foto mientras la muestra lleve menos de 2 repeticiones; con 10 % o menos, no pide nada (C2)")
+    void pideRepetir() {
+        assertThat(reglas.pideRepetir(11, 100, 0)).isTrue();
+        assertThat(reglas.pideRepetir(11, 100, 1)).isTrue();
+        assertThat(reglas.pideRepetir(11, 100, 2)).as("con 2 repeticiones sale el aviso, no otra repetición").isFalse();
+        assertThat(reglas.pideRepetir(10, 100, 0)).isFalse();
+        assertThat(reglas.aviso(11, 100, 2)).isNotEqualTo(reglas.pideRepetir(11, 100, 2));
     }
 
     @Test

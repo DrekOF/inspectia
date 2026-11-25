@@ -6,7 +6,7 @@
  * Fecha de creación: 20/10/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.9
+ * Versión: 1.10
  */
 
 /** Textos en inglés, por clave. Tiene las mismas claves que es.js (i18n.test.js lo revisa). */
@@ -366,4 +366,47 @@ export default {
   'modeloIa.comparacionDescripcion': 'The models the team compared, measured on the same test set, from the highest macro F1-score to the lowest.',
   'modeloIa.tabla': 'Model metrics',
   'modeloIa.columnaModelo': 'Model',
+
+  // AI service review of the photos and the returned sample (front A: RF-06, RF-07, RF-08 C6, RF-09, D-44 to D-46)
+  'fotos.aprobada': 'Photo {numero} approved.',
+  'fotos.porRepetir': 'Photo {numero} needs a retake.',
+  'fotos.repetir': 'Retake photo',
+  'fotos.granosEncontrados_one': '{count} bean found',
+  'fotos.granosEncontrados_many': '{count} beans found',
+  'fotos.granosEncontrados_other': '{count} beans found',
+  'fotos.queHacer.BORROSA': 'Blurry photo: take it again holding the phone still.',
+  'fotos.queHacer.POCA_LUZ': 'Too dark: take it again with more light and no harsh shadows.',
+  'fotos.queHacer.GRANOS_PEGADOS': 'Touching beans: separate them where marked and take the photo again.',
+  'fotos.queHacer.GRANOS_DUDOSOS': 'More than {porcentaje} % of the beans were uncertain: take it again with good light and the phone still. Retake {repeticion} of 2.',
+  'fotos.queHacer.GRANOS_DUDOSOS_ultima': 'More than {porcentaje} % of the beans were uncertain: take it again with good light and the phone still. Retake 2 of 2: if they still exceed {porcentaje} %, the result will come with a low-confidence warning.',
+  'fotos.regionesPegadas_one': '{count} area with touching beans, marked on the photo.',
+  'fotos.regionesPegadas_many': '{count} areas with touching beans, marked on the photo.',
+  'fotos.regionesPegadas_other': '{count} areas with touching beans, marked on the photo.',
+  'fotos.granosDudosos_one': '{count} uncertain bean, marked with “?” on the photo.',
+  'fotos.granosDudosos_many': '{count} uncertain beans, marked with “?” on the photo.',
+  'fotos.granosDudosos_other': '{count} uncertain beans, marked with “?” on the photo.',
+  'fotos.totalDeGranos': 'All photos: {total} beans.',
+  'fotos.faltanGranos': 'The photos add up to {total} beans and at least 100 are needed: add photo 3 or retake one with more beans.',
+  'fotos.faltanGranosConTres': 'The photos add up to {total} beans and at least 100 are needed: retake a photo with more beans.',
+  'fotos.devuelta.POCOS_GRANOS': 'The sample came back without a result: the photos have fewer than 100 beans in total. Add photo 3 or retake a photo with more beans.',
+  'fotos.devuelta.POCOS_GRANOSConTres': 'The sample came back without a result: the photos have fewer than 100 beans in total. Retake a photo with more beans.',
+  'fotos.devuelta.SIN_RESPUESTA_DE_LA_IA': 'The AI service did not respond last time. Press “Analyze the sample” again.',
+  'analizar.repiteLaFoto': 'Retake photo {numero} to continue.',
+  'analizar.repiteLasFotos': 'Retake photos {numeros} to continue.',
+  'espera.porRepetir': 'Photo {numero} of the sample needs a retake: {motivo}.',
+  'espera.porRepetirDeLaMuestra': 'Photo {numero} of sample {muestra} needs a retake: {motivo}.',
+  'espera.porRepetirVarias': 'Photos {numeros} of the sample need a retake.',
+  'espera.porRepetirVariasDeLaMuestra': 'Photos {numeros} of sample {muestra} need a retake.',
+  'espera.queHacer.BORROSA': 'Take it again holding the phone still.',
+  'espera.queHacer.POCA_LUZ': 'Take it again with more light and no harsh shadows.',
+  'espera.queHacer.GRANOS_PEGADOS': 'Separate the beans where marked and take the photo again.',
+  'espera.queHacer.GRANOS_DUDOSOS': 'The uncertain beans are marked on the photo. Retake {repeticion} of 2.',
+  'espera.devuelta.POCOS_GRANOS': 'The sample has fewer than 100 beans: no result was calculated.',
+  'espera.devuelta.POCOS_GRANOSDeLaMuestra': 'Sample {muestra} has fewer than 100 beans: no result was calculated.',
+  'espera.devuelta.SIN_RESPUESTA_DE_LA_IA': 'The AI service did not respond: the sample is pending again, with no result.',
+  'espera.devuelta.SIN_RESPUESTA_DE_LA_IADeLaMuestra': 'The AI service did not respond: sample {muestra} is pending again, with no result.',
+  'espera.devueltaQueHacer.POCOS_GRANOS': 'Add photo 3 or retake a photo with more beans, then press “Analyze the sample” again.',
+  'espera.devueltaQueHacer.SIN_RESPUESTA_DE_LA_IA': 'Press “Analyze the sample” again in a few minutes.',
+  'resultado.confianzaBaja': 'Low confidence: confirm with the cut test.',
+  'resultado.confianzaBajaDetalle': 'More than {porcentaje} % of the beans were uncertain, even after retaking the photos twice.',
 };

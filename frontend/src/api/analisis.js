@@ -5,10 +5,11 @@
  *              con sus muestras, sus fotos y los granos marcados de cada una (RF-10, RF-11, RF-12, RF-14 C3), y el
  *              límite cercano de la sugerencia de otra muestra (D-47). La muestra en curso puede ser la segunda (D-25).
  *              También baja el reporte PDF del lote con la sesión (RF-15).
+ *              El avance y la muestra dicen por qué volvió sin resultado, según el servicio de IA (D-44, RF-09).
  * Fecha de creación: 23/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.2
+ * Versión: 1.3
  */
 
 /** @typedef {'PENDIENTE'|'EN_ESPERA'|'EN_PROCESO'|'TERMINADA'} EstadoDeMuestra el estado de una muestra */
@@ -21,6 +22,10 @@
  * @property {string|null} fechaInicio cuándo empezó a procesarse (ISO 8601)
  * @property {string|null} fechaFin cuándo terminó (ISO 8601)
  * @property {boolean} fallo si el último envío volvió sin resultado: la muestra quedó pendiente otra vez
+ * @property {'POCOS_GRANOS'|'SIN_RESPUESTA_DE_LA_IA'|null} [motivoDevolucion] por qué volvió (D-44); null si la
+ *   devolvió una foto o fue otra falla
+ * @property {number} [repeticiones] cuántas fotos pidió repetir RF-09 por granos dudosos, de 0 a 2
+ * @property {{ numero: number, motivo: string }[]} [fotosPorRepetir] las fotos «Por repetir» de la muestra
  */
 
 /**
@@ -52,6 +57,11 @@
  * @property {string|null} fechaEnvio cuándo se envió (ISO 8601)
  * @property {string|null} fechaFin cuándo terminó (ISO 8601)
  * @property {FotoMarcada[]} fotos sus fotos
+ * @property {'POCOS_GRANOS'|'SIN_RESPUESTA_DE_LA_IA'|null} [motivoDevolucion] por qué volvió sin resultado (D-44)
+ * @property {number} [repeticiones] cuántas fotos pidió repetir RF-09 por granos dudosos, de 0 a 2
+ * @property {{ numero: number, motivo: string }[]} [fotosPorRepetir] sus fotos «Por repetir»
+ * @property {boolean|null} [avisoConfianzaBaja] si salió con confianza baja (RF-09 C4); null mientras no termina
+ * @property {number|null} [porcentajeMaxDudosos] el máximo de dudosos que usó (P-15), con 1 decimal
  */
 
 /**

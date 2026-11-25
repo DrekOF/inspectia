@@ -7,7 +7,7 @@
  * Fecha de creación: 23/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.4
+ * Versión: 1.5
  */
 package co.edu.usco.inspectia.analisis.adaptadores.carpeta;
 
@@ -19,6 +19,7 @@ import co.edu.usco.inspectia.analisis.aplicacion.ArchivoGuardado;
 import co.edu.usco.inspectia.analisis.aplicacion.EnlaceTemporal;
 import co.edu.usco.inspectia.comun.errores.ConflictoExcepcion;
 import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -38,6 +39,9 @@ class AlmacenEnCarpetaTest {
     private static final String ARCHIVO = "m1-0199f0a0-0000-7000-8000-000000000003.jpg";
     private static final String LLAVE = EMPRESA + "/" + LOTE + "/" + ARCHIVO;
     private static final byte[] JPG = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0, 1, 2, 3, 4, 5};
+    private static final String REPORTE = "reportes/" + EMPRESA + "/" + LOTE
+            + "/0199f0a0-0000-7000-8000-000000000004-es.pdf";
+    private static final byte[] PDF = "%PDF-1.7 reporte".getBytes(StandardCharsets.US_ASCII);
 
     @TempDir
     private Path carpeta;
@@ -165,5 +169,18 @@ class AlmacenEnCarpetaTest {
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> almacen.guardar(llave, JPG)).isInstanceOf(IllegalArgumentException.class);
         assertThat(carpeta.resolve(llave)).doesNotExist();
+    }
+
+    @Test
+    @DisplayName("D-16 · guardar con el tipo tampoco pisa un archivo: con la llave al azar del servidor, sería un error del servidor; y una llave con otra forma se rechaza")
+    void guardarConTipoNoPisa() {
+        almacen.guardar(LLAVE, JPG, "image/jpeg");
+
+        assertThatThrownBy(() -> almacen.guardar(LLAVE, PDF, "image/jpeg")).isInstanceOf(IllegalStateException.class);
+        assertThat(almacen.leer(LLAVE)).isEqualTo(JPG);
+        assertThatThrownBy(() -> almacen.guardar("reportes/" + EMPRESA + "/x.pdf", PDF, "application/pdf"))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> almacen.guardar("../" + REPORTE, PDF, "application/pdf"))
+                .isInstanceOf(IllegalArgumentException.class);
     }
 }

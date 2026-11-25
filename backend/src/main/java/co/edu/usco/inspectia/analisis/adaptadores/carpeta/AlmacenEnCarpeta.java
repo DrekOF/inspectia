@@ -7,13 +7,14 @@
  * Fecha de creación: 23/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.4
+ * Versión: 1.5
  */
 package co.edu.usco.inspectia.analisis.adaptadores.carpeta;
 
 import co.edu.usco.inspectia.analisis.aplicacion.AlmacenDeArchivos;
 import co.edu.usco.inspectia.analisis.aplicacion.ArchivoGuardado;
 import co.edu.usco.inspectia.analisis.aplicacion.EnlaceTemporal;
+import co.edu.usco.inspectia.analisis.aplicacion.LlavesDeArchivos;
 import co.edu.usco.inspectia.analisis.dominio.FormatoDeFoto;
 import co.edu.usco.inspectia.comun.errores.ConflictoExcepcion;
 import java.io.IOException;
@@ -51,13 +52,6 @@ public class AlmacenEnCarpeta implements AlmacenDeArchivos {
      */
     private static final Pattern LLAVE = Pattern.compile(
             "^" + UUID + "/" + UUID + "/m[12]-" + UUID + "\\.(jpg|png)$");
-
-    /**
-     * La forma de la llave de un archivo del reporte PDF de un lote (RF-15, D-50): la carpeta {@code reportes}, la
-     * empresa, el lote y el nombre del archivo, con un UUID y su idioma, como {@code <uuid>-es.pdf}.
-     */
-    private static final Pattern LLAVE_DE_REPORTE = Pattern.compile(
-            "^reportes/" + UUID + "/" + UUID + "/" + UUID + "-(es|en)\\.pdf$");
 
     private final Path raiz;
     private final FirmaDeEnlaces firma;
@@ -204,7 +198,8 @@ public class AlmacenEnCarpeta implements AlmacenDeArchivos {
      *
      * @param llave la llave
      * @return su ruta
-     * @throws IllegalArgumentException si la llave no tiene la forma que arma el backend o saldría de la carpeta
+     * @throws IllegalArgumentException si la llave no es de una foto ni de un reporte ({@link LlavesDeArchivos}) o
+     *         saldría de la carpeta
      */
     public Path ruta(String llave) {
         Path ruta = raiz.resolve(revisada(llave)).normalize();
@@ -214,25 +209,17 @@ public class AlmacenEnCarpeta implements AlmacenDeArchivos {
         return ruta;
     }
 
-    /**
-     * La llave, si es la de una foto: solo las fotos tienen enlaces firmados y se suben por ellos.
-     *
-     * @param llave la llave
-     * @return la misma llave
-     * @throws IllegalArgumentException si no tiene la forma {@code <empresa>/<lote>/m<muestra>-<archivo>}
-     */
+    /** Una llave de una foto o de un reporte; cualquier otra no se acepta. */
+    private static String revisada(String llave) {
+        LlavesDeArchivos.clase(llave);
+        return llave;
+    }
+
+    /** Una llave de una foto: solo las fotos tienen enlaces firmados. */
     private static String deFoto(String llave) {
         if (llave == null || !LLAVE.matcher(llave).matches()) {
             throw new IllegalArgumentException("Solo una foto tiene enlaces firmados: la llave no tiene la forma "
                     + "<empresa>/<lote>/m<muestra>-<archivo>");
-        }
-        return llave;
-    }
-
-    private static String revisada(String llave) {
-        if (llave == null || !(LLAVE.matcher(llave).matches() || LLAVE_DE_REPORTE.matcher(llave).matches())) {
-            throw new IllegalArgumentException("La llave no tiene la forma <empresa>/<lote>/m<muestra>-<archivo> ni "
-                    + "reportes/<empresa>/<lote>/<archivo>-<idioma>.pdf");
         }
         return llave;
     }

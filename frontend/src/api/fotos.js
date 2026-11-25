@@ -3,11 +3,11 @@
  * Descripción: Las peticiones de las fotos de la muestra de un lote (RF-05, RF-14 C5): la lista de las fotos, el
  *              enlace para subir una, que dice para qué muestra se pide (D-25), la subida al enlace y la confirmación
  *              (D-41). La subida no usa el cliente de la API: va directo al enlace firmado y sin el token de la sesión,
- *              como irá a S3.
+ *              como irá a S3. La foto confirmada trae la revisión del servicio de IA, si la hubo (D-46).
  * Fecha de creación: 23/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 import { ErrorDeApi } from './cliente.js';
 
@@ -20,12 +20,25 @@ import { ErrorDeApi } from './cliente.js';
  */
 
 /**
+ * @typedef {object} Rectangulo un rectángulo en píxeles de la foto ya girada según su EXIF (D-45)
+ * @property {number} x el borde izquierdo
+ * @property {number} y el borde de arriba
+ * @property {number} ancho el ancho
+ * @property {number} alto el alto
+ */
+
+/**
  * @typedef {object} Foto una foto de la muestra, como la responde el backend
  * @property {number} numero su número, de 1 a 3
  * @property {'JPG'|'PNG'} formato su formato
  * @property {number} tamanoBytes cuánto pesa
  * @property {'CARGADA'|'APROBADA'|'POR_REPETIR'} estado su estado; antes de la revisión de la IA, CARGADA
  * @property {EnlaceTemporal} vista el enlace para verla
+ * @property {'BORROSA'|'POCA_LUZ'|'GRANOS_PEGADOS'|'GRANOS_DUDOSOS'|null} [motivo] por qué hay que repetirla; null
+ *   salvo «Por repetir» (RF-06, RF-07 C2, RF-09 C1)
+ * @property {number|null} [granosEncontrados] los granos que encontró la revisión; null mientras está «Cargada» (D-46)
+ * @property {Rectangulo[]} [regionesPegadas] dónde están los granos pegados, con el motivo GRANOS_PEGADOS (D-45)
+ * @property {Rectangulo[]} [granosDudosos] los granos dudosos, sin su clase, con el motivo GRANOS_DUDOSOS (RF-09 C1)
  */
 
 /**
@@ -33,6 +46,9 @@ import { ErrorDeApi } from './cliente.js';
  * @property {number|null} muestra el número de la muestra, o null si todavía no tiene fotos
  * @property {string|null} estado el estado de la muestra, o null si todavía no tiene fotos
  * @property {Foto[]} fotos las fotos ya subidas
+ * @property {'POCOS_GRANOS'|'SIN_RESPUESTA_DE_LA_IA'|null} [motivoDevolucion] por qué volvió sin resultado (D-44)
+ * @property {number} [repeticiones] cuántas fotos pidió repetir RF-09 por granos dudosos, de 0 a 2
+ * @property {number|null} [porcentajeMaxDudosos] el máximo de dudosos que usó la muestra (P-15), con 1 decimal
  */
 
 /**

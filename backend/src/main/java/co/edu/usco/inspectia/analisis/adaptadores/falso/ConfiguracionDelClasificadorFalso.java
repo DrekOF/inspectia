@@ -3,9 +3,9 @@
  * Descripción: Arma el clasificador falso y registra su fila en la tabla modelo al arrancar, solo si está activo
  *              (inspectia.ia.clasificador=falso) (RF-08, D-39).
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis.adaptadores.falso;
 
@@ -18,7 +18,8 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * El clasificador falso ({@link ClasificadorFalso}). Se carga con {@code inspectia.ia.clasificador=falso}: la
+ * El clasificador falso ({@link ClasificadorFalso}) y, con él, la revisión de las fotos que no revisa
+ * ({@link SinRevisionDeFotos}). Se carga con {@code inspectia.ia.clasificador=falso}: la
  * condición no tiene valor por defecto, pero application.yml trae «falso» mientras no esté el servicio de IA (PR 4).
  * El PR del despliegue exigirá en AWS un valor explícito, para que el falso no llegue a producción sin que alguien lo
  * pida.
@@ -45,6 +46,16 @@ public class ConfiguracionDelClasificadorFalso {
         log.warn("El análisis usa el clasificador falso (inspectia.ia.clasificador=falso): sus resultados no son "
                 + "reales");
         return new ClasificadorFalso(propiedades.demora());
+    }
+
+    /**
+     * Sin revisión rápida de las fotos: con el clasificador falso, la foto confirmada queda «Cargada» (D-46).
+     *
+     * @return el revisor que no revisa
+     */
+    @Bean
+    SinRevisionDeFotos sinRevisionDeFotos() {
+        return new SinRevisionDeFotos();
     }
 
     /**

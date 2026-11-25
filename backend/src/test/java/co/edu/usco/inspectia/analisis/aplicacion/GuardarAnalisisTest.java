@@ -3,12 +3,13 @@
  * Descripción: Pruebas unitarias del caso de uso que guarda el análisis de una muestra, con Mockito: el lote bloqueado
  *              primero, la muestra terminada con sus conteos y su modelo, los granos, las fotos aprobadas y el
  *              resultado con los rangos vigentes y el límite de la sugerencia; la muestra 2, que recalcula el lote
- *              con la suma de las dos y descarta el reporte PDF de la 1; y los casos que no guardan nada (RF-10,
- *              RF-12, RF-13 C2, RF-15 C5, D-25, D-47, RNF-02).
+ *              con la suma de las dos y descarta el reporte PDF de la 1; la revisión de las fotos en la cola, el mínimo
+ *              de granos y la foto que RF-09 pide repetir; y los casos que no guardan nada (RF-06, RF-07, RF-09,
+ *              RF-10, RF-12, RF-13 C2, RF-15 C5, D-25, D-44, D-46, D-47, RNF-02).
  * Fecha de creación: 23/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.2
+ * Versión: 1.3
  */
 package co.edu.usco.inspectia.analisis.aplicacion;
 
@@ -28,6 +29,8 @@ import co.edu.usco.inspectia.analisis.dominio.ConteoDeMuestra;
 import co.edu.usco.inspectia.analisis.dominio.EstadoDeFoto;
 import co.edu.usco.inspectia.analisis.dominio.EstadoDeLote;
 import co.edu.usco.inspectia.analisis.dominio.FormatoDeFoto;
+import co.edu.usco.inspectia.analisis.dominio.MotivoDeDevolucion;
+import co.edu.usco.inspectia.analisis.dominio.MotivoDeFoto;
 import co.edu.usco.inspectia.analisis.dominio.ParametrosDelAnalisis;
 import co.edu.usco.inspectia.analisis.dominio.RangoDeCategoria;
 import co.edu.usco.inspectia.analisis.dominio.RecallsDelModelo;
@@ -38,6 +41,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -96,6 +100,8 @@ class GuardarAnalisisTest {
                 new FotoGuardada(FOTO_2, 2, "llave-2", FormatoDeFoto.JPG, 3, EstadoDeFoto.CARGADA)));
         when(muestras.terminar(any(), any())).thenReturn(true);
         when(muestras.devolver(TOMADA)).thenReturn(true);
+        when(muestras.devolver(eq(TOMADA), any())).thenReturn(true);
+        when(muestras.pedirRepeticion(any(), any(), any())).thenReturn(true);
         when(rangos.vigentes(EMPRESA)).thenReturn(RANGOS);
     }
 
@@ -221,14 +227,15 @@ class GuardarAnalisisTest {
     }
 
     @Test
-    @DisplayName("RF-07 · con 99 granos no calcula el resultado: la muestra vuelve a pendiente, sin granos ni resultado (prueba de límite)")
+    @DisplayName("RF-07 · C3 · con 99 granos no calcula el resultado: la muestra vuelve a pendiente con el motivo «Menos de 100 granos», sin granos ni resultado (prueba de límite)")
     void menosDeCienGranos() {
         GuardarAnalisis.Desenlace desenlace = guardar.guardar(TOMADA, new Clasificacion(FALSO, granos(99, 0, 0)));
 
         assertThat(desenlace).isEqualTo(GuardarAnalisis.Desenlace.DEVUELTA_POR_POCOS_GRANOS);
         InOrder orden = inOrder(lotes, muestras);
         orden.verify(lotes).estadoParaActualizar(EMPRESA, LOTE);
-        orden.verify(muestras).devolver(TOMADA);
+        orden.verify(muestras).devolver(TOMADA, MotivoDeDevolucion.POCOS_GRANOS);
+        verify(muestras, never()).guardarRevision(any(), any(), any());
         verify(muestras, never()).terminar(any(), any());
         verify(muestras, never()).guardarGranos(any(), anyList());
         verify(lotes, never()).guardarResultado(any(), any(), any(), any());
@@ -329,18 +336,149 @@ class GuardarAnalisisTest {
     }
 
     @Test
-    @DisplayName("RF-09 · después de 2 repeticiones, una muestra con más del 10 % de dudosos termina con el aviso de confianza baja; sin repeticiones, no")
+    @DisplayName("RF-09 · C4 · después de 2 repeticiones, una muestra con más del 10 % de dudosos termina con el aviso de confianza baja; sin repeticiones, pide repetir una foto")
     void avisoDeConfianzaBaja() {
         when(muestras.conteosTerminados(EMPRESA, LOTE)).thenReturn(List.of(new ConteoDeMuestra(100, 100, EFFICIENTNET)));
         MuestraTomada repetida = new MuestraTomada(MUESTRA, EMPRESA, LOTE, 1, 2, INICIO);
 
-        guardar.guardar(repetida, new Clasificacion(FALSO, granos(100, 0, 11)));
-        guardar.guardar(TOMADA, new Clasificacion(FALSO, granos(100, 0, 11)));
+        assertThat(guardar.guardar(repetida, new Clasificacion(FALSO, granos(100, 0, 11))))
+                .isEqualTo(GuardarAnalisis.Desenlace.TERMINADA);
+        assertThat(guardar.guardar(TOMADA, new Clasificacion(FALSO, granos(100, 0, 11))))
+                .isEqualTo(GuardarAnalisis.Desenlace.DEVUELTA_POR_DUDOSOS);
 
         verify(muestras).terminar(repetida, new TerminoDeMuestra(MODELO, 100, 100, true, new BigDecimal("60"),
                 new BigDecimal("10"), FIN));
+        verify(muestras, never()).terminar(eq(TOMADA), any());
+        verify(muestras, never()).pedirRepeticion(eq(repetida), any(), any());
+    }
+
+    @Test
+    @DisplayName("RF-09 · C1 · con 11 dudosos de 100, pide repetir la foto con más dudosos: la muestra vuelve con una repetición y la copia del umbral, la foto queda por repetir con sus granos guardados para mostrar cuáles son, y no hay resultado")
+    void pideRepetirLaFotoConMasDudosos() {
+        // granos(100, 0, 11) reparte los granos entre las fotos 1 y 2: la 1 tiene 6 dudosos y la 2, 5.
+        GuardarAnalisis.Desenlace desenlace = guardar.guardar(TOMADA, new Clasificacion(FALSO, granos(100, 0, 11)));
+
+        assertThat(desenlace).isEqualTo(GuardarAnalisis.Desenlace.DEVUELTA_POR_DUDOSOS);
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<GranoDeFoto>> guardados = ArgumentCaptor.forClass(List.class);
+        InOrder orden = inOrder(lotes, muestras);
+        orden.verify(lotes).estadoParaActualizar(EMPRESA, LOTE);
+        orden.verify(muestras).pedirRepeticion(TOMADA, new BigDecimal("60"), new BigDecimal("10"));
+        orden.verify(muestras).guardarRevision(EMPRESA, FOTO_1, RevisionDeFoto.porRepetir(MotivoDeFoto.GRANOS_DUDOSOS,
+                50));
+        orden.verify(muestras).borrarGranos(EMPRESA, List.of(FOTO_1));
+        orden.verify(muestras).guardarGranos(eq(EMPRESA), guardados.capture());
+        assertThat(guardados.getValue()).hasSize(50).allSatisfy(grano -> assertThat(grano.fotoId()).isEqualTo(FOTO_1));
+        verify(muestras, never()).guardarRevision(eq(EMPRESA), eq(FOTO_2), any());
+        verify(muestras, never()).terminar(any(), any());
+        verify(muestras, never()).aprobarFotos(any(), any());
+        verify(lotes, never()).guardarResultado(any(), any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("RF-09 · C1 · la foto que se repite es la de más dudosos; en empate, la de número menor; una sola por vez")
+    void cualFotoSeRepite() {
+        List<GranoClasificado> enLaDos = new ArrayList<>();
+        for (int i = 0; i < 100; i++) {
+            enLaDos.add(new GranoClasificado(i < 50 ? 1 : 2, i, 0, 5, 8, ClaseDeGrano.SANO,
+                    new BigDecimal(i >= 85 ? "40" : "90")));
+        }
+        guardar.guardar(TOMADA, new Clasificacion(FALSO, enLaDos));
+        verify(muestras).guardarRevision(EMPRESA, FOTO_2, RevisionDeFoto.porRepetir(MotivoDeFoto.GRANOS_DUDOSOS, 50));
+        verify(muestras, never()).guardarRevision(eq(EMPRESA), eq(FOTO_1), any());
+
+        MuestraTomada otra = new MuestraTomada(MUESTRA, EMPRESA, LOTE, 1, 1, INICIO.plusSeconds(1));
+        guardar.guardar(otra, new Clasificacion(FALSO, granos(100, 0, 12)));
+        verify(muestras).pedirRepeticion(otra, new BigDecimal("60"), new BigDecimal("10"));
+        verify(muestras).guardarRevision(EMPRESA, FOTO_1, RevisionDeFoto.porRepetir(MotivoDeFoto.GRANOS_DUDOSOS, 50));
+    }
+
+    @Test
+    @DisplayName("RF-09 · C2 · con 10 dudosos de 100 el análisis sigue sin pedir nada: termina sin aviso (prueba de límite)")
+    void conDiezPorCientoTermina() {
+        when(muestras.conteosTerminados(EMPRESA, LOTE)).thenReturn(List.of(new ConteoDeMuestra(100, 100, EFFICIENTNET)));
+
+        assertThat(guardar.guardar(TOMADA, new Clasificacion(FALSO, granos(100, 0, 10))))
+                .isEqualTo(GuardarAnalisis.Desenlace.TERMINADA);
+
         verify(muestras).terminar(TOMADA, new TerminoDeMuestra(MODELO, 100, 100, false, new BigDecimal("60"),
                 new BigDecimal("10"), FIN));
+        verify(muestras, never()).pedirRepeticion(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("RF-06 · C1 · si una foto que llegó «Cargada» no pasa la revisión de la cola, la muestra vuelve a pendiente sin motivo propio, con la revisión de cada foto guardada y sin granos ni resultado")
+    void fotoQueNoPasaLaRevisionDeLaCola() {
+        Map<Integer, RevisionDeFoto> revisiones = Map.of(1, RevisionDeFoto.aprobada(50),
+                2, RevisionDeFoto.porRepetir(MotivoDeFoto.BORROSA, 3));
+
+        GuardarAnalisis.Desenlace desenlace = guardar.guardar(TOMADA, new Clasificacion(FALSO, granos(50, 0, 0),
+                revisiones));
+
+        assertThat(desenlace).isEqualTo(GuardarAnalisis.Desenlace.DEVUELTA_POR_FOTOS_POR_REPETIR);
+        verify(muestras).devolver(TOMADA, null);
+        verify(muestras).guardarRevision(EMPRESA, FOTO_1, RevisionDeFoto.aprobada(50));
+        verify(muestras).guardarRevision(EMPRESA, FOTO_2, RevisionDeFoto.porRepetir(MotivoDeFoto.BORROSA, 3));
+        verify(muestras, never()).guardarGranos(any(), anyList());
+        verify(muestras, never()).terminar(any(), any());
+        verify(muestras, never()).pedirRepeticion(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("RF-07 · C3 · con el servicio de IA y menos de 100 granos, la muestra vuelve con «Menos de 100 granos» y cada foto queda aprobada con su conteo")
+    void pocosGranosConElServicio() {
+        Map<Integer, RevisionDeFoto> revisiones = Map.of(1, RevisionDeFoto.aprobada(49), 2,
+                RevisionDeFoto.aprobada(50));
+
+        GuardarAnalisis.Desenlace desenlace = guardar.guardar(TOMADA, new Clasificacion(FALSO, granos(99, 0, 0),
+                revisiones));
+
+        assertThat(desenlace).isEqualTo(GuardarAnalisis.Desenlace.DEVUELTA_POR_POCOS_GRANOS);
+        verify(muestras).devolver(TOMADA, MotivoDeDevolucion.POCOS_GRANOS);
+        verify(muestras).guardarRevision(EMPRESA, FOTO_1, RevisionDeFoto.aprobada(49));
+        verify(muestras).guardarRevision(EMPRESA, FOTO_2, RevisionDeFoto.aprobada(50));
+        verify(muestras, never()).guardarGranos(any(), anyList());
+    }
+
+    @Test
+    @DisplayName("D-46 · con el servicio de IA, al terminar borra los granos que hubiera en sus fotos antes de guardar los nuevos y cada foto queda aprobada con los granos que la cola clasificó en ella")
+    void terminaConLaRevisionDeLaCola() {
+        when(muestras.conteosTerminados(EMPRESA, LOTE)).thenReturn(List.of(new ConteoDeMuestra(100, 100, EFFICIENTNET)));
+        Map<Integer, RevisionDeFoto> revisiones = Map.of(1, RevisionDeFoto.aprobada(50), 2,
+                RevisionDeFoto.aprobada(50));
+
+        assertThat(guardar.guardar(TOMADA, new Clasificacion(FALSO, granos(100, 0, 0), revisiones)))
+                .isEqualTo(GuardarAnalisis.Desenlace.TERMINADA);
+
+        InOrder orden = inOrder(muestras);
+        orden.verify(muestras).terminar(eq(TOMADA), any());
+        orden.verify(muestras).borrarGranos(eq(EMPRESA), any());
+        orden.verify(muestras).guardarGranos(eq(EMPRESA), anyList());
+        orden.verify(muestras).aprobarFotos(EMPRESA, MUESTRA);
+        verify(muestras).guardarRevision(EMPRESA, FOTO_1, RevisionDeFoto.aprobada(50));
+        verify(muestras).guardarRevision(EMPRESA, FOTO_2, RevisionDeFoto.aprobada(50));
+    }
+
+    @Test
+    @DisplayName("RF-08 · una revisión de una foto que la muestra no tiene no deja guardar nada")
+    void revisionDeOtraFoto() {
+        Clasificacion clasificacion = new Clasificacion(FALSO, granos(100, 0, 0),
+                Map.of(3, RevisionDeFoto.aprobada(50)));
+
+        assertThatThrownBy(() -> guardar.guardar(TOMADA, clasificacion)).isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("3");
+        verify(muestras, never()).devolver(any(), any());
+        verify(muestras, never()).terminar(any(), any());
+    }
+
+    @Test
+    @DisplayName("RF-08 · C6 · devolver una muestra sin respuesta del servicio de IA bloquea primero el lote y guarda el motivo")
+    void devolverConMotivo() {
+        assertThat(guardar.devolver(TOMADA, MotivoDeDevolucion.SIN_RESPUESTA_DE_LA_IA)).isTrue();
+
+        InOrder orden = inOrder(lotes, muestras);
+        orden.verify(lotes).estadoParaActualizar(EMPRESA, LOTE);
+        orden.verify(muestras).devolver(TOMADA, MotivoDeDevolucion.SIN_RESPUESTA_DE_LA_IA);
     }
 
     @Test

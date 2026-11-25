@@ -1,0 +1,29 @@
+{
+  "rules": [
+    {
+      "rulePriority": 1,
+      "description": "InspectIA (D-16): borra las imagenes sin etiqueta despues de 1 dia",
+      "selection": {
+        "tagStatus": "untagged",
+        "countType": "sinceImagePushed",
+        "countUnit": "days",
+        "countNumber": 1
+      },
+      "action": {
+        "type": "expire"
+      }
+    },
+    {
+      "rulePriority": 2,
+      "description": "InspectIA (D-16): guarda solo las 15 imagenes mas recientes, para volver atras si hace falta",
+      "selection": {
+        "tagStatus": "any",
+        "countType": "imageCountMoreThan",
+        "countNumber": 15
+      },
+      "action": {
+        "type": "expire"
+      }
+    }
+  ]
+}

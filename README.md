@@ -1,10 +1,10 @@
 <!--
 Nombre: README.md
-Descripción: Presentación del monorepo de InspectIA: estructura, versiones, requisitos del entorno de desarrollo, base de datos local, frontend, integración continua y cita del dataset.
+Descripción: Presentación del monorepo de InspectIA: estructura, versiones, requisitos del entorno de desarrollo, base de datos local, servicio de IA, frontend, integración continua, despliegue en AWS y cita del dataset.
 Fecha de creación: 12/10/2026
 Actualización: 24/11/2026
 Autor: Equipo InspectIA
-Versión: 1.16
+Versión: 1.18
 -->
 
 # InspectIA
@@ -19,7 +19,7 @@ Proyecto final de Inteligencia Artificial, Universidad Surcolombiana. Docente: J
 |---|---|
 | `frontend/` | Página web: React y Material UI. |
 | `backend/` | Servidor: Java y Spring Boot, un solo programa dividido en módulos (D-21). |
-| `ia-servicio/` | Servicio de IA: Python, OpenCV y ONNX. |
+| `ia-servicio/` | Servicio de IA: Python, FastAPI, OpenCV y TensorFlow, con el modelo de Julián (D-40). |
 | `generador/` | Scripts de Python que generan los CRUD a partir de `specs/entidades/` (RP-23) y la lista de casos de prueba (RP-13). |
 | `infra/` | Docker Compose, scripts de base de datos, de compilación y de despliegue. |
 | `.github/workflows/` | La integración continua con GitHub Actions (RP-18 y RP-19). |
@@ -28,7 +28,7 @@ Proyecto final de Inteligencia Artificial, Universidad Surcolombiana. Docente: J
 
 ## Versiones
 
-Fijadas el 12/10/2026; las del frontend, el 20/10/2026. La versión exacta de cada librería queda en `backend/pom.xml` y `frontend/package.json`.
+Fijadas el 12/10/2026; las del frontend, el 20/10/2026, y las del servicio de IA y las del despliegue en AWS, el 24/11/2026. La versión exacta de cada librería queda en `backend/pom.xml`, `frontend/package.json` e `ia-servicio/requirements.txt`.
 
 | Pieza | Versión | Notas |
 |---|---|---|
@@ -46,9 +46,13 @@ Fijadas el 12/10/2026; las del frontend, el 20/10/2026. La versión exacta de ca
 | Pruebas de punta a punta | Playwright 1.64.1 y Selenium WebDriver 4.51.0 | Playwright con los motores de Chrome, Firefox y Safari, en PC y celular; Selenium con Chrome y Edge. |
 | Calidad del frontend | ESLint 10.13.0 y Stryker 10.0.0 | |
 | Calidad del backend | PIT 1.30.2 (`pitest-maven`), con `pitest-junit5-plugin` 1.2.3 | Pruebas de mutación del dominio del análisis, en el perfil `mutacion` de Maven: `./mvnw -Pmutacion test` desde `backend/`. |
-| Python | 3.13 | Para `ia-servicio/` y `generador/`. El generador usa Jinja2 3.1.6 y pytest 9.1.1 (`generador/requirements*.txt`). |
+| Python | 3.13 para `generador/`; 3.12 (3.12.16) para `ia-servicio/` | El generador usa Jinja2 3.1.6 y pytest 9.1.1 (`generador/requirements*.txt`). El servicio de IA usa la 3.12, la de su imagen de Docker y la de la CI. |
+| Servicio de IA | TensorFlow 2.21.0 (CPU), FastAPI 0.165.0 con Uvicorn 0.54.0, OpenCV 5.1.0 (`opencv-python-headless` 5.1.0.95), Pillow 13.0.0 y numpy 2.5.5 | TensorFlow 2.21 es la versión con la que Julián exportó el SavedModel (D-40). Todas publican paquetes para Linux amd64 y arm64 con Python 3.12. boto3 1.44.10 baja el modelo de S3; las pruebas usan pytest 9.2.0 y httpx 0.28.1 (`ia-servicio/requirements*.txt`). |
 | PostgreSQL | 18 | Corre en Docker; no hace falta instalarlo. |
+| AWS SDK for Java | 2.59.8 (BOM `software.amazon.awssdk:bom`) | Solo el cliente de S3, con el cliente HTTP de Apache: el backend guarda las fotos y los reportes en S3 y firma sus enlaces temporales (D-16). Se excluye `netty-nio-client`, que solo usan los clientes asíncronos. |
+| Docker Compose en la instancia | v5.6.0 | La instancia EC2 usa Amazon Linux 2023. `infra/aws/datos-de-usuario.sh` baja el plugin del release oficial y comprueba su SHA-256. |
 | GitHub Actions | `checkout` v7, `setup-java` v6, `setup-python` v7, `setup-node` v7 y `upload-artifact` v7, en Ubuntu 24.04 | Las acciones oficiales de GitHub, en su versión mayor; fijadas el 04/11/2026. |
+| GitHub Actions del despliegue | `docker/setup-buildx-action` v4, `docker/build-push-action` v7, `aws-actions/configure-aws-credentials` v6 y `aws-actions/amazon-ecr-login` v2 | Construyen las imágenes arm64 en `ubuntu-24.04-arm`, las suben a ECR y entran a AWS por OIDC, sin claves; fijadas el 24/11/2026. |
 
 ### Imágenes de Docker
 
@@ -57,16 +61,16 @@ En producción todo corre en una EC2 t4g, que tiene procesador ARM (Graviton, D-
 | Uso | Imagen base | Por qué |
 |---|---|---|
 | Base de datos | `postgres:18-alpine` | Imagen oficial. |
-| Backend: compilar | `eclipse-temurin:25-jdk-noble` | Ubuntu. |
-| Backend: ejecutar | `eclipse-temurin:25-jre-noble` | Solo el JRE: imagen más liviana. |
-| Servicio de IA | `python:3.13-slim` | Debian y no Alpine: OpenCV y ONNX Runtime publican paquetes para Linux con glibc, no para Alpine (musl). |
+| Backend: compilar | `eclipse-temurin:25-jdk-noble` | Ubuntu. La usa `backend/Dockerfile`. |
+| Backend: ejecutar | `eclipse-temurin:25-jre-noble` | Solo el JRE: imagen más liviana. Corre con el usuario `inspectia` (UID 10001) y el heap en el 60 % de la memoria del contenedor. |
+| Servicio de IA | `python:3.12.16-slim-trixie` | Debian y no Alpine: TensorFlow y OpenCV publican paquetes para Linux con glibc, no para Alpine (musl). La usa `ia-servicio/Dockerfile`. |
 | Frontend: compilar | `node:24-alpine` | Solo para compilar. En producción la página se sirve desde S3 y CloudFront. |
 
 Las imágenes propias se construyen para las dos arquitecturas con `docker buildx build --platform linux/amd64,linux/arm64`.
 
 ## Requisitos e instalación
 
-Necesitas Git, el JDK 25 de Temurin, Node 24, Python 3.13 y Docker Desktop. En Windows, desde PowerShell:
+Necesitas Git, el JDK 25 de Temurin, Node 24, Python 3.13 (y la 3.12 para el servicio de IA) y Docker Desktop. En Windows, desde PowerShell:
 
 ```powershell
 winget install --id Git.Git -e
@@ -101,7 +105,7 @@ Después de instalar, cierra y vuelve a abrir la terminal, y sigue con estos pas
    fnm env --use-on-cd --shell powershell | Out-String | Invoke-Expression
    ```
 
-3. **Python.** Puede convivir con otras versiones. Usa siempre `py -3.13`; por ejemplo, para crear un entorno virtual: `py -3.13 -m venv .venv`.
+3. **Python.** Puede convivir con otras versiones. Usa `py -3.13` para el generador; por ejemplo, para crear un entorno virtual: `py -3.13 -m venv .venv`. El servicio de IA usa la 3.12: `winget install --id Python.Python.3.12 -e`, o `uv python install 3.12`, que no toca el Python del sistema (ver `ia-servicio/README.md`).
 
 4. **Docker Desktop.** Necesita WSL 2 (el instalador lo ofrece). Ábrelo antes de usar `docker compose`.
 
@@ -150,11 +154,14 @@ Los comandos están en la sección Comandos de `CLAUDE.md`. En resumen:
 - **Contraseñas:** cada usuario cambia la suya con `PUT /api/v1/sesion/contrasena` (RF-18). Si el administrador de la plataforma olvida la suya, el equipo la restablece con un script de la base de datos (D-30); los pasos están en `infra/README.md`.
 - **Rangos de recomendación:** el administrador de empresa lista, edita en bloque y restaura los 4 rangos de su empresa en la pantalla «Rangos de recomendación» o en `/api/v1/rangos-recomendacion` (RF-13); los pasos para probar la API están en `infra/README.md`.
 - **Lotes:** el usuario final registra un lote en «Nuevo lote» o con `POST /api/v1/lotes` (RF-04), y él y el administrador de empresa ven los lotes de su empresa en «Historial» o en `GET /api/v1/lotes` (RF-14), con filtros por fecha del resultado, estado, categoría, código y quien registró el lote, solos o combinados (RF-14 C2); los pasos para probar la API están en `infra/README.md`.
-- **Fotos de la muestra:** después de registrar un lote, o con «Continuar» en el historial, el usuario final sube 2 o 3 fotos en «Fotos de la muestra»: en el celular, «Tomar foto» abre la cámara, y en el PC, «Elegir archivo» abre el selector (RF-05, RF-14 C5). Mientras no haya despliegue en AWS, las fotos se guardan en una carpeta de tu PC, fuera del repositorio, con enlaces que firma el backend (D-41). No hace falta tocar `infra/.env` ni reiniciar la base; ver «Fotos en tu PC» en `infra/README.md`.
-- **Resultado del lote:** con 2 o 3 fotos, el usuario final pulsa «Analizar la muestra». El análisis espera su turno en una cola guardada en la base (RNF-02) y la página muestra el avance; al terminar, «Resultado del lote» trae el porcentaje de granos sanos corregido (D-39) con su rango probable (D-43), la categoría probable con su recomendación (RF-12) y las fotos con cada grano marcado (RF-11). Si el resultado quedó a menos de 1 punto del límite de una categoría, la página lo dice, con el límite (D-47), y el usuario final puede analizar una segunda muestra del mismo lote; al terminar, el resultado suma los granos de las dos (D-25, RF-14 C6). «Ver» en el historial abre el mismo detalle, también a la administradora. Mientras no esté el servicio de IA (PR 4), los granos los da un clasificador falso; los pasos para probar la API están en `infra/README.md`.
+- **Fotos de la muestra:** después de registrar un lote, o con «Continuar» en el historial, el usuario final sube 2 o 3 fotos en «Fotos de la muestra»: en el celular, «Tomar foto» abre la cámara, y en el PC, «Elegir archivo» abre el selector (RF-05, RF-14 C5). En AWS suben directo a S3 con enlaces prefirmados (D-16); en tu PC, las fotos se guardan en una carpeta, fuera del repositorio, con enlaces que firma el backend (D-41). No hace falta tocar `infra/.env` ni reiniciar la base; ver «Fotos en tu PC» en `infra/README.md`.
+- **Revisión de las fotos:** con el servicio de IA, al confirmar cada foto el backend le pide la revisión rápida (D-46) y la foto queda «Aprobada», con cuántos granos tiene, o «Por repetir», con su motivo: foto borrosa, poca luz o granos pegados, marcados sobre la foto (RF-06, RF-07). Debajo de las fotos, la página suma los granos y avisa si no llegan a 100. Si la muestra vuelve sin resultado, la página dice por qué y qué hacer: una foto por repetir, menos de 100 granos o el servicio de IA sin responder (D-44). Si más del 10 % de los granos quedan dudosos, pide repetir la foto con más dudosos, marcados con «?», hasta 2 veces; después, el resultado sale con el aviso «Confianza baja: confirma con la prueba de corte.» (RF-09). En local, el backend sigue con el clasificador falso, que no revisa las fotos.
+- **Resultado del lote:** con 2 o 3 fotos, el usuario final pulsa «Analizar la muestra». El análisis espera su turno en una cola guardada en la base (RNF-02) y la página muestra el avance; al terminar, «Resultado del lote» trae el porcentaje de granos sanos corregido (D-39) con su rango probable (D-43), la categoría probable con su recomendación (RF-12) y las fotos con cada grano marcado (RF-11). Si el resultado quedó a menos de 1 punto del límite de una categoría, la página lo dice, con el límite (D-47), y el usuario final puede analizar una segunda muestra del mismo lote; al terminar, el resultado suma los granos de las dos (D-25, RF-14 C6). «Ver» en el historial abre el mismo detalle, también a la administradora. En local, los granos los da un clasificador falso, y en AWS, el servicio de IA; los pasos para probar la API están en `infra/README.md`.
 - **Reporte PDF:** en un lote analizado, «Descargar PDF» en el resultado, o el ícono de PDF de su fila en el historial, baja el reporte del lote en el idioma de la página, para el usuario final y la administradora (RF-15). Trae los datos del lote y de la empresa, el porcentaje corregido con su rango probable, la categoría probable con su recomendación y cada muestra con su modelo y sus fotos marcadas. Hay uno por idioma y se arma una sola vez: al bajarlo de nuevo es el mismo, aunque la empresa cambie sus rangos, y se rehace cuando termina la segunda muestra (D-50). Se baja por el backend con la sesión, con `GET /api/v1/lotes/{id}/reporte?idioma=es`; sin AWS se guarda en la misma carpeta de las fotos.
 - **Estadísticas:** la administradora de empresa ve en «Estadísticas» los lotes analizados de un periodo, por defecto los últimos 12 meses: cuántos son, el promedio de granos sanos, los lotes por categoría, la evolución del promedio por mes y el promedio por finca o proveedor, cada gráfica con su tabla (RF-16). Las fincas que solo se diferencian en mayúsculas, tildes o espacios cuentan como una. La API es `GET /api/v1/estadisticas`, con `desde` y `hasta` opcionales.
 - **Modelo de IA:** la administradora de empresa ve el modelo en uso con su F1-score, su precisión y su recall macro, su matriz de confusión, la tabla comparativa de los modelos (D-18, D-48) y la confianza promedio de los análisis de su empresa, de todos o de un periodo (RF-17). La API es `GET /api/v1/modelo`, con `desde` y `hasta` opcionales para la confianza.
+- **Servicio de IA:** `ia-servicio/` revisa las fotos, separa los granos y los clasifica con EfficientNet-B0 v1.0, el SavedModel de la release `modelos-v1.0` de Julián (RF-06 a RF-08, D-40). Al arrancar comprueba el SHA-256 del modelo con `ia-servicio/modelos.json` y, si no coincide, no arranca. El backend lo usa con `INSPECTIA_IA_CLASIFICADOR=servicio` e `INSPECTIA_IA_URL`. `ia-servicio/scripts/subir_modelos.py` sube los 5 modelos de la release a S3. Cómo crear su entorno, probarlo y arrancarlo: «Comandos» en `CLAUDE.md` y `ia-servicio/README.md`.
+- **Despliegue en AWS (D-16):** en cada push a `main`, la CI sube las imágenes a ECR, actualiza la instancia EC2 por SSM (con los secretos de SSM solo en memoria y la vuelta sola a la versión anterior si la nueva no queda sana), publica la página en S3 e invalida CloudFront. Trae el perfil `produccion` del backend, que exige S3 y el servicio de IA, la copia diaria de la base a S3 y la guía de la consola de AWS, paso a paso, en `infra/README.md`.
 - **Generador:** los CRUD (tablas, backend y pantallas) salen de `specs/entidades/*.json` y no se editan a mano (RP-23). Hoy tienen pantalla las empresas, los usuarios y los rangos. Ver `generador/README.md`.
 - **Casos de prueba:** `docs/casos-de-prueba.md` lista cada criterio de aceptación con sus pruebas y los que aún no tienen ninguna (RP-13). Lo arma `generador/casos_de_prueba.py` desde las marcas de las pruebas.
 
@@ -178,7 +185,11 @@ GitHub Actions corre `.github/workflows/ci.yml` en cada PR hacia `main`, en cada
 | Generador | Sus pruebas, que lo generado esté al día (`generar.py comprobar`) y que `docs/casos-de-prueba.md` también lo esté | 30 s |
 | Backend | `./mvnw verify`: las pruebas unitarias y las de integración, con PostgreSQL en Testcontainers | 2 min |
 | Frontend | `npm ci`, ESLint, Vitest y el build | 2 min |
+| Servicio de IA | Sus pruebas con pytest, también la de paridad con `inferencia.py`, con el modelo real: lo baja de la release de Julián (o de la caché) y comprueba su SHA-256 | Se mide en la primera corrida |
 | De punta a punta | Si pasan los tres anteriores, contra un solo entorno aislado: Playwright, en Chrome, Firefox y Safari, de PC y de celular, y Selenium, en Chrome | 13 min, 10 de ellos de Playwright |
+| Infraestructura | `bash infra/probar.sh`: la sintaxis y ShellCheck de los scripts del despliegue, los JSON de AWS, el compose de producción, la CloudFront Function, las políticas IAM y el script de arranque de la instancia | Segundos |
+| Imágenes Docker | Construye las imágenes arm64 del backend y del servicio de IA. La del servicio de IA la arranca con `ia-servicio/scripts/comprobar_imagen.sh` y le corre la prueba de paridad con el modelo de la release, comprobado por su SHA-256. Solo en `main` las sube a ECR, y la del servicio de IA solo si pasó la comprobación | Sin medir todavía |
+| Despliegue en AWS | Solo en `main`, si pasan todos los anteriores y están las 5 variables de AWS del repositorio: actualiza la instancia, publica la página, invalida CloudFront y comprueba el sitio. Sin las variables, se salta | Sin medir todavía |
 | Aviso de fallas | Solo en `main`: abre, comenta o cierra el issue de cada job | Segundos |
 
 - **Si un job falla en `main`:**
@@ -197,7 +208,7 @@ GitHub Actions corre `.github/workflows/ci.yml` en cada PR hacia `main`, en cada
   1. Settings → Rules → Rulesets → New ruleset → New branch ruleset.
   2. Nombre «main», Enforcement status en «Active» y, en Target branches, «Include default branch».
   3. Marca «Require a pull request before merging» y «Require status checks to pass».
-  4. En «Add checks», elige Generador, Backend, Frontend y De punta a punta.
+  4. En «Add checks», elige Generador, Backend, Frontend, Servicio de IA y De punta a punta.
   5. Deja marcado «Block force pushes» y guarda con «Create».
 - **Los avisos:** cada integrante, en la página del repositorio, Watch → Custom → Issues. Así se entera de los issues de la CI aunque no estén asignados a su nombre.
 - **El gasto:** sin un método de pago en la cuenta, al llegar al cupo Actions se detiene hasta el mes siguiente; no cobra.
@@ -223,3 +234,4 @@ Artículo de los autores:
 - Integración continua: `.github/workflows/ci.yml` (ver «Integración continua»).
 - Demostración de otra temática, para la sustentación (RP-23): `docs/demostracion-otra-tematica.md`.
 - Frontend: `frontend/README.md`.
+- Servicio de IA: `ia-servicio/README.md`.
