@@ -2,11 +2,12 @@
   Nombre: controlador.java.j2
   Descripción: Plantilla del controlador REST de una entidad, con roles y OpenAPI (RP-23). En una
                entidad por empresa, cada operación recibe el usuario de la sesión (RNF-03). Si la
-               entidad se desactiva, el listado se filtra con ?activo= (D-33).
+               entidad se desactiva, el listado se filtra con ?activo= (D-33). La página del listado
+               va de 0 a Pagina.PAGINA_MAXIMA, como el historial de lotes: con una mayor responde 400.
   Fecha de creación: 13/10/2026
-  Actualización: 26/10/2026
+  Actualización: 24/11/2026
   Autor: Equipo InspectIA
-  Versión: 1.3
+  Versión: 1.4
 #}
 {% from 'java/_macros.j2' import encabezado %}
 {% set sesion_param = '@Parameter(hidden = true) @AuthenticationPrincipal UsuarioEnSesion sesion' %}
@@ -52,8 +53,8 @@ public class {{ clase }}Controlador {
     /**
      * Lista {{ plural }} por páginas, {{ orden_texto }}.
      *
-     * @param pagina número de la página, desde 0
-     * @param tamano filas por página
+     * @param pagina número de la página, de 0 a {@link Pagina#PAGINA_MAXIMA}
+     * @param tamano filas por página, de 1 a {@link Pagina#TAMANO_MAXIMO}
 {% if activo %}
      * @param activo solo los activos ({@code true}) o solo los desactivados ({@code false}); sin él, todos
 {% endif %}
@@ -66,9 +67,10 @@ public class {{ clase }}Controlador {
     @PreAuthorize("{{ r.preautorizar }}")
     @Operation(summary = "{{ r.verbo }} {{ plural }}", description = {{ ('Página de ' ~ plural ~ ', ' ~ orden_texto ~ '. ' ~ roles) | java }})
     public Pagina<{{ clase }}Respuesta> listar(
-            @Parameter(description = "Número de la página, desde 0.")
+            @Parameter(description = "Número de la página, de 0 a " + Pagina.PAGINA_MAXIMA + ".")
             @RequestParam(name = "pagina", defaultValue = "0")
-            @Min(value = 0, message = "{validacion.minimo}") int pagina,
+            @Min(value = 0, message = "{validacion.minimo}")
+            @Max(value = Pagina.PAGINA_MAXIMA, message = "{validacion.maximo}") int pagina,
             @Parameter(description = "Filas por página, de 1 a " + Pagina.TAMANO_MAXIMO + ".")
             @RequestParam(name = "tamano", defaultValue = "" + Pagina.TAMANO_POR_DEFECTO)
             @Min(value = 1, message = "{validacion.minimo}")
