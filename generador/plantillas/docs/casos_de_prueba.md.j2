@@ -34,7 +34,7 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 - **{{ r.total }} criterios de aceptación** en {{ r.fichas }} fichas: {{ r.con_prueba }} con prueba{{ ' o verificación documentada' if r.verificaciones else '' }} y {{ r.pendientes }} pendientes{{ (' (' ~ r.eliminados ~ ' eliminados)') if r.eliminados else '' }}.
 - **{{ r.pruebas }} pruebas:** {{ r.java }} de Java ({{ r.generadas }} generadas), {{ r.javascript }} de JavaScript{{ (' (' ~ r.generadas_javascript ~ ' generadas)') if r.generadas_javascript else '' }} y {{ r.python }} de Python. Una prueba parametrizada cuenta una vez.
 {% if r.verificaciones %}
-- **{{ r.verificaciones }} verificaciones documentadas** en [`verificaciones.md`](verificaciones.md), para lo que no se prueba con código: {{ r.verificadas }} verificadas y {{ r.verificaciones_pendientes }} pendientes. Un criterio con una verificación pendiente sigue pendiente, aunque tenga pruebas.
+- **{{ r.verificaciones }} {{ 'verificación documentada' if r.verificaciones == 1 else 'verificaciones documentadas' }}** en [`verificaciones.md`](verificaciones.md), para lo que no se prueba con código: {{ r.verificadas }} {{ 'verificada' if r.verificadas == 1 else 'verificadas' }} y {{ r.verificaciones_pendientes }} {{ 'pendiente' if r.verificaciones_pendientes == 1 else 'pendientes' }}. Un criterio con una verificación pendiente sigue pendiente, aunque tenga pruebas.
 {% endif %}
 
 | Ficha | Criterios | Con prueba{{ ' o verificación' if r.verificaciones else '' }} | Pendientes |
