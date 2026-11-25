@@ -1,9 +1,9 @@
 # Nombre: test_casos.py
 # Descripción: Pruebas de la lista de casos de prueba que arma casos_de_prueba.py (RP-13).
 # Fecha de creación: 13/10/2026
-# Actualización: 20/10/2026
+# Actualización: 24/11/2026
 # Autor: Equipo InspectIA
-# Versión: 1.2
+# Versión: 1.3
 """Pruebas de la lista de casos de prueba (RP-13): la lectura de las marcas de Java, de Python y de
 JavaScript, el reparto por criterio, el documento del repositorio y las fichas «Implementado» sin todas
 sus pruebas (D-29)."""
@@ -12,9 +12,10 @@ import pytest
 
 import casos_de_prueba
 from conftest import RAIZ
+from inspectia_generador.carga import cargar_codigos
 from inspectia_generador.casos import (RUTA_DOCUMENTO, Criterio, Ficha, Prueba, Resultado, armar_documento,
-                                       documento, implementadas_incompletas, pruebas_java, pruebas_javascript,
-                                       pruebas_python, revisar)
+                                       buscar_pruebas, documento, implementadas_incompletas, leer_fichas,
+                                       pruebas_java, pruebas_javascript, pruebas_python, revisar)
 
 JAVA = '''package co.edu.usco.inspectia.ejemplo;
 
@@ -124,6 +125,37 @@ def test_marcas_de_python():
         ('test_dos', 'RF-02 · C4 · otra prueba', True),
         ('test_uno', 'RP-23 · una prueba del generador', False)]
     assert errores == ['generador/pruebas/test_ejemplo.py:15: test_sin_marca no tiene @pytest.mark.caso con su marca']
+
+
+@pytest.mark.caso('RP-13 · se leen las pruebas de Python del generador y las del servicio de IA')
+def test_pruebas_de_python_del_generador_y_del_servicio_de_ia(tmp_path):
+    for carpeta in ('generador/pruebas', 'ia-servicio/pruebas'):
+        (tmp_path / carpeta).mkdir(parents=True)
+        (tmp_path / carpeta / 'test_ejemplo.py').write_text(PYTHON, encoding='utf-8')
+    # conftest.py no es un archivo de prueba: lo que tenga no cuenta.
+    (tmp_path / 'ia-servicio' / 'pruebas' / 'conftest.py').write_text('def test_ayuda():\n    pass\n',
+                                                                      encoding='utf-8')
+
+    pruebas, errores = buscar_pruebas(tmp_path)
+
+    assert sorted({p.archivo for p in pruebas}) == ['generador/pruebas/test_ejemplo.py',
+                                                    'ia-servicio/pruebas/test_ejemplo.py']
+    assert len(pruebas) == 4
+    assert errores == ['generador/pruebas/test_ejemplo.py:15: test_sin_marca no tiene @pytest.mark.caso con su marca',
+                       'ia-servicio/pruebas/test_ejemplo.py:15: test_sin_marca no tiene @pytest.mark.caso con su marca']
+
+
+@pytest.mark.caso('RP-13 · las marcas del servicio de IA citan códigos que existen, como D-18, D-40 y D-48')
+def test_marcas_del_servicio_de_ia():
+    pruebas, errores = buscar_pruebas(RAIZ)
+    del_servicio = [p for p in pruebas if p.archivo.startswith('ia-servicio/pruebas/')]
+    codigos = {p.marca.split(' · ')[0] for p in del_servicio}
+
+    assert errores == []
+    assert {'D-18', 'D-40', 'D-48', 'RF-06', 'RF-07', 'RF-08'} <= codigos
+    assert codigos <= cargar_codigos(RAIZ / 'specs')
+    assert revisar(leer_fichas(RAIZ / 'specs' / 'fichas.json'), del_servicio,
+                   cargar_codigos(RAIZ / 'specs')).errores == []
 
 
 @pytest.mark.caso('RP-13 · se leen las marcas de las pruebas de JavaScript: el título de test o it, en Vitest, Playwright y Selenium')

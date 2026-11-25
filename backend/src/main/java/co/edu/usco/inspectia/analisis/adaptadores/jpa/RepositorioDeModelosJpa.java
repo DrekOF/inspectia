@@ -1,13 +1,15 @@
 /*
  * Nombre: RepositorioDeModelosJpa.java
- * Descripción: El puerto RepositorioDeModelos con JPA, sobre la tabla modelo (RF-08, D-39).
+ * Descripción: El puerto RepositorioDeModelos con JPA, sobre la tabla modelo: buscar, registrar y poner en uso un
+ *              modelo (RF-08, RF-17, D-18, D-39, D-48).
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis.adaptadores.jpa;
 
+import co.edu.usco.inspectia.analisis.aplicacion.MetricasDelModelo;
 import co.edu.usco.inspectia.analisis.aplicacion.ModeloRegistrado;
 import co.edu.usco.inspectia.analisis.aplicacion.RepositorioDeModelos;
 import co.edu.usco.inspectia.analisis.dominio.RecallsDelModelo;
@@ -41,5 +43,24 @@ public class RepositorioDeModelosJpa implements RepositorioDeModelos {
     @Transactional
     public void registrarSiFalta(String nombre, String version, RecallsDelModelo recalls) {
         modelos.registrarSiFalta(nombre, version, recalls.recallSano(), recalls.recallNoSano());
+    }
+
+    @Override
+    @Transactional
+    public boolean registrarSiFalta(MetricasDelModelo modelo) {
+        return modelos.registrarConMetricas(modelo.nombre(), modelo.version(), modelo.tipo(), modelo.f1Macro(),
+                modelo.precisionMacro(), modelo.recallMacro(), modelo.recallSano(), modelo.recallNoSano(),
+                modelo.precisionSano(), modelo.precisionNoSano(), modelo.sanosComoSanos(), modelo.sanosComoNoSanos(),
+                modelo.noSanosComoSanos(), modelo.noSanosComoNoSanos(), modelo.tiempoPorGranoMs()) == 1;
+    }
+
+    /** Primero saca de uso a los demás y después pone este, en la misma transacción: nunca hay dos en uso. */
+    @Override
+    @Transactional
+    public void ponerEnUso(String nombre, String version) {
+        modelos.sacarDeUsoLosDemas(nombre, version);
+        if (modelos.ponerEnUso(nombre, version) != 1) {
+            throw new IllegalStateException("El modelo " + nombre + " " + version + " no está registrado");
+        }
     }
 }

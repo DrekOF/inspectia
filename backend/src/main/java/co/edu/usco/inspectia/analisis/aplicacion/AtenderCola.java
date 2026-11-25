@@ -1,15 +1,16 @@
 /*
  * Nombre: AtenderCola.java
  * Descripción: Caso de uso que atiende la siguiente muestra de la cola de análisis: la toma, lee sus fotos, las
- *              clasifica fuera de toda transacción y guarda el resultado; si algo falla, la devuelve a pendiente
- *              (RNF-02 C3, RF-08, RF-10).
+ *              clasifica fuera de toda transacción y guarda el resultado; si algo falla, la devuelve a pendiente, con
+ *              el motivo si el servicio de IA no respondió (RNF-02 C3, RF-08 C6, RF-10, D-44).
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 package co.edu.usco.inspectia.analisis.aplicacion;
 
+import co.edu.usco.inspectia.analisis.dominio.MotivoDeDevolucion;
 import java.time.Clock;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -23,7 +24,9 @@ import org.springframework.stereotype.Service;
  * entre las dos se leen las fotos y se clasifican sin nada abierto en la base, aunque el clasificador tarde (RNF-01).
  *
  * <p>Si leer una foto, clasificar o guardar falla, la muestra vuelve a pendiente sin resultado y el error queda en el
- * registro del servidor (RF-08; specs/modelo-datos.md, muestra). No se reintenta sola: el usuario la envía de nuevo.
+ * registro del servidor (RF-08; specs/modelo-datos.md, muestra). Si el servicio de IA no respondió a tiempo, no se pudo
+ * conectar o falló ({@link SinRespuestaDeLaIaExcepcion}), vuelve con el motivo {@code SIN_RESPUESTA_DE_LA_IA}, que la
+ * página muestra (RF-08 C6, D-44). No se reintenta sola: el usuario la envía de nuevo.
  * Lo llama el trabajador de la cola y, en las pruebas de integración, la prueba misma.
  */
 @Slf4j
@@ -75,17 +78,25 @@ public class AtenderCola {
                     .toList();
             GuardarAnalisis.Desenlace desenlace = guardar.guardar(muestra, clasificador.clasificar(fotos));
             log.info("Análisis de la muestra {} del lote {}: {}", muestra.id(), muestra.loteId(), desenlace);
+        } catch (SinRespuestaDeLaIaExcepcion excepcion) {
+            log.error("El servicio de IA no respondió el análisis de la muestra {} del lote {}: vuelve a pendiente, sin "
+                    + "resultado", muestra.id(), muestra.loteId(), excepcion);
+            devolver(muestra, MotivoDeDevolucion.SIN_RESPUESTA_DE_LA_IA);
         } catch (RuntimeException excepcion) {
             log.error("El análisis de la muestra {} del lote {} falló: vuelve a pendiente, sin resultado", muestra.id(),
                     muestra.loteId(), excepcion);
-            devolver(muestra);
+            devolver(muestra, null);
         }
     }
 
     /** Si tampoco se puede devolver, la muestra queda «en proceso» y vuelve a la cola al arrancar el servidor. */
-    private void devolver(MuestraTomada muestra) {
+    private void devolver(MuestraTomada muestra, MotivoDeDevolucion motivo) {
         try {
-            guardar.devolver(muestra);
+            if (motivo == null) {
+                guardar.devolver(muestra);
+            } else {
+                guardar.devolver(muestra, motivo);
+            }
         } catch (RuntimeException excepcion) {
             log.error("No se pudo devolver a pendiente la muestra {}: vuelve a la cola al arrancar el servidor",
                     muestra.id(), excepcion);

@@ -1,19 +1,23 @@
 /*
  * Nombre: RepositorioDeMuestras.java
- * Descripción: Puerto de las muestras de los lotes, de sus fotos y de sus granos (D-21, RF-05, RF-10, RNF-02). Todas
- *              las consultas reciben la empresa de la sesión o la de la muestra (RNF-03).
+ * Descripción: Puerto de las muestras de los lotes, de sus fotos, de sus revisiones y de sus granos (D-21, RF-05,
+ *              RF-06, RF-07, RF-09, RF-10, RNF-02, D-44, D-46). Todas las consultas reciben la empresa de la sesión o
+ *              la de la muestra (RNF-03).
  * Fecha de creación: 23/11/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 package co.edu.usco.inspectia.analisis.aplicacion;
 
 import co.edu.usco.inspectia.analisis.dominio.ConteoDeMuestra;
 import co.edu.usco.inspectia.analisis.dominio.FormatoDeFoto;
+import co.edu.usco.inspectia.analisis.dominio.MotivoDeDevolucion;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -95,7 +99,8 @@ public interface RepositorioDeMuestras {
 
     /**
      * Envía una muestra pendiente a la cola: queda «en espera», con la fecha de envío y con quien la envía como quien
-     * la analizó. Si ya se había enviado antes y volvió sin resultado, las fechas guardan este último envío.
+     * la analizó. Si ya se había enviado antes y volvió sin resultado, las fechas guardan este último envío y se borra
+     * el motivo de la devolución (D-44).
      *
      * @param empresaId la empresa
      * @param muestraId la muestra
@@ -122,6 +127,56 @@ public interface RepositorioDeMuestras {
      * @return {@code true} si la devolvió
      */
     boolean devolver(MuestraTomada muestra);
+
+    /**
+     * Devuelve una muestra a pendiente, sin resultado y con el motivo, solo si sigue «en proceso» con la hora de inicio
+     * con que se tomó (D-44). Conserva su fecha de envío.
+     *
+     * @param muestra la muestra tomada de la cola
+     * @param motivo por qué vuelve, o {@code null} si la devuelve una foto por repetir u otra falla
+     * @return {@code true} si la devolvió
+     */
+    boolean devolver(MuestraTomada muestra, MotivoDeDevolucion motivo);
+
+    /**
+     * Devuelve una muestra a pendiente para repetir una foto por granos dudosos (RF-09 C1), solo si sigue «en proceso»
+     * con la hora de inicio con que se tomó: suma 1 a sus repeticiones y copia el umbral y el máximo de dudosos que usó,
+     * así la página muestra los dudosos con el mismo umbral (RF-09 C5). No lleva motivo de devolución: va en la foto.
+     *
+     * @param muestra la muestra tomada de la cola
+     * @param umbralConfianzaBaja el umbral de confianza baja que usó
+     * @param porcentajeMaxDudosos el máximo de dudosos que usó
+     * @return {@code true} si la devolvió
+     */
+    boolean pedirRepeticion(MuestraTomada muestra, BigDecimal umbralConfianzaBaja, BigDecimal porcentajeMaxDudosos);
+
+    /**
+     * Guarda la revisión de una foto (D-46): su estado, su motivo, sus granos encontrados y sus regiones de granos
+     * pegados, que reemplazan a las que tuviera.
+     *
+     * @param empresaId la empresa
+     * @param fotoId la foto
+     * @param revision la revisión
+     */
+    void guardarRevision(UUID empresaId, UUID fotoId, RevisionDeFoto revision);
+
+    /**
+     * Las regiones de granos pegados de unas fotos (D-45).
+     *
+     * @param empresaId la empresa
+     * @param fotoIds las fotos
+     * @return las regiones de cada foto que tiene; las demás no están
+     */
+    Map<UUID, List<Rectangulo>> regionesPegadas(UUID empresaId, Collection<UUID> fotoIds);
+
+    /**
+     * Borra los granos de unas fotos, como los de la foto que RF-09 pidió repetir, antes de guardar los de la muestra
+     * terminada.
+     *
+     * @param empresaId la empresa
+     * @param fotoIds las fotos
+     */
+    void borrarGranos(UUID empresaId, Collection<UUID> fotoIds);
 
     /**
      * Guarda los granos de las fotos de una muestra, en ese orden y en lotes de inserción.

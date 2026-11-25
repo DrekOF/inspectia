@@ -1,0 +1,37 @@
+{
+  "_header": {
+    "nombre": "esperado.json",
+    "descripcion": "Probabilidades de EfficientNet-B0 v1.0 (SavedModel de la release modelos-v1.0) para los 5 recortes de esta carpeta, calculadas con inferencia.py de Julián sin cambios (preparar + serve). La prueba de paridad (test_paridad.py) exige que el servicio dé lo mismo, con diferencia menor que 0,002 y sin cambios de clase (D-40).",
+    "fecha_creacion": "24/11/2026",
+    "actualizacion": "24/11/2026",
+    "autor": "Equipo InspectIA",
+    "version": "1.0"
+  },
+  "probabilidades": {
+    "mala-1.jpg": {
+      "pSana": 0.727657,
+      "pMala": 0.272343,
+      "clase": "sana"
+    },
+    "mala-12.jpg": {
+      "pSana": 0.038505,
+      "pMala": 0.961495,
+      "clase": "mala"
+    },
+    "sana-1049.jpg": {
+      "pSana": 0.747866,
+      "pMala": 0.252134,
+      "clase": "sana"
+    },
+    "sana-1117.jpg": {
+      "pSana": 0.322564,
+      "pMala": 0.677436,
+      "clase": "mala"
+    },
+    "sana-1210.jpg": {
+      "pSana": 0.92612,
+      "pMala": 0.07388,
+      "clase": "sana"
+    }
+  }
+}
