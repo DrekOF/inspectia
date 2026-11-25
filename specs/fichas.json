@@ -5,7 +5,7 @@
     "fecha_creacion": "12/10/2026",
     "actualizacion": "24/11/2026",
     "autor": "Equipo InspectIA",
-    "version": "1.23"
+    "version": "1.24"
   },
   "rf": [
     {
@@ -938,19 +938,19 @@
       "titulo": "Mantener separados los datos de cada empresa",
       "codigo": "RNF-03",
       "tipo": "Seguridad",
-      "version": "1.2",
+      "version": "1.3",
       "descripcion": "Cada empresa solo ve y modifica sus propios datos: lotes, fotos, resultados, reportes, usuarios, rangos y estadísticas. Todos los registros guardan la empresa a la que pertenecen, en una sola base de datos compartida. Hay dos excepciones: el administrador de la plataforma, que no pertenece a ninguna empresa (D-13), y la tabla de modelos de IA, común a todas (D-18).",
       "prioridad": "Alta",
       "criterios": {
         "b": [
           "Si un usuario pide un lote de otra empresa por su identificador, el sistema responde que no existe.",
           "Las listas y las estadísticas nunca mezclan datos de empresas distintas.",
-          "Las fotos y los reportes en S3 solo se abren con enlaces temporales generados para la empresa dueña.",
+          "Las fotos en S3 solo se abren con enlaces temporales generados para la empresa dueña, y los reportes solo se descargan por la API, con la sesión de esa empresa.",
           "Solo el administrador de la plataforma puede no tener empresa: la base de datos rechaza un usuario de otro rol sin empresa.",
           "Hay pruebas de seguridad que lo verifican (RP-12)."
         ]
       },
-      "observaciones": "C3: el reporte PDF no se abre con un enlace temporal, sino por el backend con la sesión (`GET /api/v1/lotes/{id}/reporte`), que revisa la empresa de cada petición (D-50). Es más estricto que lo que dice C3: el PDF no tiene enlace que se pueda copiar ni el bucket aparece en la página. Las fotos sí siguen con enlaces temporales (D-41)."
+      "observaciones": "C3: el texto cambió el 24/11/2026, por decisión de Cristhian, porque el reporte PDF no tiene enlace temporal: se descarga por el backend con la sesión (`GET /api/v1/lotes/{id}/reporte`), que revisa la empresa de cada petición (D-50). Así el PDF no tiene enlace que se pueda copiar ni el bucket aparece en la página. Las fotos siguen con enlaces temporales (D-41)."
     },
     {
       "encabezado": "Autenticación y permisos por rol",
