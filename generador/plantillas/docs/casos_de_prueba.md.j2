@@ -1,11 +1,11 @@
 {#
   Nombre: casos_de_prueba.md.j2
   Descripción: Plantilla de docs/casos-de-prueba.md: los criterios de aceptación de cada ficha con sus
-               pruebas y los que no tienen ninguna (RP-13).
+               pruebas y sus verificaciones documentadas, y los que no tienen ninguna (RP-13).
   Fecha de creación: 13/10/2026
-  Actualización: 20/10/2026
+  Actualización: 24/11/2026
   Autor: Equipo InspectIA
-  Versión: 1.1
+  Versión: 1.2
 #}
 {% set r = resumen %}
 <!--
@@ -31,10 +31,13 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 
 ## Resumen
 
-- **{{ r.total }} criterios de aceptación** en {{ r.fichas }} fichas: {{ r.con_prueba }} con prueba y {{ r.pendientes }} pendientes{{ (' (' ~ r.eliminados ~ ' eliminados)') if r.eliminados else '' }}.
+- **{{ r.total }} criterios de aceptación** en {{ r.fichas }} fichas: {{ r.con_prueba }} con prueba{{ ' o verificación documentada' if r.verificaciones else '' }} y {{ r.pendientes }} pendientes{{ (' (' ~ r.eliminados ~ ' eliminados)') if r.eliminados else '' }}.
 - **{{ r.pruebas }} pruebas:** {{ r.java }} de Java ({{ r.generadas }} generadas), {{ r.javascript }} de JavaScript{{ (' (' ~ r.generadas_javascript ~ ' generadas)') if r.generadas_javascript else '' }} y {{ r.python }} de Python. Una prueba parametrizada cuenta una vez.
+{% if r.verificaciones %}
+- **{{ r.verificaciones }} verificaciones documentadas** en [`verificaciones.md`](verificaciones.md), para lo que no se prueba con código: {{ r.verificadas }} verificadas y {{ r.verificaciones_pendientes }} pendientes. Un criterio con una verificación pendiente sigue pendiente, aunque tenga pruebas.
+{% endif %}
 
-| Ficha | Criterios | Con prueba | Pendientes |
+| Ficha | Criterios | Con prueba{{ ' o verificación' if r.verificaciones else '' }} | Pendientes |
 |---|---:|---:|---:|
 {% for f in fichas %}
 | {{ f.codigo }} · {{ f.titulo | celda }} | {{ f.total }} | {{ f.con_prueba }} | {{ f.pendientes }} |
@@ -46,7 +49,7 @@ generador/.venv/Scripts/python generador/casos_de_prueba.py generar
 | Criterio | Pruebas |
 |---|---|
 {% for c in f.criterios %}
-| C{{ c.numero }}. {{ c.texto | celda }} | {% if c.eliminado %}Eliminado{% elif c.pruebas %}{{ c.pruebas | map('referencia') | join('<br>') }}{% else %}**Pendiente**{% endif %} |
+| C{{ c.numero }}. {{ c.texto | celda }} | {% if c.eliminado %}Eliminado{% elif c.pruebas or c.verificaciones %}{{ '**Pendiente:** ' if c.pendiente else '' }}{{ ((c.pruebas | map('referencia') | list) + (c.verificaciones | map('verificacion') | list)) | join('<br>') }}{% else %}**Pendiente**{% endif %} |
 {% endfor %}
 {% if f.otras %}
 
