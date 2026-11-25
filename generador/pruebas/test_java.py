@@ -1,9 +1,9 @@
 # Nombre: test_java.py
 # Descripción: Pruebas de la generación de Java (persistencia, API y pruebas) y de los textos es/en.
 # Fecha de creación: 13/10/2026
-# Actualización: 26/10/2026
+# Actualización: 24/11/2026
 # Autor: Equipo InspectIA
-# Versión: 1.8
+# Versión: 1.9
 """Pruebas de lo que genera el generador para el backend: la persistencia de cada CRUD, la API de las
 entidades del alcance, incluidas las de una entidad por empresa y las de edición en bloque, y los textos
 en español e inglés."""
@@ -110,6 +110,25 @@ def test_listado_filtra_por_activo(entidades):
             in archivos[f'{JAVA}/usuario/UsuarioRepositorio.java'])
     assert ('@DisplayName("RF-02 · el listado de empresa filtra por activo: con true trae solo los activos y con false, '
             'los desactivados")') in archivos[f'{PRUEBAS}/empresa/EmpresaApiGeneradaIT.java']
+
+
+@pytest.mark.caso('RP-23 · el listado generado limita la página de 0 a Pagina.PAGINA_MAXIMA y el tamaño de 1 a 100, como el historial de lotes: fuera de eso responde 400 y no 500, y su prueba generada revisa los bordes (prueba de límite)')
+def test_listado_limita_la_pagina(entidades):
+    archivos = generar(entidades, api=('empresa', 'usuario'))
+
+    for clase, modulo, ficha in (('Empresa', 'empresa', 'RF-02'), ('Usuario', 'usuario', 'RF-03')):
+        controlador = archivos[f'{JAVA}/{modulo}/{clase}Controlador.java']
+        assert ('@Parameter(description = "Número de la página, de 0 a " + Pagina.PAGINA_MAXIMA + ".")\n'
+                '            @RequestParam(name = "pagina", defaultValue = "0")\n'
+                '            @Min(value = 0, message = "{validacion.minimo}")\n'
+                '            @Max(value = Pagina.PAGINA_MAXIMA, message = "{validacion.maximo}") int pagina,') in controlador
+        assert '@Max(value = Pagina.TAMANO_MAXIMO, message = "{validacion.maximo}") int tamano' in controlador
+        prueba = archivos[f'{PRUEBAS}/{modulo}/{clase}ApiGeneradaIT.java']
+        assert (f'@DisplayName("{ficha} · las páginas del listado de {modulo} van de 0 a la más alta que la '
+                'consulta puede pedir y traen de 1 a 100 filas; fuera de esos límites responde 400 y no un error del '
+                'servidor (prueba de límite)")') in prueba
+        assert 'import co.edu.usco.inspectia.comun.api.Pagina;' in prueba
+        assert '"Debe ser menor o igual a " + Pagina.PAGINA_MAXIMA + "."' in prueba
 
 
 @pytest.mark.caso('RP-23 · la prueba generada de la API revisa que cada validación del JSON acepte su valor del borde: el largo máximo, el mínimo y los 72 bytes')
