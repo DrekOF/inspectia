@@ -3,15 +3,15 @@
  * Descripción: Pruebas con Selenium de los flujos principales (RP-14): entrar con el menú del rol y sin el error
  *              «Maximum update depth exceeded» en la consola, los datos errados, cambiar la contraseña, registrar
  *              una empresa, crear un usuario que entra, guardar unos rangos propios y restaurar los de D-10,
- *              registrar un lote que pasa a las fotos y queda pendiente en el historial, subir dos fotos y volver a ellas con «Continuar», analizar la muestra y ver su
- *              resultado, y analizar la segunda muestra desde el aviso de la sugerencia y ver la suma de las dos, en
- *              Chrome y en Edge, en tamaño de PC y de celular (RNF-05). Con INSPECTIA_E2E_SIN_EDGE=1 salta Edge, como
- *              en la CI. Cada prueba empieza sin sesión. Si una falla, guarda su captura y la consola del navegador en
- *              reports/selenium.
+ *              registrar un lote que pasa a las fotos y queda pendiente en el historial, subir dos fotos y volver a
+ *              ellas con «Continuar», analizar la muestra y ver su resultado, y analizar la segunda muestra desde el
+ *              aviso de la sugerencia y ver la suma de las dos, en Chrome y en Edge, en tamaño de PC y de celular
+ *              (RNF-05). Con INSPECTIA_E2E_SIN_EDGE=1 salta Edge, como en la CI. Cada prueba empieza sin sesión. Si
+ *              una falla, guarda su captura y la consola del navegador en reports/selenium.
  * Fecha de creación: 20/10/2026
- * Actualización: 24/11/2026
+ * Actualización: 25/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.9
+ * Versión: 1.10
  */
 import { randomUUID } from 'node:crypto';
 import { rmSync, writeFileSync } from 'node:fs';
@@ -93,13 +93,14 @@ describe.each(COMBINACIONES)('%s en %s', (_, navegador, __, celular) => {
   it('RF-01 · C1 · el administrador de empresa entra y ve el menú de su rol (Selenium)', async () => {
     await entrar(driver, datos.adminEmpresa);
     await esperarTexto(driver, 'Hola, Ana');
-    // Escribir el correo con sendKeys, una tecla a la vez, dejaba este error de React en la consola.
-    expect(await erroresDeProfundidad(driver)).toEqual([]);
 
     const enlaces = await (await menu()).findElements(By.css('a'));
     const textos = await Promise.all(enlaces.map((enlace) => enlace.getText()));
     expect(textos).toEqual(['Inicio', 'Historial', 'Usuarios', 'Rangos de recomendación', 'Estadísticas', 'Modelo de IA',
       'Cambiar contraseña', 'Acerca de']);
+    // Al final, después del menú: escribir el correo con sendKeys, una tecla a la vez, dejaba este error de React en
+    // la consola. Lo leído queda para guardarFalla.
+    expect(await erroresDeProfundidad(driver)).toEqual([]);
     await driver.executeScript('localStorage.clear()');
   });
 

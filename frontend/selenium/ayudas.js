@@ -7,11 +7,11 @@
  *              oculto de una foto, esperar a que el menú del celular termine de entrar, dejar el navegador sin sesión
  *              antes de cada prueba y, si una prueba falla, guardar una captura de la pantalla y la consola del
  *              navegador en reports/selenium, que no se sube al repositorio, y leer de la consola el error de React
- *              «Maximum update depth exceeded».
+ *              «Maximum update depth exceeded» sin perder lo leído si la prueba falla después.
  * Fecha de creación: 20/10/2026
- * Actualización: 24/11/2026
+ * Actualización: 25/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.7
+ * Versión: 1.8
  */
 import { randomUUID } from 'node:crypto';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -36,6 +36,14 @@ export const CONTRASENA = 'Clave-Segura-2026';
 
 /** Tiempo máximo para esperar un elemento, en milisegundos. */
 const ESPERA = 15_000;
+
+/**
+ * Lo que cada navegador ya entregó de su consola en la prueba en curso. Leer la consola la vacía: guardarFalla junta
+ * esto con lo que quede, para que la consola guardada de una prueba que falla tenga todo lo de esa prueba.
+ *
+ * @type {WeakMap<import('selenium-webdriver').WebDriver, import('selenium-webdriver').logging.Entry[]>}
+ */
+const CONSOLA_YA_LEIDA = new WeakMap();
 
 /** Tamaño de celular para la emulación de Chrome y Edge: el del prototipo (390 px). */
 export const CELULAR = { width: 390, height: 844, pixelRatio: 3, touch: true };
@@ -336,6 +344,9 @@ export async function sinSesion(driver) {
  * @param {import('selenium-webdriver').WebDriver|undefined} driver el navegador, si alcanzó a abrirse
  */
 export async function descartarConsola(driver) {
+  if (driver) {
+    CONSOLA_YA_LEIDA.delete(driver);
+  }
   try {
     await driver?.manage().logs().get(logging.Type.BROWSER);
   } catch {
@@ -345,14 +356,15 @@ export async function descartarConsola(driver) {
 
 /**
  * Los mensajes de la consola del navegador con el error de React «Maximum update depth exceeded», que apareció al
- * escribir el correo en «Iniciar sesión» con sendKeys. Leer la consola la vacía: si una prueba falla por esto, el
- * mensaje de la falla trae lo que se leyó.
+ * escribir el correo en «Iniciar sesión» con sendKeys. Leer la consola la vacía: todo lo leído queda en
+ * CONSOLA_YA_LEIDA, y guardarFalla lo incluye si la prueba falla después, por esto o por otra cosa.
  *
  * @param {import('selenium-webdriver').WebDriver} driver el navegador
  * @returns {Promise<string[]>} los mensajes, vacío si no hubo ninguno
  */
 export async function erroresDeProfundidad(driver) {
   const entradas = await driver.manage().logs().get(logging.Type.BROWSER);
+  CONSOLA_YA_LEIDA.set(driver, [...(CONSOLA_YA_LEIDA.get(driver) ?? []), ...entradas]);
   return entradas.map((entrada) => entrada.message).filter((mensaje) => mensaje.includes('Maximum update depth exceeded'));
 }
 
@@ -372,7 +384,8 @@ function nombreDeLaFalla(prueba) {
 /**
  * Guarda una captura de la pantalla (.png) y la consola del navegador (.consola.log) de una prueba que falló, en
  * CARPETA_DE_FALLAS: así una falla intermitente deja con qué explicarla. La consola empieza con la prueba, su
- * error, la dirección en la que estaba el navegador y la hora.
+ * error, la dirección en la que estaba el navegador y la hora, y sigue con lo que la prueba ya había leído de ella
+ * (CONSOLA_YA_LEIDA) y lo que quedaba.
  *
  * @param {import('selenium-webdriver').WebDriver|undefined} driver el navegador, si alcanzó a abrirse
  * @param {{ name: string, suite?: { name: string }, result?: { errors?: Array<{ message: string }> } }} prueba la
@@ -401,7 +414,8 @@ export async function guardarFalla(driver, prueba) {
     lineas.splice(4, 0, `Captura: no se pudo tomar (${error.message})`);
   }
   try {
-    const entradas = await driver.manage().logs().get(logging.Type.BROWSER);
+    const entradas = [...(CONSOLA_YA_LEIDA.get(driver) ?? []), ...await driver.manage().logs().get(logging.Type.BROWSER)];
+    CONSOLA_YA_LEIDA.delete(driver);
     lineas.push(...(entradas.length > 0
       ? entradas.map((entrada) => `[${new Date(entrada.timestamp).toISOString()}] ${entrada.level.name} ${entrada.message}`)
       : ['(vacía)']));
