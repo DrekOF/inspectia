@@ -4,7 +4,7 @@ Descripción: Qué va en la carpeta infra/ de InspectIA, el header RP-10 de los 
 Fecha de creación: 12/10/2026
 Actualización: 24/11/2026
 Autor: Equipo InspectIA
-Versión: 1.16
+Versión: 1.17
 -->
 
 # infra
@@ -193,7 +193,7 @@ GitHub entra a AWS con el rol `inspectia-github` por OIDC: no hay claves de AWS 
 
 Hazlo en este orden, con un usuario administrador de la cuenta (no con la cuenta raíz) y con la región **us-east-1** elegida arriba a la derecha. Cuando un archivo diga `<cuenta>`, `<instancia>`, `<distribucion>` o `<dominio-de-cloudfront>`, cámbialo por el valor real: el ID de la cuenta (12 dígitos, arriba a la derecha), el ID de la instancia (`i-…`), el ID de la distribución (`E…`) y su dominio (`d….cloudfront.net`).
 
-**1. AWS Budgets (el primer día).** Billing and Cost Management → Budgets → Create budget → Use a template → *Monthly cost budget*: nombre `inspectia-mensual`, monto **US$25** (lo previsto es ≈ US$16 apagándola de noche y ≈ US$31 encendida todo el mes, más ≈ US$6 de AWS WAF, D-51: ≈ US$22 y ≈ US$37; encendida todo el mes, llega el aviso del 100 %) y los correos del equipo. AWS avisa al 85 % y al 100 % del gasto real, y si el pronóstico pasa del 100 %.
+**1. AWS Budgets (el primer día).** Billing and Cost Management → Budgets → Create budget → *Customize (advanced)* → *Cost budget*: nombre `inspectia-mensual`, periodo mensual, monto fijo **US$40** (D-51). Lo previsto es ≈ US$16 apagándola de noche y ≈ US$31 encendida todo el mes, más ≈ US$6 de AWS WAF: ≈ US$22 y ≈ US$37. Con US$25, el aviso del 80 % saltaría todos los meses. En *Configure alerts*, dos avisos sobre el gasto real (*Actual*): al **80 %** (US$32) y al **100 %** (US$40), con los correos del equipo. Apagándola de noche no llega ninguno; si llega el del 80 %, revisa que el apagado de la noche (paso 13) esté corriendo.
 
 **2. SNS.** Simple Notification Service → Topics → Create topic → *Standard*, nombre `inspectia-alertas`. Después, Create subscription → protocolo *Email* → el correo del equipo. Cada correo debe aceptar el mensaje de confirmación que le llega.
 
@@ -297,7 +297,7 @@ systemctl list-timers inspectia-respaldo.timer   # la próxima copia, a las 12:0
 
    **Sus métricas:** AWS WAF & Shield → Web ACLs (Global) → `inspectia-waf` → *Traffic overview* (las peticiones permitidas y bloqueadas) y *Sampled requests* (cada petición bloqueada, con su IP); en *Rules*, la regla muestra las IP que tiene bloqueadas en ese momento. En CloudWatch (us-east-1) → Metrics → **WAFV2** → *Rule, WebACL* → `BlockedRequests` de `inspectia-limite-sesion`.
 
-   **Antes de la prueba de estrés (RNF-01 y RNF-02):** si la prueba inicia sesión muchas veces desde una misma IP, WAF la corta. Que inicie sesión una vez por usuario y reuse el token, o cambia la acción de la regla a **Count** mientras dura y vuelve a **Block** al terminar. La prueba de humo de la CI no la toca: usa `GET /api/v1/sesion`.
+   **Antes de la prueba de estrés (RNF-01 y RNF-02):** si la prueba inicia sesión muchas veces desde una misma IP, WAF la corta. Por eso la prueba inicia sesión una vez por usuario y reusa el token durante toda la corrida. La regla queda siempre en **Block**: no se pasa a **Count** para la prueba (D-51). La prueba de humo de la CI no la toca: usa `GET /api/v1/sesion`.
 
 **10. El proveedor OIDC de GitHub.** IAM → Identity providers → Add provider → *OpenID Connect*: URL `https://token.actions.githubusercontent.com` y audiencia `sts.amazonaws.com`.
 

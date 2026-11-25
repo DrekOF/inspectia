@@ -2,12 +2,12 @@
  * Nombre: AlmacenEnCarpetaTest.java
  * Descripción: Pruebas unitarias del almacén de las fotos en una carpeta (D-41): los enlaces relativos, las llaves que
  *              no salen de la carpeta, los archivos que no se pisan, la lectura para el clasificador y el borrado que
- *              no falla; las llaves llevan la muestra para la que se pidieron (D-25). Los reportes PDF se guardan
- *              con su propia llave y no tienen enlaces (D-16, RF-15).
+ *              no falla; las llaves llevan la muestra para la que se pidieron (D-25); los archivos del reporte PDF, uno
+ *              por idioma (RF-15, D-50), que solo se guardan, leen y borran, sin enlaces firmados.
  * Fecha de creación: 23/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.3
+ * Versión: 1.5
  */
 package co.edu.usco.inspectia.analisis.adaptadores.carpeta;
 
@@ -130,15 +130,45 @@ class AlmacenEnCarpetaTest {
     }
 
     @Test
-    @DisplayName("D-16 · la carpeta guarda un archivo que arma el servidor, como el reporte PDF con su llave reportes/<empresa>/<lote>/<uuid>-<idioma>.pdf: lo describe, lo lee y lo borra")
+    @DisplayName("RF-15 · el reporte PDF se guarda con la llave reportes/<empresa>/<lote>/<uuid>-<es|en>.pdf, se lee, se describe y se borra, sin pisar uno que ya está (D-50)")
     void guardarUnReporte() {
-        almacen.guardar(REPORTE, PDF, "application/pdf");
+        String llave = "reportes/" + EMPRESA + "/" + LOTE + "/0199f0a0-0000-7000-8000-000000000009-es.pdf";
+        byte[] pdf = "%PDF-1.7 reporte".getBytes(java.nio.charset.StandardCharsets.US_ASCII);
 
-        assertThat(almacen.leer(REPORTE)).isEqualTo(PDF);
-        assertThat(almacen.describir(REPORTE).orElseThrow().bytes()).isEqualTo(PDF.length);
-        assertThat(almacen.ruta(REPORTE)).isEqualTo(carpeta.toAbsolutePath().normalize().resolve(REPORTE));
-        almacen.borrar(REPORTE);
-        assertThat(almacen.describir(REPORTE)).isEmpty();
+        almacen.guardar(llave, pdf, "application/pdf");
+
+        assertThat(carpeta.resolve(llave)).exists();
+        assertThat(almacen.leer(llave)).isEqualTo(pdf);
+        assertThat(almacen.describir(llave)).get().extracting(ArchivoGuardado::bytes).isEqualTo((long) pdf.length);
+        assertThatThrownBy(() -> almacen.guardar(llave, pdf, "application/pdf"))
+                .isInstanceOf(IllegalStateException.class);
+        almacen.borrar(llave);
+        assertThat(almacen.describir(llave)).isEmpty();
+    }
+
+    @Test
+    @DisplayName("RF-15 · una llave de reporte con otra forma se rechaza: otro idioma, otra extensión, sin la carpeta reportes o que sale de la carpeta (D-50)")
+    void llavesDeReporteRechazadas() {
+        String base = "reportes/" + EMPRESA + "/" + LOTE + "/0199f0a0-0000-7000-8000-000000000009";
+        for (String llave : new String[] {base + "-fr.pdf", base + "-es.jpg", base + ".pdf",
+            EMPRESA + "/" + LOTE + "/0199f0a0-0000-7000-8000-000000000009-es.pdf", "reportes/../" + LLAVE,
+            "otros/" + EMPRESA + "/" + LOTE + "/0199f0a0-0000-7000-8000-000000000009-es.pdf"}) {
+            assertThatThrownBy(() -> almacen.guardar(llave, JPG, "application/pdf")).as(llave)
+                    .isInstanceOf(IllegalArgumentException.class);
+        }
+    }
+
+    @Test
+    @DisplayName("RF-15 · un reporte PDF no tiene enlaces firmados ni se sube por el enlace de las fotos: solo lo guarda, lo lee y lo borra el servidor (D-50, RNF-03)")
+    void reporteSinEnlaces() {
+        String llave = "reportes/" + EMPRESA + "/" + LOTE + "/0199f0a0-0000-7000-8000-000000000009-es.pdf";
+
+        assertThatThrownBy(() -> almacen.enlaceDeVista(llave, Duration.ofMinutes(15)))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> almacen.enlaceDeSubida(llave, "application/pdf", 10, Duration.ofMinutes(10)))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> almacen.guardar(llave, JPG)).isInstanceOf(IllegalArgumentException.class);
+        assertThat(carpeta.resolve(llave)).doesNotExist();
     }
 
     @Test
@@ -151,15 +181,6 @@ class AlmacenEnCarpetaTest {
         assertThatThrownBy(() -> almacen.guardar("reportes/" + EMPRESA + "/x.pdf", PDF, "application/pdf"))
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> almacen.guardar("../" + REPORTE, PDF, "application/pdf"))
-                .isInstanceOf(IllegalArgumentException.class);
-    }
-
-    @Test
-    @DisplayName("D-16 · los enlaces firmados son solo de fotos: un reporte se descarga por el backend, con la sesión, y no tiene enlace")
-    void unReporteNoTieneEnlace() {
-        assertThatThrownBy(() -> almacen.enlaceDeVista(REPORTE, Duration.ofMinutes(15)))
-                .isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> almacen.enlaceDeSubida(REPORTE, "application/pdf", PDF.length, Duration.ofMinutes(10)))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 }

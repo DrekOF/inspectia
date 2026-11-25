@@ -9,18 +9,21 @@
  *              muestra» junto a su estado (D-25). Los filtros (RF-14 C2) y la página van en la dirección, así se
  *              conservan al volver con «Atrás» o al recargar; una página que ya no existe lleva a la última. El total
  *              se anuncia a los lectores de pantalla con cada respuesta, también si no cambia, y si ningún lote cumple
- *              los filtros, lo dice y ofrece quitarlos.
+ *              los filtros, lo dice y ofrece quitarlos. Cada lote analizado lleva, junto a «Ver», el ícono para
+ *              descargar su reporte PDF, como en el prototipo (RF-15).
  * Fecha de creación: 22/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.4
+ * Versión: 1.5
  */
 import Add from '@mui/icons-material/Add';
 import Check from '@mui/icons-material/Check';
+import FileDownloadOutlined from '@mui/icons-material/FileDownloadOutlined';
 import Schedule from '@mui/icons-material/Schedule';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import CircularProgress from '@mui/material/CircularProgress';
+import IconButton from '@mui/material/IconButton';
 import PaginationItem from '@mui/material/PaginationItem';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
@@ -44,6 +47,7 @@ import { idiomaDe } from '../i18n/i18n.js';
 import { ROLES } from '../navegacion/menu.js';
 import { useSesion } from '../sesion/contexto.js';
 import { letra, medidas } from '../tema/tokens.js';
+import { bajarReporte } from './DescargarReporte.jsx';
 import { diaEnColombia } from './fechas.js';
 import { FiltrosDelHistorial } from './FiltrosDelHistorial.jsx';
 import { direccionDe, hayFiltros, leerDireccion } from './filtros.js';
@@ -153,15 +157,55 @@ function AccionDelLote({ lote, registra, enTarjeta = false }) {
 }
 
 /**
+ * @typedef {object} DescargaDelReporte la descarga del reporte PDF que se pidió desde el historial (RF-15)
+ * @property {string|null} loteId el lote cuyo PDF baja, bajó o falló
+ * @property {string|null} codigo su código
+ * @property {'bajando'|'listo'|'error'|null} estado cómo va
+ * @property {Error|null} error lo que falló
+ */
+
+/**
+ * El ícono para descargar el reporte PDF de un lote analizado, como en el prototipo (RF-15): sin texto, con el nombre
+ * accesible del lote. En la tabla mide 40 px, como «Ver»; en la tarjeta, 44 px (RNF-05). Mientras baja muestra que
+ * está ocupado y no pide otro.
+ *
+ * @param {{ lote: import('../api/lotes.js').Lote, descarga: DescargaDelReporte,
+ *   alDescargar: (lote: import('../api/lotes.js').Lote) => void, enTarjeta?: boolean }} props el lote, la descarga en
+ *   curso, lo que se llama al pulsarlo y dónde va
+ * @returns {import('react').ReactElement|null} el ícono, o nada si el lote no está analizado
+ */
+function DescargaDelLote({ lote, descarga, alDescargar, enTarjeta = false }) {
+  const { t } = useTranslation();
+  if (lote.estado !== 'ANALIZADO') {
+    return null;
+  }
+  const bajando = descarga.loteId === lote.id && descarga.estado === 'bajando';
+  const tamano = enTarjeta ? medidas.zonaTactil : medidas.boton.altoEnTabla;
+  return (
+    <IconButton color="primary" onClick={() => alDescargar(lote)}
+      aria-label={t('reporte.descargarDelLote', { codigo: lote.codigo })}
+      aria-busy={bajando || undefined} aria-disabled={bajando || undefined}
+      sx={{
+        minWidth: tamano, minHeight: tamano, width: tamano, height: tamano,
+        borderRadius: `${medidas.boton.radio}px`, flexShrink: 0,
+      }}>
+      {bajando ? <CircularProgress size={20} color="inherit" aria-hidden /> : <FileDownloadOutlined aria-hidden />}
+    </IconButton>
+  );
+}
+
+/**
  * Los lotes en el PC: una tabla con su título para los lectores de pantalla. En una ventana angosta, la caja de la
  * tabla se desplaza a los lados; por eso recibe el foco, con el nombre de la tabla, y se recorre con las flechas
- * del teclado (WCAG 2.1.1). La última columna tiene las acciones de cada lote.
+ * del teclado (WCAG 2.1.1). La última columna tiene las acciones de cada lote: «Ver» o «Continuar» y, en un lote
+ * analizado, el ícono para descargar su PDF (RF-15).
  *
- * @param {{ lotes: import('../api/lotes.js').Lote[], region: string, registra: boolean }} props los lotes de la
- *   página, la región y si la sesión es del usuario final, que registra y retoma lotes
+ * @param {{ lotes: import('../api/lotes.js').Lote[], region: string, registra: boolean,
+ *   descarga: DescargaDelReporte, alDescargar: (lote: import('../api/lotes.js').Lote) => void }} props los lotes de
+ *   la página, la región, si la sesión es del usuario final, que registra y retoma lotes, y la descarga del PDF
  * @returns {import('react').ReactElement} la tabla
  */
-function Tabla({ lotes, region, registra }) {
+function Tabla({ lotes, region, registra, descarga, alDescargar }) {
   const { t } = useTranslation();
   const idDelTitulo = useId();
   return (
@@ -186,7 +230,10 @@ function Tabla({ lotes, region, registra }) {
                   </TableCell>
                 ))}
                 <TableCell align="right" sx={{ py: 1 }}>
-                  <AccionDelLote lote={lote} registra={registra} />
+                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '4px' }}>
+                    <AccionDelLote lote={lote} registra={registra} />
+                    <DescargaDelLote lote={lote} descarga={descarga} alDescargar={alDescargar} />
+                  </Box>
                 </TableCell>
               </TableRow>
             );
@@ -199,13 +246,15 @@ function Tabla({ lotes, region, registra }) {
 
 /**
  * Los lotes en el celular: una tarjeta por lote, con su código y su estado arriba (RNF-05). La de un lote analizado
- * lleva «Ver» al pie y, para el usuario final, la de un lote pendiente lleva «Continuar».
+ * lleva «Ver» al pie, con el ícono para descargar su PDF al lado (RF-15), y, para el usuario final, la de un lote
+ * pendiente lleva «Continuar».
  *
- * @param {{ lotes: import('../api/lotes.js').Lote[], region: string, registra: boolean }} props los lotes de la
- *   página, la región y si la sesión es del usuario final, que registra y retoma lotes
+ * @param {{ lotes: import('../api/lotes.js').Lote[], region: string, registra: boolean,
+ *   descarga: DescargaDelReporte, alDescargar: (lote: import('../api/lotes.js').Lote) => void }} props los lotes de
+ *   la página, la región, si la sesión es del usuario final, que registra y retoma lotes, y la descarga del PDF
  * @returns {import('react').ReactElement} las tarjetas
  */
-function Tarjetas({ lotes, region, registra }) {
+function Tarjetas({ lotes, region, registra, descarga, alDescargar }) {
   const { t } = useTranslation();
   return (
     <Box component="ul" role="list" aria-label={t('historial.lista')}
@@ -226,7 +275,10 @@ function Tarjetas({ lotes, region, registra }) {
                 {datos[dato]}
               </Typography>
             ))}
-            <AccionDelLote lote={lote} registra={registra} enTarjeta />
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, '& > a': { flex: 1 } }}>
+              <AccionDelLote lote={lote} registra={registra} enTarjeta />
+              <DescargaDelLote lote={lote} descarga={descarga} alDescargar={alDescargar} enTarjeta />
+            </Box>
           </Box>
         );
       })}
@@ -317,6 +369,10 @@ export default function Historial() {
   const [recargas, setRecargas] = useState(0);
   const [respuesta, setRespuesta] = useState({ pedido: null, datos: null, error: null });
   const region = idiomaDe(i18n.language).region;
+  const idioma = idiomaDe(i18n.language).codigo;
+  const [descarga, setDescarga] = useState({ loteId: null, codigo: null, estado: null, error: null });
+  // Una descarga del PDF a la vez: el ícono sigue enfocable mientras baja, pero no pide otra.
+  const descargaEnCurso = useRef(false);
 
   const pedido = `${aplicados}|${recargas}`;
   useEffect(() => {
@@ -378,6 +434,35 @@ export default function Historial() {
     setParametros(direccionDe({ ...filtros, usuario: '' }, 0), { replace: true });
   }
 
+  /**
+   * Baja el reporte PDF de un lote analizado con la sesión, en el idioma de la página (RF-15), como «Descargar PDF»
+   * del resultado. Si ya baja otro, no hace nada.
+   *
+   * @param {import('../api/lotes.js').Lote} lote el lote
+   */
+  async function descargarReporte(lote) {
+    if (descargaEnCurso.current) {
+      return;
+    }
+    descargaEnCurso.current = true;
+    setDescarga({ loteId: lote.id, codigo: lote.codigo, estado: 'bajando', error: null });
+    try {
+      await bajarReporte(pedir, lote.id, lote.codigo, idioma);
+      setDescarga({ loteId: lote.id, codigo: lote.codigo, estado: 'listo', error: null });
+    } catch (fallo) {
+      setDescarga({ loteId: lote.id, codigo: lote.codigo, estado: 'error', error: fallo });
+    } finally {
+      descargaEnCurso.current = false;
+    }
+  }
+
+  let anuncioDelReporte = '';
+  if (descarga.estado === 'bajando') {
+    anuncioDelReporte = t('reporte.descargando');
+  } else if (descarga.estado === 'listo') {
+    anuncioDelReporte = t('reporte.descargado', { codigo: descarga.codigo });
+  }
+
   /** Quita todos los filtros y vuelve a la primera página. */
   function limpiar() {
     if (parametros.toString() !== '') {
@@ -403,6 +488,16 @@ export default function Historial() {
       <Box role="status" sx={OCULTO_A_LA_VISTA}>
         {datos && !cargando ? t('historial.encontrados', { count: total }) : ''}
       </Box>
+      {/* La descarga del PDF, para los lectores de pantalla (WCAG 4.1.3). No es otro role="status": ese es el del
+          total. */}
+      <Box aria-live="polite" sx={OCULTO_A_LA_VISTA}>{anuncioDelReporte}</Box>
+      {descarga.estado === 'error' && (
+        <Box sx={{ mb: 2 }}>
+          <Aviso tipo="error" titulo={t('reporte.errorDelLote', { codigo: descarga.codigo })}>
+            {textoDelError(descarga.error, t)}
+          </Aviso>
+        </Box>
+      )}
       {cargando && !datos && (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}>
           <CircularProgress aria-label={t('crud.cargando')} />
@@ -432,8 +527,10 @@ export default function Historial() {
       {datos && total > 0 && (
         <>
           {esPc
-            ? <Tabla lotes={datos.contenido} region={region} registra={registra} />
-            : <Tarjetas lotes={datos.contenido} region={region} registra={registra} />}
+            ? <Tabla lotes={datos.contenido} region={region} registra={registra} descarga={descarga}
+              alDescargar={descargarReporte} />
+            : <Tarjetas lotes={datos.contenido} region={region} registra={registra} descarga={descarga}
+              alDescargar={descargarReporte} />}
           <Paginas total={total} paginas={datos.totalPaginas} pagina={pagina}
             alCambiar={(otra) => setParametros(direccionDe(filtros, otra))} />
         </>

@@ -2,14 +2,16 @@
  * Nombre: RepositorioDeLotesJpa.java
  * Descripción: Implementa con JPA el puerto de los lotes guardados, con el historial filtrado en una consulta que
  *              comparte su «where» con el conteo, quienes registraron lotes, la sugerencia de otra muestra y el
- *              resultado con el límite de la sugerencia (RF-04, RF-10, RF-12, RF-14, D-21, D-25, D-47).
+ *              resultado con el límite de la sugerencia, y la empresa y la base del reporte PDF (RF-04, RF-10, RF-12,
+ *              RF-14, RF-15, D-21, D-25, D-47, D-50).
  * Fecha de creación: 10/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.3
+ * Versión: 1.4
  */
 package co.edu.usco.inspectia.analisis.adaptadores.jpa;
 
+import co.edu.usco.inspectia.analisis.aplicacion.DatosDelReporte;
 import co.edu.usco.inspectia.analisis.aplicacion.FiltrosDelHistorial;
 import co.edu.usco.inspectia.analisis.aplicacion.OrigenUsado;
 import co.edu.usco.inspectia.analisis.aplicacion.Registrador;
@@ -203,5 +205,19 @@ public class RepositorioDeLotesJpa implements RepositorioDeLotes {
     @Override
     public Optional<ResultadoGuardado> resultado(UUID empresaId, UUID id) {
         return lotes.resultado(empresaId, id);
+    }
+
+    @Override
+    public Optional<DatosDelReporte> datosDelReporte(UUID empresaId, UUID id) {
+        return lotes.datosDelReporte(empresaId, id);
+    }
+
+    /** Escribe la base en la fila ya bloqueada del lote y la manda a la base en seguida, como el resultado. */
+    @Override
+    public void guardarRutaDelReporte(UUID empresaId, UUID id, String base) {
+        LoteEntidad lote = lotes.paraActualizar(empresaId, id)
+                .orElseThrow(() -> new IllegalStateException("El lote " + id + " no existe"));
+        lote.setReporteRuta(base);
+        lotes.saveAndFlush(lote);
     }
 }

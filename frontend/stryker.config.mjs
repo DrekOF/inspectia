@@ -3,12 +3,12 @@
  * Descripción: Configuración de las pruebas de mutación del frontend con Stryker (RP-12): cambia la lógica de
  *              la sesión, el cliente de la API, las validaciones, el menú, las pantallas de registros, los límites
  *              de los rangos, la lógica de los lotes y de su resultado (como el orden de lectura de los granos, el
- *              rango probable y la consulta del avance del análisis), la API y las validaciones generadas y las
- *              herramientas, y revisa que las pruebas unitarias lo noten.
+ *              rango probable y la consulta del avance del análisis), las métricas del modelo de IA (RF-17), la API y
+ *              las validaciones generadas y las herramientas, y revisa que las pruebas unitarias lo noten.
  * Fecha de creación: 20/10/2026
- * Actualización: 23/11/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.3
+ * Versión: 1.4
  */
 
 /** @type {import('@stryker-mutator/api/core').PartialStrykerOptions} */
@@ -24,6 +24,7 @@ export default {
     'src/empresa/**/*.js',
     'src/rango/**/*.js',
     'src/lote/**/*.js',
+    'src/modelo/**/*.js',
     'src/generated/**/*Api.js',
     'src/generated/**/*Esquemas.js',
     'herramientas/**/*.js',

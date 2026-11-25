@@ -2,16 +2,17 @@
  * Nombre: cliente.test.js
  * Descripción: Pruebas del cliente de la API: el token y el idioma en cada petición, los errores del backend
  *              con sus campos, qué pasa con un 401, con sesión y sin ella o con un token que ya se cambió, y
- *              las fallas sin conexión o sin mensaje (RF-01, RF-18, RNF-04, RNF-06, D-28).
+ *              las fallas sin conexión o sin mensaje (RF-01, RF-18, RNF-04, RNF-06, D-28); y un archivo que baja con la
+ *              sesión, con su nombre de Content-Disposition (RF-15).
  * Fecha de creación: 20/10/2026
- * Actualización: 20/10/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.0
+ * Versión: 1.1
  */
 import { http, HttpResponse } from 'msw';
 import { describe, expect, it, vi } from 'vitest';
 import { problema, servidor } from '../pruebas/servidor.js';
-import { crearCliente, ErrorDeApi } from './cliente.js';
+import { crearCliente, ErrorDeApi, nombreDelArchivo } from './cliente.js';
 
 /**
  * Un cliente con una sesión de prueba y el idioma dado.
@@ -156,5 +157,42 @@ describe('cliente de la API', () => {
     await errorDe(pedir('GET', '/sesion'));
 
     expect(alCerrarSesion).not.toHaveBeenCalled();
+  });
+
+  it('RF-15 · un archivo, como el reporte PDF, se pide con la sesión y llega como Blob con su nombre', async () => {
+    const { pedir } = cliente();
+    let encabezados;
+    servidor.use(http.get('/api/v1/lotes/1/reporte', ({ request }) => {
+      encabezados = request.headers;
+      return new HttpResponse('%PDF', {
+        headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': 'attachment; filename="L-1-es.pdf"' },
+      });
+    }));
+
+    const { archivo, nombre } = await pedir('GET', '/lotes/1/reporte', undefined, { comoArchivo: true });
+
+    expect(await archivo.text()).toBe('%PDF');
+    expect(nombre).toBe('L-1-es.pdf');
+    expect(encabezados.get('Authorization')).toBe('Bearer token-de-prueba');
+  });
+
+  it('RF-15 · si el archivo no se puede bajar, el error llega como los demás, con el mensaje del backend', async () => {
+    const { pedir } = cliente();
+    servidor.use(http.get('/api/v1/lotes/1/reporte', () => problema(404, 'No existe un registro con ese identificador.')));
+
+    const error = await errorDe(pedir('GET', '/lotes/1/reporte', undefined, { comoArchivo: true }));
+
+    expect(error).toBeInstanceOf(ErrorDeApi);
+    expect(error.estado).toBe(404);
+    expect(error.detalle).toBe('No existe un registro con ese identificador.');
+  });
+
+  it('RF-15 · el nombre del archivo sale de filename* en UTF-8 si viene, y si no de filename, con o sin comillas', () => {
+    expect(nombreDelArchivo('attachment; filename="a.pdf"; filename*=UTF-8\'\'InspectIA-L%C3%91-es.pdf'))
+      .toBe('InspectIA-LÑ-es.pdf');
+    expect(nombreDelArchivo('attachment; filename="Lote \\"7\\".pdf"')).toBe('Lote "7".pdf');
+    expect(nombreDelArchivo('attachment; filename=L-1.pdf')).toBe('L-1.pdf');
+    expect(nombreDelArchivo('attachment')).toBeNull();
+    expect(nombreDelArchivo(null)).toBeNull();
   });
 });

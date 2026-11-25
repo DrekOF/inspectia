@@ -3,12 +3,12 @@
  * Descripción: Caso de uso que guarda, en una sola transacción, el análisis de una muestra tomada de la cola: la
  *              revisión de sus fotos, sus granos, sus conteos, su modelo y el resultado del lote con los rangos vigentes
  *              de la empresa; o la devuelve a pendiente sin resultado, con su motivo o con la foto que hay que repetir;
- *              con la muestra 2, recalcula el lote con la suma de las dos (RF-06, RF-07, RF-09, RF-10, RF-12,
- *              RF-13 C2, RNF-02 C3, D-25, D-44, D-46).
+ *              con la muestra 2, recalcula el lote con la suma de las dos y descarta el reporte PDF de la 1 (RF-06,
+ *              RF-07, RF-09, RF-10, RF-12, RF-13 C2, RF-15 C5, RNF-02 C3, D-25, D-44, D-46).
  * Fecha de creación: 23/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.2
+ * Versión: 1.3
  */
 package co.edu.usco.inspectia.analisis.aplicacion;
 
@@ -33,6 +33,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -62,7 +63,8 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * <p>La muestra 2 (D-25) llega con el lote ya analizado con la 1: se guarda igual, aprueba solo sus fotos, y el
  * resultado se recalcula con la suma de las dos y los rangos de ese momento, sin sugerencia ni límite (D-47). El lote
- * olvida la ruta de su reporte, que se rehace con el resultado nuevo (RF-15). Todo se confirma junto o nada.
+ * olvida la ruta de su reporte, que se rehace con el resultado nuevo, y los archivos del reporte de la 1 se borran
+ * después de confirmar la transacción (RF-15 C5, {@link ReporteDescartado}). Todo se confirma junto o nada.
  */
 @Slf4j
 @Service
@@ -73,6 +75,7 @@ public class GuardarAnalisis {
     private final RepositorioDeModelos modelos;
     private final RangosDeLaEmpresa rangos;
     private final ParametrosDelAnalisis parametros;
+    private final ApplicationEventPublisher eventos;
     private final Clock reloj;
 
     /** Cómo terminó el intento de guardar una muestra. */
@@ -102,15 +105,18 @@ public class GuardarAnalisis {
      * @param modelos los modelos de IA registrados
      * @param rangos los rangos vigentes de cada empresa
      * @param parametros los parámetros del análisis
+     * @param eventos para borrar los archivos del reporte descartado (RF-15 C5)
      * @param reloj el reloj de la aplicación, en UTC
      */
     public GuardarAnalisis(RepositorioDeLotes lotes, RepositorioDeMuestras muestras, RepositorioDeModelos modelos,
-            RangosDeLaEmpresa rangos, ParametrosDelAnalisis parametros, Clock reloj) {
+            RangosDeLaEmpresa rangos, ParametrosDelAnalisis parametros, ApplicationEventPublisher eventos,
+            Clock reloj) {
         this.lotes = lotes;
         this.muestras = muestras;
         this.modelos = modelos;
         this.rangos = rangos;
         this.parametros = parametros;
+        this.eventos = eventos;
         this.reloj = reloj;
     }
 
@@ -177,7 +183,12 @@ public class GuardarAnalisis {
         }
         ResultadoDelLote resultado = ResultadoDelLote.calcular(muestras.conteosTerminados(empresa, muestra.loteId()),
                 rangos.vigentes(empresa), parametros);
+        String reporteAnterior = lotes.datosDelReporte(empresa, muestra.loteId())
+                .map(DatosDelReporte::rutaDelReporte).orElse(null);
         lotes.guardarResultado(empresa, muestra.loteId(), resultado, fin);
+        if (reporteAnterior != null) {
+            eventos.publishEvent(new ReporteDescartado(reporteAnterior));
+        }
         return Desenlace.TERMINADA;
     }
 

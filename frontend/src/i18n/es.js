@@ -6,7 +6,7 @@
  * Fecha de creación: 20/10/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.9
+ * Versión: 1.10
  */
 
 /** Textos en español, por clave. en.js tiene las mismas claves (i18n.test.js lo revisa). */
@@ -291,6 +291,81 @@ export default {
   'resultado.ayudaPc': 'Pasa el cursor sobre un grano o tócalo para ver su clase.',
   'resultado.ayudaCelular': 'Toca un grano para ver su clase.',
   'resultado.ayudaTeclado': 'Con el teclado, entra a la foto con Tab y pasa de un grano a otro con las flechas.',
+
+  // El reporte PDF del lote (RF-15)
+  'reporte.descargar': 'Descargar PDF',
+  'reporte.descargando': 'Descargando el PDF…',
+  'reporte.descargado': 'Se descargó el PDF del lote {codigo}.',
+  'reporte.error': 'No se pudo descargar el PDF.',
+  'reporte.errorDelLote': 'No se pudo descargar el PDF del lote {codigo}.',
+  'reporte.descargarDelLote': 'Descargar el PDF del lote {codigo}',
+
+  // Estadísticas de la empresa (RF-16)
+  'estadisticas.titulo': 'Estadísticas',
+  'estadisticas.subtitulo': 'Los lotes analizados de {empresa}, según la fecha de su resultado.',
+  'estadisticas.periodo': 'Periodo de las estadísticas',
+  'estadisticas.desde': 'Desde',
+  'estadisticas.hasta': 'Hasta',
+  'estadisticas.ayudaPeriodo': 'Cuenta los lotes analizados entre las dos fechas, incluidas.',
+  'estadisticas.ver': 'Ver estadísticas',
+  'estadisticas.encontrados_one': '{count} lote analizado en el periodo',
+  'estadisticas.encontrados_many': '{count} lotes analizados en el periodo',
+  'estadisticas.encontrados_other': '{count} lotes analizados en el periodo',
+  'estadisticas.sinLotes': 'No hay lotes analizados en este periodo. Elige otro periodo para ver sus estadísticas.',
+  'estadisticas.lotesAnalizados': 'Lotes analizados',
+  'estadisticas.promedio': 'Promedio de granos sanos',
+  'estadisticas.porCategoria': 'Lotes por categoría',
+  'estadisticas.porMes': 'Evolución del promedio por mes',
+  'estadisticas.porOrigen': 'Promedio por finca o proveedor',
+  'estadisticas.lotes': 'Lotes',
+  'estadisticas.parteDelTotal': '% de los lotes',
+  'estadisticas.mes': 'Mes',
+  'estadisticas.sinLotesEnElMes': 'Sin lotes',
+  'estadisticas.notaCategoria': 'La categoría es probable: la oficial se confirma con la prueba de corte.',
+
+  // Modelo de IA (RF-17, D-14, D-18, D-48): el modelo en uso, la confianza promedio, la matriz y la comparación
+  'modeloIa.descripcion': 'Qué tan bien clasifica los granos el modelo en uso, medido en el conjunto de prueba, y la confianza de los análisis de {empresa}.',
+  'modeloIa.enUso': 'Modelo en uso',
+  'modeloIa.version': 'Versión {version}',
+  'modeloIa.versionYTipo': 'Versión {version} · {tipo}',
+  'modeloIa.f1Macro': 'F1-score macro',
+  'modeloIa.precisionMacro': 'Precisión macro',
+  'modeloIa.recallMacro': 'Recall macro',
+  'modeloIa.medidas': 'Medidas con los {total} granos del conjunto de prueba.',
+  'modeloIa.sinModeloEnUso': 'Ningún modelo está en uso.',
+  'modeloIa.sinModeloEnUsoDetalle': 'Cuando el equipo ponga en uso un modelo de la comparación, aquí verás sus métricas.',
+  'modeloIa.confianza': 'Confianza promedio de tus análisis',
+  'modeloIa.confianzaDe': 'De {granos} en {muestras} de {empresa}.',
+  'modeloIa.granos_one': '{count} grano',
+  'modeloIa.granos_many': '{count} granos',
+  'modeloIa.granos_other': '{count} granos',
+  'modeloIa.muestras_one': '{count} muestra analizada',
+  'modeloIa.muestras_many': '{count} muestras analizadas',
+  'modeloIa.muestras_other': '{count} muestras analizadas',
+  'modeloIa.confianzaQueEs': 'Es qué tan seguro estuvo el modelo, en promedio, de la clase que dio a cada grano.',
+  'modeloIa.sinAnalisis': 'Tu empresa todavía no tiene análisis terminados.',
+  'modeloIa.sinAnalisisEnElPeriodo': 'Tu empresa no tiene análisis terminados en este periodo.',
+  'modeloIa.periodo': 'Periodo de la confianza promedio',
+  'modeloIa.ayudaPeriodo': 'Opcional. Cuenta las muestras que terminaron entre las dos fechas, incluidas. Las métricas del modelo no cambian.',
+  'modeloIa.verConfianza': 'Ver confianza',
+  'modeloIa.todosLosAnalisis': 'Todos los análisis',
+  'modeloIa.periodoEntre': 'De los análisis terminados del {desde} al {hasta}.',
+  'modeloIa.periodoDesde': 'De los análisis terminados desde el {desde}.',
+  'modeloIa.periodoHasta': 'De los análisis terminados hasta el {hasta}.',
+  'modeloIa.matriz': 'Matriz de confusión',
+  'modeloIa.matrizDescripcion': 'Cuántos granos sanos y no sanos del conjunto de prueba clasificó bien y mal el modelo en uso.',
+  'modeloIa.matrizTabla': 'Matriz de confusión de {nombre}',
+  'modeloIa.claseReal': 'Clase real',
+  'modeloIa.comoSanos': 'Clasificados como sanos',
+  'modeloIa.comoNoSanos': 'Clasificados como no sanos',
+  'modeloIa.sanos': 'Sanos',
+  'modeloIa.noSanos': 'No sanos',
+  'modeloIa.acierto': 'Acierto',
+  'modeloIa.error': 'Error',
+  'modeloIa.comparacion': 'Comparación de los modelos',
+  'modeloIa.comparacionDescripcion': 'Los modelos que comparó el equipo, medidos con el mismo conjunto de prueba, del mayor F1-score macro al menor.',
+  'modeloIa.tabla': 'Métricas de los modelos',
+  'modeloIa.columnaModelo': 'Modelo',
 
   // Revisión de las fotos por el servicio de IA y la muestra devuelta (frente A: RF-06, RF-07, RF-08 C6, RF-09, D-44 a D-46)
   'fotos.aprobada': 'Foto {numero} aprobada.',

@@ -4,11 +4,12 @@
  *              consultar su avance mientras espera o se procesa (RNF-01 C4) y traer el resultado guardado del lote,
  *              con sus muestras, sus fotos y los granos marcados de cada una (RF-10, RF-11, RF-12, RF-14 C3), y el
  *              límite cercano de la sugerencia de otra muestra (D-47). La muestra en curso puede ser la segunda (D-25).
+ *              También baja el reporte PDF del lote con la sesión (RF-15).
  *              El avance y la muestra dicen por qué volvió sin resultado, según el servicio de IA (D-44, RF-09).
  * Fecha de creación: 23/11/2026
  * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.2
+ * Versión: 1.3
  */
 
 /** @typedef {'PENDIENTE'|'EN_ESPERA'|'EN_PROCESO'|'TERMINADA'} EstadoDeMuestra el estado de una muestra */
@@ -123,4 +124,25 @@ export function avanceDelAnalisis(pedir, loteId) {
  */
 export function resultadoDelLote(pedir, loteId) {
   return pedir('GET', `/lotes/${encodeURIComponent(loteId)}/resultado`);
+}
+
+/**
+ * @typedef {object} ArchivoDescargado un archivo que bajó la API
+ * @property {Blob} archivo su contenido
+ * @property {string|null} nombre su nombre, de Content-Disposition
+ */
+
+/**
+ * El reporte PDF de un lote analizado, en un idioma (GET /api/v1/lotes/{id}/reporte?idioma=es|en, RF-15). Se pide con
+ * la sesión, como todo lo demás: el PDF no tiene un enlace público. La primera vez el servidor lo arma y lo guarda;
+ * después entrega el mismo. Un lote pendiente responde 409, y uno de otra empresa, 404 (RNF-03).
+ *
+ * @param {import('./cliente.js').Pedir} pedir la función del cliente de la API
+ * @param {string} loteId el lote
+ * @param {'es'|'en'} idioma el idioma del reporte, el de la página
+ * @returns {Promise<ArchivoDescargado>} el PDF y su nombre, como InspectIA-L-0143-es.pdf
+ */
+export function reporteDelLote(pedir, loteId, idioma) {
+  return pedir('GET', `/lotes/${encodeURIComponent(loteId)}/reporte?idioma=${encodeURIComponent(idioma)}`,
+    undefined, { comoArchivo: true });
 }
