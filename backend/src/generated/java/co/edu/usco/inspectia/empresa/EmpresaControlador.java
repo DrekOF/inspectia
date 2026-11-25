@@ -5,8 +5,8 @@
  *              o la plantilla, y se regenera.
  * Fecha de creación: 13/10/2026
  * Actualización: 27/10/2026
- * Autor: Equipo InspectIA (generado por generador/ v1.10)
- * Versión: 1.10
+ * Autor: Equipo InspectIA (generado por generador/ v1.11)
+ * Versión: 1.11
  * Entidades: empresa 1.3, usuario 1.8, rango_recomendacion 1.3
  */
 package co.edu.usco.inspectia.empresa;
@@ -57,8 +57,8 @@ public class EmpresaControlador {
     /**
      * Lista empresas por páginas, por nombre, sin distinguir mayúsculas.
      *
-     * @param pagina número de la página, desde 0
-     * @param tamano filas por página
+     * @param pagina número de la página, de 0 a {@link Pagina#PAGINA_MAXIMA}
+     * @param tamano filas por página, de 1 a {@link Pagina#TAMANO_MAXIMO}
      * @param activo solo los activos ({@code true}) o solo los desactivados ({@code false}); sin él, todos
      * @return la página
      */
@@ -66,9 +66,10 @@ public class EmpresaControlador {
     @PreAuthorize("hasRole('ADMIN_PLATAFORMA')")
     @Operation(summary = "Listar empresas", description = "Página de empresas, por nombre, sin distinguir mayúsculas. Roles: ADMIN_PLATAFORMA.")
     public Pagina<EmpresaRespuesta> listar(
-            @Parameter(description = "Número de la página, desde 0.")
+            @Parameter(description = "Número de la página, de 0 a " + Pagina.PAGINA_MAXIMA + ".")
             @RequestParam(name = "pagina", defaultValue = "0")
-            @Min(value = 0, message = "{validacion.minimo}") int pagina,
+            @Min(value = 0, message = "{validacion.minimo}")
+            @Max(value = Pagina.PAGINA_MAXIMA, message = "{validacion.maximo}") int pagina,
             @Parameter(description = "Filas por página, de 1 a " + Pagina.TAMANO_MAXIMO + ".")
             @RequestParam(name = "tamano", defaultValue = "" + Pagina.TAMANO_POR_DEFECTO)
             @Min(value = 1, message = "{validacion.minimo}")

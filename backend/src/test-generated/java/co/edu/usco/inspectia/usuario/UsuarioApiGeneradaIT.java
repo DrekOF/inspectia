@@ -5,8 +5,8 @@
  *              o la plantilla, y se regenera.
  * Fecha de creación: 13/10/2026
  * Actualización: 27/10/2026
- * Autor: Equipo InspectIA (generado por generador/ v1.10)
- * Versión: 1.10
+ * Autor: Equipo InspectIA (generado por generador/ v1.11)
+ * Versión: 1.11
  * Entidades: usuario 1.8
  */
 package co.edu.usco.inspectia.usuario;
@@ -17,6 +17,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 
 import co.edu.usco.inspectia.PruebaIntegracion;
+import co.edu.usco.inspectia.comun.api.Pagina;
 import co.edu.usco.inspectia.comun.seguridad.SesionAutenticada;
 import co.edu.usco.inspectia.comun.seguridad.UsuarioEnSesion;
 import com.jayway.jsonpath.JsonPath;
@@ -338,6 +339,31 @@ class UsuarioApiGeneradaIT {
         assertThat(identificadores(listarConActivo("true"))).isEmpty();
         assertThat(identificadores(listarConActivo("false"))).containsExactly(id);
         assertThat(identificadores(enviar(HttpMethod.GET, RUTA, null, conPermiso("listar")))).containsExactly(id);
+    }
+
+    @Test
+    @DisplayName("RF-03 · las páginas del listado de usuario van de 0 a la más alta que la consulta puede pedir y traen de 1 a 100 filas; fuera de esos límites responde 400 y no un error del servidor (prueba de límite)")
+    void limitesDeLaPagina() {
+        String ultima = "?pagina=" + Pagina.PAGINA_MAXIMA + "&tamano=" + Pagina.TAMANO_MAXIMO;
+        MvcTestResult negativa = enviar(HttpMethod.GET, RUTA + "?pagina=-1", null, conPermiso("listar"));
+        MvcTestResult laUltima = enviar(HttpMethod.GET, RUTA + ultima, null, conPermiso("listar"));
+        MvcTestResult pasada = enviar(HttpMethod.GET, RUTA + "?pagina=" + (Pagina.PAGINA_MAXIMA + 1), null,
+                conPermiso("listar"));
+        MvcTestResult sinFilas = enviar(HttpMethod.GET, RUTA + "?tamano=0", null, conPermiso("listar"));
+        MvcTestResult grande = enviar(HttpMethod.GET, RUTA + "?tamano=" + (Pagina.TAMANO_MAXIMO + 1), null,
+                conPermiso("listar"));
+
+        assertThat(negativa).hasStatus(HttpStatus.BAD_REQUEST);
+        assertThat(errores(negativa)).containsExactly(tuple("pagina", "Debe ser mayor o igual a 0."));
+        assertThat(laUltima).hasStatus(HttpStatus.OK);
+        assertThat(pasada).hasStatus(HttpStatus.BAD_REQUEST);
+        assertThat(errores(pasada)).containsExactly(
+                tuple("pagina", "Debe ser menor o igual a " + Pagina.PAGINA_MAXIMA + "."));
+        assertThat(sinFilas).hasStatus(HttpStatus.BAD_REQUEST);
+        assertThat(errores(sinFilas)).containsExactly(tuple("tamano", "Debe ser mayor o igual a 1."));
+        assertThat(grande).hasStatus(HttpStatus.BAD_REQUEST);
+        assertThat(errores(grande)).containsExactly(
+                tuple("tamano", "Debe ser menor o igual a " + Pagina.TAMANO_MAXIMO + "."));
     }
 
     @Test

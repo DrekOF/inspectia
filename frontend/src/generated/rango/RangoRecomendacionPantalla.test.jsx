@@ -6,8 +6,8 @@
  *              o la plantilla, y se regenera.
  * Fecha de creación: 13/10/2026
  * Actualización: 27/10/2026
- * Autor: Equipo InspectIA (generado por generador/ v1.10)
- * Versión: 1.10
+ * Autor: Equipo InspectIA (generado por generador/ v1.11)
+ * Versión: 1.11
  * Entidades: rango_recomendacion 1.3
  */
 import { screen, waitFor, within } from '@testing-library/react';

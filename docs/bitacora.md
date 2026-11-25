@@ -4,7 +4,7 @@ Descripción: Registro paso a paso de cómo se construyó InspectIA, para la sus
 Fecha de creación: 12/10/2026
 Actualización: 25/11/2026
 Autor: Equipo InspectIA
-Versión: 1.31
+Versión: 1.32
 -->
 
 # Bitácora de construcción (RP-24)
@@ -2471,6 +2471,90 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
     entraron aquí, que de todas formas tenía que unirse con `main`.
 - Archivos o PR: la rama `feature/RF-15-16-17-reporte-estadisticas-modelo` y su PR hacia `main`.
 
+## 24/11/2026 · RP-23, RNF-06 y RF-01: los arreglos pequeños del final del módulo
+
+- Quién: Cristhian Sánchez (`DrekOF`), con Claude Code.
+- Qué se hizo:
+  - **En la rama `feature/arreglos-generados-y-sesion`** (desde `5ca4b11`), los tres arreglos que quedaron para «el
+    PR pequeño del final del módulo» (PR 3a y 3b). Dos quedan hechos; el tercero, solo con una revisión nueva:
+    1. **El tope de la página en los listados generados:** `bed993b` las pruebas en rojo y `f1e647a` el arreglo. Los
+       listados de empresas y usuarios limitaban el tamaño (1 a 100) pero no el número de la página: con una muy
+       grande, la fila donde empieza la página no cabe en un `int` y respondían 500, como el historial antes de
+       `c9d6fc0`. La plantilla `controlador.java.j2` 1.4 limita la página de 0 a `Pagina.PAGINA_MAXIMA`, con
+       `validacion.maximo` en español y en inglés, y la prueba generada de cada entidad con listado
+       (`api_generada.java.j2` 1.3) revisa la última página y el tamaño máximo permitidos, la página siguiente, la
+       negativa, el tamaño 0 y el 101 (prueba de límite). Se cambió en el generador, que pasa a la 1.11, y se
+       regeneró: cambian los dos controladores, sus pruebas generadas y el header de lo demás. `V1` no cambia.
+    2. **La caja de la tabla de las pantallas generadas con el teclado:** `e501976` la prueba en rojo y `723d34d` el
+       arreglo. En `crud/PantallaDeRegistros.jsx`, que es código compartido escrito a mano (lo generado solo lo
+       usa), la caja que desplaza la tabla a los lados es ahora una región con `tabIndex` 0 y el nombre de la lista,
+       como la del historial (RNF-06 C4, WCAG 2.1.1).
+    3. **«Maximum update depth exceeded» al entrar: queda abierto.** No se encontró la causa ni se arregló (ver
+       «Problemas encontrados»). Lo único que se agregó, en `cbc8081`, es una revisión: la prueba de Selenium de
+       RF-01 C1 revisa la consola del navegador después de entrar, para que la CI diga si el error sigue y con qué
+       texto. La prueba de Vitest que escribe tecla por tecla nunca estuvo en rojo, porque jsdom no reproduce el
+       error, y su nombre lo dice desde `ed4ed3b`.
+  - **Esta entrada y `docs/casos-de-prueba.md`,** al día.
+- Por qué: los tres quedaron anotados en «Queda fuera» de los PR 3a y 3b para hacerlos juntos al final del módulo de
+  análisis, y Cristhian los pidió para esta noche, mientras sube los modelos y pone las variables de AWS.
+- Cómo se pidió:
+  - **El 24/11/2026,** Cristhian escribió: «Bien. Cuando el #21 quede en `main`, mientras yo subo los modelos y
+    pongo las variables, sigue esta noche con esto, en los PR que veas: […] 2. **Los tres arreglos pequeños:** el
+    tope de página en los listados generados, la tabla de las pantallas generadas con el teclado y el «Maximum
+    update depth exceeded» de «Iniciar sesión».» El punto 1 de su mensaje (los criterios sin prueba) va en otro PR.
+  - **La revisión antes del PR,** con un solo revisor, encontró 3 hallazgos:
+    1. el commit de la bitácora le quitaba sangría a casi toda la entrada anterior, la del despliegue en AWS (D-16),
+       y cambiaba el formato de su «Decisiones pequeñas», sin decirlo: esa entrada vuelve a estar como en `main`, y
+       esta queda con la sangría de las demás;
+    2. la prueba de Vitest decía que revisaba el «Maximum update depth exceeded», aunque jsdom no lo reproduce, y la
+       bitácora llamaba «arreglo» al tercer punto, que sigue abierto: la prueba cambió de nombre (`ed4ed3b`) y esta
+       entrada dice que el tercero queda abierto;
+    3. leer la consola para buscar el error la vaciaba, y si después fallaba el menú, la consola guardada de la
+       falla no tenía lo de la carga ni lo de entrar: lo leído queda para `guardarFalla`, y la revisión de la
+       consola va al final de la prueba, después del menú (`973e494`).
+
+    Otro agente corrigió los tres; en este PC solo corrieron Vitest de `IniciarSesion.test.jsx` y ESLint.
+- Decisiones pequeñas:
+  - la prueba de límite generada lleva la ficha de su entidad (RF-02 en empresas, RF-03 en usuarios), como las demás
+    pruebas generadas de validaciones; no cubre un criterio, así que no lleva «C<n>»;
+  - el generador pasa a la 1.11 por el cambio de plantilla, como en las versiones anteriores, aunque eso cambie el
+    header de todos los archivos generados;
+  - la revisión de la consola va en la prueba de Selenium de RF-01 C1, que es la que entra con el teclado, en un
+    commit aparte, para quitarlo fácil si hace falta;
+  - la prueba de Vitest que escribe tecla por tecla se deja, con un nombre que dice que jsdom no reproduce el error,
+    en lugar de borrarla: sigue revisando que entrar así llegue al Inicio sin ese error en jsdom;
+  - lo que una prueba de Selenium lee de la consola queda guardado por navegador hasta `descartarConsola` o
+    `guardarFalla`, para que la consola de una falla tenga todo lo de esa prueba.
+- Queda fuera:
+  - **el arreglo del «Maximum update depth exceeded»:** sigue abierto, sin causa conocida; la CI dirá si el error
+    sigue con la nueva revisión de la consola.
+- Problemas encontrados:
+  - **El error de React no se reprodujo fuera de Selenium.** Se probó en Vitest (jsdom) escribiendo tecla por tecla y
+    entrando, en PC y en celular, y en Chromium (el navegador de Claude Code) con la página compilada como la compila
+    el entorno de Selenium (con `NODE_ENV=test`, que deja React en modo de desarrollo: por eso el error sale con su
+    texto completo), con una API simulada en Python, escribiendo con teclas una por una, en PC y en celular, también
+    justo al cargar: ninguna vez apareció. Se leyeron `IniciarSesion.jsx`, `CampoDeTexto`, `CampoContrasena`,
+    `EnfocarPrimerError`, `Preferencias`, `ProveedorDeSesion`, `Rutas`, `Inicio` y los efectos de Formik 2.4.9,
+    `InputBase` y `FormControl` de Material UI 9.5 y `useTranslation` de react-i18next 17.1, sin un efecto que se
+    llame a sí mismo. Las consolas guardadas en `reports/selenium` muestran que salta en los primeros 300 ms, antes
+    de terminar de entrar, también en las pruebas de RF-10, que entran igual.
+  - **Las fuentes del servidor de desarrollo respondían 403** en el worktree, porque `node_modules` es un enlace a la
+    copia principal y queda fuera de lo que Vite deja servir. No afecta a la app ni a las pruebas.
+- Resultado de las pruebas (en este PC solo las rápidas de lo cambiado; las de punta a punta las corre la CI):
+  - Generador: 126 pruebas de pytest; `generar.py comprobar` al día (63 archivos).
+  - Backend: las 135 de `EmpresaApiGeneradaIT` y `UsuarioApiGeneradaIT` (Testcontainers).
+  - Frontend: 171 pruebas de Vitest de `crud/` y `generated/`, y las 17 de `IniciarSesion.test.jsx`, también
+    después de la revisión; ESLint en lo cambiado, también en `selenium/`.
+  - Casos de prueba: 1636 pruebas y 16 criterios sin prueba; pasan `casos_de_prueba.py comprobar` y
+    `generar.py comprobar`.
+- Después de abrir el PR (#24): la CI pasó toda en verde, también RF-01 C1 de Selenium con la revisión nueva de la
+  consola. El «Maximum update depth exceeded» no salió en Linux, así que `cbc8081` se queda: si el error aparece en la
+  CI, la prueba lo muestra. Cristhian lo aprobó el 25/11/2026: «Revisé el #23 y el #24 y están bien. Fusiónalos
+  cuando estén en verde, como propones: si la revisión de la consola deja en rojo el #24, revierte solo `cbc8081` y el
+  error queda como tarea aparte.» Se fusionó con todos sus jobs en verde. La causa del error sigue siendo una tarea
+  aparte: solo se ha visto en Chrome y Edge sobre Windows.
+- Archivos o PR: la rama `feature/arreglos-generados-y-sesion` y su PR hacia `main`.
+
 ## 24/11/2026 · RNF-06, RNF-07 y RNF-08: los criterios sin prueba que no dependen de AWS
 
 - Quién: Cristhian Sánchez (`DrekOF`), con Claude Code.
@@ -2601,6 +2685,16 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
     punta de RNF-06 C2 no se corrió en este PC: la corre la CI.
   - **Casos de prueba:** 10 criterios pendientes (eran 16) y 5 verificaciones documentadas, 2 verificadas y 3
     pendientes (RNF-06 C1 y RNF-07 C3 y C5).
+- Después de abrir el PR (#23):
+  - **Cristhian lo aprobó** el 25/11/2026: «Revisé el #23 y el #24 y están bien. Fusiónalos cuando estén en verde
+    […]. RNF-07 C3 y C5 quedan pendientes hasta que Julián responda por escrito; ya le mandé las preguntas.»
+  - **La CI falló en una prueba de RF-16 C1,** del #21 y no de este PR: en Chrome de PC, al pasar la ventana de 1280 a
+    360 px, midió el ancho (532 px) antes de que la página cambiara al diseño de celular. En el #21 y en el #24 había
+    pasado. Ahora `estadisticas.spec.js` espera con `expect.poll` a que el ancho se asiente; si la página de verdad se
+    desplaza a los lados, la espera vence y la prueba falla igual. `responsive.spec.js` no tiene el problema: pone
+    el ancho antes de abrir cada página.
+  - **Se unió `main`,** con el #24, para volver a correr la CI: la bitácora (las dos entradas) y los casos de prueba,
+    armados de nuevo.
 - Archivos o PR: la rama `feature/RNF-06-07-08-criterios` y su PR hacia `main`.
 
 ## Plantilla para nuevas entradas
