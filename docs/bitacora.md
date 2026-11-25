@@ -4,7 +4,7 @@ Descripción: Registro paso a paso de cómo se construyó InspectIA, para la sus
 Fecha de creación: 12/10/2026
 Actualización: 24/11/2026
 Autor: Equipo InspectIA
-Versión: 1.29
+Versión: 1.30
 -->
 
 # Bitácora de construcción (RP-24)
@@ -2470,6 +2470,119 @@ Cada entrada dice qué se hizo, por qué y cómo se pidió. Las más recientes v
     el token; no pases la regla de WAF a Count.» Como el #20 ya estaba en verde, se fusionó, y los dos ajustes
     entraron aquí, que de todas formas tenía que unirse con `main`.
 - Archivos o PR: la rama `feature/RF-15-16-17-reporte-estadisticas-modelo` y su PR hacia `main`.
+
+## 24/11/2026 · RNF-06, RNF-07 y RNF-08: los criterios sin prueba que no dependen de AWS
+
+- Quién: Cristhian Sánchez (`DrekOF`), con Claude Code.
+- Qué se hizo:
+  - **El PR de los criterios sin prueba, en la rama `feature/RNF-06-07-08-criterios`** (desde `5ca4b11`, con el #21
+    ya en `main`). Los commits, con las pruebas antes del código:
+    1. `ccfc995` las pruebas de las verificaciones documentadas en la lista de casos de prueba, en rojo, y `f6e60d4`
+       el código en `generador/inspectia_generador/casos.py` y su plantilla; `846e33b` el singular del resumen.
+    2. `71b54b1` las pruebas de RNF-07 C1 a C4 sobre el catálogo de la release `modelos-v1.0`
+       (`ia-servicio/pruebas/test_metricas_del_modelo.py`).
+    3. `9e172c6` la prueba de integración de RNF-07 C1, C2 y C4: del catálogo a la tabla `modelo` y a
+       `GET /api/v1/modelo` (`ComparativaDeModelosIT`).
+    4. `cc7d543` las pruebas de RNF-08 C2, en rojo, y `cf47b91` el título del artículo y el enlace a su DOI en Acerca
+       de, en español y en inglés.
+    5. `ad483e4` la prueba de punta a punta de RNF-06 C2 (`frontend/e2e/usabilidad.spec.js`).
+    6. `41b6aa0` las pruebas de RNF-08 C3 (`generador/pruebas/test_sin_cobro.py`).
+    7. Este commit: `docs/verificaciones.md`, `docs/prueba-de-usabilidad.md`, los README, los casos de prueba y esta
+       entrada.
+  - **Verificaciones documentadas (RP-13):** lo que no se prueba con código va en `docs/verificaciones.md`, una
+    sección por criterio con su marca como título (`## RNF-07 · C5 · …`) y su estado: `**Estado:** Verificado.` o
+    `**Estado:** Pendiente: <qué falta>.` `casos_de_prueba.py` las lee y las muestra junto a las pruebas del
+    criterio como «verificación documentada». Una verificada cubre el criterio; una pendiente lo deja pendiente
+    aunque tenga pruebas, así nunca esconde un criterio sin evidencia, y tampoco deja «Implementado» una ficha
+    (D-29). Sin `docs/verificaciones.md` el documento sale igual que antes. Una verificación sin estado, repetida o
+    que cita un criterio que no existe hace fallar `generar` y `comprobar`, como una marca mala.
+  - **RNF-07 (el F1 del modelo), con los datos de la release `modelos-v1.0`:**
+    - C1: EfficientNet-B0, el modelo que carga el servicio por defecto, tiene en `modelos.json` el F1 macro de la
+      tabla «Resultados» del README de Julián (0,735), que recalculado desde su matriz también pasa de 65 %; el
+      registro del servidor lo deja en uso en la tabla y en la API, y la base no deja en uso MobileNetV3-L (63,8 %).
+    - C2: de cada uno de los 5 modelos, la precisión y el recall de cada clase, las macro y el F1 se recalculan desde
+      los 4 enteros de la matriz, con el redondeo del catálogo (3 decimales los recall y el F1, 4 las precisiones de
+      cada clase, 2 decimales de porcentaje las macro), y coinciden con la tabla del README de Julián copiada en la
+      prueba; la API los entrega para los 5.
+    - C3: cada matriz suma 261 sanos y 73 no sanos (334 granos).
+    - C4: los 5 modelos que responde `GET /modelos` llegan a la tabla `modelo` y a la comparativa de
+      `GET /api/v1/modelo` con todos los valores del catálogo. La prueba usa el servicio de IA de mentira con el
+      catálogo real y el registro y el repositorio reales.
+    - Lo que solo Julián puede confirmar quedó como verificación documentada, con la cita de su README (versión 4.3)
+      y lo que se ve en su repositorio: C1 (la medición misma), C3 (sin imágenes repetidas: `05_split.py` lo revisa
+      con `assert` por ruta y por md5) y C5 (el prerregistro en `c7e216d`, antes de la medición en `642de84`, y la
+      marca de un solo uso `test_usado.txt` del 26/10/2026). Las 4 preguntas para Julián están al final de
+      `docs/verificaciones.md`.
+  - **RNF-06 C2:** una prueba de punta a punta en los 5 navegadores: el usuario final elige «Nuevo lote» en el menú,
+    registra el lote, sube 2 fotos y analiza la muestra, y la prueba cuenta las pantallas. **Qué cuenta como
+    pantalla:** cada ruta distinta de la app por la que pasa, desde «Nuevo lote» hasta ver el porcentaje: las que
+    registra la página al navegar y, en cada paso, la que se ve con su título (h1). La espera del análisis no es otra
+    pantalla, porque se muestra dentro del resultado, en la misma ruta. Da 3: Nuevo lote (`/lotes/nuevo`), Fotos de la
+    muestra (`/lotes/:id/fotos`) y Resultado del lote (`/lotes/:id`).
+  - **RNF-08 C2:** pruebas de Vitest que leen el README del repositorio y el del servicio de IA (la cita del dataset,
+    su autor, su licencia CC BY-NC 4.0 y el artículo con su título y su DOI) y abren Acerca de en español y en
+    inglés. Acerca de solo decía «Zhinin-Vera, L. et al. (2023). IWANN 2023, LNCS 14135.»: ahora lleva el título del
+    artículo y un enlace a su DOI, junto al de Kaggle.
+  - **RNF-08 C3:** no se puede probar que nadie cobre, pero sí que InspectIA no tenga con qué cobrar: una prueba busca
+    precios, pagos, facturas o suscripciones, en español y en inglés y también dentro de los identificadores, en las
+    entidades, el backend, el frontend, el servicio de IA y las plantillas del generador; otra revisa que el README y
+    Acerca de digan que no se cobra. La verificación documentada explica el resto.
+  - **RNF-06 C1:** `docs/prueba-de-usabilidad.md`, una hoja corta para imprimir: por persona, fecha, dispositivo y
+    navegador, la hora de inicio y fin de cada paso y el total, si pidió ayuda y dónde, los errores, las fotos que usó
+    y si pasa (menos de 5 minutos y sin ayuda). Su verificación queda pendiente de la prueba del 25/11/2026.
+- Por qué: eran 16 criterios sin prueba; los de RNF-01, RNF-02 y RF-08 C5 se miden contra AWS después del primer
+  despliegue. Los de RNF-06, RNF-07 y RNF-08 se podían cerrar esta noche, mientras Cristhian sube los modelos y pone
+  las variables. Ahora quedan 8: RF-08 C5, RNF-01 C1 a C3, RNF-02 C1, C2 y C4 (los de AWS) y RNF-06 C1 (la prueba con
+  personas).
+- Cómo se pidió: el 24/11/2026, Cristhian escribió: «Bien. Cuando el #21 quede en `main`, mientras yo subo los modelos
+  y pongo las variables, sigue esta noche con esto, en los PR que veas: 1. **Los criterios sin prueba que no dependen
+  de AWS:** RNF-07 C1 a C5: pruebas que comprueben, con los datos del release `modelos-v1.0` y la tabla `modelo`, el
+  F1 de 0,65 o más, la precisión, el recall y la matriz de cada clase, los 5 modelos con el mismo conjunto de prueba y
+  la tabla comparativa. Lo que solo Julián puede confirmar (por ejemplo, C3 y C5), déjalo como verificación
+  documentada con la cita de su README, y dime qué le pregunto. RNF-06 C2: una prueba de punta a punta que cuente las
+  pantallas de registrar el lote, subir las fotos y ver el resultado (como máximo 3). RNF-08 C2: una prueba que revise
+  la cita del dataset y del artículo en el README y en «Acerca de». RNF-08 C3 y RNF-06 C1 no se prueban con código:
+  propón cómo quedan verificados. Para RNF-06 C1 haremos mañana la prueba con 3 personas: prepara un formato corto para
+  anotar los tiempos y las fotos que van a usar. 2. **Los tres arreglos pequeños:** el tope de página en los listados
+  generados, la tabla de las pantallas generadas con el teclado y el «Maximum update depth exceeded» de «Iniciar
+  sesión».» Claude Code repartió el trabajo en dos PR; este es el de los criterios (el punto 1), en su worktree, y los
+  arreglos pequeños van en otro.
+- Decisiones pequeñas:
+  - Una verificación documentada pendiente deja su criterio pendiente aunque tenga pruebas; una verificada lo cubre.
+    El resumen de `docs/casos-de-prueba.md` dice cuántas hay y su columna pasa a «Con prueba o verificación» solo si
+    existe alguna.
+  - RNF-07 C3 y C5 quedan «Verificado» con la cita del README de Julián y lo que se ve en su repositorio (los `assert`
+    de `05_split.py`, el prerregistro antes de la medición y la marca de un solo uso), no «Pendiente»: es la
+    confirmación escrita que Cristhian pidió citar. Las preguntas para Julián son para reforzarla; si su respuesta
+    cambia algo, el estado pasa a «Pendiente» con una línea.
+  - RNF-07 C1 también lleva verificación documentada: el código comprueba las cifras copiadas, no puede volver a
+    medir el modelo con los 334 granos.
+  - Las cifras de la tabla «Resultados» del README de Julián se copiaron en la prueba de Python: así la prueba compara
+    el catálogo con la fuente y no consigo mismo.
+  - RNF-08 C2 también revisa el README del servicio de IA, que usa el modelo y los recortes del dataset.
+  - Acerca de lleva el título del artículo y un enlace a su DOI (`acercaDe.doi`, en español y en inglés).
+  - RNF-08 C3 se cubre con una prueba (no hay con qué cobrar y se dice que no se cobra) y con una verificación
+    documentada. La prueba no revisa `infra/`: el presupuesto de AWS es gasto del equipo, no cobro.
+  - Las fotos de la prueba con personas no pueden ser del dataset: en `..\Cacao_dataset_kaggle\` cada foto tiene un
+    solo grano. El formato pide fotos de muestras reales de 100 a 150 granos, fuera del repositorio.
+- Queda fuera:
+  - Los tres arreglos pequeños (punto 2 del pedido), en otro PR.
+  - RF-08 C5, RNF-01 y RNF-02: contra AWS después del primer despliegue.
+  - Cambiar el estado de alguna ficha: las RNF no tienen estado en `fichas.json`.
+  - Que el servicio de IA rechace al arrancar un modelo con F1 menor que 65 (`INSPECTIA_MODELO=MobileNetV3-L`): hoy
+    lo rechaza la base al ponerlo en uso, y el registro de los modelos lo reintenta sin parar.
+- Problemas: Vite convierte `new URL('…', import.meta.url)` en una importación de archivos y rechazó leer el README así
+  en Vitest: la prueba lo lee con `fileURLToPath` y `resolve`.
+- Resultado de las pruebas (solo las rápidas de lo que cambió y una de integración; las de punta a punta las corre
+  la CI):
+  - **Generador:** 142 pruebas, `generar.py comprobar` y `casos_de_prueba.py comprobar`.
+  - **Servicio de IA:** 84 pruebas y 4 saltadas (las que necesitan el modelo), con las 10 nuevas.
+  - **Backend:** `ComparativaDeModelosIT`, 3 pruebas, con PostgreSQL 18 en Testcontainers.
+  - **Frontend:** Vitest de Acerca de, Iniciar sesión y los textos (36 pruebas) y `npm run lint`. La prueba de punta a
+    punta de RNF-06 C2 no se corrió en este PC: la corre la CI.
+  - **Casos de prueba:** 8 criterios pendientes (eran 16) y 5 verificaciones documentadas, 4 verificadas y 1
+    pendiente.
+- Archivos o PR: la rama `feature/RNF-06-07-08-criterios` y su PR hacia `main`.
 
 ## Plantilla para nuevas entradas
 

@@ -4,7 +4,7 @@ Descripción: Presentación del monorepo de InspectIA: estructura, versiones, re
 Fecha de creación: 12/10/2026
 Actualización: 24/11/2026
 Autor: Equipo InspectIA
-Versión: 1.18
+Versión: 1.19
 -->
 
 # InspectIA
@@ -230,6 +230,8 @@ Artículo de los autores:
 - Especificación: `specs/` (fichas, decisiones, arquitectura y pautas del docente).
 - Formato de las entidades y de la API generada: `specs/entidades/README.md`.
 - Casos de prueba por criterio de aceptación (RP-13): `docs/casos-de-prueba.md`.
+- Verificaciones documentadas de los criterios que no se prueban con código (RNF-06 C1, RNF-07 C1, C3 y C5, RNF-08 C3): `docs/verificaciones.md`.
+- Formato de la prueba con 3 personas de RNF-06 C1: `docs/prueba-de-usabilidad.md`.
 - Bitácora de construcción: `docs/bitacora.md`.
 - Integración continua: `.github/workflows/ci.yml` (ver «Integración continua»).
 - Demostración de otra temática, para la sustentación (RP-23): `docs/demostracion-otra-tematica.md`.
