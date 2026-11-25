@@ -6,11 +6,12 @@
  *              (RNF-04), las columnas, los campos, los textos, el límite de activos y lo que sus reglas no dejan
  *              hacer en la fila de quien tiene la sesión. Lo escrito a mano para una entidad, como el panel de
  *              administradores de una empresa, llega en sus extensiones. Al abrir un panel, el foco va a su
- *              título y, al cerrarlo, vuelve al botón que lo abrió (RNF-06 C4).
+ *              título y, al cerrarlo, vuelve al botón que lo abrió, y la caja de la tabla recibe el foco
+ *              (RNF-06 C4).
  * Fecha de creación: 26/10/2026
- * Actualización: 27/10/2026
+ * Actualización: 24/11/2026
  * Autor: Equipo InspectIA
- * Versión: 1.1
+ * Versión: 1.2
  */
 import Add from '@mui/icons-material/Add';
 import Box from '@mui/material/Box';
@@ -260,7 +261,9 @@ function Acciones({ pantalla, fila, propia, permisos, extras, sinCupo, alElegir 
 }
 
 /**
- * La lista en el PC: una tabla con su título para los lectores de pantalla.
+ * La lista en el PC: una tabla con su título para los lectores de pantalla. Su caja se desplaza a los lados si la
+ * tabla no cabe, y recibe el foco con el mismo nombre, para recorrerla con las flechas del teclado (WCAG 2.1.1),
+ * como la del historial de lotes.
  *
  * @param {object} props las propiedades
  * @param {DescripcionDePantalla} props.pantalla la descripción de la pantalla
@@ -273,10 +276,12 @@ function Acciones({ pantalla, fila, propia, permisos, extras, sinCupo, alElegir 
 function Tabla({ pantalla, filas, conAcciones, acciones, esPropia }) {
   const { t } = useTranslation();
   const [primera, ...demas] = pantalla.columnas;
+  const idDelTitulo = useId();
   return (
-    <Box sx={(theme) => ({ ...recuadro(theme), overflowX: 'auto' })}>
+    <Box role="region" tabIndex={0} aria-labelledby={idDelTitulo}
+      sx={(theme) => ({ ...recuadro(theme), overflowX: 'auto' })}>
       <Table>
-        <Box component="caption" sx={OCULTO_A_LA_VISTA}>{t(pantalla.textos.tituloLista)}</Box>
+        <Box component="caption" id={idDelTitulo} sx={OCULTO_A_LA_VISTA}>{t(pantalla.textos.tituloLista)}</Box>
         <TableHead>
           <TableRow>
             {pantalla.columnas.map((columna) => <TableCell key={columna.atributo}>{t(columna.etiqueta)}</TableCell>)}
